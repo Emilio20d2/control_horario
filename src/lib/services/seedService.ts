@@ -1,0 +1,68 @@
+
+'use server';
+
+import { getDbAdmin } from '../firebase-admin';
+import type { DocumentData } from 'firebase-admin/firestore';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+
+
+// Utility to clear a collection
+async function clearCollection(collectionName: string) {
+    const dbAdmin = getDbAdmin();
+    const collectionRef = dbAdmin.collection(collectionName);
+    const snapshot = await collectionRef.get();
+
+    if (snapshot.empty) {
+        console.log(`Collection ${collectionName} is already empty or does not exist, skipping deletion.`);
+        return 0;
+    }
+
+    const batch = dbAdmin.batch();
+    snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+    await batch.commit();
+    console.log(`Collection ${collectionName} cleared.`);
+    return snapshot.size;
+}
+
+export async function seedDatabase(dataToImport: any) {
+    const dbAdmin = getDbAdmin();
+    console.log("Starting database seed/update process...");
+
+    // Clear only the collections that are going to be imported.
+    await clearCollection('weeklyRecords');
+    await clearCollection('employees');
+    
+    const batch = dbAdmin.batch();
+    const stats: Record<string, number> = {
+        employees: 0,
+        weeklyRecords: 0,
+    };
+
+    // Staging employees
+    if (dataToImport.employees) {
+        Object.entries(dataToImport.employees).forEach(([docId, docData]) => {
+            const docRef = dbAdmin.collection('employees').doc(docId);
+            batch.set(docRef, docData as DocumentData);
+            stats.employees++;
+        });
+        console.log(`Staging ${stats.employees} documents for collection 'employees'...`);
+    }
+
+    // Staging weekly records
+    if (dataToImport.weeklyRecords) {
+        Object.entries(dataToImport.weeklyRecords).forEach(([docId, docData]) => {
+            const docRef = dbAdmin.collection('weeklyRecords').doc(docId);
+            batch.set(docRef, docData as DocumentData);
+            stats.weeklyRecords++;
+        });
+        console.log(`Staging ${stats.weeklyRecords} documents for collection 'weeklyRecords'...`);
+    }
+
+    await batch.commit();
+    console.log("Database seed/update process completed successfully!");
+    
+    return stats;
+}

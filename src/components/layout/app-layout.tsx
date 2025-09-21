@@ -1,0 +1,161 @@
+
+
+'use client';
+
+import type { ReactNode } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  LayoutDashboard,
+  Users,
+  CalendarDays,
+  Settings,
+  LogOut,
+  Bell,
+  Menu,
+} from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/hooks/useAuth';
+import { useDataProvider } from '@/hooks/use-data-provider';
+import { cn } from '@/lib/utils';
+
+const AppIcon = () => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-8 w-8 text-primary"
+    >
+      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+    </svg>
+  );
+
+
+export function AppLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const { user, logout } = useAuth();
+  const { hasUnconfirmedInPrevWeek } = useDataProvider();
+
+  const getInitials = (email: string | null | undefined): string => {
+    if (!email) return 'U';
+    const nameParts = email.split('@')[0].replace('.', ' ').split(' ');
+    if (nameParts.length > 1) {
+        return (nameParts[0][0] + (nameParts[1][0] || '')).toUpperCase();
+    }
+    return (nameParts[0].substring(0, 2) || '').toUpperCase();
+  }
+
+
+  const menuItems = [
+    { href: '/dashboard', label: 'Panel', icon: LayoutDashboard },
+    { href: '/schedule', label: 'Horario', icon: CalendarDays },
+    { href: '/employees', label: 'Empleados', icon: Users },
+    { href: '/settings', label: 'Ajustes', icon: Settings },
+  ];
+
+  const MainNav = ({className}: {className?: string}) => (
+    <nav className={className}>
+        {menuItems.map((item) => (
+            <Link
+            key={item.href}
+            href={item.href}
+            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                (pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href)))
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            }`}
+            >
+            <item.icon className="h-4 w-4" />
+            {item.label}
+            </Link>
+        ))}
+    </nav>
+  );
+
+  return (
+    <div className="flex h-screen w-full flex-col bg-background">
+      <header className="sticky top-0 inset-x-0 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">
+        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+            <AppIcon />
+            <span className="text-xl font-semibold font-headline">Control Horario</span>
+        </Link>
+        
+        <MainNav className="hidden md:flex items-center gap-4 mx-auto" />
+
+        <div className="flex items-center gap-4 ml-auto">
+            <Button variant="ghost" size="icon" className="rounded-full relative">
+                <Bell className="h-5 w-5" />
+                 {hasUnconfirmedInPrevWeek && (
+                    <span className="absolute top-1.5 right-1.5 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
+                    </span>
+                )}
+                <span className="sr-only">Alternar notificaciones</span>
+            </Button>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                        <Avatar className="h-10 w-10">
+                            <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
+                        </Avatar>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={logout} className="text-destructive">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Cerrar Sesión
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+             <Sheet>
+                <SheetTrigger asChild>
+                    <Button variant="outline" size="icon" className="md:hidden">
+                        <Menu className="h-5 w-5" />
+                        <span className="sr-only">Abrir menú</span>
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left">
+                    <SheetHeader>
+                        <SheetTitle>
+                            <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+                                <AppIcon />
+                                <span className="text-xl font-semibold font-headline">Control Horario</span>
+                            </Link>
+                        </SheetTitle>
+                    </SheetHeader>
+                    <div className="py-4">
+                        <MainNav className="flex flex-col gap-2" />
+                    </div>
+                </SheetContent>
+            </Sheet>
+        </div>
+      </header>
+      <div className="flex-1 flex flex-col overflow-y-auto">
+        <main className="flex-1">{children}</main>
+      </div>
+    </div>
+  );
+}
