@@ -37,7 +37,7 @@ export default function DashboardPage() {
     const [referenceDate, setReferenceDate] = useState(new Date());
     const [selectedYear, setSelectedYear] = useState(getYear(referenceDate));
     const [selectedMonth, setSelectedMonth] = useState(getMonth(referenceDate));
-    const [selectedBalanceReportWeek, setSelectedBalanceReportWeek] = useState(getWeekId(new Date()));
+    const [selectedBalanceReportWeek, setSelectedBalanceReportWeek] = useState(getWeekId(subWeeks(new Date(), 1)));
     const [complementaryHoursReportWeek, setComplementaryHoursReportWeek] = useState(getWeekId(subWeeks(new Date(), 1)));
 
 
