@@ -64,23 +64,22 @@ export const calculateBalancePreview = (
         if (dayData.isHoliday) {
             const holidayType = dayData.holidayType;
 
-            // Primero, calcular el impacto en la bolsa de libranza si aplica, solo si no hay ausencia.
-            const isHolidayOnNonWorkingDay = dayData.theoreticalHours === 0 && getISODay(dayDate) !== 7 && holidayType !== 'Apertura';
-            if (isHolidayOnNonWorkingDay && contractType.computesOffDayBag && dayData.absence === 'ninguna') {
-                impactLeave += dayData.leaveHours > 0 ? dayData.leaveHours : 0;
+            // CORRECTED: Logic to add leaveHours to the leave bag impact
+            if (dayData.absence === 'ninguna' && dayData.leaveHours > 0 && contractType.computesOffDayBag) {
+                impactLeave += dayData.leaveHours;
             }
 
-            // Ahora, procesar las horas trabajadas en festivo.
+            // Now, process worked hours on holidays.
             if (holidayType === 'Apertura' && dayData.workedHours > 0 && !dayData.doublePay) {
                 if (contractType.computesHolidayBag) {
                     impactHoliday += dayData.workedHours;
                 }
             } else if (holidayType !== 'Apertura' && dayData.workedHours > 0) {
-                // Horas trabajadas en festivo normal computan para la semana
+                // Worked hours on a normal holiday count towards the weekly total
                 dailyComputableForWeek += dayData.workedHours;
             }
         } else {
-            // Día no festivo
+            // Non-holiday
             dailyComputableForWeek += dayData.workedHours;
         }
 
