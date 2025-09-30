@@ -865,6 +865,12 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
             let absenceHours = 0;
             let workedHours = d.theoreticalHours;
             let leaveHours = 0;
+
+            const isOpeningHoliday = holidayDetails?.type === 'Apertura' && dayOfWeek !== 7;
+
+            if (isOpeningHoliday) {
+                workedHours = 0;
+            }
             
             if (absenceType) {
                 absenceAbbreviation = absenceType.abbreviation;
@@ -983,6 +989,7 @@ export const useDataProvider = () => useContext(DataContext);
 
 
     
+
 
 
 
