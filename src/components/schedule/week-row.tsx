@@ -339,12 +339,23 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 const holidayType = dayData.holidayType;
                 const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
                 
-                const showLeaveHours = isHoliday &&
-                    dayData.theoreticalHours === 0 &&
-                    getISODay(day) !== 7 &&
-                    (contractType?.computesOffDayBag ?? false) &&
+                const dayOfWeek = getISODay(day);
+                
+                const showLeaveHoursForNormalHoliday = isHoliday &&
                     holidayType !== 'Apertura' &&
+                    dayData.theoreticalHours === 0 &&
+                    dayOfWeek !== 7 &&
+                    (contractType?.computesOffDayBag ?? false) &&
                     dayData.absence === 'ninguna';
+
+                const showLeaveHoursForApertura = isHoliday &&
+                    holidayType === 'Apertura' &&
+                    dayOfWeek >= 1 && dayOfWeek <= 6 &&
+                    dayData.theoreticalHours === 0 &&
+                    (contractType?.computesOffDayBag ?? false) &&
+                    dayData.absence === 'ninguna';
+
+                const showLeaveHours = showLeaveHoursForNormalHoliday || showLeaveHoursForApertura;
 
                 return (
                     <TableCell key={day.toISOString()} className={cn("p-1 align-top text-xs min-w-[140px]", isHoliday && "bg-primary/10")}>

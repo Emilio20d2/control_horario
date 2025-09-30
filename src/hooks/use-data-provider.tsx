@@ -127,6 +127,10 @@ deleteContractType: async () => {},
   calculateEmployeeVacations: () => ({ vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31 }),
 });
 
+const roundToNearestQuarter = (num: number) => {
+    return Math.round(num * 4) / 4;
+};
+
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -844,11 +848,14 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
         }
 
         const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(emp.id, weekDays[0]);
+        const weeklyWorkHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
+        const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
         
         // Base data generation from theoretical hours, holidays, and scheduled absences
         const baseDays: Record<string, DailyData> = {};
         weekDaysWithTheoreticalHours.forEach(d => {
             const dayDate = parseISO(d.dateKey);
+            const dayOfWeek = getISODay(dayDate);
             const holidayDetails = holidays.find(h => isSameDay(h.date, dayDate));
     
             const scheduledAbsence = activePeriod.scheduledAbsences?.find(a =>
@@ -859,6 +866,7 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
             let absenceAbbreviation = 'ninguna';
             let absenceHours = 0;
             let workedHours = d.theoreticalHours;
+            let leaveHours = 0;
             
             if (absenceType) {
                 absenceAbbreviation = absenceType.abbreviation;
@@ -867,13 +875,21 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
                     workedHours = 0;
                 }
             }
+
+            // Logic for pre-filling leave hours on holidays with 0 theoretical hours
+            const isAperturaLunesViernes = holidayDetails?.type === 'Apertura' && dayOfWeek >= 1 && dayOfWeek <= 5;
+            const isFestivoNormalNoDomingo = holidayDetails && holidayDetails.type !== 'Apertura' && dayOfWeek !== 7;
+            
+            if ((isAperturaLunesViernes || isFestivoNormalNoDomingo) && d.theoreticalHours === 0 && contractType?.computesOffDayBag) {
+                leaveHours = roundToNearestQuarter(weeklyWorkHours / 5);
+            }
     
             baseDays[d.dateKey] = {
                 theoreticalHours: d.theoreticalHours,
                 workedHours,
                 absence: absenceAbbreviation,
                 absenceHours,
-                leaveHours: 0,
+                leaveHours,
                 doublePay: false,
                 isHoliday: !!holidayDetails,
                 holidayType: holidayDetails?.type ?? null,
@@ -914,7 +930,7 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
         
         return finalData;
 
-    }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, getEffectiveWeeklyHours, holidays, absenceTypes, prefilledRecords]);
+    }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, getEffectiveWeeklyHours, holidays, absenceTypes, contractTypes, prefilledRecords]);
 
   const value = {
     employees,
@@ -972,4 +988,5 @@ export const useDataProvider = () => useContext(DataContext);
 
 
     
+
 
