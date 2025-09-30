@@ -92,7 +92,6 @@ export default function EmployeeDetailPage() {
     const periodToDisplay = activePeriod || latestPeriod;
 
     const isContractActive = !!activePeriod;
-    const hasAnyPeriod = employee.employmentPeriods && employee.employmentPeriods.length > 0;
 
     return (
         <div className="flex flex-col gap-6">
@@ -114,21 +113,22 @@ export default function EmployeeDetailPage() {
                      )}
                 </div>
                </div>
-                {hasAnyPeriod ? (
+                <div className="flex items-center gap-2">
                      <Link href={`/employees/${employee.id}/edit`} passHref>
-                        <Button>
+                        <Button variant="outline">
                             <Edit className="mr-2 h-4 w-4" />
                             Editar Ficha
                         </Button>
                     </Link>
-                ) : (
-                    <Link href={`/employees/${employee.id}/new-contract`} passHref>
-                        <Button>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Crear Nuevo Contrato
-                        </Button>
-                    </Link>
-                )}
+                    {!isContractActive && (
+                        <Link href={`/employees/${employee.id}/new-contract`} passHref>
+                            <Button>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Recontratar (Nuevo Contrato)
+                            </Button>
+                        </Link>
+                    )}
+                </div>
             </div>
 
             <div className="flex flex-wrap items-stretch justify-center gap-4 px-4 md:px-6">

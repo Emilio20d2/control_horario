@@ -25,15 +25,29 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import type { Employee } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { isAfter, parseISO, startOfDay } from 'date-fns';
+import { isAfter, parseISO, startOfDay, format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { useEffect, useMemo, useState } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 export default function EmployeesPage() {
     const { employees, loading, weeklyRecords, getEmployeeFinalBalances, calculateEmployeeVacations } = useDataProvider();
     const [balances, setBalances] = useState<Record<string, { ordinary: number; holiday: number; leave: number; total: number; }>>({});
     const [balancesLoading, setBalancesLoading] = useState(true);
 
-    const activeEmployees = useMemo(() => employees.filter(e => e.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), startOfDay(new Date())))), [employees]);
+    const { activeEmployees, inactiveEmployees } = useMemo(() => {
+        const active: Employee[] = [];
+        const inactive: Employee[] = [];
+        employees.forEach(e => {
+            if (e.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), startOfDay(new Date())))) {
+                active.push(e);
+            } else {
+                inactive.push(e);
+            }
+        });
+        return { activeEmployees: active, inactiveEmployees: inactive };
+    }, [employees]);
 
     useEffect(() => {
         if (!loading) {
@@ -59,72 +73,57 @@ export default function EmployeesPage() {
         </TableCell>
     );
 
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-4 md:px-6 pt-4">
-        <h1 className="text-2xl font-bold tracking-tight font-headline">
-          Empleados Activos
-        </h1>
-        <Link href="/employees/new" passHref>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Añadir Empleado
-          </Button>
-        </Link>
-      </div>
-
-      <div className="px-4 md:px-6 pb-4">
-        <Card>
-            <CardHeader>
-            <CardTitle>Lista de Empleados Activos</CardTitle>
-            </CardHeader>
-            <CardContent>
-            <div className="overflow-x-auto">
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead className="min-w-[200px]">Nombre</TableHead>
+  const EmployeeTable = ({ employees, showBalances }: { employees: Employee[], showBalances: boolean }) => (
+     <Table>
+        <TableHeader>
+            <TableRow>
+            <TableHead className="min-w-[200px]">Nombre</TableHead>
+            {showBalances ? (
+                <>
                     <TableHead className="text-center min-w-[120px]">B. Ordinaria</TableHead>
                     <TableHead className="text-center min-w-[120px]">B. Festivos</TableHead>
                     <TableHead className="text-center min-w-[120px]">B. Libranza</TableHead>
                     <TableHead className="text-center min-w-[120px] font-bold">Balance Total</TableHead>
                     <TableHead className="text-center min-w-[140px]">Vacaciones</TableHead>
-                    <TableHead className="text-right min-w-[140px]">Acciones</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {loading ? (
-                    Array.from({ length: 5 }).map((_, index) => (
-                        <TableRow key={index}>
-                            <TableCell><Skeleton className="h-10 w-full" /></TableCell>
-                            <TableCell><Skeleton className="h-10 w-full" /></TableCell>
-                            <TableCell><Skeleton className="h-10 w-full" /></TableCell>
-                            <TableCell><Skeleton className="h-10 w-full" /></TableCell>
-                            <TableCell><Skeleton className="h-10 w-full" /></TableCell>
-                            <TableCell><Skeleton className="h-10 w-full" /></TableCell>
-                            <TableCell><Skeleton className="h-10 w-full" /></TableCell>
-                        </TableRow>
-                    ))
-                    ) : activeEmployees.map((employee) => {
-                    const employeeBalances = balancesLoading ? undefined : balances[employee.id];
-                    const { vacationDaysTaken, suspensionDays } = calculateEmployeeVacations(employee);
-                    return (
-                    <TableRow key={employee.id}>
-                        <TableCell className="font-medium">
-                        <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9">
-                            <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-col">
-                            <span>{employee.name}</span>
-                            </div>
+                </>
+            ) : (
+                <>
+                    <TableHead>Último Contrato</TableHead>
+                    <TableHead>Fecha de Cese</TableHead>
+                </>
+            )}
+            <TableHead className="text-right min-w-[140px]">Acciones</TableHead>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            {loading ? (
+            Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={index}>
+                    <TableCell colSpan={showBalances ? 7 : 4}><Skeleton className="h-10 w-full" /></TableCell>
+                </TableRow>
+            ))
+            ) : employees.map((employee) => {
+            const employeeBalances = showBalances && !balancesLoading ? balances[employee.id] : undefined;
+            const { vacationDaysTaken, suspensionDays } = showBalances ? calculateEmployeeVacations(employee) : { vacationDaysTaken: 0, suspensionDays: 0 };
+            const lastPeriod = [...employee.employmentPeriods].sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
+            return (
+            <TableRow key={employee.id}>
+                <TableCell className="font-medium">
+                    <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                        <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                        <span>{employee.name}</span>
                         </div>
-                        </TableCell>
-                        
+                    </div>
+                </TableCell>
+                
+                {showBalances ? (
+                    <>
                         <BalanceCell value={employeeBalances?.ordinary} />
                         <BalanceCell value={employeeBalances?.holiday} />
                         <BalanceCell value={employeeBalances?.leave} />
-
                         <TableCell className="text-center">
                          {employeeBalances !== undefined ? (
                             <Badge variant={employeeBalances.total >= 0 ? 'default' : 'destructive'} className="font-mono text-base">
@@ -134,7 +133,6 @@ export default function EmployeesPage() {
                             <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                          )}
                         </TableCell>
-
                         <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-1.5 font-mono">
                                 <Plane className="h-4 w-4 text-muted-foreground" />
@@ -148,27 +146,68 @@ export default function EmployeesPage() {
                                 </span>
                             </div>
                         </TableCell>
+                    </>
+                ) : (
+                    <>
+                        <TableCell>{lastPeriod?.contractType || 'N/A'}</TableCell>
+                        <TableCell>{lastPeriod?.endDate ? format(parseISO(lastPeriod.endDate as string), 'PPP', {locale: es}) : 'N/A'}</TableCell>
+                    </>
+                )}
 
-                        <TableCell className="text-right">
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={`/employees/${employee.id}`}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Ver Ficha
-                            </Link>
-                        </Button>
-                        </TableCell>
-                    </TableRow>
-                    )})}
-                    {!loading && activeEmployees.length === 0 && (
-                        <TableRow>
-                            <TableCell colSpan={7} className="text-center h-24">
-                                No se han encontrado empleados activos.
-                            </TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-                </Table>
-            </div>
+
+                <TableCell className="text-right">
+                <Button asChild variant="outline" size="sm">
+                    <Link href={`/employees/${employee.id}`}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Ver Ficha
+                    </Link>
+                </Button>
+                </TableCell>
+            </TableRow>
+            )})}
+            {!loading && employees.length === 0 && (
+                <TableRow>
+                    <TableCell colSpan={showBalances ? 7 : 4} className="text-center h-24">
+                        No se han encontrado empleados en esta categoría.
+                    </TableCell>
+                </TableRow>
+            )}
+        </TableBody>
+    </Table>
+  );
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-4 md:px-6 pt-4">
+        <h1 className="text-2xl font-bold tracking-tight font-headline">
+          Empleados
+        </h1>
+        <Link href="/employees/new" passHref>
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Añadir Empleado
+          </Button>
+        </Link>
+      </div>
+
+      <div className="px-4 md:px-6 pb-4">
+        <Card>
+            <CardHeader>
+            <CardTitle>Lista de Empleados</CardTitle>
+            </CardHeader>
+            <CardContent>
+            <Tabs defaultValue="active" className="w-full">
+                <TabsList>
+                    <TabsTrigger value="active">Activos ({activeEmployees.length})</TabsTrigger>
+                    <TabsTrigger value="inactive">Inactivos ({inactiveEmployees.length})</TabsTrigger>
+                </TabsList>
+                <TabsContent value="active" className="pt-4">
+                    <EmployeeTable employees={activeEmployees} showBalances={true} />
+                </TabsContent>
+                <TabsContent value="inactive" className="pt-4">
+                    <EmployeeTable employees={inactiveEmployees} showBalances={false} />
+                </TabsContent>
+            </Tabs>
             </CardContent>
         </Card>
       </div>
