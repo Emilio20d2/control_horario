@@ -139,7 +139,7 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
 
 
 export const addEmploymentPeriod = async (employeeId: string, currentEmployee: Employee, formData: Omit<EmployeeFormData, 'name'>): Promise<void> => {
-    const { startDate, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules } = formData;
+    const { startDate, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours } = formData;
     
     const newPeriod: EmploymentPeriod = {
         id: `period_${Date.now()}`,
@@ -147,9 +147,9 @@ export const addEmploymentPeriod = async (employeeId: string, currentEmployee: E
         startDate,
         endDate: null,
         annualComputedHours,
-        initialOrdinaryHours: 0,
-        initialHolidayHours: 0,
-        initialLeaveHours: 0,
+        initialOrdinaryHours: initialOrdinaryHours ?? 0,
+        initialHolidayHours: initialHolidayHours ?? 0,
+        initialLeaveHours: initialLeaveHours ?? 0,
         workHoursHistory: [
             {
                 effectiveDate: startDate,

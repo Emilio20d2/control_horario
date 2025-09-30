@@ -32,6 +32,7 @@ import { InputStepper } from '@/components/ui/input-stepper';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 
 
 const dayScheduleSchema = z.object({
@@ -54,6 +55,9 @@ const formSchema = z.object({
   contractType: z.string().min(1, { message: 'Debe seleccionar un tipo de contrato.' }),
   initialWeeklyWorkHours: z.coerce.number().positive({ message: 'La jornada semanal debe ser un número positivo.'}),
   annualComputedHours: z.coerce.number().default(0),
+  initialOrdinaryHours: z.coerce.number().optional(),
+  initialHolidayHours: z.coerce.number().optional(),
+  initialLeaveHours: z.coerce.number().optional(),
   weeklySchedules: z.array(weeklyScheduleSchema).min(1, 'Debe haber al menos un calendario.')
 });
 
@@ -83,6 +87,9 @@ export default function NewContractPage() {
         contractType: '',
         initialWeeklyWorkHours: 40,
         annualComputedHours: 0,
+        initialOrdinaryHours: 0,
+        initialHolidayHours: 0,
+        initialLeaveHours: 0,
         weeklySchedules: [{
             effectiveDate: new Date().toISOString().split('T')[0],
             shifts: {
@@ -230,6 +237,52 @@ export default function NewContractPage() {
                                             <FormDescription>Horas ya trabajadas si el contrato empezó a mitad de año.</FormDescription>
                                             <FormMessage />
                                         </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-medium">Saldos Iniciales para el Nuevo Periodo</h3>
+                                 <FormDescription>Define las horas con las que el empleado comenzará este nuevo contrato.</FormDescription>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="initialOrdinaryHours"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Bolsa Ordinaria Inicial</FormLabel>
+                                                <FormControl>
+                                                    <InputStepper {...field} value={field.value} step={0.25} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="initialHolidayHours"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Bolsa Festivos Inicial</FormLabel>
+                                                <FormControl>
+                                                    <InputStepper {...field} value={field.value} step={0.25} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="initialLeaveHours"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Bolsa Libranza Inicial</FormLabel>
+                                                <FormControl>
+                                                    <InputStepper {...field} value={field.value} step={0.25} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
                                         )}
                                     />
                                 </div>
