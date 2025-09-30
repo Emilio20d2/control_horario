@@ -61,25 +61,27 @@ export const calculateBalancePreview = (
 
         let dailyComputableForWeek = 0;
         
+        // --- Special Logic for Holidays ---
         if (dayData.isHoliday) {
-            const holidayType = dayData.holidayType;
-
-            // CORRECTED: Logic to add leaveHours to the leave bag impact
+            // Logic for leave hours on a non-worked holiday
             if (dayData.absence === 'ninguna' && dayData.leaveHours > 0 && contractType.computesOffDayBag) {
                 impactLeave += dayData.leaveHours;
             }
 
-            // Now, process worked hours on holidays.
-            if (holidayType === 'Apertura' && dayData.workedHours > 0 && !dayData.doublePay) {
-                if (contractType.computesHolidayBag) {
+            // Logic for worked hours on holidays
+            if (dayData.workedHours > 0) {
+                // For 'Apertura' holidays, worked hours go to the holiday bag (if not double pay)
+                if (dayData.holidayType === 'Apertura' && !dayData.doublePay && contractType.computesHolidayBag) {
                     impactHoliday += dayData.workedHours;
                 }
-            } else if (holidayType !== 'Apertura' && dayData.workedHours > 0) {
-                // Worked hours on a normal holiday count towards the weekly total
-                dailyComputableForWeek += dayData.workedHours;
+                // For other holidays, worked hours count towards the weekly total
+                else if (dayData.holidayType !== 'Apertura') {
+                     dailyComputableForWeek += dayData.workedHours;
+                }
             }
-        } else {
-            // Non-holiday
+        } 
+        // --- Logic for Non-Holidays ---
+        else {
             dailyComputableForWeek += dayData.workedHours;
         }
 
@@ -88,10 +90,12 @@ export const calculateBalancePreview = (
             dailyComputableForWeek += dayData.absenceHours || 0;
         }
         
+        // Sundays don't count towards weekly computable hours
         if (getISODay(dayDate) !== 7) {
             totalWeeklyComputableHours += dailyComputableForWeek;
         }
        
+        // Logic for absences affecting bags directly
         if (absenceType) {
             const absenceHours = dayData.absenceHours || 0;
             if (absenceType.affectedBag === 'festivos' && contractType.computesHolidayBag) {

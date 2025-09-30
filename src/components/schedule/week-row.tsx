@@ -341,21 +341,11 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 
                 const dayOfWeek = getISODay(day);
                 
-                const showLeaveHoursForNormalHoliday = isHoliday &&
-                    holidayType !== 'Apertura' &&
-                    dayData.theoreticalHours === 0 &&
+                const showLeaveHours = isHoliday &&
                     dayOfWeek !== 7 &&
-                    (contractType?.computesOffDayBag ?? false) &&
-                    dayData.absence === 'ninguna';
-
-                const showLeaveHoursForApertura = isHoliday &&
-                    holidayType === 'Apertura' &&
-                    dayOfWeek >= 1 && dayOfWeek <= 6 &&
                     dayData.theoreticalHours === 0 &&
                     (contractType?.computesOffDayBag ?? false) &&
                     dayData.absence === 'ninguna';
-
-                const showLeaveHours = showLeaveHoursForNormalHoliday || showLeaveHoursForApertura;
 
                 return (
                     <TableCell key={day.toISOString()} className={cn("p-1 align-top text-xs min-w-[140px]", isHoliday && "bg-primary/10")}>

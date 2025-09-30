@@ -842,7 +842,6 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
     
         const dbRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
     
-        // If a DB record exists AND it's confirmed, it's the source of truth. Return it as is.
         if (dbRecord && dbRecord.confirmed) {
             return dbRecord;
         }
@@ -851,7 +850,6 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
         const weeklyWorkHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
         const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
         
-        // Base data generation from theoretical hours, holidays, and scheduled absences
         const baseDays: Record<string, DailyData> = {};
         weekDaysWithTheoreticalHours.forEach(d => {
             const dayDate = parseISO(d.dateKey);
@@ -877,10 +875,9 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
             }
 
             // Logic for pre-filling leave hours on holidays with 0 theoretical hours
-            const isAperturaLunesViernes = holidayDetails?.type === 'Apertura' && dayOfWeek >= 1 && dayOfWeek <= 5;
-            const isFestivoNormalNoDomingo = holidayDetails && holidayDetails.type !== 'Apertura' && dayOfWeek !== 7;
+            const isFestivoNoDomingo = holidayDetails && dayOfWeek !== 7;
             
-            if ((isAperturaLunesViernes || isFestivoNormalNoDomingo) && d.theoreticalHours === 0 && contractType?.computesOffDayBag) {
+            if (isFestivoNoDomingo && d.theoreticalHours === 0 && contractType?.computesOffDayBag && absenceAbbreviation === 'ninguna') {
                 leaveHours = roundToNearestQuarter(weeklyWorkHours / 5);
             }
     
@@ -896,7 +893,6 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
             };
         });
 
-        // If a DB record exists (but is not confirmed), merge it with the base template.
         if (dbRecord) {
              const mergedDays: Record<string, DailyData> = {};
              for (const dayKey in baseDays) {
@@ -908,7 +904,6 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
             };
         }
 
-        // If no DB record, create a new one from base data and apply prefilled data if it exists
         let finalData: DailyEmployeeData = {
             days: baseDays,
             confirmed: false,
@@ -988,5 +983,6 @@ export const useDataProvider = () => useContext(DataContext);
 
 
     
+
 
 
