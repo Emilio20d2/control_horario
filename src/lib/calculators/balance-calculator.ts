@@ -58,44 +58,45 @@ export const calculateBalancePreview = (
         const dayDate = parseISO(dayId);
         const dayData = weekData[dayId];
         const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
+        const dayOfWeek = getISODay(dayDate);
 
         let dailyComputableForWeek = 0;
         
-        // --- Special Logic for Holidays ---
-        if (dayData.isHoliday) {
-            // Logic for leave hours on a non-worked holiday
-            if (dayData.absence === 'ninguna' && dayData.leaveHours > 0 && contractType.computesOffDayBag) {
-                impactLeave += dayData.leaveHours;
-            }
+        // --- EXCEPCIÓN: Festivo de Apertura (Lunes a Sábado) ---
+        if (dayData.isHoliday && dayData.holidayType === 'Apertura' && dayOfWeek !== 7) {
+            // Horas que computan para la semana son las TEÓRICAS.
+            dailyComputableForWeek += dayData.theoreticalHours;
 
-            // Logic for worked hours on holidays
-            if (dayData.workedHours > 0) {
-                // For 'Apertura' holidays, worked hours go to the holiday bag (if not double pay)
-                if (dayData.holidayType === 'Apertura' && !dayData.doublePay && contractType.computesHolidayBag) {
-                    impactHoliday += dayData.workedHours;
-                }
-                // For other holidays, worked hours count towards the weekly total
-                else if (dayData.holidayType !== 'Apertura') {
-                     dailyComputableForWeek += dayData.workedHours;
-                }
+            // Horas TRABAJADAS van a la bolsa de festivos (si no es pago doble).
+            if (dayData.workedHours > 0 && !dayData.doublePay && contractType.computesHolidayBag) {
+                impactHoliday += dayData.workedHours;
             }
         } 
-        // --- Logic for Non-Holidays ---
+        // --- Lógica para TODOS LOS DEMÁS DÍAS ---
         else {
-            dailyComputableForWeek += dayData.workedHours;
+            // Excluimos domingos del cómputo semanal.
+            if (dayOfWeek !== 7) {
+                dailyComputableForWeek += dayData.workedHours;
+
+                if (absenceType && (absenceType.computesToWeeklyHours || absenceType.computesFullDay)) {
+                    dailyComputableForWeek += dayData.absenceHours || 0;
+                }
+            }
+            // Lógica para festivos normales trabajados (van a la bolsa de festivos).
+            else if (dayData.isHoliday && dayData.workedHours > 0 && !dayData.doublePay && contractType.computesHolidayBag) {
+                 impactHoliday += dayData.workedHours;
+            }
         }
 
+        // Lógica de Libranza (común a todos los festivos)
+        if (dayData.isHoliday && dayData.absence === 'ninguna' && dayData.leaveHours > 0 && contractType.computesOffDayBag) {
+            impactLeave += dayData.leaveHours;
+        }
 
-        if (absenceType && (absenceType.computesToWeeklyHours || absenceType.computesFullDay)) {
-            dailyComputableForWeek += dayData.absenceHours || 0;
-        }
-        
-        // Sundays don't count towards weekly computable hours
-        if (getISODay(dayDate) !== 7) {
-            totalWeeklyComputableHours += dailyComputableForWeek;
-        }
+        // Sumar horas del día al total semanal (ya excluye domingos y lógica de apertura).
+        totalWeeklyComputableHours += dailyComputableForWeek;
        
-        // Logic for absences affecting bags directly
+        // Lógica para ausencias que afectan bolsas directamente
         if (absenceType) {
             const absenceHours = dayData.absenceHours || 0;
             if (absenceType.affectedBag === 'festivos' && contractType.computesHolidayBag) {
