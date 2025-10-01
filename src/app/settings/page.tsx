@@ -51,10 +51,6 @@ export default function SettingsPage() {
         absenceTypes, 
         contractTypes, 
         annualConfigs, 
-        employeeGroups,
-        createEmployeeGroup,
-        updateEmployeeGroup,
-        deleteEmployeeGroup,
         loading, 
         deleteAbsenceType, 
         deleteAnnualConfig, 
@@ -71,11 +67,6 @@ export default function SettingsPage() {
     const [password, setPassword] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
     
-    // State for managing employee groups
-    const [newGroupName, setNewGroupName] = useState('');
-    const [isAddingGroup, setIsAddingGroup] = useState(false);
-    const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
-    const [editingGroupName, setEditingGroupName] = useState('');
 
 
     const handleTabChange = (value: string) => {
@@ -107,34 +98,7 @@ export default function SettingsPage() {
         }
     };
 
-    const handleAddGroup = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newGroupName.trim()) return;
-        setIsAddingGroup(true);
-        try {
-            await createEmployeeGroup(newGroupName.trim());
-            toast({ title: 'Agrupación creada' });
-            setNewGroupName('');
-        } catch (error) {
-            console.error(error);
-            toast({ title: 'Error', description: 'No se pudo crear la agrupación.', variant: 'destructive' });
-        } finally {
-            setIsAddingGroup(false);
-        }
-    };
-
-    const handleSaveGroupEdit = async () => {
-        if (!editingGroupId || !editingGroupName.trim()) return;
-        try {
-            await updateEmployeeGroup(editingGroupId, { name: editingGroupName.trim() });
-            toast({ title: 'Agrupación actualizada' });
-            setEditingGroupId(null);
-            setEditingGroupName('');
-        } catch (error) {
-            console.error(error);
-            toast({ title: 'Error', description: 'No se pudo actualizar la agrupación.', variant: 'destructive' });
-        }
-    };
+    
 
   const renderSkeleton = () => (
     <Table>
@@ -201,12 +165,11 @@ export default function SettingsPage() {
 
       <div className="px-4 md:px-6 pb-4">
         <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="w-full justify-start h-auto sm:h-10 grid sm:w-full grid-cols-2 md:grid-cols-6 overflow-x-auto whitespace-nowrap">
+            <TabsList className="w-full justify-start h-auto sm:h-10 grid sm:w-full grid-cols-2 md:grid-cols-5 overflow-x-auto whitespace-nowrap">
                 <TabsTrigger value="holidays">Días Festivos</TabsTrigger>
                 <TabsTrigger value="annual">Conf. Anual</TabsTrigger>
                 <TabsTrigger value="absences">Tipos Ausencia</TabsTrigger>
                 <TabsTrigger value="contracts">Tipos Contrato</TabsTrigger>
-                <TabsTrigger value="groups">Agrupaciones</TabsTrigger>
                 <TabsTrigger value="utils">Utilidades</TabsTrigger>
             </TabsList>
 
@@ -458,85 +421,6 @@ export default function SettingsPage() {
                             </TableBody>
                         </Table>
                     )}
-                    </CardContent>
-                </Card>
-            </TabsContent>
-
-            <TabsContent value="groups">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Agrupaciones de Personal</CardTitle>
-                        <CardDescription>
-                            Crea y gestiona las agrupaciones para organizar a los empleados en los informes (ej: Ventas, Almacén).
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <form onSubmit={handleAddGroup} className="flex gap-2">
-                            <Input
-                                placeholder="Nombre de la nueva agrupación"
-                                value={newGroupName}
-                                onChange={(e) => setNewGroupName(e.target.value)}
-                                disabled={isAddingGroup}
-                            />
-                            <Button type="submit" disabled={isAddingGroup}>
-                                {isAddingGroup ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                                Añadir
-                            </Button>
-                        </form>
-                        <div className="border rounded-md">
-                             <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Nombre de la Agrupación</TableHead>
-                                        <TableHead className="text-right w-40">Acciones</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loading ? (
-                                        <TableRow><TableCell colSpan={2}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
-                                    ) : employeeGroups.map(group => (
-                                        <TableRow key={group.id}>
-                                            <TableCell>
-                                                {editingGroupId === group.id ? (
-                                                    <Input value={editingGroupName} onChange={(e) => setEditingGroupName(e.target.value)} className="h-8" />
-                                                ) : (
-                                                    group.name
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                {editingGroupId === group.id ? (
-                                                    <div className="flex gap-2 justify-end">
-                                                        <Button variant="ghost" size="icon" onClick={handleSaveGroupEdit} className="text-green-600"><Check className="h-4 w-4" /></Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => setEditingGroupId(null)} className="text-destructive"><X className="h-4 w-4" /></Button>
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        <Button variant="ghost" size="icon" onClick={() => { setEditingGroupId(group.id); setEditingGroupName(group.name); }}>
-                                                            <Edit className="h-4 w-4" />
-                                                        </Button>
-                                                         <DeleteDialog 
-                                                            trigger={
-                                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive-foreground">
-                                                                    <Trash2 className="h-4 w-4"/>
-                                                                </Button>
-                                                            }
-                                                            title="¿Estás seguro de que quieres eliminar esta agrupación?"
-                                                            description="Esta acción no se puede deshacer. Los empleados asignados a este grupo quedarán sin agrupación."
-                                                            onConfirm={() => performDelete(
-                                                                () => deleteEmployeeGroup(group.id),
-                                                                'Agrupación Eliminada',
-                                                                'La agrupación se ha eliminado correctamente.',
-                                                                'No se pudo eliminar la agrupación.'
-                                                            )}
-                                                        />
-                                                    </>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
                     </CardContent>
                 </Card>
             </TabsContent>
