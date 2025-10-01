@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HolidayEmployeeManager } from '@/components/settings/holiday-employee-manager';
+import { Textarea } from '@/components/ui/textarea';
 
 const columnSchema = z.object({
   name: z.string().min(1, 'El nombre de la columna es obligatorio.'),
@@ -28,6 +29,7 @@ const columnSchema = z.object({
 
 const formSchema = z.object({
   title: z.string().min(1, 'El título del listado es obligatorio.'),
+  description: z.string().optional(),
   columns: z.array(columnSchema).min(1, 'Debe haber al menos una columna.'),
 });
 
@@ -40,6 +42,7 @@ export default function ListingsPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: '',
+      description: '',
       columns: [{ name: '', type: 'checkbox', options: '' }],
     },
   });
@@ -68,14 +71,35 @@ export default function ListingsPage() {
   const generatePdf = (data: z.infer<typeof formSchema>) => {
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     const pageMargin = 15;
+    let currentY = 15;
 
     const addHeaderFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
       doc.setFontSize(16).setFont('helvetica', 'bold');
-      doc.text(data.title.toUpperCase(), pageMargin, 15);
+      doc.text(data.title.toUpperCase(), pageMargin, currentY);
+      
+      if (data.description) {
+        doc.setFontSize(10).setFont('helvetica', 'normal');
+        const descriptionLines = doc.splitTextToSize(data.description, doc.internal.pageSize.width - (pageMargin * 2));
+        doc.text(descriptionLines, pageMargin, currentY + 6);
+        currentY += (descriptionLines.length * 5) + 2;
+      } else {
+        currentY += 8;
+      }
+      
       const pageText = `Página ${pageNumber} de ${totalPages}`;
       doc.setFontSize(10).setFont('helvetica', 'normal');
       doc.text(pageText, doc.internal.pageSize.width - pageMargin, doc.internal.pageSize.height - 10, { align: 'right' });
     };
+    
+    // This is a bit of a hack to calculate total pages beforehand
+    const tempDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    autoTable(tempDoc, {
+        head: [['Empleado', ...data.columns.map(c => c.name)]],
+        body: holidayEmployees.map(emp => [emp.name, ...data.columns.map(() => '')]),
+        startY: currentY,
+    });
+    const totalPages = tempDoc.internal.getNumberOfPages();
+
 
     const head = [['Empleado', ...data.columns.map(c => c.name)]];
 
@@ -94,10 +118,10 @@ export default function ListingsPage() {
     autoTable(doc, {
       head,
       body,
-      startY: 25,
+      startY: currentY,
       theme: 'striped',
       pageBreak: 'auto',
-      margin: { left: pageMargin, right: pageMargin, top: 25 },
+      margin: { left: pageMargin, right: pageMargin, top: currentY },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
       columnStyles: { 0: { halign: 'left', cellWidth: 'auto' } },
       didParseCell: (data) => {
@@ -107,14 +131,11 @@ export default function ListingsPage() {
           data.cell.styles.fontSize = 8;
         }
       },
-      didDrawPage: (data) => addHeaderFooter(doc, data.pageNumber, doc.internal.getNumberOfPages()),
+      didDrawPage: (data) => {
+          currentY = 15; // Reset Y for subsequent pages
+          addHeaderFooter(doc, data.pageNumber, totalPages);
+      },
     });
-
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      addHeaderFooter(doc, i, totalPages);
-    }
     
     const safeTitle = data.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     doc.save(`listado_${safeTitle}_${format(new Date(), 'yyyyMMdd')}.pdf`);
@@ -142,19 +163,34 @@ export default function ListingsPage() {
               <CardContent>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                    <FormField
-                      control={form.control}
-                      name="title"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Título del Listado</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ej: Control de Entrega de Uniformes" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="title"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Título del Listado</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ej: Control de Entrega de Uniformes" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                       <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Descripción (Opcional)</FormLabel>
+                            <FormControl>
+                              <Textarea placeholder="Añade una breve explicación que aparecerá debajo del título en el PDF." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
                     <div className="space-y-4">
                       <Label>Columnas del Listado</Label>
