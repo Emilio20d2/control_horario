@@ -12,7 +12,7 @@ import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod, ScheduledAbsence } from '@/lib/types';
-import { format, parseISO } from 'date-fns';
+import { format, isAfter, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
