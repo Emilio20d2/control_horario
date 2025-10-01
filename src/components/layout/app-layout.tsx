@@ -16,6 +16,7 @@ import {
   Bell,
   Menu,
   ListChecks,
+  Plane,
 } from 'lucide-react';
 import {
   Sheet,
@@ -72,6 +73,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/schedule', label: 'Horario', icon: CalendarDays },
     { href: '/employees', label: 'Empleados', icon: Users },
     { href: '/listings', label: 'Listados', icon: ListChecks },
+    { href: '/vacations', label: 'Vacaciones', icon: Plane },
     { href: '/settings', label: 'Ajustes', icon: Settings },
   ];
 
