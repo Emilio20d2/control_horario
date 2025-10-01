@@ -59,7 +59,7 @@ export function HolidayReportGenerator() {
 
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         const pageMargin = 15;
-        const checkboxCellContent = '☐ P. Doble   ☐ Día Libre';
+        const checkboxCellContent = '☐ PAGO   ☐ DEVO';
 
         const addHeaderFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
             doc.setFontSize(16).setFont('helvetica', 'bold');
@@ -135,7 +135,7 @@ export function HolidayReportGenerator() {
             </CardHeader>
             <CardContent className="space-y-4">
                 <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full h-9">
                         <SelectValue placeholder="Seleccionar año..." />
                     </SelectTrigger>
                     <SelectContent>
