@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -129,7 +128,7 @@ export function HolidayReportGenerator() {
                                 checked={selectedHolidays[holiday.id] || false}
                                 onCheckedChange={(checked) => setSelectedHolidays(prev => ({ ...prev, [holiday.id]: !!checked }))}
                             >
-                                {holiday.name} - {format(holiday.date as Date, 'dd/MM/yy')}
+                                {format(holiday.date as Date, 'dd/MM/yy')}
                             </DropdownMenuCheckboxItem>
                         ))}
                     </DropdownMenuContent>
