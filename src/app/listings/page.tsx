@@ -71,7 +71,7 @@ export default function ListingsPage() {
   const generatePdf = (data: z.infer<typeof formSchema>) => {
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     const pageMargin = 15;
-    let startY = 15;
+    let startY = 25; // Aumentado para bajar la tabla
 
     const addHeaderFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
         let currentY = 15;
@@ -104,7 +104,7 @@ export default function ListingsPage() {
 
     // Hack para calcular el número total de páginas
     const tempDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-    let tempY = 15;
+    let tempY = startY;
      if (data.description) {
         const descriptionLines = tempDoc.splitTextToSize(data.description, doc.internal.pageSize.width - (pageMargin * 2));
         tempY += (descriptionLines.length * 5) + 13;
@@ -120,7 +120,7 @@ export default function ListingsPage() {
         startY: startY,
         theme: 'grid',
         pageBreak: 'auto',
-        margin: { left: pageMargin, right: pageMargin, top: 15 },
+        margin: { left: pageMargin, right: pageMargin, top: 15, bottom: 20 }, // Aumentado el margen inferior
         headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
         columnStyles: { 0: { halign: 'left', cellWidth: 'auto' } },
         didDrawCell: (data) => {
