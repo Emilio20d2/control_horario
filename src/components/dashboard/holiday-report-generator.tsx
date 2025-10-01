@@ -8,8 +8,6 @@ import { FileDown, Gift, Loader2 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { format, getYear } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Timestamp } from 'firebase/firestore';
-import { HolidayReport, HolidayReportAssignment } from '@/lib/types';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -17,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 
 export function HolidayReportGenerator() {
-    const { holidays, holidayEmployees, holidayReports, loading } = useDataProvider();
+    const { holidays, holidayEmployees, loading } = useDataProvider();
     const [selectedHolidays, setSelectedHolidays] = useState<Record<string, boolean>>({});
     const [isGenerating, setIsGenerating] = useState(false);
     const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
@@ -45,68 +43,82 @@ export function HolidayReportGenerator() {
     const handleGenerateReport = () => {
         setIsGenerating(true);
         const holidayIdsToReport = Object.keys(selectedHolidays).filter(id => selectedHolidays[id]);
+        
         if (holidayIdsToReport.length === 0) {
             alert('Selecciona al menos un festivo.');
             setIsGenerating(false);
             return;
         }
 
-        const doc = new jsPDF();
-        const generationDate = format(new Date(), 'PPP p', { locale: es });
+        const selectedHolidaysData = holidayIdsToReport.map(id => holidays.find(h => h.id === id)).filter(Boolean);
+        if (selectedHolidaysData.length === 0) {
+             alert('No se encontraron los datos de los festivos seleccionados.');
+            setIsGenerating(false);
+            return;
+        }
 
-        doc.setFontSize(16);
-        doc.text(`Informe de Festivos de Apertura`, 14, 16);
-        doc.setFontSize(10);
-        doc.text(`Generado el: ${generationDate}`, 14, 22);
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        const pageMargin = 15;
+        const checkboxCellContent = '☐ P. Doble   ☐ Día Libre';
 
-        let finalY = 30;
+        const addHeaderFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
+            doc.setFontSize(16).setFont('helvetica', 'bold');
+            doc.text(`Hoja de Asignación de Festivos`, pageMargin, 15);
+            const pageText = `Página ${pageNumber} de ${totalPages}`;
+            doc.setFontSize(10).setFont('helvetica', 'normal');
+            doc.text(pageText, doc.internal.pageSize.width - pageMargin, doc.internal.pageSize.height - 10, { align: 'right' });
+        };
+        
+        const head = [
+            'Empleado',
+            ...selectedHolidaysData.map(h => format(h!.date as Date, 'dd/MM/yy'))
+        ];
 
-        // Find the latest report to get assignments from
-        const latestReport = holidayReports && holidayReports.length > 0
-            ? [...holidayReports].sort((a, b) => (b.generationDate as Timestamp).toMillis() - (a.generationDate as Timestamp).toMillis())[0]
-            : null;
-
-        holidayIdsToReport.forEach(holidayId => {
-            const holiday = holidays.find(h => h.id === holidayId);
-            if (!holiday) return;
-
-            const tableData = activeHolidayEmployees.map(emp => {
-                const assignment = latestReport?.assignments[holidayId]?.[emp.id];
-                let assignmentText = 'Sin Asignar';
-                if (assignment === 'doublePay') {
-                    assignmentText = 'Pago Doble';
-                } else if (assignment === 'dayOff') {
-                    assignmentText = 'Día Libre';
-                }
-                return [emp.name, assignmentText];
-            });
-            
-            const holidayTitle = `${holiday.name} - ${format(holiday.date as Date, 'PPP', { locale: es })}`;
-            doc.setFontSize(12);
-            doc.text(holidayTitle, 14, finalY);
-
-            autoTable(doc, {
-                startY: finalY + 4,
-                head: [['Empleado', 'Asignación']],
-                body: tableData,
-                theme: 'striped',
-                headStyles: { fillColor: [41, 128, 185] },
-                didDrawPage: (data) => {
-                    if (data.pageNumber > 1) {
-                         finalY = data.cursor?.y || 20;
-                    }
-                }
-            });
-            
-            // @ts-ignore
-            finalY = doc.lastAutoTable.finalY + 15;
+        const body = activeHolidayEmployees.map(emp => {
+            return [
+                emp.name,
+                ...selectedHolidaysData.map(() => checkboxCellContent)
+            ];
         });
 
+        autoTable(doc, {
+            head: [head],
+            body,
+            startY: 25,
+            theme: 'striped',
+            pageBreak: 'auto',
+            margin: { left: pageMargin, right: pageMargin, top: 25 },
+            headStyles: { 
+                fillColor: [41, 128, 185], 
+                textColor: 255, 
+                halign: 'center',
+            },
+            columnStyles: {
+                0: { cellWidth: 'auto', halign: 'left' },
+            },
+             didParseCell: (data) => {
+                if (data.section === 'head' && data.column.index > 0) {
+                     data.cell.styles.minCellWidth = 35;
+                }
+                if (data.section === 'body' && data.column.index > 0) {
+                    data.cell.styles.halign = 'center';
+                    data.cell.styles.font = 'helvetica';
+                    data.cell.styles.fontSize = 8;
+                }
+            },
+            didDrawPage: (data) => addHeaderFooter(doc, data.pageNumber, doc.internal.getNumberOfPages()),
+        });
+        
+        const totalPages = doc.internal.getNumberOfPages();
+        for(let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            addHeaderFooter(doc, i, totalPages);
+        }
+
         const safeDate = format(new Date(), 'yyyyMMdd_HHmm');
-        doc.save(`informe_festivos_${safeDate}.pdf`);
+        doc.save(`asignacion_festivos_${safeDate}.pdf`);
 
         setIsGenerating(false);
-        setSelectedHolidays({});
     };
 
     if (loading) {
