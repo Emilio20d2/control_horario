@@ -26,7 +26,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { PlusCircle, Trash2, Edit, Loader2 } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, Loader2, Users } from 'lucide-react';
 import { format, getYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -42,6 +42,7 @@ import { RetroactiveAuditManager } from '@/components/settings/retroactive-audit
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { HolidayEmployeeManager } from '@/components/settings/holiday-employee-manager';
 
 
 export default function SettingsPage() {
@@ -150,11 +151,12 @@ export default function SettingsPage() {
 
       <div className="px-4 md:px-6 pb-4">
         <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="w-full justify-start h-auto sm:h-10 sm:grid sm:w-full sm:grid-cols-5 overflow-x-auto whitespace-nowrap">
+            <TabsList className="w-full justify-start h-auto sm:h-10 grid sm:w-full grid-cols-2 md:grid-cols-6 overflow-x-auto whitespace-nowrap">
                 <TabsTrigger value="holidays">Días Festivos</TabsTrigger>
-                <TabsTrigger value="annual">Configuración Anual</TabsTrigger>
-                <TabsTrigger value="absences">Tipos de Ausencia</TabsTrigger>
-                <TabsTrigger value="contracts">Tipos de Contrato</TabsTrigger>
+                <TabsTrigger value="holiday-employees">Empleados Festivos</TabsTrigger>
+                <TabsTrigger value="annual">Conf. Anual</TabsTrigger>
+                <TabsTrigger value="absences">Tipos Ausencia</TabsTrigger>
+                <TabsTrigger value="contracts">Tipos Contrato</TabsTrigger>
                 <TabsTrigger value="utils">Utilidades</TabsTrigger>
             </TabsList>
 
@@ -225,6 +227,10 @@ export default function SettingsPage() {
                         </Card>
                     </div>
                 </div>
+            </TabsContent>
+
+            <TabsContent value="holiday-employees">
+                <HolidayEmployeeManager />
             </TabsContent>
             
             <TabsContent value="annual">

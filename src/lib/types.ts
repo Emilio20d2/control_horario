@@ -216,3 +216,18 @@ export interface PrefilledEmployeeData {
 export interface PrefilledWeeklyRecord {
     weekData: Record<string, PrefilledEmployeeData>;
 }
+
+export interface HolidayEmployee {
+    id: string;
+    name: string;
+    active: boolean;
+}
+
+export type HolidayReportAssignment = 'doublePay' | 'dayOff' | 'ninguna';
+
+export interface HolidayReport {
+    id: string;
+    generationDate: Timestamp;
+    selectedHolidays: string[]; // Array of holiday dates (YYYY-MM-DD)
+    assignments: Record<string, Record<string, HolidayReportAssignment>>; // { [holidayDate]: { [employeeId]: assignment } }
+}

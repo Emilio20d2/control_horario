@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -21,6 +22,7 @@ import { es } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Loader2 } from 'lucide-react';
+import { HolidayReportGenerator } from '@/components/dashboard/holiday-report-generator';
 
 
 const chartConfig = {
@@ -56,11 +58,6 @@ export default function DashboardPage() {
     const [absenceReportYear, setAbsenceReportYear] = useState(2025);
     const [isGeneratingAbsenceReport, setIsGeneratingAbsenceReport] = useState(false);
     
-    // For difference report
-    const [differenceReportEmployeeId, setDifferenceReportEmployeeId] = useState('');
-    const [differenceReportYear, setDifferenceReportYear] = useState(2025);
-    const [isGeneratingDifferenceReport, setIsGeneratingDifferenceReport] = useState(false);
-    
     const [isGeneratingBalanceReport, setIsGeneratingBalanceReport] = useState(false);
 
 
@@ -84,9 +81,8 @@ export default function DashboardPage() {
             if (!reportEmployeeId) setReportEmployeeId(activeEmployeesForReport[0].id);
             if (!detailedReportEmployeeId) setDetailedReportEmployeeId(activeEmployeesForReport[0].id);
             if (!absenceReportEmployeeId) setAbsenceReportEmployeeId(activeEmployeesForReport[0].id);
-            if (!differenceReportEmployeeId) setDifferenceReportEmployeeId(activeEmployeesForReport[0].id);
         }
-    }, [loading, weeklyRecords, activeEmployeesForReport, reportEmployeeId, detailedReportEmployeeId, absenceReportEmployeeId, differenceReportEmployeeId]);
+    }, [loading, weeklyRecords, activeEmployeesForReport, reportEmployeeId, detailedReportEmployeeId, absenceReportEmployeeId]);
 
     const months = Array.from({ length: 12 }, (_, i) => ({
         value: i,
@@ -776,63 +772,6 @@ export default function DashboardPage() {
         doc.save(`informe-jornada-anual-${safeEmployeeName}-${detailedReportYear}.pdf`);
         setIsGeneratingDetailed(false);
     };
-    
-    const generateDifferenceReport = async () => {
-        setIsGeneratingDifferenceReport(true);
-        const employee = employees.find(e => e.id === differenceReportEmployeeId);
-        if (!employee) {
-            alert("Selecciona un empleado válido.");
-            setIsGeneratingDifferenceReport(false);
-            return;
-        }
-
-        const { annualData } = await getProcessedAnnualDataForEmployee(employee.id, differenceReportYear);
-
-        const differenceWeeks = annualData.filter(record => record.data.isDifference);
-
-        if (differenceWeeks.length === 0) {
-            alert(`No se encontraron semanas marcadas con "Diferencia" para ${employee.name} en ${differenceReportYear}.`);
-            setIsGeneratingDifferenceReport(false);
-            return;
-        }
-
-        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-        const pageMargin = 15;
-
-        doc.setFontSize(14).setFont('helvetica', 'bold');
-        doc.text(`Informe de Diferencias - ${employee.name} (${differenceReportYear})`, pageMargin, 15);
-        doc.setFontSize(10).setFont('helvetica', 'normal');
-        doc.text(`Página 1`, doc.internal.pageSize.width - pageMargin, doc.internal.pageSize.height - 10, { align: 'right' });
-
-
-        const bodyRows = differenceWeeks.map(weekRecord => {
-            const weekStartDate = parseISO(weekRecord.id);
-            const weekLabel = `Semana del ${format(weekStartDate, 'dd MMM yyyy', { locale: es })}`;
-            const comment = weekRecord.data.generalComment || '';
-            const auditComment = comment.split('\n').find(c => c.startsWith('DIFERENCIA CON EXCEL:')) || '';
-            
-            return [
-                weekLabel,
-                auditComment,
-            ];
-        });
-
-        autoTable(doc, {
-            head: [['Semana', 'Comentarios de Auditoría']],
-            body: bodyRows,
-            startY: 25,
-            theme: 'striped',
-            headStyles: { fillColor: [211, 47, 47], textColor: 255 },
-            columnStyles: {
-                0: { cellWidth: 40 },
-                1: { cellWidth: 'auto' },
-            },
-        });
-
-        const safeEmployeeName = employee.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-        doc.save(`informe-diferencias-${safeEmployeeName}-${differenceReportYear}.pdf`);
-        setIsGeneratingDifferenceReport(false);
-    };
 
     return (
         <div className="flex flex-col gap-6">
@@ -928,36 +867,7 @@ export default function DashboardPage() {
                 </Button>
               </CardContent>
             </Card>
-             <Card className="min-w-[280px] sm:min-w-0">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Informe de Diferencias
-                </CardTitle>
-                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent className="space-y-4">
-                 <Select value={differenceReportEmployeeId} onValueChange={setDifferenceReportEmployeeId}>
-                    <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Seleccionar empleado..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {activeEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                 <Select value={String(differenceReportYear)} onValueChange={v => setDifferenceReportYear(Number(v))}>
-                    <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Seleccionar año..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                <Button onClick={generateDifferenceReport} disabled={isGeneratingDifferenceReport || !differenceReportEmployeeId} className="w-full">
-                    {isGeneratingDifferenceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                    {isGeneratingDifferenceReport ? 'Generando...' : 'Generar Informe'}
-                </Button>
-              </CardContent>
-            </Card>
+            <HolidayReportGenerator />
             <Card className="min-w-[280px] sm:min-w-0">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Horas Complementarias</CardTitle>

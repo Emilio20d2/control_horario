@@ -4,7 +4,7 @@
 
 import { addDoc, collection, deleteDoc, doc, updateDoc, Timestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { AbsenceType, Holiday, AnnualConfiguration, ContractType, HolidayFormData } from '../types';
+import type { AbsenceType, Holiday, AnnualConfiguration, ContractType, HolidayFormData, HolidayEmployee } from '../types';
 
 
 export const createAbsenceType = async (data: Omit<AbsenceType, 'id'>): Promise<string> => {
@@ -90,5 +90,22 @@ export const updateContractType = async (id: string, data: Partial<Omit<Contract
 
 export const deleteContractType = async (id: string): Promise<void> => {
     const docRef = doc(db, 'contractTypes', id);
+    await deleteDoc(docRef);
+}
+
+// --- Holiday Employee Service ---
+
+export const addHolidayEmployee = async (name: string): Promise<string> => {
+    const docRef = await addDoc(collection(db, 'holidayEmployees'), { name, active: true });
+    return docRef.id;
+}
+
+export const updateHolidayEmployee = async (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>): Promise<void> => {
+    const docRef = doc(db, 'holidayEmployees', id);
+    await updateDoc(docRef, data);
+}
+
+export const deleteHolidayEmployee = async (id: string): Promise<void> => {
+    const docRef = doc(db, 'holidayEmployees', id);
     await deleteDoc(docRef);
 }
