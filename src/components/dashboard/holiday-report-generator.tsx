@@ -2,32 +2,24 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileDown, Gift, Loader2 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { format, getYear } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { setDoc, doc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { Timestamp } from 'firebase/firestore';
 import { HolidayReport, HolidayReportAssignment } from '@/lib/types';
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
-import { ScrollArea } from '../ui/scroll-area';
-import { Separator } from '../ui/separator';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Label } from '../ui/label';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 
 export function HolidayReportGenerator() {
-    const { holidays, holidayEmployees, holidayReports, loading, addHolidayReport, updateHolidayReport } = useDataProvider();
+    const { holidays, holidayEmployees, holidayReports, loading } = useDataProvider();
     const [selectedHolidays, setSelectedHolidays] = useState<Record<string, boolean>>({});
     const [isGenerating, setIsGenerating] = useState(false);
-    const [activeReport, setActiveReport] = useState<HolidayReport | null>(null);
-    const [isExporting, setIsExporting] = useState(false);
-
 
     const openingHolidays = useMemo(() => {
         const currentYear = getYear(new Date());
@@ -41,14 +33,7 @@ export function HolidayReportGenerator() {
         return holidayEmployees.filter(e => e.active).sort((a, b) => a.name.localeCompare(b.name));
     }, [holidayEmployees]);
 
-    useEffect(() => {
-        if (holidayReports && holidayReports.length > 0) {
-            const latestReport = [...holidayReports].sort((a, b) => (b.generationDate as Timestamp).toMillis() - (a.generationDate as Timestamp).toMillis())[0];
-            setActiveReport(latestReport);
-        }
-    }, [holidayReports]);
-
-    const handleGenerateReport = async () => {
+    const handleGenerateReport = () => {
         setIsGenerating(true);
         const holidayIdsToReport = Object.keys(selectedHolidays).filter(id => selectedHolidays[id]);
         if (holidayIdsToReport.length === 0) {
@@ -57,53 +42,8 @@ export function HolidayReportGenerator() {
             return;
         }
 
-        const newReport: Omit<HolidayReport, 'id'> = {
-            generationDate: Timestamp.now(),
-            selectedHolidays: holidayIdsToReport,
-            assignments: {},
-        };
-        holidayIdsToReport.forEach(holidayId => {
-            const holiday = holidays.find(h => h.id === holidayId);
-            if (holiday) {
-                newReport.assignments[holiday.id] = {};
-            }
-        });
-
-        try {
-            const newReportId = await addHolidayReport(newReport);
-            
-            setActiveReport({ ...newReport, id: newReportId }); 
-            setSelectedHolidays({});
-        } catch (error) {
-            console.error("Error generating report: ", error);
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
-    const handleAssignmentChange = async (holidayId: string, employeeId: string, value: HolidayReportAssignment) => {
-        if (!activeReport) return;
-    
-        const updatedAssignments = { ...activeReport.assignments };
-        if (!updatedAssignments[holidayId]) {
-            updatedAssignments[holidayId] = {};
-        }
-        updatedAssignments[holidayId][employeeId] = value;
-    
-        try {
-            await updateHolidayReport(activeReport.id, { assignments: updatedAssignments });
-            setActiveReport(prev => prev ? { ...prev, assignments: updatedAssignments } : null);
-        } catch(error) {
-            console.error("Error updating assignment: ", error);
-        }
-    };
-    
-    const handleExportToPDF = () => {
-        if (!activeReport) return;
-        setIsExporting(true);
-
         const doc = new jsPDF();
-        const generationDate = format((activeReport.generationDate as Timestamp).toDate(), 'PPP p', { locale: es });
+        const generationDate = format(new Date(), 'PPP p', { locale: es });
 
         doc.setFontSize(16);
         doc.text(`Informe de Festivos de Apertura`, 14, 16);
@@ -112,12 +52,17 @@ export function HolidayReportGenerator() {
 
         let finalY = 30;
 
-        activeReport.selectedHolidays.forEach(holidayId => {
+        // Find the latest report to get assignments from
+        const latestReport = holidayReports && holidayReports.length > 0
+            ? [...holidayReports].sort((a, b) => (b.generationDate as Timestamp).toMillis() - (a.generationDate as Timestamp).toMillis())[0]
+            : null;
+
+        holidayIdsToReport.forEach(holidayId => {
             const holiday = holidays.find(h => h.id === holidayId);
             if (!holiday) return;
 
             const tableData = activeHolidayEmployees.map(emp => {
-                const assignment = activeReport.assignments[holidayId]?.[emp.id];
+                const assignment = latestReport?.assignments[holidayId]?.[emp.id];
                 let assignmentText = 'Sin Asignar';
                 if (assignment === 'doublePay') {
                     assignmentText = 'Pago Doble';
@@ -138,7 +83,6 @@ export function HolidayReportGenerator() {
                 theme: 'striped',
                 headStyles: { fillColor: [41, 128, 185] },
                 didDrawPage: (data) => {
-                    // Reset Y position for content on new pages
                     if (data.pageNumber > 1) {
                          finalY = data.cursor?.y || 20;
                     }
@@ -149,82 +93,23 @@ export function HolidayReportGenerator() {
             finalY = doc.lastAutoTable.finalY + 15;
         });
 
-        const safeDate = format((activeReport.generationDate as Timestamp).toDate(), 'yyyyMMdd_HHmm');
+        const safeDate = format(new Date(), 'yyyyMMdd_HHmm');
         doc.save(`informe_festivos_${safeDate}.pdf`);
 
-        setIsExporting(false);
+        setIsGenerating(false);
+        setSelectedHolidays({});
     };
 
-
     if (loading) {
-        return <Card><CardHeader><CardTitle>Informe de Festivos</CardTitle></CardHeader><CardContent><Loader2/></CardContent></Card>
+        return <Card><CardHeader><CardTitle>Informe de Festivos</CardTitle></CardHeader><CardContent><Loader2/></CardContent></Card>;
     }
     
-    if (activeReport) {
-        return (
-            <Card className="min-w-[280px] sm:min-w-0 md:col-span-2 xl:col-span-3">
-                 <CardHeader>
-                    <div className="flex justify-between items-start">
-                        <div>
-                             <CardTitle>Informe de Festivos Activo</CardTitle>
-                            <CardDescription>Generado el: {format((activeReport.generationDate as Timestamp).toDate(), 'PPP p', { locale: es })}</CardDescription>
-                        </div>
-                        <div className="flex gap-2">
-                             <Button variant="outline" onClick={() => setActiveReport(null)}>Crear Nuevo</Button>
-                             <Button onClick={handleExportToPDF} disabled={isExporting}>
-                                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                                {isExporting ? 'Exportando...' : 'Exportar PDF'}
-                            </Button>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[400px] w-full pr-4">
-                         <div className="space-y-6">
-                            {activeReport.selectedHolidays.map(holidayId => {
-                                const holiday = holidays.find(h => h.id === holidayId);
-                                if (!holiday) return null;
-                                return (
-                                <div key={holidayId}>
-                                    <h3 className="font-bold text-lg mb-2">{holiday.name} - {format(holiday.date as Date, 'PPP', {locale: es})}</h3>
-                                    <div className="border rounded-md">
-                                        {activeHolidayEmployees.map((emp, index) => (
-                                            <div key={emp.id} className={`flex items-center justify-between p-3 ${index < activeHolidayEmployees.length -1 ? 'border-b' : ''}`}>
-                                                <p className="font-medium text-sm">{emp.name}</p>
-                                                <RadioGroup
-                                                    defaultValue="ninguna"
-                                                    value={activeReport.assignments[holidayId]?.[emp.id] || 'ninguna'}
-                                                    onValueChange={(val) => handleAssignmentChange(holidayId, emp.id, val as HolidayReportAssignment)}
-                                                    className="flex gap-4"
-                                                >
-                                                    <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="doublePay" id={`double-${holidayId}-${emp.id}`} />
-                                                        <Label htmlFor={`double-${holidayId}-${emp.id}`} className="text-sm">Pago Doble</Label>
-                                                    </div>
-                                                    <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="dayOff" id={`dayoff-${holidayId}-${emp.id}`} />
-                                                        <Label htmlFor={`dayoff-${holidayId}-${emp.id}`} className="text-sm">Día Libre</Label>
-                                                    </div>
-                                                </RadioGroup>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <Separator className="my-6" />
-                                </div>
-                            )})}
-                        </div>
-                    </ScrollArea>
-                </CardContent>
-            </Card>
-        )
-    }
-
     const selectedCount = Object.values(selectedHolidays).filter(Boolean).length;
 
     return (
         <Card className="min-w-[280px] sm:min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Nuevo Informe de Festivos</CardTitle>
+                <CardTitle className="text-sm font-medium">Informe de Festivos (PDF)</CardTitle>
                 <Gift className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="space-y-4">
