@@ -172,6 +172,7 @@ export interface DailyData {
 
 export interface EmployeeFormData {
     name: string;
+    groupId?: string;
     startDate: string;
     endDate?: string | null;
     contractType: string;

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { addDocument, updateDocument, deleteDocument } from './firestoreService';
@@ -6,10 +7,11 @@ import type { Employee, EmployeeFormData, WorkHoursRecord, ScheduledAbsence, Emp
 import { isAfter, parseISO, startOfDay, addDays, subDays, format } from 'date-fns';
 
 export const createEmployee = async (formData: EmployeeFormData): Promise<string> => {
-    const { name, startDate, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours } = formData;
+    const { name, groupId, startDate, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours } = formData;
     
     const newEmployee = {
         name,
+        groupId: groupId || null,
         employmentPeriods: [
             {
                 id: `period_${Date.now()}`,
@@ -37,7 +39,7 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
 };
 
 export const updateEmployee = async (id: string, currentEmployee: Employee, formData: EmployeeFormData, finalBalances: { ordinary: number; holiday: number; leave: number; total: number; }): Promise<void> => {
-    const { name, newWeeklyWorkHours, newWeeklyWorkHoursDate, endDate, newContractType, newContractTypeDate, newWeeklySchedule, weeklySchedules } = formData;
+    const { name, groupId, newWeeklyWorkHours, newWeeklyWorkHoursDate, endDate, newContractType, newContractTypeDate, newWeeklySchedule, weeklySchedules } = formData;
 
     const updatedPeriods = [...(currentEmployee.employmentPeriods || [])];
     const periodToUpdate = updatedPeriods.sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
@@ -131,6 +133,7 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
 
     const finalData = {
         name,
+        groupId: groupId || null,
         employmentPeriods: updatedPeriods,
     };
 

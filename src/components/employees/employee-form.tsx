@@ -68,6 +68,7 @@ const weeklyScheduleSchema = z.object({
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'El nombre debe tener al menos 2 caracteres.' }),
+  groupId: z.string().optional(),
   
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'La fecha debe estar en formato AAAA-MM-DD.' }),
   endDate: z.string().nullable().optional(),
@@ -129,7 +130,7 @@ const generateDefaultShift = (hours: number, days: string[]) => {
 export function EmployeeForm({ employee }: EmployeeFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { contractTypes, getEmployeeFinalBalances } = useDataProvider();
+  const { contractTypes, employeeGroups, getEmployeeFinalBalances } = useDataProvider();
   const { reauthenticateWithPassword } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const [password, setPassword] = useState('');
@@ -140,6 +141,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         
         return {
             name: employee.name,
+            groupId: employee.groupId,
             startDate: period.startDate as string,
             endDate: period.endDate as string | null,
             contractType: period.contractType,
@@ -158,6 +160,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     }
     return {
         name: '',
+        groupId: '',
         startDate: new Date().toISOString().split('T')[0],
         endDate: null,
         contractType: '',
@@ -194,6 +197,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     try {
         const dataToSave: EmployeeFormData = {
             ...values,
+            groupId: values.groupId || undefined,
             initialOrdinaryHours: values.initialOrdinaryHours ?? 0,
             initialHolidayHours: values.initialHolidayHours ?? 0,
             initialLeaveHours: values.initialLeaveHours ?? 0,
@@ -286,6 +290,28 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             <FormControl>
                             <Input placeholder="Juan Pérez" {...field} />
                             </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="groupId"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Agrupación</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                <SelectValue placeholder="Selecciona una agrupación" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {employeeGroups.map(g => (
+                                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                            </Select>
                             <FormMessage />
                         </FormItem>
                         )}
