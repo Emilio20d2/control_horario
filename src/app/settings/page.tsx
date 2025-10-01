@@ -42,7 +42,6 @@ import { RetroactiveAuditManager } from '@/components/settings/retroactive-audit
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
-import { HolidayEmployeeManager } from '@/components/settings/holiday-employee-manager';
 
 
 export default function SettingsPage() {
@@ -151,9 +150,8 @@ export default function SettingsPage() {
 
       <div className="px-4 md:px-6 pb-4">
         <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="w-full justify-start h-auto sm:h-10 grid sm:w-full grid-cols-2 md:grid-cols-6 overflow-x-auto whitespace-nowrap">
+            <TabsList className="w-full justify-start h-auto sm:h-10 grid sm:w-full grid-cols-2 md:grid-cols-5 overflow-x-auto whitespace-nowrap">
                 <TabsTrigger value="holidays">Días Festivos</TabsTrigger>
-                <TabsTrigger value="holiday-employees">Empleados Informes</TabsTrigger>
                 <TabsTrigger value="annual">Conf. Anual</TabsTrigger>
                 <TabsTrigger value="absences">Tipos Ausencia</TabsTrigger>
                 <TabsTrigger value="contracts">Tipos Contrato</TabsTrigger>
@@ -229,10 +227,6 @@ export default function SettingsPage() {
                 </div>
             </TabsContent>
 
-            <TabsContent value="holiday-employees">
-                <HolidayEmployeeManager />
-            </TabsContent>
-            
             <TabsContent value="annual">
                 <Card>
                     <CardHeader>
