@@ -76,14 +76,15 @@ export default function ListingsPage() {
     const addHeaderFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
       doc.setFontSize(16).setFont('helvetica', 'bold');
       doc.text(data.title.toUpperCase(), pageMargin, currentY);
+      currentY += 8;
       
       if (data.description) {
         doc.setFontSize(10).setFont('helvetica', 'normal');
         const descriptionLines = doc.splitTextToSize(data.description, doc.internal.pageSize.width - (pageMargin * 2));
-        doc.text(descriptionLines, pageMargin, currentY + 6);
-        currentY += (descriptionLines.length * 5) + 2;
+        doc.text(descriptionLines, pageMargin, currentY);
+        currentY += (descriptionLines.length * 5) + 4; // Added extra space
       } else {
-        currentY += 8;
+        currentY += 2;
       }
       
       const pageText = `Página ${pageNumber} de ${totalPages}`;
@@ -121,7 +122,7 @@ export default function ListingsPage() {
       startY: currentY,
       theme: 'grid',
       pageBreak: 'auto',
-      margin: { left: pageMargin, right: pageMargin, top: currentY },
+      margin: { left: pageMargin, right: pageMargin, top: 15 },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
       columnStyles: { 0: { halign: 'left', cellWidth: 'auto' } },
       didParseCell: (data) => {
@@ -134,6 +135,9 @@ export default function ListingsPage() {
       didDrawPage: (data) => {
           currentY = 15; // Reset Y for subsequent pages
           addHeaderFooter(doc, data.pageNumber, totalPages);
+          
+          // @ts-ignore
+          data.cursor.y = currentY; 
       },
     });
     
