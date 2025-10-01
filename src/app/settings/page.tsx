@@ -153,7 +153,7 @@ export default function SettingsPage() {
         <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="w-full justify-start h-auto sm:h-10 grid sm:w-full grid-cols-2 md:grid-cols-6 overflow-x-auto whitespace-nowrap">
                 <TabsTrigger value="holidays">Días Festivos</TabsTrigger>
-                <TabsTrigger value="holiday-employees">Empleados Festivos</TabsTrigger>
+                <TabsTrigger value="holiday-employees">Empleados Informes</TabsTrigger>
                 <TabsTrigger value="annual">Conf. Anual</TabsTrigger>
                 <TabsTrigger value="absences">Tipos Ausencia</TabsTrigger>
                 <TabsTrigger value="contracts">Tipos Contrato</TabsTrigger>

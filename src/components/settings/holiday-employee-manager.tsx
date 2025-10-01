@@ -105,9 +105,9 @@ export function HolidayEmployeeManager() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Gestionar Empleados para Festivos</CardTitle>
+                <CardTitle>Gestionar Empleados para Informes</CardTitle>
                 <CardDescription>
-                    Define la lista de empleados que aparecerán en los informes de festivos de apertura.
+                    Define la lista de empleados que aparecerán en los informes (ej. festivos de apertura).
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -161,7 +161,7 @@ export function HolidayEmployeeManager() {
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>¿Confirmas la eliminación?</AlertDialogTitle>
                                                     <AlertDialogDescription>
-                                                        Esta acción eliminará a <strong>{emp.name}</strong> de la lista de empleados para festivos.
+                                                        Esta acción eliminará a <strong>{emp.name}</strong> de la lista de empleados para informes.
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
