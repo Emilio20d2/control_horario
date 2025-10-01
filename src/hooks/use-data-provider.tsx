@@ -17,6 +17,8 @@ import type {
   HolidayFormData,
   EmployeeFormData,
   PrefilledWeeklyRecord,
+  HolidayEmployee,
+  HolidayReport,
 } from '../types';
 import { onCollectionUpdate } from '@/lib/services/firestoreService';
 import { 
@@ -32,8 +34,12 @@ import {
     createContractType as createContractTypeService,
     updateContractType as updateContractTypeService,
     deleteContractType as deleteContractTypeService,
+    addHolidayEmployee,
+    updateHolidayEmployee,
+    deleteHolidayEmployee,
 } from '../lib/services/settingsService';
 import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks } from 'date-fns';
+import { addDocument, setDocument } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
@@ -49,6 +55,8 @@ interface DataContextType {
   annualConfigs: AnnualConfiguration[];
   weeklyRecords: Record<string, WeeklyRecord>;
   users: AppUser[];
+  holidayEmployees: HolidayEmployee[];
+  holidayReports: HolidayReport[];
   loading: boolean;
   hasUnconfirmedInPrevWeek: boolean;
   loadData: () => void;
@@ -82,6 +90,11 @@ interface DataContextType {
   getWeekId: (d: Date) => string;
   processEmployeeWeekData: (emp: Employee, weekDays: Date[], weekId: string) => DailyEmployeeData | null;
   calculateEmployeeVacations: (emp: Employee) => { vacationDaysTaken: number, suspensionDays: number, vacationDaysAvailable: number };
+  addHolidayEmployee: (name: string) => Promise<string>;
+  updateHolidayEmployee: (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>) => Promise<void>;
+  deleteHolidayEmployee: (id: string) => Promise<void>;
+  addHolidayReport: (report: Omit<HolidayReport, 'id'>) => Promise<string>;
+  updateHolidayReport: (reportId: string, data: Partial<Omit<HolidayReport, 'id'>>) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType>({
@@ -92,6 +105,8 @@ const DataContext = createContext<DataContextType>({
   annualConfigs: [],
   weeklyRecords: {},
   users: [],
+  holidayEmployees: [],
+  holidayReports: [],
   loading: true,
   hasUnconfirmedInPrevWeek: false,
   loadData: () => {},
@@ -125,6 +140,11 @@ deleteContractType: async () => {},
   getWeekId: () => '',
   processEmployeeWeekData: () => null,
   calculateEmployeeVacations: () => ({ vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31 }),
+  addHolidayEmployee: async (name: string) => '',
+  updateHolidayEmployee: async (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>) => {},
+  deleteHolidayEmployee: async (id: string) => {},
+  addHolidayReport: async (report: Omit<HolidayReport, 'id'>) => '',
+  updateHolidayReport: async (reportId: string, data: Partial<Omit<HolidayReport, 'id'>>) => {},
 });
 
 const roundToNearestQuarter = (num: number) => {
@@ -140,6 +160,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [annualConfigs, setAnnualConfigs] = useState<AnnualConfiguration[]>([]);
   const [weeklyRecords, setWeeklyRecords] = useState<Record<string, WeeklyRecord>>({});
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [holidayEmployees, setHolidayEmployees] = useState<HolidayEmployee[]>([]);
+  const [holidayReports, setHolidayReports] = useState<HolidayReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [hasUnconfirmedInPrevWeek, setHasUnconfirmedInPrevWeek] = useState(false);
@@ -149,7 +171,12 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     return format(monday, 'yyyy-MM-dd');
   };
   
-  const refreshData = () => {};
+  const refreshData = useCallback(() => {
+    // This is a placeholder. The actual refresh is triggered by onSnapshot.
+    // We can enhance this if manual refresh is needed.
+    console.log("Refreshing data (triggered by onSnapshot)...");
+  }, []);
+
   const refreshUsers = () => {};
 
   const calculateEmployeeVacations = useCallback((emp: Employee): { vacationDaysTaken: number, suspensionDays: number, vacationDaysAvailable: number } => {
@@ -279,6 +306,9 @@ const loadData = useCallback(() => {
     const unsubContractTypes = onCollectionUpdate<ContractType[]>('contractTypes', (data) => { if(mounted) setContractTypes(data)});
     const unsubAnnualConfigs = onCollectionUpdate<AnnualConfiguration[]>('annualConfigurations', (data) => { if(mounted) setAnnualConfigs(data.sort((a:any,b:_any) => a.year - b.year))});
     const unsubUsers = onCollectionUpdate<AppUser[]>('users', (data) => {if(mounted) setUsers(data)});
+    const unsubHolidayEmployees = onCollectionUpdate<HolidayEmployee[]>('holidayEmployees', (data) => { if(mounted) setHolidayEmployees(data.sort((a,b) => a.name.localeCompare(b.name))) });
+    const unsubHolidayReports = onCollectionUpdate<HolidayReport[]>('holidayReports', (data) => { if(mounted) setHolidayReports(data) });
+
 
     const allSubscriptionsReady = Promise.all([
         unsubEmployees.ready,
@@ -288,6 +318,8 @@ const loadData = useCallback(() => {
         unsubContractTypes.ready,
         unsubAnnualConfigs.ready,
         unsubUsers.ready,
+        unsubHolidayEmployees.ready,
+        unsubHolidayReports.ready,
     ]);
 
     allSubscriptionsReady.then(() => {
@@ -311,6 +343,8 @@ const loadData = useCallback(() => {
         unsubContractTypes.unsubscribe();
         unsubAnnualConfigs.unsubscribe();
         unsubUsers.unsubscribe();
+        unsubHolidayEmployees.unsubscribe();
+        unsubHolidayReports.unsubscribe();
     };
 }, [loaded]);
 
@@ -933,6 +967,15 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
 
     }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, getEffectiveWeeklyHours, holidays, absenceTypes, contractTypes, prefilledRecords]);
 
+    const addHolidayReport = async (report: Omit<HolidayReport, 'id'>): Promise<string> => {
+        const docRef = await addDocument('holidayReports', report);
+        return docRef.id;
+    }
+
+    const updateHolidayReport = async (reportId: string, data: Partial<Omit<HolidayReport, 'id'>>): Promise<void> => {
+        await setDocument('holidayReports', reportId, data, { merge: true });
+    }
+
   const value = {
     employees,
     holidays,
@@ -941,6 +984,8 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
     annualConfigs,
     weeklyRecords,
     users,
+    holidayEmployees,
+    holidayReports,
     loading,
     hasUnconfirmedInPrevWeek,
     loadData,
@@ -974,6 +1019,11 @@ createAnnualConfig: createAnnualConfigService,
     getWeekId,
     processEmployeeWeekData,
     calculateEmployeeVacations,
+    addHolidayEmployee,
+    updateHolidayEmployee,
+    deleteHolidayEmployee,
+    addHolidayReport,
+    updateHolidayReport,
   };
 
   return (
@@ -989,6 +1039,7 @@ export const useDataProvider = () => useContext(DataContext);
 
 
     
+
 
 
 

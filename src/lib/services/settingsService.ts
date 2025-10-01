@@ -2,7 +2,7 @@
 
 'use client';
 
-import { addDoc, collection, deleteDoc, doc, updateDoc, Timestamp, setDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, updateDoc, Timestamp, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { AbsenceType, Holiday, AnnualConfiguration, ContractType, HolidayFormData, HolidayEmployee } from '../types';
 
@@ -109,3 +109,12 @@ export const deleteHolidayEmployee = async (id: string): Promise<void> => {
     const docRef = doc(db, 'holidayEmployees', id);
     await deleteDoc(docRef);
 }
+
+export const seedHolidayEmployees = async (employeeNames: string[]): Promise<void> => {
+    const batch = writeBatch(db);
+    employeeNames.forEach(name => {
+        const docRef = doc(collection(db, 'holidayEmployees'));
+        batch.set(docRef, { name, active: true });
+    });
+    await batch.commit();
+};
