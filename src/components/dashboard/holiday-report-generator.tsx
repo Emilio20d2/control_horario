@@ -59,7 +59,7 @@ export function HolidayReportGenerator() {
 
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         const pageMargin = 15;
-        const checkboxCellContent = '☐ PAGO   ☐ DEVO';
+        const checkboxCellContent = '[  ] PAGO   [  ] DEVO';
 
         const addHeaderFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
             doc.setFontSize(16).setFont('helvetica', 'bold');
