@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
-import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Edit, Check, X } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import { HolidayEmployee } from '@/lib/types';
@@ -47,13 +47,15 @@ export function HolidayEmployeeManager() {
     const { toast } = useToast();
     const [newEmployeeName, setNewEmployeeName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editingName, setEditingName] = useState('');
 
     useEffect(() => {
         const seedInitialData = async () => {
-            if (!loading && holidayEmployees.length === 0) {
+            if (!loading && holidayEmployees && holidayEmployees.length === 0) {
                 console.log("Seeding initial holiday employees...");
                 await seedHolidayEmployees(initialHolidayEmployees);
-                refreshData(); // Refresh data after seeding
+                refreshData();
             }
         };
         seedInitialData();
@@ -75,6 +77,28 @@ export function HolidayEmployeeManager() {
             toast({ title: 'Error', description: 'No se pudo añadir el empleado.', variant: 'destructive' });
         } finally {
             setIsAdding(false);
+        }
+    };
+    
+    const handleEditClick = (employee: HolidayEmployee) => {
+        setEditingId(employee.id);
+        setEditingName(employee.name);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
+        setEditingName('');
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingId || !editingName.trim()) return;
+        try {
+            await updateHolidayEmployee(editingId, { name: editingName.trim() });
+            toast({ title: 'Nombre actualizado', description: 'El nombre del empleado ha sido actualizado.' });
+            handleCancelEdit();
+        } catch (error) {
+             console.error(error);
+            toast({ title: 'Error', description: 'No se pudo actualizar el nombre.', variant: 'destructive' });
         }
     };
 
@@ -129,8 +153,8 @@ export function HolidayEmployeeManager() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Nombre del Empleado</TableHead>
-                                <TableHead className="text-center">Activo</TableHead>
-                                <TableHead className="text-right">Acciones</TableHead>
+                                <TableHead className="text-center w-24">Activo</TableHead>
+                                <TableHead className="text-right w-40">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -143,33 +167,61 @@ export function HolidayEmployeeManager() {
                             )}
                             {holidayEmployees && holidayEmployees.map(emp => (
                                 <TableRow key={emp.id}>
-                                    <TableCell className="font-medium">{emp.name}</TableCell>
+                                    <TableCell className="font-medium">
+                                        {editingId === emp.id ? (
+                                            <Input 
+                                                value={editingName} 
+                                                onChange={(e) => setEditingName(e.target.value)}
+                                                className="h-8"
+                                            />
+                                        ) : (
+                                            emp.name
+                                        )}
+                                    </TableCell>
                                     <TableCell className="text-center">
-                                        <Switch
-                                            checked={emp.active}
-                                            onCheckedChange={() => handleToggleActive(emp)}
-                                        />
+                                        {editingId !== emp.id && (
+                                            <Switch
+                                                checked={emp.active}
+                                                onCheckedChange={() => handleToggleActive(emp)}
+                                            />
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive-foreground">
-                                                    <Trash2 className="h-4 w-4"/>
+                                        {editingId === emp.id ? (
+                                            <div className="flex gap-2 justify-end">
+                                                <Button variant="ghost" size="icon" onClick={handleSaveEdit} className="text-green-600 hover:text-green-700">
+                                                    <Check className="h-4 w-4" />
                                                 </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>¿Confirmas la eliminación?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Esta acción eliminará a <strong>{emp.name}</strong> de la lista de empleados para informes.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDeleteEmployee(emp.id)}>Sí, eliminar</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
+                                                <Button variant="ghost" size="icon" onClick={handleCancelEdit} className="text-destructive hover:text-destructive-foreground">
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <Button variant="ghost" size="icon" onClick={() => handleEditClick(emp)}>
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive-foreground">
+                                                            <Trash2 className="h-4 w-4"/>
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>¿Confirmas la eliminación?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                Esta acción eliminará a <strong>{emp.name}</strong> de la lista de empleados para informes.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDeleteEmployee(emp.id)}>Sí, eliminar</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </>
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             ))}
