@@ -19,7 +19,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 
 export function HolidayReportGenerator() {
-    const { holidays, holidayEmployees, holidayReports, loading } = useDataProvider();
+    const { holidays, holidayEmployees, holidayReports, loading, addHolidayReport, updateHolidayReport } = useDataProvider();
     const [selectedHolidays, setSelectedHolidays] = useState<Record<string, boolean>>({});
     const [isGenerating, setIsGenerating] = useState(false);
     const [activeReport, setActiveReport] = useState<HolidayReport | null>(null);
@@ -27,17 +27,18 @@ export function HolidayReportGenerator() {
     const openingHolidays = useMemo(() => {
         const currentYear = getYear(new Date());
         return holidays
-            .filter(h => h.type === 'Apertura' && getYear(h.date) === currentYear)
-            .sort((a, b) => a.date.getTime() - b.date.getTime());
+            .filter(h => h.type === 'Apertura' && getYear(h.date as Date) === currentYear)
+            .sort((a, b) => (a.date as Date).getTime() - (b.date as Date).getTime());
     }, [holidays]);
 
     const activeHolidayEmployees = useMemo(() => {
+        if (!holidayEmployees) return [];
         return holidayEmployees.filter(e => e.active);
     }, [holidayEmployees]);
 
     useEffect(() => {
         if (holidayReports.length > 0) {
-            const latestReport = [...holidayReports].sort((a, b) => b.generationDate.toMillis() - a.generationDate.toMillis())[0];
+            const latestReport = [...holidayReports].sort((a, b) => (b.generationDate as Timestamp).toMillis() - (a.generationDate as Timestamp).toMillis())[0];
             setActiveReport(latestReport);
         }
     }, [holidayReports]);
@@ -56,34 +57,42 @@ export function HolidayReportGenerator() {
             selectedHolidays: holidayIdsToReport,
             assignments: {},
         };
-        holidayIdsToReport.forEach(holidayDate => {
-            newReport.assignments[holidayDate] = {};
+        holidayIdsToReport.forEach(holidayId => {
+            const holiday = holidays.find(h => h.id === holidayId);
+            if (holiday) {
+                newReport.assignments[holiday.id] = {};
+            }
         });
 
-        const newReportId = `report_${Date.now()}`;
-        await setDoc(doc(db, 'holidayReports', newReportId), newReport);
-        
-        // This is optimistic, the listener will pick up the change
-        setActiveReport({ ...newReport, id: newReportId }); 
-        setSelectedHolidays({});
-        setIsGenerating(false);
+        try {
+            const newReportId = await addHolidayReport(newReport);
+            
+            // This is optimistic, the listener will pick up the change
+            setActiveReport({ ...newReport, id: newReportId }); 
+            setSelectedHolidays({});
+        } catch (error) {
+            console.error("Error generating report: ", error);
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
-    const handleAssignmentChange = async (holidayDate: string, employeeId: string, value: HolidayReportAssignment) => {
+    const handleAssignmentChange = async (holidayId: string, employeeId: string, value: HolidayReportAssignment) => {
         if (!activeReport) return;
     
         const updatedAssignments = { ...activeReport.assignments };
-        if (!updatedAssignments[holidayDate]) {
-            updatedAssignments[holidayDate] = {};
+        if (!updatedAssignments[holidayId]) {
+            updatedAssignments[holidayId] = {};
         }
-        updatedAssignments[holidayDate][employeeId] = value;
+        updatedAssignments[holidayId][employeeId] = value;
     
-        await setDoc(doc(db, 'holidayReports', activeReport.id), {
-            assignments: updatedAssignments
-        }, { merge: true });
-
-        // Optimistic update
-        setActiveReport(prev => prev ? { ...prev, assignments: updatedAssignments } : null);
+        try {
+            await updateHolidayReport(activeReport.id, { assignments: updatedAssignments });
+            // Optimistic update
+            setActiveReport(prev => prev ? { ...prev, assignments: updatedAssignments } : null);
+        } catch(error) {
+            console.error("Error updating assignment: ", error);
+        }
     };
 
 
@@ -98,7 +107,7 @@ export function HolidayReportGenerator() {
                     <div className="flex justify-between items-start">
                         <div>
                              <CardTitle>Informe de Festivos Activo</CardTitle>
-                            <CardDescription>Generado el: {format(activeReport.generationDate.toDate(), 'PPP p', { locale: es })}</CardDescription>
+                            <CardDescription>Generado el: {format((activeReport.generationDate as Timestamp).toDate(), 'PPP p', { locale: es })}</CardDescription>
                         </div>
                         <Button variant="outline" onClick={() => setActiveReport(null)}>Crear Nuevo Informe</Button>
                     </div>
@@ -106,26 +115,29 @@ export function HolidayReportGenerator() {
                 <CardContent>
                     <ScrollArea className="h-[400px] w-full pr-4">
                          <div className="space-y-6">
-                            {activeReport.selectedHolidays.map(holidayDate => (
-                                <div key={holidayDate}>
-                                    <h3 className="font-bold text-lg mb-2">{holidays.find(h => h.id === holidayDate)?.name} - {format(new Date(holidayDate), 'PPP', {locale: es})}</h3>
+                            {activeReport.selectedHolidays.map(holidayId => {
+                                const holiday = holidays.find(h => h.id === holidayId);
+                                if (!holiday) return null;
+                                return (
+                                <div key={holidayId}>
+                                    <h3 className="font-bold text-lg mb-2">{holiday.name} - {format(holiday.date as Date, 'PPP', {locale: es})}</h3>
                                     <div className="border rounded-md">
                                         {activeHolidayEmployees.map((emp, index) => (
                                             <div key={emp.id} className={`flex items-center justify-between p-3 ${index < activeHolidayEmployees.length -1 ? 'border-b' : ''}`}>
                                                 <p className="font-medium text-sm">{emp.name}</p>
                                                 <RadioGroup
                                                     defaultValue="ninguna"
-                                                    value={activeReport.assignments[holidayDate]?.[emp.id] || 'ninguna'}
-                                                    onValueChange={(val) => handleAssignmentChange(holidayDate, emp.id, val as HolidayReportAssignment)}
+                                                    value={activeReport.assignments[holidayId]?.[emp.id] || 'ninguna'}
+                                                    onValueChange={(val) => handleAssignmentChange(holidayId, emp.id, val as HolidayReportAssignment)}
                                                     className="flex gap-4"
                                                 >
                                                     <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="doublePay" id={`double-${holidayDate}-${emp.id}`} />
-                                                        <Label htmlFor={`double-${holidayDate}-${emp.id}`} className="text-sm">Pago Doble</Label>
+                                                        <RadioGroupItem value="doublePay" id={`double-${holidayId}-${emp.id}`} />
+                                                        <Label htmlFor={`double-${holidayId}-${emp.id}`} className="text-sm">Pago Doble</Label>
                                                     </div>
                                                     <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="dayOff" id={`dayoff-${holidayDate}-${emp.id}`} />
-                                                        <Label htmlFor={`dayoff-${holidayDate}-${emp.id}`} className="text-sm">Día Libre</Label>
+                                                        <RadioGroupItem value="dayOff" id={`dayoff-${holidayId}-${emp.id}`} />
+                                                        <Label htmlFor={`dayoff-${holidayId}-${emp.id}`} className="text-sm">Día Libre</Label>
                                                     </div>
                                                 </RadioGroup>
                                             </div>
@@ -133,7 +145,7 @@ export function HolidayReportGenerator() {
                                     </div>
                                     <Separator className="my-6" />
                                 </div>
-                            ))}
+                            )})}
                         </div>
                     </ScrollArea>
                 </CardContent>
@@ -159,7 +171,7 @@ export function HolidayReportGenerator() {
                                     onCheckedChange={(checked) => setSelectedHolidays(prev => ({ ...prev, [holiday.id]: !!checked }))}
                                 />
                                 <Label htmlFor={holiday.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    {holiday.name} - {format(holiday.date, 'PPP', { locale: es })}
+                                    {holiday.name} - {format(holiday.date as Date, 'PPP', { locale: es })}
                                 </Label>
                             </div>
                         ))}
