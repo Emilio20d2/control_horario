@@ -127,6 +127,7 @@ export function HolidayReportGenerator() {
                                 key={holiday.id}
                                 checked={selectedHolidays[holiday.id] || false}
                                 onCheckedChange={(checked) => setSelectedHolidays(prev => ({ ...prev, [holiday.id]: !!checked }))}
+                                onSelect={(e) => e.preventDefault()}
                             >
                                 {format(holiday.date as Date, 'dd/MM/yy')}
                             </DropdownMenuCheckboxItem>
