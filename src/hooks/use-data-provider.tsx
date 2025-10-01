@@ -38,6 +38,9 @@ import {
     addHolidayEmployee,
     updateHolidayEmployee,
     deleteHolidayEmployee,
+    createEmployeeGroup,
+    updateEmployeeGroup,
+    deleteEmployeeGroup,
 } from '../lib/services/settingsService';
 import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks } from 'date-fns';
 import { addDocument, setDocument } from '@/lib/services/firestoreService';
@@ -97,6 +100,9 @@ interface DataContextType {
   deleteHolidayEmployee: (id: string) => Promise<void>;
   addHolidayReport: (report: Omit<HolidayReport, 'id'>) => Promise<string>;
   updateHolidayReport: (reportId: string, data: Partial<Omit<HolidayReport, 'id'>>) => Promise<void>;
+  createEmployeeGroup: (name: string) => Promise<string>;
+  updateEmployeeGroup: (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => Promise<void>;
+  deleteEmployeeGroup: (id: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType>({
@@ -148,6 +154,9 @@ deleteContractType: async () => {},
   deleteHolidayEmployee: async (id: string) => {},
   addHolidayReport: async (report: Omit<HolidayReport, 'id'>) => '',
   updateHolidayReport: async (reportId: string, data: Partial<Omit<HolidayReport, 'id'>>) => {},
+  createEmployeeGroup: async (name: string) => '',
+  updateEmployeeGroup: async (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => {},
+  deleteEmployeeGroup: async (id: string) => {},
 });
 
 const roundToNearestQuarter = (num: number) => {
@@ -1032,6 +1041,9 @@ createAnnualConfig: createAnnualConfigService,
     deleteHolidayEmployee,
     addHolidayReport,
     updateHolidayReport,
+    createEmployeeGroup,
+    updateEmployeeGroup,
+    deleteEmployeeGroup,
   };
 
   return (
@@ -1047,6 +1059,7 @@ export const useDataProvider = () => useContext(DataContext);
 
 
     
+
 
 
 
