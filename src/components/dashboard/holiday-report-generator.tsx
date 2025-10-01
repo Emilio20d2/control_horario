@@ -13,19 +13,29 @@ import { HolidayReport, HolidayReportAssignment } from '@/lib/types';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 export function HolidayReportGenerator() {
     const { holidays, holidayEmployees, holidayReports, loading } = useDataProvider();
     const [selectedHolidays, setSelectedHolidays] = useState<Record<string, boolean>>({});
     const [isGenerating, setIsGenerating] = useState(false);
+    const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
+
+    const availableYears = useMemo(() => {
+        if (!holidays) return [new Date().getFullYear()];
+        const years = new Set(holidays.map(h => getYear(h.date as Date)));
+        const currentYear = new Date().getFullYear();
+        if (!years.has(currentYear)) years.add(currentYear);
+        years.add(currentYear + 1);
+        return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
+    }, [holidays]);
 
     const openingHolidays = useMemo(() => {
-        const currentYear = getYear(new Date());
         return holidays
-            .filter(h => h.type === 'Apertura' && getYear(h.date as Date) === currentYear)
+            .filter(h => h.type === 'Apertura' && getYear(h.date as Date) === selectedYear)
             .sort((a, b) => (a.date as Date).getTime() - (b.date as Date).getTime());
-    }, [holidays]);
+    }, [holidays, selectedYear]);
 
     const activeHolidayEmployees = useMemo(() => {
         if (!holidayEmployees) return [];
@@ -112,6 +122,14 @@ export function HolidayReportGenerator() {
                 <Gift className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="space-y-4">
+                <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+                    <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Seleccionar año..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                    </SelectContent>
+                </Select>
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="w-full justify-between">
@@ -120,7 +138,7 @@ export function HolidayReportGenerator() {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-64">
-                        <DropdownMenuLabel>Festivos de Apertura</DropdownMenuLabel>
+                        <DropdownMenuLabel>Festivos de Apertura ({selectedYear})</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         {openingHolidays.map(holiday => (
                             <DropdownMenuCheckboxItem
