@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -11,7 +12,7 @@ import { Trash2, Loader2 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -56,7 +57,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                 period.id,
                 {
                     absenceTypeId,
-                    startDate,
+                    startDate: startDate,
                     endDate: endDate || null,
                 },
                 employee
@@ -172,8 +173,8 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                                     return (
                                         <TableRow key={absence.id}>
                                             <TableCell className="font-medium">{absenceType?.name || 'Desconocido'}</TableCell>
-                                            <TableCell>{format(absence.startDate, 'PPP', { locale: es })}</TableCell>
-                                            <TableCell>{absence.endDate ? format(absence.endDate, 'PPP', { locale: es }) : 'Indefinida'}</TableCell>
+                                            <TableCell>{format(parseISO(absence.startDate as unknown as string), 'PPP', { locale: es })}</TableCell>
+                                            <TableCell>{absence.endDate ? format(parseISO(absence.endDate as unknown as string), 'PPP', { locale: es }) : 'Indefinida'}</TableCell>
                                             <TableCell className="text-right">
                                                  <AlertDialog onOpenChange={(open) => !open && setPassword('')}>
                                                     <AlertDialogTrigger asChild>

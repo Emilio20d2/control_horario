@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { addDocument, updateDocument, deleteDocument } from './firestoreService';
@@ -215,7 +216,11 @@ export const deleteEmployee = async (id: string): Promise<void> => {
 export const addScheduledAbsence = async (
     employeeId: string, 
     periodId: string, 
-    newAbsence: Omit<ScheduledAbsence, 'id'>, 
+    newAbsence: {
+        absenceTypeId: string;
+        startDate: string; // YYYY-MM-DD
+        endDate: string | null;
+    },
     currentEmployee: Employee
 ): Promise<void> => {
     const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
@@ -224,8 +229,15 @@ export const addScheduledAbsence = async (
     if (!period.scheduledAbsences) {
         period.scheduledAbsences = [];
     }
+    
+    const absenceToAdd: ScheduledAbsence = {
+        id: `abs_${Date.now()}`,
+        absenceTypeId: newAbsence.absenceTypeId,
+        startDate: parseISO(newAbsence.startDate),
+        endDate: newAbsence.endDate ? parseISO(newAbsence.endDate) : null,
+    };
 
-    period.scheduledAbsences.push({ ...newAbsence, id: `abs_${Date.now()}` });
+    period.scheduledAbsences.push(absenceToAdd);
 
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
