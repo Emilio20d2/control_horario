@@ -58,6 +58,7 @@ export interface Employee {
     id: string;
     name: string;
     authId?: string;
+    groupId?: string;
     employmentPeriods: EmploymentPeriod[];
     vacationDaysUsed?: number; // Campo añadido para la vista de lista
 }
@@ -230,4 +231,9 @@ export interface HolidayReport {
     generationDate: Timestamp;
     selectedHolidays: string[]; // Array of holiday dates (YYYY-MM-DD)
     assignments: Record<string, Record<string, HolidayReportAssignment>>; // { [holidayDate]: { [employeeId]: assignment } }
+}
+
+export interface EmployeeGroup {
+    id: string;
+    name: string;
 }

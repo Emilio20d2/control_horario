@@ -4,7 +4,7 @@
 
 import { addDoc, collection, deleteDoc, doc, updateDoc, Timestamp, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { AbsenceType, Holiday, AnnualConfiguration, ContractType, HolidayFormData, HolidayEmployee } from '../types';
+import type { AbsenceType, Holiday, AnnualConfiguration, ContractType, HolidayFormData, HolidayEmployee, EmployeeGroup } from '../types';
 
 
 export const createAbsenceType = async (data: Omit<AbsenceType, 'id'>): Promise<string> => {
@@ -85,7 +85,7 @@ export const createContractType = async (data: Omit<ContractType, 'id'>): Promis
 
 export const updateContractType = async (id: string, data: Partial<Omit<ContractType, 'id'>>): Promise<void> => {
     const docRef = doc(db, 'contractTypes', id);
-    await updateDoc(docRef, data);
+await updateDoc(docRef, data);
 }
 
 export const deleteContractType = async (id: string): Promise<void> => {
@@ -118,3 +118,20 @@ export const seedHolidayEmployees = async (employeeNames: string[]): Promise<voi
     });
     await batch.commit();
 };
+
+
+// --- Employee Group Service Functions ---
+export const createEmployeeGroup = async (name: string): Promise<string> => {
+    const docRef = await addDoc(collection(db, 'employeeGroups'), { name });
+    return docRef.id;
+}
+
+export const updateEmployeeGroup = async (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>): Promise<void> => {
+    const docRef = doc(db, 'employeeGroups', id);
+    await updateDoc(docRef, data);
+}
+
+export const deleteEmployeeGroup = async (id: string): Promise<void> => {
+    const docRef = doc(db, 'employeeGroups', id);
+    await deleteDoc(docRef);
+}

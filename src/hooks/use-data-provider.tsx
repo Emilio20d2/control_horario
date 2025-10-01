@@ -19,6 +19,7 @@ import type {
   PrefilledWeeklyRecord,
   HolidayEmployee,
   HolidayReport,
+  EmployeeGroup,
 } from '../types';
 import { onCollectionUpdate } from '@/lib/services/firestoreService';
 import { 
@@ -57,6 +58,7 @@ interface DataContextType {
   users: AppUser[];
   holidayEmployees: HolidayEmployee[];
   holidayReports: HolidayReport[];
+  employeeGroups: EmployeeGroup[];
   loading: boolean;
   hasUnconfirmedInPrevWeek: boolean;
   loadData: () => void;
@@ -107,6 +109,7 @@ const DataContext = createContext<DataContextType>({
   users: [],
   holidayEmployees: [],
   holidayReports: [],
+  employeeGroups: [],
   loading: true,
   hasUnconfirmedInPrevWeek: false,
   loadData: () => {},
@@ -162,6 +165,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [holidayEmployees, setHolidayEmployees] = useState<HolidayEmployee[]>([]);
   const [holidayReports, setHolidayReports] = useState<HolidayReport[]>([]);
+  const [employeeGroups, setEmployeeGroups] = useState<EmployeeGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [hasUnconfirmedInPrevWeek, setHasUnconfirmedInPrevWeek] = useState(false);
@@ -308,6 +312,7 @@ const loadData = useCallback(() => {
     const unsubUsers = onCollectionUpdate<AppUser[]>('users', (data) => {if(mounted) setUsers(data)});
     const unsubHolidayEmployees = onCollectionUpdate<HolidayEmployee[]>('holidayEmployees', (data) => { if(mounted) setHolidayEmployees(data.sort((a,b) => a.name.localeCompare(b.name))) });
     const unsubHolidayReports = onCollectionUpdate<HolidayReport[]>('holidayReports', (data) => { if(mounted) setHolidayReports(data) });
+    const unsubEmployeeGroups = onCollectionUpdate<EmployeeGroup[]>('employeeGroups', (data) => { if (mounted) setEmployeeGroups(data.sort((a,b) => a.name.localeCompare(b.name))) });
 
 
     const allSubscriptionsReady = Promise.all([
@@ -320,6 +325,7 @@ const loadData = useCallback(() => {
         unsubUsers.ready,
         unsubHolidayEmployees.ready,
         unsubHolidayReports.ready,
+        unsubEmployeeGroups.ready,
     ]);
 
     allSubscriptionsReady.then(() => {
@@ -345,6 +351,7 @@ const loadData = useCallback(() => {
         unsubUsers.unsubscribe();
         unsubHolidayEmployees.unsubscribe();
         unsubHolidayReports.unsubscribe();
+        unsubEmployeeGroups.unsubscribe();
     };
 }, [loaded]);
 
@@ -986,6 +993,7 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
     users,
     holidayEmployees,
     holidayReports,
+    employeeGroups,
     loading,
     hasUnconfirmedInPrevWeek,
     loadData,
@@ -1039,6 +1047,7 @@ export const useDataProvider = () => useContext(DataContext);
 
 
     
+
 
 
 
