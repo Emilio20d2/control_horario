@@ -63,7 +63,7 @@ export function HolidayReportGenerator() {
 
         const addHeaderFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
             doc.setFontSize(16).setFont('helvetica', 'bold');
-            doc.text(`Hoja de Asignación de Festivos`, pageMargin, 15);
+            doc.text(`LISTA PARA TRABAJAR FESTIVO`, pageMargin, 15);
             const pageText = `Página ${pageNumber} de ${totalPages}`;
             doc.setFontSize(10).setFont('helvetica', 'normal');
             doc.text(pageText, doc.internal.pageSize.width - pageMargin, doc.internal.pageSize.height - 10, { align: 'right' });
