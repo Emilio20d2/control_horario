@@ -96,14 +96,14 @@ export function HolidayEmployeeManager() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {holidayEmployees.length === 0 && (
+                            {holidayEmployees && holidayEmployees.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={3} className="text-center h-24">
                                         No hay empleados en la lista.
                                     </TableCell>
                                 </TableRow>
                             )}
-                            {holidayEmployees.map(emp => (
+                            {holidayEmployees && holidayEmployees.map(emp => (
                                 <TableRow key={emp.id}>
                                     <TableCell className="font-medium">{emp.name}</TableCell>
                                     <TableCell className="text-center">
