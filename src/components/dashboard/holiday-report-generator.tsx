@@ -37,7 +37,7 @@ export function HolidayReportGenerator() {
     }, [holidayEmployees]);
 
     useEffect(() => {
-        if (holidayReports.length > 0) {
+        if (holidayReports && holidayReports.length > 0) {
             const latestReport = [...holidayReports].sort((a, b) => (b.generationDate as Timestamp).toMillis() - (a.generationDate as Timestamp).toMillis())[0];
             setActiveReport(latestReport);
         }
