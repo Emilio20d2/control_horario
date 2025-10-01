@@ -76,7 +76,7 @@ export function HolidayReportGenerator() {
         const body = activeHolidayEmployees.map(emp => {
             return [
                 emp.name,
-                ...selectedHolidaysData.map(() => "PAGO   DEVO")
+                ...selectedHolidaysData.map(() => "")
             ];
         });
 
@@ -102,24 +102,25 @@ export function HolidayReportGenerator() {
             },
              didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index > 0) {
+                    data.cell.text = []; // Limpiar el texto original de la celda
                     doc.setFontSize(8);
                     const cell = data.cell;
-                    const squareSize = 3;
+                    const squareSize = 4; // Cuadrado más grande
                     const text1 = 'PAGO';
                     const text2 = 'DEVO';
+                    const yPos = cell.y + cell.height / 2 + 1;
+
+                    doc.setLineWidth(0.5); // Borde más grueso
 
                     // Posición para el primer checkbox y texto
-                    const yPos = cell.y + cell.height / 2 + 1;
                     const xPos1 = cell.x + 3;
-                    doc.rect(xPos1, yPos - squareSize, squareSize, squareSize); // Dibujar cuadrado
+                    doc.rect(xPos1, yPos - squareSize, squareSize, squareSize);
                     doc.text(text1, xPos1 + squareSize + 2, yPos);
 
                     // Posición para el segundo checkbox y texto
                     const xPos2 = cell.x + cell.width / 2;
-                    doc.rect(xPos2, yPos - squareSize, squareSize, squareSize); // Dibujar cuadrado
+                    doc.rect(xPos2, yPos - squareSize, squareSize, squareSize);
                     doc.text(text2, xPos2 + squareSize + 2, yPos);
-                    
-                    data.cell.text = ''; // Limpiar el texto original
                 }
             },
             didDrawPage: (data) => addHeaderFooter(doc, data.pageNumber, totalPages),

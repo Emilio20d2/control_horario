@@ -96,12 +96,19 @@ export default function ListingsPage() {
 
     const body = holidayEmployees.map(emp => [
         emp.name,
-        ...data.columns.map(col => col.type === 'checkbox' ? (col.options || '') : '')
+        ...data.columns.map(col => '')
     ]);
 
     // Hack para calcular el número total de páginas
     const tempDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-    autoTable(tempDoc, { head, body, startY: currentY });
+    let tempY = currentY;
+     if (data.description) {
+        const descriptionLines = tempDoc.splitTextToSize(data.description, doc.internal.pageSize.width - (pageMargin * 2));
+        tempY += (descriptionLines.length * 5) + 4;
+    } else {
+        tempY += 2;
+    }
+    autoTable(tempDoc, { head, body, startY: tempY });
     const totalPages = tempDoc.internal.getNumberOfPages();
 
     autoTable(doc, {
@@ -113,24 +120,19 @@ export default function ListingsPage() {
         margin: { left: pageMargin, right: pageMargin, top: 15 },
         headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
         columnStyles: { 0: { halign: 'left', cellWidth: 'auto' } },
-        didParseCell: (data) => {
-            if (data.section === 'body' && data.column.index > 0) {
-                const columnDef = form.getValues('columns')[data.column.index - 1];
-                if (columnDef.type === 'freeText') {
-                    data.cell.text = [''];
-                }
-            }
-        },
         didDrawCell: (data) => {
             if (data.section === 'body' && data.column.index > 0) {
                 const columnDef = form.getValues('columns')[data.column.index - 1];
                 if (columnDef.type === 'checkbox' && columnDef.options) {
+                    data.cell.text = []; // Clear original text
                     doc.setFontSize(8);
                     const cell = data.cell;
                     const options = columnDef.options.split(',').map(opt => opt.trim());
-                    const squareSize = 3;
+                    const squareSize = 4;
                     let currentX = cell.x + 3;
                     const yPos = cell.y + cell.height / 2 + 1;
+
+                    doc.setLineWidth(0.5);
 
                     options.forEach((option, index) => {
                         if (index > 0) {
