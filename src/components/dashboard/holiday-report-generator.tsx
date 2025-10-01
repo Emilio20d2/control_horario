@@ -7,8 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { FileDown, Gift, Loader2 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { format, getYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { setDoc, doc, Timestamp } from 'firebase/firestore';
@@ -17,6 +15,8 @@ import { HolidayReport, HolidayReportAssignment } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Label } from '../ui/label';
 
 export function HolidayReportGenerator() {
     const { holidays, holidayEmployees, holidayReports, loading, addHolidayReport, updateHolidayReport } = useDataProvider();
@@ -67,7 +67,6 @@ export function HolidayReportGenerator() {
         try {
             const newReportId = await addHolidayReport(newReport);
             
-            // This is optimistic, the listener will pick up the change
             setActiveReport({ ...newReport, id: newReportId }); 
             setSelectedHolidays({});
         } catch (error) {
@@ -88,7 +87,6 @@ export function HolidayReportGenerator() {
     
         try {
             await updateHolidayReport(activeReport.id, { assignments: updatedAssignments });
-            // Optimistic update
             setActiveReport(prev => prev ? { ...prev, assignments: updatedAssignments } : null);
         } catch(error) {
             console.error("Error updating assignment: ", error);
@@ -153,31 +151,38 @@ export function HolidayReportGenerator() {
         )
     }
 
+    const selectedCount = Object.values(selectedHolidays).filter(Boolean).length;
+
     return (
-        <Card className="min-w-[280px] sm:min-w-0 md:col-span-2 xl:col-span-3">
+        <Card className="min-w-[280px] sm:min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Nuevo Informe de Festivos</CardTitle>
                 <Gift className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">Selecciona los festivos de apertura para generar el informe de compensación.</p>
-                <ScrollArea className="h-48 w-full">
-                    <div className="space-y-2 p-4 border rounded-md">
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                            <span>{selectedCount > 0 ? `${selectedCount} festivo(s) seleccionado(s)` : "Seleccionar festivos..."}</span>
+                            <Gift className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-64">
+                        <DropdownMenuLabel>Festivos de Apertura</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
                         {openingHolidays.map(holiday => (
-                            <div key={holiday.id} className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={holiday.id}
-                                    checked={selectedHolidays[holiday.id] || false}
-                                    onCheckedChange={(checked) => setSelectedHolidays(prev => ({ ...prev, [holiday.id]: !!checked }))}
-                                />
-                                <Label htmlFor={holiday.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    {holiday.name} - {format(holiday.date as Date, 'PPP', { locale: es })}
-                                </Label>
-                            </div>
+                            <DropdownMenuCheckboxItem
+                                key={holiday.id}
+                                checked={selectedHolidays[holiday.id] || false}
+                                onCheckedChange={(checked) => setSelectedHolidays(prev => ({ ...prev, [holiday.id]: !!checked }))}
+                            >
+                                {holiday.name} - {format(holiday.date as Date, 'dd/MM/yy')}
+                            </DropdownMenuCheckboxItem>
                         ))}
-                    </div>
-                </ScrollArea>
-                <Button onClick={handleGenerateReport} disabled={isGenerating || Object.values(selectedHolidays).every(v => !v)} className="w-full">
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button onClick={handleGenerateReport} disabled={isGenerating || selectedCount === 0} className="w-full">
                     {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                     {isGenerating ? 'Generando...' : 'Generar Informe'}
                 </Button>
