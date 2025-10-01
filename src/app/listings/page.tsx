@@ -70,10 +70,11 @@ export default function ListingsPage() {
 
   const generatePdf = (data: z.infer<typeof formSchema>) => {
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-    let currentY = 15;
     const pageMargin = 15;
+    let startY = 15;
 
     const addHeaderFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
+        let currentY = 15;
         doc.setFontSize(16).setFont('helvetica', 'bold');
         doc.text(data.title.toUpperCase(), pageMargin, currentY);
         currentY += 8;
@@ -82,7 +83,7 @@ export default function ListingsPage() {
             doc.setFontSize(10).setFont('helvetica', 'normal');
             const descriptionLines = doc.splitTextToSize(data.description, doc.internal.pageSize.width - (pageMargin * 2));
             doc.text(descriptionLines, pageMargin, currentY);
-            currentY += (descriptionLines.length * 5) + 4;
+            currentY += (descriptionLines.length * 5) + 5;
         } else {
             currentY += 2;
         }
@@ -90,6 +91,8 @@ export default function ListingsPage() {
         const pageText = `Página ${pageNumber} de ${totalPages}`;
         doc.setFontSize(10).setFont('helvetica', 'normal');
         doc.text(pageText, doc.internal.pageSize.width - pageMargin, doc.internal.pageSize.height - 10, { align: 'right' });
+        
+        return currentY;
     };
 
     const head = [['Empleado', ...data.columns.map(c => c.name)]];
@@ -101,12 +104,12 @@ export default function ListingsPage() {
 
     // Hack para calcular el número total de páginas
     const tempDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-    let tempY = currentY;
+    let tempY = 15;
      if (data.description) {
         const descriptionLines = tempDoc.splitTextToSize(data.description, doc.internal.pageSize.width - (pageMargin * 2));
-        tempY += (descriptionLines.length * 5) + 4;
+        tempY += (descriptionLines.length * 5) + 13;
     } else {
-        tempY += 2;
+        tempY += 10;
     }
     autoTable(tempDoc, { head, body, startY: tempY });
     const totalPages = tempDoc.internal.getNumberOfPages();
@@ -114,7 +117,7 @@ export default function ListingsPage() {
     autoTable(doc, {
         head,
         body,
-        startY: currentY,
+        startY: startY,
         theme: 'grid',
         pageBreak: 'auto',
         margin: { left: pageMargin, right: pageMargin, top: 15 },
@@ -123,32 +126,36 @@ export default function ListingsPage() {
         didDrawCell: (data) => {
             if (data.section === 'body' && data.column.index > 0) {
                 const columnDef = form.getValues('columns')[data.column.index - 1];
-                if (columnDef.type === 'checkbox' && columnDef.options) {
+                if (columnDef.type === 'checkbox') {
                     data.cell.text = []; // Clear original text
                     doc.setFontSize(8);
                     const cell = data.cell;
-                    const options = columnDef.options.split(',').map(opt => opt.trim());
+                    const options = (columnDef.options || '').split(',').map(opt => opt.trim()).filter(Boolean);
                     const squareSize = 4;
                     let currentX = cell.x + 3;
                     const yPos = cell.y + cell.height / 2 + 1;
 
                     doc.setLineWidth(0.5);
 
-                    options.forEach((option, index) => {
-                        if (index > 0) {
-                           currentX += 20;
-                        }
-                        doc.rect(currentX, yPos - squareSize, squareSize, squareSize);
-                        doc.text(option, currentX + squareSize + 2, yPos);
-                    });
+                    if (options.length > 0) {
+                        options.forEach((option, index) => {
+                            if (index > 0) {
+                               currentX += 20;
+                            }
+                            doc.rect(currentX, yPos - squareSize, squareSize, squareSize);
+                            doc.text(option, currentX + squareSize + 2, yPos);
+                        });
+                    } else {
+                        // Si no hay opciones, dibuja un solo cuadrado
+                         doc.rect(currentX, yPos - squareSize, squareSize, squareSize);
+                    }
                 }
             }
         },
-        didDrawPage: (data) => {
-            currentY = 15;
-            addHeaderFooter(doc, data.pageNumber, totalPages);
+        didDrawPage: (hookData) => {
+            const newStartY = addHeaderFooter(doc, hookData.pageNumber, totalPages);
             // @ts-ignore
-            data.cursor.y = currentY; 
+            hookData.cursor.y = newStartY;
         },
     });
 
