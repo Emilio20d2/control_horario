@@ -17,12 +17,17 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Label } from '../ui/label';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
 
 export function HolidayReportGenerator() {
     const { holidays, holidayEmployees, holidayReports, loading, addHolidayReport, updateHolidayReport } = useDataProvider();
     const [selectedHolidays, setSelectedHolidays] = useState<Record<string, boolean>>({});
     const [isGenerating, setIsGenerating] = useState(false);
     const [activeReport, setActiveReport] = useState<HolidayReport | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
+
 
     const openingHolidays = useMemo(() => {
         const currentYear = getYear(new Date());
@@ -33,7 +38,7 @@ export function HolidayReportGenerator() {
 
     const activeHolidayEmployees = useMemo(() => {
         if (!holidayEmployees) return [];
-        return holidayEmployees.filter(e => e.active);
+        return holidayEmployees.filter(e => e.active).sort((a, b) => a.name.localeCompare(b.name));
     }, [holidayEmployees]);
 
     useEffect(() => {
@@ -92,6 +97,63 @@ export function HolidayReportGenerator() {
             console.error("Error updating assignment: ", error);
         }
     };
+    
+    const handleExportToPDF = () => {
+        if (!activeReport) return;
+        setIsExporting(true);
+
+        const doc = new jsPDF();
+        const generationDate = format((activeReport.generationDate as Timestamp).toDate(), 'PPP p', { locale: es });
+
+        doc.setFontSize(16);
+        doc.text(`Informe de Festivos de Apertura`, 14, 16);
+        doc.setFontSize(10);
+        doc.text(`Generado el: ${generationDate}`, 14, 22);
+
+        let finalY = 30;
+
+        activeReport.selectedHolidays.forEach(holidayId => {
+            const holiday = holidays.find(h => h.id === holidayId);
+            if (!holiday) return;
+
+            const tableData = activeHolidayEmployees.map(emp => {
+                const assignment = activeReport.assignments[holidayId]?.[emp.id];
+                let assignmentText = 'Sin Asignar';
+                if (assignment === 'doublePay') {
+                    assignmentText = 'Pago Doble';
+                } else if (assignment === 'dayOff') {
+                    assignmentText = 'Día Libre';
+                }
+                return [emp.name, assignmentText];
+            });
+            
+            const holidayTitle = `${holiday.name} - ${format(holiday.date as Date, 'PPP', { locale: es })}`;
+            doc.setFontSize(12);
+            doc.text(holidayTitle, 14, finalY);
+
+            autoTable(doc, {
+                startY: finalY + 4,
+                head: [['Empleado', 'Asignación']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { fillColor: [41, 128, 185] },
+                didDrawPage: (data) => {
+                    // Reset Y position for content on new pages
+                    if (data.pageNumber > 1) {
+                         finalY = data.cursor?.y || 20;
+                    }
+                }
+            });
+            
+            // @ts-ignore
+            finalY = doc.lastAutoTable.finalY + 15;
+        });
+
+        const safeDate = format((activeReport.generationDate as Timestamp).toDate(), 'yyyyMMdd_HHmm');
+        doc.save(`informe_festivos_${safeDate}.pdf`);
+
+        setIsExporting(false);
+    };
 
 
     if (loading) {
@@ -107,7 +169,13 @@ export function HolidayReportGenerator() {
                              <CardTitle>Informe de Festivos Activo</CardTitle>
                             <CardDescription>Generado el: {format((activeReport.generationDate as Timestamp).toDate(), 'PPP p', { locale: es })}</CardDescription>
                         </div>
-                        <Button variant="outline" onClick={() => setActiveReport(null)}>Crear Nuevo Informe</Button>
+                        <div className="flex gap-2">
+                             <Button variant="outline" onClick={() => setActiveReport(null)}>Crear Nuevo</Button>
+                             <Button onClick={handleExportToPDF} disabled={isExporting}>
+                                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                {isExporting ? 'Exportando...' : 'Exportar PDF'}
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
