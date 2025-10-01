@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, AuthProvider } from "@/hooks/useAuth";
 import { AppLayout } from "./app-layout";
 import { ReactNode, useEffect } from "react";
-import { useDataProvider } from "@/hooks/use-data-provider";
+import { useDataProvider, DataProvider } from "@/hooks/use-data-provider";
 
-export const AppInitializer = ({ children }: { children: ReactNode }) => {
+const CoreApp = ({ children }: { children: ReactNode }) => {
     const { user, loading: authLoading } = useAuth();
     const { loading: dataLoading, loadData } = useDataProvider();
 
@@ -42,4 +42,16 @@ export const AppInitializer = ({ children }: { children: ReactNode }) => {
             {children}
         </AppLayout>
     );
+}
+
+export const AppInitializer = ({ children }: { children: ReactNode }) => {
+    return (
+        <AuthProvider>
+          <DataProvider>
+            <CoreApp>
+              {children}
+            </CoreApp>
+          </DataProvider>
+        </AuthProvider>
+    )
 }
