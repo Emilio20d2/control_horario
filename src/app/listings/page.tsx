@@ -119,7 +119,7 @@ export default function ListingsPage() {
       head,
       body,
       startY: currentY,
-      theme: 'striped',
+      theme: 'grid',
       pageBreak: 'auto',
       margin: { left: pageMargin, right: pageMargin, top: currentY },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
