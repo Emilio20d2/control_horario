@@ -59,8 +59,7 @@ export function HolidayReportGenerator() {
 
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         const pageMargin = 15;
-        const checkboxCellContent = '[  ] PAGO   [  ] DEVO';
-
+        
         const addHeaderFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
             doc.setFontSize(16).setFont('helvetica', 'bold');
             doc.text(`LISTA PARA TRABAJAR FESTIVO`, pageMargin, 15);
@@ -77,15 +76,20 @@ export function HolidayReportGenerator() {
         const body = activeHolidayEmployees.map(emp => {
             return [
                 emp.name,
-                ...selectedHolidaysData.map(() => checkboxCellContent)
+                ...selectedHolidaysData.map(() => "PAGO   DEVO")
             ];
         });
+
+        // Hack para calcular el número total de páginas
+        const tempDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        autoTable(tempDoc, { head: [head], body, startY: 25 });
+        const totalPages = tempDoc.internal.getNumberOfPages();
 
         autoTable(doc, {
             head: [head],
             body,
             startY: 25,
-            theme: 'striped',
+            theme: 'grid',
             pageBreak: 'auto',
             margin: { left: pageMargin, right: pageMargin, top: 25 },
             headStyles: { 
@@ -96,24 +100,30 @@ export function HolidayReportGenerator() {
             columnStyles: {
                 0: { cellWidth: 'auto', halign: 'left' },
             },
-             didParseCell: (data) => {
-                if (data.section === 'head' && data.column.index > 0) {
-                     data.cell.styles.minCellWidth = 35;
-                }
+             didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index > 0) {
-                    data.cell.styles.halign = 'center';
-                    data.cell.styles.font = 'helvetica';
-                    data.cell.styles.fontSize = 8;
+                    doc.setFontSize(8);
+                    const cell = data.cell;
+                    const squareSize = 3;
+                    const text1 = 'PAGO';
+                    const text2 = 'DEVO';
+
+                    // Posición para el primer checkbox y texto
+                    const yPos = cell.y + cell.height / 2 + 1;
+                    const xPos1 = cell.x + 3;
+                    doc.rect(xPos1, yPos - squareSize, squareSize, squareSize); // Dibujar cuadrado
+                    doc.text(text1, xPos1 + squareSize + 2, yPos);
+
+                    // Posición para el segundo checkbox y texto
+                    const xPos2 = cell.x + cell.width / 2;
+                    doc.rect(xPos2, yPos - squareSize, squareSize, squareSize); // Dibujar cuadrado
+                    doc.text(text2, xPos2 + squareSize + 2, yPos);
+                    
+                    data.cell.text = ''; // Limpiar el texto original
                 }
             },
-            didDrawPage: (data) => addHeaderFooter(doc, data.pageNumber, doc.internal.getNumberOfPages()),
+            didDrawPage: (data) => addHeaderFooter(doc, data.pageNumber, totalPages),
         });
-        
-        const totalPages = doc.internal.getNumberOfPages();
-        for(let i = 1; i <= totalPages; i++) {
-            doc.setPage(i);
-            addHeaderFooter(doc, i, totalPages);
-        }
 
         const safeDate = format(new Date(), 'yyyyMMdd_HHmm');
         doc.save(`asignacion_festivos_${safeDate}.pdf`);

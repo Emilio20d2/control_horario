@@ -70,77 +70,86 @@ export default function ListingsPage() {
 
   const generatePdf = (data: z.infer<typeof formSchema>) => {
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-    const pageMargin = 15;
     let currentY = 15;
+    const pageMargin = 15;
 
     const addHeaderFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
-      doc.setFontSize(16).setFont('helvetica', 'bold');
-      doc.text(data.title.toUpperCase(), pageMargin, currentY);
-      currentY += 8;
+        doc.setFontSize(16).setFont('helvetica', 'bold');
+        doc.text(data.title.toUpperCase(), pageMargin, currentY);
+        currentY += 8;
+        
+        if (data.description) {
+            doc.setFontSize(10).setFont('helvetica', 'normal');
+            const descriptionLines = doc.splitTextToSize(data.description, doc.internal.pageSize.width - (pageMargin * 2));
+            doc.text(descriptionLines, pageMargin, currentY);
+            currentY += (descriptionLines.length * 5) + 4;
+        } else {
+            currentY += 2;
+        }
       
-      if (data.description) {
+        const pageText = `Página ${pageNumber} de ${totalPages}`;
         doc.setFontSize(10).setFont('helvetica', 'normal');
-        const descriptionLines = doc.splitTextToSize(data.description, doc.internal.pageSize.width - (pageMargin * 2));
-        doc.text(descriptionLines, pageMargin, currentY);
-        currentY += (descriptionLines.length * 5) + 4; // Added extra space
-      } else {
-        currentY += 2;
-      }
-      
-      const pageText = `Página ${pageNumber} de ${totalPages}`;
-      doc.setFontSize(10).setFont('helvetica', 'normal');
-      doc.text(pageText, doc.internal.pageSize.width - pageMargin, doc.internal.pageSize.height - 10, { align: 'right' });
+        doc.text(pageText, doc.internal.pageSize.width - pageMargin, doc.internal.pageSize.height - 10, { align: 'right' });
     };
-    
-    // This is a bit of a hack to calculate total pages beforehand
-    const tempDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-    autoTable(tempDoc, {
-        head: [['Empleado', ...data.columns.map(c => c.name)]],
-        body: holidayEmployees.map(emp => [emp.name, ...data.columns.map(() => '')]),
-        startY: currentY,
-    });
-    const totalPages = tempDoc.internal.getNumberOfPages();
-
 
     const head = [['Empleado', ...data.columns.map(c => c.name)]];
 
-    const body = holidayEmployees.map(emp => {
-      return [
+    const body = holidayEmployees.map(emp => [
         emp.name,
-        ...data.columns.map(col => {
-          if (col.type === 'checkbox' && col.options) {
-            return col.options.split(',').map(opt => `[  ] ${opt.trim()}`).join('   ');
-          }
-          return ''; // Espacio en blanco para 'freeText'
-        }),
-      ];
-    });
+        ...data.columns.map(col => col.type === 'checkbox' ? (col.options || '') : '')
+    ]);
+
+    // Hack para calcular el número total de páginas
+    const tempDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    autoTable(tempDoc, { head, body, startY: currentY });
+    const totalPages = tempDoc.internal.getNumberOfPages();
 
     autoTable(doc, {
-      head,
-      body,
-      startY: currentY,
-      theme: 'grid',
-      pageBreak: 'auto',
-      margin: { left: pageMargin, right: pageMargin, top: 15 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
-      columnStyles: { 0: { halign: 'left', cellWidth: 'auto' } },
-      didParseCell: (data) => {
-        if (data.section === 'body' && data.column.index > 0) {
-          data.cell.styles.halign = 'center';
-          data.cell.styles.font = 'helvetica';
-          data.cell.styles.fontSize = 8;
-        }
-      },
-      didDrawPage: (data) => {
-          currentY = 15; // Reset Y for subsequent pages
-          addHeaderFooter(doc, data.pageNumber, totalPages);
-          
-          // @ts-ignore
-          data.cursor.y = currentY; 
-      },
+        head,
+        body,
+        startY: currentY,
+        theme: 'grid',
+        pageBreak: 'auto',
+        margin: { left: pageMargin, right: pageMargin, top: 15 },
+        headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
+        columnStyles: { 0: { halign: 'left', cellWidth: 'auto' } },
+        didParseCell: (data) => {
+            if (data.section === 'body' && data.column.index > 0) {
+                const columnDef = form.getValues('columns')[data.column.index - 1];
+                if (columnDef.type === 'freeText') {
+                    data.cell.text = [''];
+                }
+            }
+        },
+        didDrawCell: (data) => {
+            if (data.section === 'body' && data.column.index > 0) {
+                const columnDef = form.getValues('columns')[data.column.index - 1];
+                if (columnDef.type === 'checkbox' && columnDef.options) {
+                    doc.setFontSize(8);
+                    const cell = data.cell;
+                    const options = columnDef.options.split(',').map(opt => opt.trim());
+                    const squareSize = 3;
+                    let currentX = cell.x + 3;
+                    const yPos = cell.y + cell.height / 2 + 1;
+
+                    options.forEach((option, index) => {
+                        if (index > 0) {
+                           currentX += 20;
+                        }
+                        doc.rect(currentX, yPos - squareSize, squareSize, squareSize);
+                        doc.text(option, currentX + squareSize + 2, yPos);
+                    });
+                }
+            }
+        },
+        didDrawPage: (data) => {
+            currentY = 15;
+            addHeaderFooter(doc, data.pageNumber, totalPages);
+            // @ts-ignore
+            data.cursor.y = currentY; 
+        },
     });
-    
+
     const safeTitle = data.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     doc.save(`listado_${safeTitle}_${format(new Date(), 'yyyyMMdd')}.pdf`);
   };
