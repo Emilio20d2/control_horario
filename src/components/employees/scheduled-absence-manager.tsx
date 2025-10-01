@@ -36,7 +36,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
     const [password, setPassword] = useState('');
 
     const nonSplittableAbsenceTypes = absenceTypes
-        .filter(at => !at.isAbsenceSplittable)
+        .filter(at => !at.isAbsenceSplittable && at.name !== 'Vacaciones')
         .sort((a, b) => a.name.localeCompare(b.name));
 
     const handleAddAbsence = async (e: React.FormEvent) => {
@@ -117,13 +117,15 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
             setPassword('');
         }
     };
+    
+    const vacationAbsenceType = absenceTypes.find(at => at.name === 'Vacaciones');
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Gestión de Ausencias Programadas</CardTitle>
+                <CardTitle>Gestión de Ausencias Programadas (Bajas, etc.)</CardTitle>
                 <CardDescription>
-                    Planifica ausencias de larga duración como vacaciones o bajas. Se reflejarán automáticamente en el registro semanal.
+                    Planifica ausencias de larga duración. Las vacaciones se gestionan desde la página "Programador de Vacaciones".
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
@@ -168,7 +170,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                                         <TableCell colSpan={4} className="text-center h-24">No hay ausencias programadas.</TableCell>
                                     </TableRow>
                                 )}
-                                {period.scheduledAbsences?.map(absence => {
+                                {period.scheduledAbsences?.filter(a => a.absenceTypeId !== vacationAbsenceType?.id).map(absence => {
                                     const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
                                     return (
                                         <TableRow key={absence.id}>

@@ -144,8 +144,8 @@ export function VacationPlanner() {
                                     ) : (
                                         employeeScheduledAbsences.map(absence => (
                                             <TableRow key={absence.id}>
-                                                <TableCell>{format(absence.startDate, 'PPP', { locale: es })}</TableCell>
-                                                <TableCell>{absence.endDate ? format(absence.endDate, 'PPP', { locale: es }) : 'N/A'}</TableCell>
+                                                <TableCell>{format(parseISO(absence.startDate as unknown as string), 'PPP', { locale: es })}</TableCell>
+                                                <TableCell>{absence.endDate ? format(parseISO(absence.endDate as unknown as string), 'PPP', { locale: es }) : 'N/A'}</TableCell>
                                                 <TableCell className="text-right">
                                                     <Button variant="ghost" size="icon" onClick={() => handleDeletePeriod(absence.id)} disabled={isLoading}>
                                                         <Trash2 className="h-4 w-4 text-destructive" />
