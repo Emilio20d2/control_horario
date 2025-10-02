@@ -84,7 +84,6 @@ export default function ListingsPage() {
   const generatePdf = (data: z.infer<typeof formSchema>) => {
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     const pageMargin = 15;
-    let startY = 25; // Aumentado para bajar la tabla
 
     const addHeaderFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
         let currentY = 15;
@@ -117,26 +116,21 @@ export default function ListingsPage() {
 
     // Hack para calcular el número total de páginas
     const tempDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-    let tempY = startY;
-     if (data.description) {
-        const descriptionLines = tempDoc.splitTextToSize(data.description, doc.internal.pageSize.width - (pageMargin * 2));
-        tempY += (descriptionLines.length * 5) + 13;
-    } else {
-        tempY += 10;
-    }
-    autoTable(tempDoc, { head, body, startY: tempY });
+    autoTable(tempDoc, { head, body });
     const totalPages = tempDoc.internal.getNumberOfPages();
     
-    const columnStyles: { [key: number]: any } = { 0: { cellWidth: 'auto' } };
+    // --- LÓGICA DE AJUSTE DE COLUMNAS ---
+    const columnStyles: { [key: number]: any } = {};
     
-    // Calculate employee column width based on the longest name
+    // 1. Calculate employee column width based on the longest name, then halve it.
     const employeeColWidth = Math.max(
         doc.getStringUnitWidth('Empleado') * doc.getFontSize() / doc.internal.scaleFactor,
         ...body.map(row => doc.getStringUnitWidth(String(row[0])) * doc.getFontSize() / doc.internal.scaleFactor)
-    ) + 6; // Add some padding
+    ) / 2 + 6; // Add some padding
 
     columnStyles[0] = { cellWidth: employeeColWidth };
     
+    // 2. Distribute remaining width among other columns
     const remainingWidth = doc.internal.pageSize.width - (pageMargin * 2) - employeeColWidth;
     const otherColumnsCount = data.columns.length;
     const otherColumnsWidth = otherColumnsCount > 0 ? remainingWidth / otherColumnsCount : 0;
@@ -144,22 +138,21 @@ export default function ListingsPage() {
     for (let i = 1; i <= otherColumnsCount; i++) {
         columnStyles[i] = { cellWidth: otherColumnsWidth };
     }
-
+    // --- FIN DE LÓGICA DE AJUSTE ---
 
     autoTable(doc, {
         head,
         body,
-        startY: startY,
         theme: 'grid',
         pageBreak: 'auto',
-        margin: { left: pageMargin, right: pageMargin, top: 15, bottom: 20 }, // Aumentado el margen inferior
+        margin: { left: pageMargin, right: pageMargin, bottom: 20 },
         headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
         columnStyles: columnStyles,
         didDrawCell: (data) => {
             if (data.section === 'body' && data.column.index > 0) {
                 const columnDef = form.getValues('columns')[data.column.index - 1];
                 if (columnDef.type === 'checkbox') {
-                    data.cell.text = []; // Clear original text
+                    data.cell.text = [];
                     doc.setFontSize(8);
                     const cell = data.cell;
                     const options = (columnDef.options || '').split(',').map(opt => opt.trim()).filter(Boolean);
@@ -178,7 +171,6 @@ export default function ListingsPage() {
                             doc.text(option, currentX + squareSize + 2, yPos);
                         });
                     } else {
-                        // Si no hay opciones, dibuja un solo cuadrado
                          doc.rect(currentX, yPos - squareSize, squareSize, squareSize);
                     }
                 }
@@ -189,7 +181,15 @@ export default function ListingsPage() {
             // @ts-ignore
             hookData.cursor.y = newStartY;
         },
+        startY: addHeaderFooter(doc, 1, totalPages)
     });
+    
+    // Final pass to ensure footer is on all pages if autoTable creates new ones.
+    for (let i = 1; i <= doc.internal.getNumberOfPages(); i++) {
+        doc.setPage(i);
+        addHeaderFooter(doc, i, doc.internal.getNumberOfPages());
+    }
+
 
     const safeTitle = data.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     doc.save(`listado_${safeTitle}_${format(new Date(), 'yyyyMMdd')}.pdf`);
