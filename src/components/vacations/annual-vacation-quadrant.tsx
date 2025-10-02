@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay } from 'date-fns';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
@@ -15,7 +15,7 @@ import { Users, Clock } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 export function AnnualVacationQuadrant() {
-    const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours } = useDataProvider();
+    const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours, holidays } = useDataProvider();
 
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     const vacationType = useMemo(() => absenceTypes.find(at => at.name === 'Vacaciones'), [absenceTypes]);
@@ -36,7 +36,9 @@ export function AnnualVacationQuadrant() {
     const allEmployees = useMemo(() => {
         if (loading) return [];
         
-        const mainEmployees = employees.map(e => {
+        const mainEmployees = employees
+          .filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
+          .map(e => {
             const activePeriod = e.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
             const weeklyHours = getEffectiveWeeklyHours(activePeriod || null, new Date());
             return {
@@ -222,8 +224,13 @@ export function AnnualVacationQuadrant() {
                         <TableHeader className='sticky top-0 z-20 bg-card'>
                             <TableRow>
                                 <TableHead className="w-48 min-w-48 p-2 text-left sticky left-0 z-10 bg-card">Agrupación</TableHead>
-                                {weeksOfYear.map(week => (
-                                    <TableHead key={week.key} className="w-48 min-w-48 p-1 text-center text-xs font-normal border-l">
+                                {weeksOfYear.map(week => {
+                                    const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                                    const hasHoliday = weekDays.some(day => 
+                                        holidays.some(h => h.date.getTime() === day.getTime() && getISODay(day) !== 7)
+                                    );
+                                    return (
+                                    <TableHead key={week.key} className={cn("w-48 min-w-48 p-1 text-center text-xs font-normal border-l", hasHoliday && "bg-primary/10")}>
                                         <div className='flex flex-col items-center justify-center h-full'>
                                             <span className='font-semibold'>Semana {week.number}</span>
                                             <span className='text-muted-foreground text-[10px]'>
@@ -235,7 +242,7 @@ export function AnnualVacationQuadrant() {
                                             </div>
                                         </div>
                                     </TableHead>
-                                ))}
+                                )})}
                             </TableRow>
                         </TableHeader>
                         <TableBody>
