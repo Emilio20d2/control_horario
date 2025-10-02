@@ -129,10 +129,11 @@ export default function ListingsPage() {
     
     const columnStyles: { [key: number]: any } = { 0: { cellWidth: 'auto' } };
     
+    // Calculate employee column width based on the longest name
     const employeeColWidth = Math.max(
         doc.getStringUnitWidth('Empleado') * doc.getFontSize() / doc.internal.scaleFactor,
         ...body.map(row => doc.getStringUnitWidth(String(row[0])) * doc.getFontSize() / doc.internal.scaleFactor)
-    ) + 6;
+    ) + 6; // Add some padding
 
     columnStyles[0] = { cellWidth: employeeColWidth };
     
