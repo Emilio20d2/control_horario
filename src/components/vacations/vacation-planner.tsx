@@ -10,15 +10,16 @@ import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@
 import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
-import type { Employee, EmploymentPeriod, ScheduledAbsence } from '@/lib/types';
-import { format, isAfter, parseISO, addDays, differenceInDays } from 'date-fns';
+import type { Employee, EmploymentPeriod } from '@/lib/types';
+import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, startOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Skeleton } from '../ui/skeleton';
+import { setDocument } from '@/lib/services/firestoreService';
 
 export function VacationPlanner() {
-    const { employees, absenceTypes, loading, refreshData, weeklyRecords } = useDataProvider();
+    const { employees, absenceTypes, loading, refreshData, weeklyRecords, getWeekId } = useDataProvider();
     const { toast } = useToast();
 
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
@@ -66,18 +67,36 @@ export function VacationPlanner() {
         }
     };
     
-    const handleDeletePeriod = async (absenceId: string) => {
-        const activePeriod = getActivePeriodForEmployee(selectedEmployee);
-         if (!activePeriod || !selectedEmployee) return;
-
+    const handleDeletePeriod = async (period: { startDate: Date, endDate: Date }) => {
+        if (!selectedEmployeeId || !vacationAbsenceType) return;
+    
         setIsLoading(true);
         try {
-            await deleteScheduledAbsence(selectedEmployeeId, activePeriod.id, absenceId, selectedEmployee);
+            const daysInPeriod = eachDayOfInterval({ start: period.startDate, end: period.endDate });
+            const weekIdsToUpdate = new Set<string>(daysInPeriod.map(day => getWeekId(day)));
+    
+            for (const weekId of weekIdsToUpdate) {
+                const weekRecord = weeklyRecords[weekId];
+                if (weekRecord && weekRecord.weekData[selectedEmployeeId]) {
+                    const employeeWeekData = JSON.parse(JSON.stringify(weekRecord.weekData[selectedEmployeeId]));
+    
+                    daysInPeriod.forEach(day => {
+                        const dayKey = format(day, 'yyyy-MM-dd');
+                        if (employeeWeekData.days[dayKey] && employeeWeekData.days[dayKey].absence === vacationAbsenceType.abbreviation) {
+                            employeeWeekData.days[dayKey].absence = 'ninguna';
+                            employeeWeekData.days[dayKey].absenceHours = 0;
+                        }
+                    });
+                    
+                    await setDocument(`weeklyRecords/${weekId}/weekData`, selectedEmployeeId, employeeWeekData, { merge: true });
+                }
+            }
+    
             toast({ title: 'Periodo de vacaciones eliminado', variant: 'destructive' });
             refreshData();
         } catch (error) {
             console.error(error);
-            toast({ title: 'Error', description: 'No se pudo eliminar el periodo.', variant: 'destructive' });
+            toast({ title: 'Error', description: 'No se pudo eliminar el periodo de vacaciones.', variant: 'destructive' });
         } finally {
             setIsLoading(false);
         }
@@ -93,8 +112,8 @@ export function VacationPlanner() {
         if (activePeriod?.scheduledAbsences) {
             activePeriod.scheduledAbsences.forEach(absence => {
                 if (absence.absenceTypeId === vacationAbsenceType.id && absence.endDate) {
-                    let currentDate = absence.startDate;
-                    while (currentDate <= absence.endDate) {
+                    let currentDate = startOfDay(absence.startDate);
+                    while (currentDate <= startOfDay(absence.endDate)) {
                         allVacationDays.push(currentDate);
                         currentDate = addDays(currentDate, 1);
                     }
@@ -119,21 +138,30 @@ export function VacationPlanner() {
         const uniqueSortedDays = [...new Set(allVacationDays.map(d => d.getTime()))].map(t => new Date(t)).sort((a,b) => a.getTime() - b.getTime());
 
         // 4. Group consecutive days into periods
-        const periods: { id: string; startDate: Date; endDate: Date }[] = [];
+        const periods: { id: string; startDate: Date; endDate: Date; isConfirmed: boolean; }[] = [];
         if (uniqueSortedDays.length === 0) return periods;
 
         let currentPeriodStart = uniqueSortedDays[0];
         for (let i = 1; i < uniqueSortedDays.length; i++) {
             if (differenceInDays(uniqueSortedDays[i], uniqueSortedDays[i-1]) > 1) {
-                periods.push({ id: `period-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: uniqueSortedDays[i-1]});
+                const periodEndDate = uniqueSortedDays[i-1];
+                const daysInPeriod = eachDayOfInterval({ start: currentPeriodStart, end: periodEndDate });
+                const isConfirmed = daysInPeriod.some(day => weeklyRecords[getWeekId(day)]?.weekData[selectedEmployee.id]?.confirmed);
+                
+                periods.push({ id: `period-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: periodEndDate, isConfirmed });
                 currentPeriodStart = uniqueSortedDays[i];
             }
         }
-        periods.push({ id: `period-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: uniqueSortedDays[uniqueSortedDays.length - 1] });
+        
+        const lastPeriodEndDate = uniqueSortedDays[uniqueSortedDays.length - 1];
+        const lastPeriodDays = eachDayOfInterval({ start: currentPeriodStart, end: lastPeriodEndDate });
+        const isLastPeriodConfirmed = lastPeriodDays.some(day => weeklyRecords[getWeekId(day)]?.weekData[selectedEmployee.id]?.confirmed);
 
-        return periods;
+        periods.push({ id: `period-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: lastPeriodEndDate, isConfirmed: isLastPeriodConfirmed });
 
-    }, [selectedEmployee, vacationAbsenceType, weeklyRecords]);
+        return periods.sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
+
+    }, [selectedEmployee, vacationAbsenceType, weeklyRecords, getWeekId]);
     
     if(loading) return <Skeleton className="h-96 w-full" />;
 
@@ -158,7 +186,7 @@ export function VacationPlanner() {
                     </Select>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                     <div className="flex flex-col items-center">
                         <Calendar
                             mode="range"
@@ -197,11 +225,9 @@ export function VacationPlanner() {
                                                     <TableCell>{format(period.startDate, 'PPP', { locale: es })}</TableCell>
                                                     <TableCell>{format(period.endDate, 'PPP', { locale: es })}</TableCell>
                                                     <TableCell className="text-right">
-                                                        {/* Delete functionality might need to be smarter if periods are from weeklyRecords */}
-                                                        {/* For now, let's assume we can only delete 'scheduled' ones, or none at all from here */}
-                                                        {/* <Button variant="ghost" size="icon" onClick={() => handleDeletePeriod(period.id)} disabled={isLoading}>
+                                                         <Button variant="ghost" size="icon" onClick={() => handleDeletePeriod(period)} disabled={isLoading || period.isConfirmed}>
                                                             <Trash2 className="h-4 w-4 text-destructive" />
-                                                        </Button> */}
+                                                        </Button>
                                                     </TableCell>
                                                 </TableRow>
                                             ))
