@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -21,7 +22,7 @@ import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export function VacationPlanner() {
-    const { employees, absenceTypes, loading, refreshData, weeklyRecords, getWeekId } = useDataProvider();
+    const { employees, absenceTypes, holidays, loading, refreshData, weeklyRecords, getWeekId } = useDataProvider();
     const { toast } = useToast();
 
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
@@ -173,6 +174,25 @@ export function VacationPlanner() {
 
     }, [selectedEmployee, vacationAbsenceType, weeklyRecords, getWeekId]);
     
+    const openingHolidays = holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date);
+    const otherHolidays = holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date);
+
+    const modifiers = {
+        opening: openingHolidays,
+        other: otherHolidays,
+    };
+
+    const modifiersStyles = {
+        opening: {
+            backgroundColor: '#a7f3d0', // green-200
+            color: '#065f46', // green-800
+        },
+        other: {
+            backgroundColor: '#fecaca', // red-200
+            color: '#991b1b', // red-800
+        }
+    };
+    
     if(loading) return <Skeleton className="h-96 w-full" />;
 
     return (
@@ -205,6 +225,8 @@ export function VacationPlanner() {
                             locale={es}
                             disabled={!selectedEmployeeId || isLoading}
                             className="rounded-md border"
+                            modifiers={modifiers}
+                            modifiersStyles={modifiersStyles}
                         />
                         <Button onClick={handleAddPeriod} disabled={isLoading || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
