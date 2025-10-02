@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, isSameDay } from 'date-fns';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
@@ -227,72 +227,46 @@ export function AnnualVacationQuadrant() {
                     </div>
                 </div>
             </CardHeader>
-            <CardContent>
-                <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-                    <Table className="min-w-full table-fixed border-collapse">
-                        <TableHeader className='sticky top-0 z-20 bg-card'>
-                            <TableRow>
-                                <TableHead className="w-48 min-w-48 p-2 text-left sticky left-0 z-10 bg-card">Agrupación</TableHead>
-                                {weeksOfYear.map(week => {
-                                    const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                                    const hasHoliday = weekDays.some(day => 
-                                        holidays.some(h => h.date.getTime() === day.getTime() && getISODay(day) !== 7)
-                                    );
-                                    return (
-                                    <TableHead key={week.key} className={cn("w-48 min-w-48 p-1 text-center text-xs font-normal border-l", hasHoliday && "bg-primary/10")}>
-                                        <div className='flex flex-col items-center justify-center h-full'>
-                                            <span className='font-semibold'>Semana {week.number}</span>
-                                            <span className='text-muted-foreground text-[10px]'>
-                                                {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
-                                            </span>
-                                            <div className="flex gap-3 mt-1.5 text-[11px] items-center">
-                                                <div className='flex items-center gap-1'><Users className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.employeeCount ?? 0}</div>
-                                                <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
-                                            </div>
+            <CardContent className="overflow-x-auto">
+                <Table className="min-w-full table-fixed border-collapse">
+                    <TableHeader className='sticky top-0 z-20 bg-card'>
+                        <TableRow>
+                            <TableHead className="w-48 min-w-48 p-2 text-left sticky left-0 z-10 bg-card">Agrupación</TableHead>
+                            {weeksOfYear.map(week => {
+                                const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                                const hasHoliday = weekDays.some(day => 
+                                    holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7)
+                                );
+                                return (
+                                <TableHead key={week.key} className={cn("w-48 min-w-48 p-1 text-center text-xs font-normal border-l", hasHoliday && "bg-primary/10")}>
+                                    <div className='flex flex-col items-center justify-center h-full'>
+                                        <span className='font-semibold'>Semana {week.number}</span>
+                                        <span className='text-muted-foreground text-[10px]'>
+                                            {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
+                                        </span>
+                                        <div className="flex gap-3 mt-1.5 text-[11px] items-center">
+                                            <div className='flex items-center gap-1'><Users className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.employeeCount ?? 0}</div>
+                                            <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
                                         </div>
-                                    </TableHead>
-                                )})}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {sortedGroups.map((group, groupIndex) => (
-                                <TableRow key={group.id} className="h-10 align-top bg-muted/30">
-                                    <TableCell className="font-semibold text-sm p-2 sticky left-0 z-10 bg-card border-b">
-                                        {group.name}
-                                    </TableCell>
-                                    {weeksOfYear.map(week => {
-                                         const employeesInGroup = groupedEmployeesByWeek[week.key]?.[group.id] || [];
-                                         const hasEmployees = employeesInGroup.length > 0;
-                                         const bgColor = hasEmployees ? groupColors[groupIndex % groupColors.length] : '';
-                                        return (
-                                            <TableCell 
-                                                key={`${group.id}-${week.key}`} 
-                                                className={cn("w-48 min-w-48 p-1.5 border-l align-top text-xs", bgColor)}
-                                            >
-                                                <div className="flex flex-col gap-1">
-                                                    {employeesInGroup.map(name => (
-                                                        <div key={name} className="truncate p-0.5">{name}</div>
-                                                    ))}
-                                                </div>
-                                            </TableCell>
-                                        )
-                                    })}
-                                </TableRow>
-                            ))}
-                             <TableRow className="h-10 align-top bg-muted/30">
+                                    </div>
+                                </TableHead>
+                            )})}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {sortedGroups.map((group, groupIndex) => (
+                            <TableRow key={group.id} className="h-10 align-top bg-muted/30">
                                 <TableCell className="font-semibold text-sm p-2 sticky left-0 z-10 bg-card border-b">
-                                    Sin Agrupación
+                                    {group.name}
                                 </TableCell>
                                 {weeksOfYear.map(week => {
-                                    const employeesInGroup = groupedEmployeesByWeek[week.key]?.['unassigned'] || [];
-                                    const hasEmployees = employeesInGroup.length > 0;
+                                     const employeesInGroup = groupedEmployeesByWeek[week.key]?.[group.id] || [];
+                                     const hasEmployees = employeesInGroup.length > 0;
+                                     const bgColor = hasEmployees ? groupColors[groupIndex % groupColors.length] : '';
                                     return (
                                         <TableCell 
-                                            key={`unassigned-${week.key}`} 
-                                            className={cn(
-                                                "w-48 min-w-48 p-1.5 border-l align-top text-xs",
-                                                hasEmployees && "bg-gray-300"
-                                            )}
+                                            key={`${group.id}-${week.key}`} 
+                                            className={cn("w-48 min-w-48 p-1.5 border-l align-top text-xs", bgColor)}
                                         >
                                             <div className="flex flex-col gap-1">
                                                 {employeesInGroup.map(name => (
@@ -303,13 +277,36 @@ export function AnnualVacationQuadrant() {
                                     )
                                 })}
                             </TableRow>
-                        </TableBody>
-                    </Table>
-                    <ScrollBar orientation="horizontal" />
-                </ScrollArea>
+                        ))}
+                         <TableRow className="h-10 align-top bg-muted/30">
+                            <TableCell className="font-semibold text-sm p-2 sticky left-0 z-10 bg-card border-b">
+                                Sin Agrupación
+                            </TableCell>
+                            {weeksOfYear.map(week => {
+                                const employeesInGroup = groupedEmployeesByWeek[week.key]?.['unassigned'] || [];
+                                const hasEmployees = employeesInGroup.length > 0;
+                                return (
+                                    <TableCell 
+                                        key={`unassigned-${week.key}`} 
+                                        className={cn(
+                                            "w-48 min-w-48 p-1.5 border-l align-top text-xs",
+                                            hasEmployees && "bg-gray-300"
+                                        )}
+                                    >
+                                        <div className="flex flex-col gap-1">
+                                            {employeesInGroup.map(name => (
+                                                <div key={name} className="truncate p-0.5">{name}</div>
+                                            ))}
+                                        </div>
+                                    </TableCell>
+                                )
+                            })}
+                        </TableRow>
+                    </TableBody>
+                </Table>
             </CardContent>
         </Card>
     );
 }
 
-    
+  
