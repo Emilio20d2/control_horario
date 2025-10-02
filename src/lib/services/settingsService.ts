@@ -102,7 +102,17 @@ export const addHolidayEmployee = async (data: Partial<Omit<HolidayEmployee, 'id
 
 export const updateHolidayEmployee = async (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>): Promise<void> => {
     const docRef = doc(db, 'holidayEmployees', id);
-    await updateDoc(docRef, data);
+    
+    // Ensure undefined values are converted to null to prevent Firestore errors
+    const sanitizedData = { ...data };
+    if (sanitizedData.groupId === undefined) {
+        sanitizedData.groupId = null;
+    }
+    if (sanitizedData.workShift === undefined) {
+        sanitizedData.workShift = null;
+    }
+    
+    await updateDoc(docRef, sanitizedData);
 }
 
 export const deleteHolidayEmployee = async (id: string): Promise<void> => {

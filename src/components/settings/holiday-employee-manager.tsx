@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 
 
 export function HolidayEmployeeManager() {
-    const { employees, holidayEmployees, employeeGroups, addHolidayEmployee, updateHolidayEmployee, deleteHolidayEmployee, loading } = useDataProvider();
+    const { employees, holidayEmployees, employeeGroups, addHolidayEmployee, updateHolidayEmployee, deleteHolidayEmployee, loading, getEffectiveWeeklyHours } = useDataProvider();
     const { toast } = useToast();
 
     const [newEmployeeName, setNewEmployeeName] = useState('');
@@ -33,16 +33,43 @@ export function HolidayEmployeeManager() {
     const unifiedEmployees = useMemo(() => {
         if (loading) return [];
         
-        const mainEmployeesWithFlag = employees.map(e => ({...e, isEventual: false}));
+        const mainEmployeesMap = new Map(employees.map(e => [e.id, e]));
 
-        const mainEmployeeNames = new Set(employees.map(e => e.name.trim().toLowerCase()));
+        // Ensure every main employee has a corresponding holidayEmployee entry
+        const synchronizedHolidayEmployees = holidayEmployees.slice();
+        const mainEmployeeIdsInHolidayList = new Set(holidayEmployees.map(he => he.id));
+
+        employees.forEach(mainEmp => {
+            if (!mainEmployeeIdsInHolidayList.has(mainEmp.id)) {
+                // This employee is missing from the holiday list, create a representation for it
+                synchronizedHolidayEmployees.push({
+                    id: mainEmp.id,
+                    name: mainEmp.name,
+                    active: true, // Default to active for reports
+                    groupId: mainEmp.groupId,
+                });
+            }
+        });
         
-        const eventualEmployees = holidayEmployees
-            .filter(he => !mainEmployeeNames.has(he.name.trim().toLowerCase()))
-            .map(e => ({...e, isEventual: true}));
+        return synchronizedHolidayEmployees.map(he => {
+            const mainEmp = mainEmployeesMap.get(he.id);
+            if (mainEmp) {
+                // It's a main employee, use their data as the source of truth
+                const activePeriod = mainEmp.employmentPeriods.find(p => !p.endDate);
+                const weeklyHours = getEffectiveWeeklyHours(activePeriod || null, new Date());
+                return {
+                    ...he,
+                    name: mainEmp.name,
+                    groupId: mainEmp.groupId,
+                    workShift: `${weeklyHours.toFixed(2)}h`,
+                    isEventual: false,
+                };
+            }
+            // It's an eventual employee
+            return { ...he, isEventual: true };
+        }).sort((a, b) => a.name.localeCompare(b.name));
 
-        return [...mainEmployeesWithFlag, ...eventualEmployees].sort((a, b) => a.name.localeCompare(b.name));
-    }, [loading, employees, holidayEmployees]);
+    }, [loading, employees, holidayEmployees, getEffectiveWeeklyHours]);
 
     const handleAddEmployee = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -54,8 +81,8 @@ export function HolidayEmployeeManager() {
         try {
             await addHolidayEmployee({
                 name: newEmployeeName.trim(),
-                groupId: newEmployeeGroupId || undefined,
-                workShift: newEmployeeWorkShift || undefined,
+                groupId: newEmployeeGroupId || null,
+                workShift: newEmployeeWorkShift || null,
             });
             toast({ title: 'Empleado añadido', description: `Se ha añadido a ${newEmployeeName.trim()} a la lista.` });
             setNewEmployeeName('');
@@ -88,8 +115,8 @@ export function HolidayEmployeeManager() {
         try {
             await updateHolidayEmployee(editingId, {
                  name: editingEmployee.name.trim(),
-                 groupId: editingEmployee.groupId || undefined,
-                 workShift: editingEmployee.workShift || undefined,
+                 groupId: editingEmployee.groupId || null,
+                 workShift: editingEmployee.workShift || null,
             });
             toast({ title: 'Empleado actualizado', description: 'Los datos del empleado han sido actualizados.' });
             handleCancelEdit();
@@ -128,7 +155,7 @@ export function HolidayEmployeeManager() {
             <CardHeader>
                 <CardTitle>Gestionar Empleados para Informes</CardTitle>
                 <CardDescription>
-                    La lista combina empleados fijos (no editables aquí) y empleados eventuales que puedes gestionar a continuación.
+                    Esta lista combina empleados fijos (no editables aquí) y eventuales. Usa el interruptor "Activo" para incluirlos o no en los informes.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -192,7 +219,7 @@ export function HolidayEmployeeManager() {
                                 return (
                                 <TableRow key={emp.id} className={cn(!emp.isEventual && "bg-muted/50")}>
                                     <TableCell className="font-medium">
-                                        {isEditingCurrent ? (
+                                        {isEditingCurrent && emp.isEventual ? (
                                             <Input 
                                                 value={editingEmployee.name || ''} 
                                                 onChange={(e) => setEditingEmployee(prev => ({...prev, name: e.target.value}))}
@@ -203,7 +230,7 @@ export function HolidayEmployeeManager() {
                                         )}
                                     </TableCell>
                                     <TableCell>
-                                         {isEditingCurrent ? (
+                                         {isEditingCurrent && emp.isEventual ? (
                                              <Select value={editingEmployee.groupId || ''} onValueChange={v => setEditingEmployee(prev => ({...prev, groupId: v}))}>
                                                 <SelectTrigger className="h-8"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                                                 <SelectContent>
@@ -215,23 +242,21 @@ export function HolidayEmployeeManager() {
                                          )}
                                     </TableCell>
                                      <TableCell>
-                                         {isEditingCurrent ? (
+                                         {isEditingCurrent && emp.isEventual ? (
                                              <Input 
                                                 value={editingEmployee.workShift || ''} 
                                                 onChange={(e) => setEditingEmployee(prev => ({...prev, workShift: e.target.value}))}
                                                 className="h-8"
                                              />
                                          ) : (
-                                            emp.isEventual ? emp.workShift : <span className="text-muted-foreground">Ver ficha</span>
+                                            emp.workShift || <span className="text-muted-foreground">N/A</span>
                                          )}
                                     </TableCell>
                                     <TableCell className="text-center">
-                                        {isEditingCurrent || !emp.isEventual ? null : (
-                                            <Switch
-                                                checked={(emp as HolidayEmployee).active}
-                                                onCheckedChange={() => handleToggleActive(emp as HolidayEmployee)}
-                                            />
-                                        )}
+                                        <Switch
+                                            checked={(emp as HolidayEmployee).active}
+                                            onCheckedChange={() => handleToggleActive(emp as HolidayEmployee)}
+                                        />
                                     </TableCell>
                                     <TableCell className="text-right">
                                         {isEditingCurrent ? (
