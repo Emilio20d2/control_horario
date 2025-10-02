@@ -85,8 +85,10 @@ export default function ListingsPage() {
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     const pageMargin = 15;
 
+    let initialY = pageMargin;
+
     const addHeaderFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
-        let currentY = 15;
+        let currentY = pageMargin;
         doc.setFontSize(16).setFont('helvetica', 'bold');
         doc.text(data.title.toUpperCase(), pageMargin, currentY);
         currentY += 8;
@@ -104,7 +106,7 @@ export default function ListingsPage() {
         doc.setFontSize(10).setFont('helvetica', 'normal');
         doc.text(pageText, doc.internal.pageSize.width - pageMargin, doc.internal.pageSize.height - 10, { align: 'right' });
         
-        return currentY;
+        initialY = currentY; // Update initialY for the table
     };
 
     const head = [['Empleado', ...data.columns.map(c => c.name)]];
@@ -116,21 +118,18 @@ export default function ListingsPage() {
 
     // Hack para calcular el número total de páginas
     const tempDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-    autoTable(tempDoc, { head, body });
+    addHeaderFooter(tempDoc, 1, 1);
+    autoTable(tempDoc, { head, body, startY: initialY });
     const totalPages = tempDoc.internal.getNumberOfPages();
     
     // --- LÓGICA DE AJUSTE DE COLUMNAS ---
-    const columnStyles: { [key: number]: any } = {};
-    
-    // 1. Calculate employee column width based on the longest name, then halve it.
     const employeeColWidth = Math.max(
         doc.getStringUnitWidth('Empleado') * doc.getFontSize() / doc.internal.scaleFactor,
         ...body.map(row => doc.getStringUnitWidth(String(row[0])) * doc.getFontSize() / doc.internal.scaleFactor)
     ) / 2 + 6; // Add some padding
-
-    columnStyles[0] = { cellWidth: employeeColWidth };
     
-    // 2. Distribute remaining width among other columns
+    const columnStyles: { [key: number]: any } = { 0: { cellWidth: employeeColWidth } };
+    
     const remainingWidth = doc.internal.pageSize.width - (pageMargin * 2) - employeeColWidth;
     const otherColumnsCount = data.columns.length;
     const otherColumnsWidth = otherColumnsCount > 0 ? remainingWidth / otherColumnsCount : 0;
@@ -140,11 +139,14 @@ export default function ListingsPage() {
     }
     // --- FIN DE LÓGICA DE AJUSTE ---
 
+    addHeaderFooter(doc, 1, totalPages);
+
     autoTable(doc, {
         head,
         body,
         theme: 'grid',
         pageBreak: 'auto',
+        startY: initialY,
         margin: { left: pageMargin, right: pageMargin, bottom: 20 },
         headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
         columnStyles: columnStyles,
@@ -157,31 +159,31 @@ export default function ListingsPage() {
                     const cell = data.cell;
                     const options = (columnDef.options || '').split(',').map(opt => opt.trim()).filter(Boolean);
                     const squareSize = 4;
-                    let currentX = cell.x + 3;
-                    const yPos = cell.y + cell.height / 2 + 1;
-
+                    const yPos = cell.y + cell.height / 2; // Centered vertically
+                    
                     doc.setLineWidth(0.5);
 
                     if (options.length > 0) {
-                        options.forEach((option, index) => {
-                            if (index > 0) {
-                               currentX += 20;
-                            }
-                            doc.rect(currentX, yPos - squareSize, squareSize, squareSize);
-                            doc.text(option, currentX + squareSize + 2, yPos);
+                        const totalOptionsWidth = options.reduce((acc, opt) => acc + (doc.getStringUnitWidth(opt) * 8 / doc.internal.scaleFactor) + 15, 0);
+                        let startX = cell.x + (cell.width - totalOptionsWidth) / 2 + 5;
+
+                        options.forEach((option) => {
+                            doc.rect(startX, yPos - squareSize / 2, squareSize, squareSize);
+                            doc.text(option, startX + squareSize + 2, yPos, { baseline: 'middle' });
+                            startX += (doc.getStringUnitWidth(option) * 8 / doc.internal.scaleFactor) + 15;
                         });
                     } else {
-                         doc.rect(currentX, yPos - squareSize, squareSize, squareSize);
+                         const xPos = cell.x + cell.width / 2 - squareSize / 2;
+                         doc.rect(xPos, yPos - squareSize / 2, squareSize, squareSize);
                     }
                 }
             }
         },
         didDrawPage: (hookData) => {
-            const newStartY = addHeaderFooter(doc, hookData.pageNumber, totalPages);
-            // @ts-ignore
-            hookData.cursor.y = newStartY;
+            if(hookData.pageNumber > 1) {
+              addHeaderFooter(doc, hookData.pageNumber, totalPages);
+            }
         },
-        startY: addHeaderFooter(doc, 1, totalPages)
     });
     
     // Final pass to ensure footer is on all pages if autoTable creates new ones.
