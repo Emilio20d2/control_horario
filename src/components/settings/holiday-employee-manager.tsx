@@ -126,9 +126,25 @@ export function HolidayEmployeeManager() {
         }
     };
 
-    const handleToggleActive = async (employee: HolidayEmployee) => {
+    const handleToggleActive = async (employee: HolidayEmployee & { isEventual: boolean; workShift?: string }) => {
         try {
-            await updateHolidayEmployee(employee.id, { active: !employee.active });
+            const holidayEmpExists = holidayEmployees.some(he => he.id === employee.id);
+            const newActiveState = !employee.active;
+    
+            if (!holidayEmpExists && !employee.isEventual) {
+                // If it's a main employee without a holidayEmployee record, create it.
+                await addHolidayEmployee({
+                    id: employee.id, // Use the same ID
+                    name: employee.name,
+                    active: newActiveState,
+                    groupId: employee.groupId,
+                    workShift: employee.workShift
+                });
+            } else {
+                // Otherwise, just update the existing record.
+                await updateHolidayEmployee(employee.id, { active: newActiveState });
+            }
+    
             toast({ title: 'Estado actualizado', description: `El estado de ${employee.name} ha sido actualizado.` });
         } catch (error) {
             console.error(error);
@@ -155,7 +171,7 @@ export function HolidayEmployeeManager() {
             <CardHeader>
                 <CardTitle>Gestionar Empleados para Informes</CardTitle>
                 <CardDescription>
-                    Esta lista combina empleados fijos (no editables aquí) y eventuales. Usa el interruptor "Activo" para incluirlos o no en los informes.
+                    Esta lista combina empleados fijos activos y eventuales. Usa el interruptor "Activo" para incluirlos o no en los informes de festivos y listados personalizados.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -254,8 +270,8 @@ export function HolidayEmployeeManager() {
                                     </TableCell>
                                     <TableCell className="text-center">
                                         <Switch
-                                            checked={(emp as HolidayEmployee).active}
-                                            onCheckedChange={() => handleToggleActive(emp as HolidayEmployee)}
+                                            checked={emp.active}
+                                            onCheckedChange={() => handleToggleActive(emp)}
                                         />
                                     </TableCell>
                                     <TableCell className="text-right">
