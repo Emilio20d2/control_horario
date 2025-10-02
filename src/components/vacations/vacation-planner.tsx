@@ -70,44 +70,55 @@ export function VacationPlanner() {
         }
     };
     
-    const handleDeletePeriod = async (period: { startDate: Date, endDate: Date }) => {
-        if (!selectedEmployeeId || !vacationAbsenceType) return;
+    const handleDeletePeriod = async (periodId: string) => {
+        if (!selectedEmployee || !vacationAbsenceType) return;
     
         setIsLoading(true);
         try {
-            const batch = writeBatch(db);
-            const daysInPeriod = eachDayOfInterval({ start: period.startDate, end: period.endDate });
+            const activePeriod = getActivePeriodForEmployee(selectedEmployee);
+            if (!activePeriod) throw new Error("No active period found for employee.");
     
-            const updatesByWeek: Record<string, Record<string, any>> = {};
+            const scheduledAbsenceToDelete = activePeriod.scheduledAbsences?.find(a => a.id === periodId);
     
-            for (const day of daysInPeriod) {
-                const weekId = getWeekId(day);
-                const dayKey = format(day, 'yyyy-MM-dd');
-    
-                if (!updatesByWeek[weekId]) {
-                    updatesByWeek[weekId] = {};
+            if (scheduledAbsenceToDelete) {
+                // It's a long-term scheduled absence, delete it from the employee document
+                await deleteScheduledAbsence(selectedEmployee.id, activePeriod.id, periodId, selectedEmployee);
+                toast({ title: 'Periodo de vacaciones eliminado', description: 'Se ha eliminado la ausencia programada de la ficha del empleado.', variant: 'destructive' });
+            } else {
+                // It's a vacation period aggregated from weekly records
+                const periodToDelete = vacationPeriods.find(p => p.id === periodId);
+                if (!periodToDelete) throw new Error("Period to delete not found.");
+
+                const batch = writeBatch(db);
+                const daysInPeriod = eachDayOfInterval({ start: periodToDelete.startDate, end: periodToDelete.endDate });
+        
+                const updatesByWeek: Record<string, Record<string, any>> = {};
+        
+                for (const day of daysInPeriod) {
+                    const weekId = getWeekId(day);
+                    const dayKey = format(day, 'yyyy-MM-dd');
+        
+                    if (!updatesByWeek[weekId]) {
+                        updatesByWeek[weekId] = {};
+                    }
+        
+                    updatesByWeek[weekId][`weekData.${selectedEmployee.id}.days.${dayKey}.absence`] = 'ninguna';
+                    updatesByWeek[weekId][`weekData.${selectedEmployee.id}.days.${dayKey}.absenceHours`] = 0;
                 }
-    
-                updatesByWeek[weekId][`weekData.${selectedEmployeeId}.days.${dayKey}.absence`] = 'ninguna';
-                updatesByWeek[weekId][`weekData.${selectedEmployeeId}.days.${dayKey}.absenceHours`] = 0;
-            }
-    
-            for (const weekId in updatesByWeek) {
-                const weekRecord = weeklyRecords[weekId];
-                // Proceed only if the record exists and is not confirmed
-                if (weekRecord && weekRecord.weekData[selectedEmployeeId] && !weekRecord.weekData[selectedEmployeeId].confirmed) {
+        
+                for (const weekId in updatesByWeek) {
                     const docRef = doc(db, "weeklyRecords", weekId);
                     batch.update(docRef, updatesByWeek[weekId]);
                 }
+                
+                await batch.commit();
+                toast({ title: 'Días de vacaciones eliminados', description: 'Los días han sido borrados de los registros semanales no confirmados.', variant: 'destructive' });
             }
             
-            await batch.commit();
-    
-            toast({ title: 'Periodo de vacaciones eliminado', variant: 'destructive' });
             refreshData();
         } catch (error) {
-            console.error(error);
-            toast({ title: 'Error', description: 'No se pudo eliminar el periodo de vacaciones.', variant: 'destructive' });
+            console.error("Error deleting vacation period:", error);
+            toast({ title: 'Error', description: error instanceof Error ? error.message : 'No se pudo eliminar el periodo de vacaciones.', variant: 'destructive' });
         } finally {
             setIsLoading(false);
         }
@@ -116,37 +127,33 @@ export function VacationPlanner() {
     const vacationPeriods = useMemo(() => {
         if (!selectedEmployee || !vacationAbsenceType) return [];
         
-        const allVacationDays: Date[] = [];
+        const allVacationDays = new Set<string>();
 
         // 1. Get from scheduled absences
         const activePeriod = getActivePeriodForEmployee(selectedEmployee);
         if (activePeriod?.scheduledAbsences) {
             activePeriod.scheduledAbsences.forEach(absence => {
                 if (absence.absenceTypeId === vacationAbsenceType.id && absence.endDate) {
-                    let currentDate = startOfDay(absence.startDate);
-                    while (currentDate <= startOfDay(absence.endDate)) {
-                        allVacationDays.push(currentDate);
-                        currentDate = addDays(currentDate, 1);
-                    }
+                    eachDayOfInterval({ start: startOfDay(absence.startDate), end: startOfDay(absence.endDate) })
+                        .forEach(d => allVacationDays.add(format(d, 'yyyy-MM-dd')));
                 }
             });
         }
 
         // 2. Get from weekly records
         for (const weekId in weeklyRecords) {
-            const weekRecord = weeklyRecords[weekId];
-            const empData = weekRecord.weekData[selectedEmployee.id];
+            const empData = weeklyRecords[weekId]?.weekData?.[selectedEmployee.id];
             if (empData?.days) {
                 for (const dayStr in empData.days) {
                     if (empData.days[dayStr].absence === vacationAbsenceType.abbreviation) {
-                        allVacationDays.push(parseISO(dayStr));
+                        allVacationDays.add(dayStr);
                     }
                 }
             }
         }
         
         // 3. Remove duplicates and sort
-        const uniqueSortedDays = [...new Set(allVacationDays.map(d => d.getTime()))].map(t => new Date(t)).sort((a,b) => a.getTime() - b.getTime());
+        const uniqueSortedDays = Array.from(allVacationDays).map(d => parseISO(d)).sort((a,b) => a.getTime() - b.getTime());
 
         // 4. Group consecutive days into periods
         const periods: { id: string; startDate: Date; endDate: Date; isConfirmed: boolean; }[] = [];
@@ -159,7 +166,10 @@ export function VacationPlanner() {
                 const daysInPeriod = eachDayOfInterval({ start: currentPeriodStart, end: periodEndDate });
                 const isConfirmed = daysInPeriod.some(day => weeklyRecords[getWeekId(day)]?.weekData[selectedEmployee.id]?.confirmed);
                 
-                periods.push({ id: `period-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: periodEndDate, isConfirmed });
+                // Check if this period corresponds to a scheduled absence
+                const scheduledAbsence = activePeriod?.scheduledAbsences?.find(sa => isSameDay(sa.startDate, currentPeriodStart) && sa.endDate && isSameDay(sa.endDate, periodEndDate));
+                
+                periods.push({ id: scheduledAbsence?.id || `agg-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: periodEndDate, isConfirmed });
                 currentPeriodStart = uniqueSortedDays[i];
             }
         }
@@ -167,8 +177,9 @@ export function VacationPlanner() {
         const lastPeriodEndDate = uniqueSortedDays[uniqueSortedDays.length - 1];
         const lastPeriodDays = eachDayOfInterval({ start: currentPeriodStart, end: lastPeriodEndDate });
         const isLastPeriodConfirmed = lastPeriodDays.some(day => weeklyRecords[getWeekId(day)]?.weekData[selectedEmployee.id]?.confirmed);
+        const lastScheduledAbsence = activePeriod?.scheduledAbsences?.find(sa => sa.endDate && isSameDay(sa.startDate, currentPeriodStart) && isSameDay(sa.endDate, lastPeriodEndDate));
 
-        periods.push({ id: `period-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: lastPeriodEndDate, isConfirmed: isLastPeriodConfirmed });
+        periods.push({ id: lastScheduledAbsence?.id || `agg-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: lastPeriodEndDate, isConfirmed: isLastPeriodConfirmed });
 
         return periods.sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
 
@@ -257,7 +268,7 @@ export function VacationPlanner() {
                                                     <TableCell>{format(period.startDate, 'PPP', { locale: es })}</TableCell>
                                                     <TableCell>{format(period.endDate, 'PPP', { locale: es })}</TableCell>
                                                     <TableCell className="text-right">
-                                                         <Button variant="ghost" size="icon" onClick={() => handleDeletePeriod(period)} disabled={isLoading || period.isConfirmed}>
+                                                         <Button variant="ghost" size="icon" onClick={() => handleDeletePeriod(period.id)} disabled={isLoading || period.isConfirmed}>
                                                             <Trash2 className="h-4 w-4 text-destructive" />
                                                         </Button>
                                                     </TableCell>
