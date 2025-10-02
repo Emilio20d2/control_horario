@@ -207,107 +207,105 @@ export function AnnualVacationQuadrant() {
 
     const handleGeneratePdf = () => {
         setIsGeneratingPdf(true);
-        const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-        const pageMargin = 10;
-        const pageWidth = doc.internal.pageSize.width;
-        const tableWidth = pageWidth - (pageMargin * 2);
-        
-        const head = [
-            ['Agrupación'],
-            ...weeksOfYear.map(week => [`S${week.number}\n${format(week.start, 'dd/MM')}`])
-        ];
-        
-        const body = sortedGroups.map((group, groupIndex) => {
-            const rowData = [group.name];
-            weeksOfYear.forEach(week => {
-                const employeesInGroup = groupedEmployeesByWeek[week.key]?.[group.id] || [];
-                rowData.push(employeesInGroup.join('\n'));
-            });
-            return rowData;
-        });
-        
-        // Add unassigned group row
-        const unassignedRow: string[] = ['Sin Agrupación'];
-        weeksOfYear.forEach(week => {
-            const employeesInGroup = groupedEmployeesByWeek[week.key]?.['unassigned'] || [];
-            unassignedRow.push(employeesInGroup.join('\n'));
-        });
-        body.push(unassignedRow);
+        try {
+            const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+            const pageMargin = 10;
+            const pageWidth = doc.internal.pageSize.width;
+            const availableWidth = pageWidth - (pageMargin * 2);
+            
+            const firstColWidth = 35;
+            const weekColWidth = 25;
+            
+            const colsPerPage = Math.floor((availableWidth - firstColWidth) / weekColWidth);
+            const totalWeekCols = weeksOfYear.length;
+            const numPages = Math.ceil(totalWeekCols / colsPerPage);
 
-        const firstColumnWidth = 30;
-        const otherColumnCount = head.length -1;
-        const otherColumnWidth = (tableWidth - firstColumnWidth) / otherColumnCount;
+            const allRows = [
+                ...sortedGroups.map(g => ({...g, isUnassigned: false})),
+                { id: 'unassigned', name: 'Sin Agrupación', isUnassigned: true }
+            ];
 
-        const columnStyles: { [key: number]: any } = {
-            0: { cellWidth: firstColumnWidth, fontStyle: 'bold' }
-        };
-        for (let i = 1; i <= otherColumnCount; i++) {
-            columnStyles[i] = { cellWidth: otherColumnWidth };
-        }
+            for (let pageIndex = 0; pageIndex < numPages; pageIndex++) {
+                if (pageIndex > 0) {
+                    doc.addPage();
+                }
 
+                const startColIndex = pageIndex * colsPerPage;
+                const endColIndex = Math.min(startColIndex + colsPerPage, totalWeekCols);
+                const currentWeeks = weeksOfYear.slice(startColIndex, endColIndex);
 
-        autoTable(doc, {
-            head: [head.flat()],
-            body: body,
-            startY: 20,
-            theme: 'grid',
-            pageBreak: 'auto',
-            styles: {
-                fontSize: 6,
-                cellPadding: 1.5,
-                lineColor: '#d1d5db',
-                lineWidth: 0.1,
-                valign: 'middle',
-            },
-            headStyles: {
-                fillColor: '#2563eb', // primary color
-                textColor: '#ffffff',
-                halign: 'center',
-                valign: 'middle',
-                fontSize: 7,
-            },
-            didDrawPage: (data) => {
-                // Header
-                doc.setFontSize(16);
-                doc.setFont('helvetica', 'bold');
-                doc.text(`Cuadrante Anual de Vacaciones - ${selectedYear}`, pageMargin, 15);
+                const head = [
+                    'Agrupación',
+                    ...currentWeeks.map(week => `S${week.number}\n${format(week.start, 'dd/MM')}`)
+                ];
 
-                // Footer
-                const pageCount = doc.internal.getNumberOfPages();
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'normal');
-                doc.text(`Página ${data.pageNumber} de ${pageCount}`, doc.internal.pageSize.width - pageMargin, doc.internal.pageSize.height - 10, { align: 'right' });
-            },
-            didParseCell: (data) => {
-                if (data.section === 'body') {
-                    if (data.column.index === 0) {
-                        const groupIndex = data.row.index;
-                         if (groupIndex < sortedGroups.length) {
-                             data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
-                        } else {
-                            data.cell.styles.fillColor = '#e5e7eb'; // gray-200 for unassigned
-                        }
-                    } else {
-                        // Color holiday columns
-                        const weekIndex = data.column.index - 1;
-                        if (weekIndex >= 0 && weekIndex < weeksOfYear.length) {
-                            const week = weeksOfYear[weekIndex];
-                            const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                            const hasHoliday = weekDays.some(day => 
-                                holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7)
-                            );
-                            if(hasHoliday && !data.cell.text[0]) {
-                                data.cell.styles.fillColor = '#bfdbfe'; // primary/10
+                const body = allRows.map(group => {
+                    const rowData = [group.name];
+                    currentWeeks.forEach(week => {
+                        const groupId = group.isUnassigned ? 'unassigned' : group.id;
+                        const employeesInGroup = groupedEmployeesByWeek[week.key]?.[groupId] || [];
+                        rowData.push(employeesInGroup.join('\n'));
+                    });
+                    return rowData;
+                });
+                
+                autoTable(doc, {
+                    head: [head],
+                    body: body,
+                    startY: 20,
+                    theme: 'grid',
+                    styles: { fontSize: 6, cellPadding: 1.5, lineColor: '#d1d5db', lineWidth: 0.1, valign: 'middle' },
+                    headStyles: { fillColor: '#2563eb', textColor: '#ffffff', halign: 'center', valign: 'middle', fontSize: 7 },
+                    columnStyles: { 0: { cellWidth: firstColWidth, fontStyle: 'bold' } },
+                    didDrawPage: (data) => {
+                        doc.setFontSize(16);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text(`Cuadrante Anual de Vacaciones - ${selectedYear}`, pageMargin, 15);
+                        doc.setFontSize(10);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`Página ${pageIndex + 1} de ${numPages}`, doc.internal.pageSize.width - pageMargin, doc.internal.pageSize.height - 10, { align: 'right' });
+                    },
+                    didParseCell: (data) => {
+                        if (data.section === 'body') {
+                            const group = allRows[data.row.index];
+                            if (data.column.index === 0) {
+                                if (group.isUnassigned) {
+                                    data.cell.styles.fillColor = '#e5e7eb';
+                                } else {
+                                    const groupIndex = sortedGroups.findIndex(g => g.id === group.id);
+                                    if (groupIndex !== -1) {
+                                        data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
+                                    }
+                                }
+                            } else {
+                                const weekIndex = startColIndex + data.column.index - 1;
+                                if (weekIndex < weeksOfYear.length) {
+                                    const week = weeksOfYear[weekIndex];
+                                    const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                                    const hasHoliday = weekDays.some(day => 
+                                        holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7)
+                                    );
+                                    if(hasHoliday && !data.cell.text[0]) {
+                                        data.cell.styles.fillColor = '#bfdbfe';
+                                    }
+                                }
                             }
                         }
-                    }
-                }
-            },
-            columnStyles: columnStyles,
-        });
-        
-        doc.save(`cuadrante_vacaciones_${selectedYear}.pdf`);
-        setIsGeneratingPdf(false);
+                    },
+                });
+            }
+
+            doc.save(`cuadrante_vacaciones_${selectedYear}.pdf`);
+        } catch (error) {
+            console.error(error);
+            toast({
+                title: 'Error al generar PDF',
+                description: 'Hubo un problema al crear el documento.',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsGeneratingPdf(false);
+        }
     };
 
     if (loading) {
@@ -424,3 +422,5 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
+    
