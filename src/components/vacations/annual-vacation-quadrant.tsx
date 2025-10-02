@@ -209,9 +209,11 @@ export function AnnualVacationQuadrant() {
         setIsGeneratingPdf(true);
         const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
         const pageMargin = 10;
+        const pageWidth = doc.internal.pageSize.width;
+        const tableWidth = pageWidth - (pageMargin * 2);
         
         const head = [
-            // ['Agrupación'], // No header for the first column
+            ['Agrupación'],
             ...weeksOfYear.map(week => [`S${week.number}\n${format(week.start, 'dd/MM')}`])
         ];
         
@@ -232,17 +234,30 @@ export function AnnualVacationQuadrant() {
         });
         body.push(unassignedRow);
 
+        const firstColumnWidth = 30;
+        const otherColumnCount = head.length -1;
+        const otherColumnWidth = (tableWidth - firstColumnWidth) / otherColumnCount;
+
+        const columnStyles: { [key: number]: any } = {
+            0: { cellWidth: firstColumnWidth, fontStyle: 'bold' }
+        };
+        for (let i = 1; i <= otherColumnCount; i++) {
+            columnStyles[i] = { cellWidth: otherColumnWidth };
+        }
+
 
         autoTable(doc, {
             head: [head.flat()],
             body: body,
             startY: 20,
             theme: 'grid',
+            pageBreak: 'auto',
             styles: {
                 fontSize: 6,
                 cellPadding: 1.5,
                 lineColor: '#d1d5db',
                 lineWidth: 0.1,
+                valign: 'middle',
             },
             headStyles: {
                 fillColor: '#2563eb', // primary color
@@ -288,9 +303,7 @@ export function AnnualVacationQuadrant() {
                     }
                 }
             },
-            columnStyles: {
-                0: { fontStyle: 'bold', cellWidth: 30 },
-            }
+            columnStyles: columnStyles,
         });
         
         doc.save(`cuadrante_vacaciones_${selectedYear}.pdf`);
@@ -328,9 +341,9 @@ export function AnnualVacationQuadrant() {
                 <Table className="min-w-full table-fixed border-collapse">
                     <TableHeader className='sticky top-0 z-20 bg-card'>
                         <TableRow>
-                            {/* <TableHead className="w-40 min-w-40 p-1 text-center font-semibold border-l sticky left-0 bg-card z-10">
+                            <TableHead className="w-40 min-w-40 p-1 text-center font-semibold border-l sticky left-0 bg-card z-10">
                                 Agrupación
-                            </TableHead> */}
+                            </TableHead>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => 
@@ -355,9 +368,9 @@ export function AnnualVacationQuadrant() {
                     <TableBody>
                         {sortedGroups.map((group, groupIndex) => (
                             <TableRow key={group.id} className="h-10 align-top">
-                                {/* <TableCell className="w-40 min-w-40 p-1.5 border-l align-top text-xs font-semibold sticky left-0 z-10" style={{ backgroundColor: groupColors[groupIndex % groupColors.length] }}>
+                                <TableCell className="w-40 min-w-40 p-1.5 border-l align-top text-xs font-semibold sticky left-0 z-10" style={{ backgroundColor: groupColors[groupIndex % groupColors.length] }}>
                                     {group.name}
-                                </TableCell> */}
+                                </TableCell>
                                 {weeksOfYear.map(week => {
                                     const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
@@ -381,9 +394,9 @@ export function AnnualVacationQuadrant() {
                             </TableRow>
                         ))}
                          <TableRow className="h-10 align-top">
-                            {/* <TableCell className="w-40 min-w-40 p-1.5 border-l align-top text-xs font-semibold sticky left-0 bg-gray-200 z-10">
+                            <TableCell className="w-40 min-w-40 p-1.5 border-l align-top text-xs font-semibold sticky left-0 bg-gray-200 z-10">
                                 Sin Agrupación
-                            </TableCell> */}
+                            </TableCell>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
