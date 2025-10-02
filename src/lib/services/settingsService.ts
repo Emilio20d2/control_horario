@@ -95,8 +95,8 @@ export const deleteContractType = async (id: string): Promise<void> => {
 
 // --- Holiday Employee Service ---
 
-export const addHolidayEmployee = async (name: string): Promise<string> => {
-    const docRef = await addDoc(collection(db, 'holidayEmployees'), { name, active: true });
+export const addHolidayEmployee = async (data: Partial<Omit<HolidayEmployee, 'id'>>): Promise<string> => {
+    const docRef = await addDoc(collection(db, 'holidayEmployees'), { ...data, active: true });
     return docRef.id;
 }
 

@@ -15,6 +15,7 @@ import { HolidayEmployee } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { seedHolidayEmployees } from '@/lib/services/settingsService';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 
 const initialHolidayEmployees = [
@@ -43,12 +44,17 @@ const initialHolidayEmployees = [
 
 
 export function HolidayEmployeeManager() {
-    const { holidayEmployees, addHolidayEmployee, updateHolidayEmployee, deleteHolidayEmployee, loading, refreshData } = useDataProvider();
+    const { holidayEmployees, employeeGroups, addHolidayEmployee, updateHolidayEmployee, deleteHolidayEmployee, loading, refreshData } = useDataProvider();
     const { toast } = useToast();
+
     const [newEmployeeName, setNewEmployeeName] = useState('');
+    const [newEmployeeGroupId, setNewEmployeeGroupId] = useState('');
+    const [newEmployeeWorkShift, setNewEmployeeWorkShift] = useState('');
     const [isAdding, setIsAdding] = useState(false);
+    
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [editingName, setEditingName] = useState('');
+    const [editingEmployee, setEditingEmployee] = useState<Partial<HolidayEmployee>>({});
+
 
     useEffect(() => {
         const seedInitialData = async () => {
@@ -69,9 +75,15 @@ export function HolidayEmployeeManager() {
         }
         setIsAdding(true);
         try {
-            await addHolidayEmployee(newEmployeeName.trim());
+            await addHolidayEmployee({
+                name: newEmployeeName.trim(),
+                groupId: newEmployeeGroupId || undefined,
+                workShift: newEmployeeWorkShift || undefined,
+            });
             toast({ title: 'Empleado añadido', description: `Se ha añadido a ${newEmployeeName.trim()} a la lista.` });
             setNewEmployeeName('');
+            setNewEmployeeGroupId('');
+            setNewEmployeeWorkShift('');
         } catch (error) {
             console.error(error);
             toast({ title: 'Error', description: 'No se pudo añadir el empleado.', variant: 'destructive' });
@@ -82,23 +94,31 @@ export function HolidayEmployeeManager() {
     
     const handleEditClick = (employee: HolidayEmployee) => {
         setEditingId(employee.id);
-        setEditingName(employee.name);
+        setEditingEmployee({ 
+            name: employee.name,
+            groupId: employee.groupId,
+            workShift: employee.workShift,
+        });
     };
 
     const handleCancelEdit = () => {
         setEditingId(null);
-        setEditingName('');
+        setEditingEmployee({});
     };
 
     const handleSaveEdit = async () => {
-        if (!editingId || !editingName.trim()) return;
+        if (!editingId || !editingEmployee.name?.trim()) return;
         try {
-            await updateHolidayEmployee(editingId, { name: editingName.trim() });
-            toast({ title: 'Nombre actualizado', description: 'El nombre del empleado ha sido actualizado.' });
+            await updateHolidayEmployee(editingId, {
+                 name: editingEmployee.name.trim(),
+                 groupId: editingEmployee.groupId || undefined,
+                 workShift: editingEmployee.workShift || undefined,
+            });
+            toast({ title: 'Empleado actualizado', description: 'Los datos del empleado han sido actualizados.' });
             handleCancelEdit();
         } catch (error) {
              console.error(error);
-            toast({ title: 'Error', description: 'No se pudo actualizar el nombre.', variant: 'destructive' });
+            toast({ title: 'Error', description: 'No se pudo actualizar el empleado.', variant: 'destructive' });
         }
     };
 
@@ -125,58 +145,108 @@ export function HolidayEmployeeManager() {
     if (loading) {
         return <Skeleton className="h-96 w-full" />
     }
+    
+    const sortedHolidayEmployees = holidayEmployees ? [...holidayEmployees].sort((a,b) => a.name.localeCompare(b.name)) : [];
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Gestionar Empleados para Listados</CardTitle>
+                <CardTitle>Gestionar Empleados para Informes</CardTitle>
                 <CardDescription>
-                    Define la lista de empleados que aparecerán en los listados personalizados y el informe de festivos.
+                    Define la lista de empleados que aparecerán en los listados personalizados y el informe de festivos/vacaciones.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <form onSubmit={handleAddEmployee} className="flex gap-2">
-                    <Input
-                        placeholder="Nombre del nuevo empleado"
-                        value={newEmployeeName}
-                        onChange={(e) => setNewEmployeeName(e.target.value)}
-                        disabled={isAdding}
-                    />
+                <form onSubmit={handleAddEmployee} className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium">Nombre Completo</label>
+                        <Input
+                            placeholder="Nombre del nuevo empleado"
+                            value={newEmployeeName}
+                            onChange={(e) => setNewEmployeeName(e.target.value)}
+                            disabled={isAdding}
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium">Agrupación</label>
+                        <Select value={newEmployeeGroupId} onValueChange={setNewEmployeeGroupId} disabled={isAdding}>
+                            <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                            <SelectContent>
+                                {employeeGroups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                     <div className="space-y-1">
+                        <label className="text-xs font-medium">Jornada</label>
+                        <Input
+                            placeholder="Ej: 40h, 20h Finde"
+                            value={newEmployeeWorkShift}
+                            onChange={(e) => setNewEmployeeWorkShift(e.target.value)}
+                            disabled={isAdding}
+                        />
+                    </div>
                     <Button type="submit" disabled={isAdding}>
                         {isAdding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                         Añadir
                     </Button>
                 </form>
 
-                <div className="border rounded-md max-h-96 overflow-y-auto">
+                <div className="border rounded-md max-h-[30rem] overflow-y-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Nombre del Empleado</TableHead>
+                                <TableHead>Nombre</TableHead>
+                                <TableHead>Agrupación</TableHead>
+                                <TableHead>Jornada</TableHead>
                                 <TableHead className="text-center w-24">Activo</TableHead>
-                                <TableHead className="text-right w-40">Acciones</TableHead>
+                                <TableHead className="text-right w-32">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {holidayEmployees && holidayEmployees.length === 0 && (
+                            {sortedHolidayEmployees.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={3} className="text-center h-24">
+                                    <TableCell colSpan={5} className="text-center h-24">
                                         No hay empleados en la lista.
                                     </TableCell>
                                 </TableRow>
                             )}
-                            {holidayEmployees && holidayEmployees.map(emp => (
+                            {sortedHolidayEmployees.map(emp => {
+                                const group = employeeGroups.find(g => g.id === emp.groupId);
+                                return (
                                 <TableRow key={emp.id}>
                                     <TableCell className="font-medium">
                                         {editingId === emp.id ? (
                                             <Input 
-                                                value={editingName} 
-                                                onChange={(e) => setEditingName(e.target.value)}
+                                                value={editingEmployee.name || ''} 
+                                                onChange={(e) => setEditingEmployee(prev => ({...prev, name: e.target.value}))}
                                                 className="h-8"
                                             />
                                         ) : (
                                             emp.name
                                         )}
+                                    </TableCell>
+                                    <TableCell>
+                                         {editingId === emp.id ? (
+                                             <Select value={editingEmployee.groupId || ''} onValueChange={v => setEditingEmployee(prev => ({...prev, groupId: v}))}>
+                                                <SelectTrigger className="h-8"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                                                <SelectContent>
+                                                    {employeeGroups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                                                </SelectContent>
+                                             </Select>
+                                         ) : (
+                                            group?.name || <span className="text-muted-foreground">N/A</span>
+                                         )}
+                                    </TableCell>
+                                     <TableCell>
+                                         {editingId === emp.id ? (
+                                             <Input 
+                                                value={editingEmployee.workShift || ''} 
+                                                onChange={(e) => setEditingEmployee(prev => ({...prev, workShift: e.target.value}))}
+                                                className="h-8"
+                                             />
+                                         ) : (
+                                            emp.workShift || <span className="text-muted-foreground">N/A</span>
+                                         )}
                                     </TableCell>
                                     <TableCell className="text-center">
                                         {editingId !== emp.id && (
@@ -224,7 +294,7 @@ export function HolidayEmployeeManager() {
                                         )}
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            )})}
                         </TableBody>
                     </Table>
                 </div>

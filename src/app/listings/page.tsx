@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -172,7 +173,7 @@ export default function ListingsPage() {
         <Tabs defaultValue="generator">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="generator">Generador de Listados</TabsTrigger>
-            <TabsTrigger value="employees">Empleados para Listados</TabsTrigger>
+            <TabsTrigger value="employees">Empleados para Informes</TabsTrigger>
           </TabsList>
           <TabsContent value="generator">
             <Card>
