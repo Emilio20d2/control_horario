@@ -5,32 +5,42 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
+import type { Employee, EmployeeGroup } from '@/lib/types';
 
 export function AnnualVacationQuadrant() {
-    const { employees, holidayEmployees, employeeGroups, loading } = useDataProvider();
+    const { employees, employeeGroups, loading, absenceTypes } = useDataProvider();
 
-    const allEmployees = useMemo(() => {
-        const internal = employees.map(e => ({ ...e, isExternal: false }));
-        const external = holidayEmployees.map(e => ({ id: e.id, name: e.name, groupId: e.groupId, isExternal: true }));
-        return [...internal, ...external];
-    }, [employees, holidayEmployees]);
+    const vacationType = useMemo(() => absenceTypes.find(at => at.name === 'Vacaciones'), [absenceTypes]);
+
+    const employeesWithVacations = useMemo(() => {
+        if (!vacationType) return [];
+        return employees.map(emp => {
+            const vacationPeriods = emp.employmentPeriods.flatMap(p => p.scheduledAbsences ?? [])
+                .filter(a => a.absenceTypeId === vacationType.id)
+                .map(a => ({
+                    start: startOfDay(a.startDate),
+                    end: a.endDate ? endOfDay(a.endDate) : endOfDay(a.startDate)
+                }));
+            return { ...emp, vacationPeriods };
+        });
+    }, [employees, vacationType]);
+
 
     const groupedEmployees = useMemo(() => {
-        const sortedGroups = [...employeeGroups].sort((a, b) => a.order - b.order);
         const groupsMap = new Map<string, { name: string; employees: any[] }>();
-
-        sortedGroups.forEach(group => {
+        
+        [...employeeGroups].sort((a,b) => a.order - b.order).forEach(group => {
             groupsMap.set(group.id, { name: group.name, employees: [] });
         });
         
         const otherGroup = { name: 'Sin Agrupación', employees: [] as any[] };
         groupsMap.set('other', otherGroup);
 
-        allEmployees.forEach(emp => {
+        employeesWithVacations.forEach(emp => {
             if (emp.groupId && groupsMap.has(emp.groupId)) {
                 groupsMap.get(emp.groupId)?.employees.push(emp);
             } else {
@@ -43,23 +53,28 @@ export function AnnualVacationQuadrant() {
         }
 
         return Array.from(groupsMap.values()).filter(g => g.employees.length > 0);
-    }, [allEmployees, employeeGroups]);
+    }, [employeesWithVacations, employeeGroups]);
+
 
     const weeksOfYear = useMemo(() => {
         const year = new Date().getFullYear();
-        const firstDay = startOfYear(new Date(year, 0, 1));
+        let firstDay = startOfYear(new Date(year, 0, 1));
+        if (getISOWeek(firstDay) > 1) {
+            firstDay = addWeeks(firstDay, 1);
+        }
+    
         const weeks = [];
         for (let i = 0; i < 53; i++) {
             const weekStart = addWeeks(firstDay, i);
-            if (getYear(weekStart) === year) {
-                weeks.push({
+            if (getYear(weekStart) <= year) {
+                 weeks.push({
                     start: weekStart,
+                    end: endOfWeek(weekStart, { weekStartsOn: 1 }),
                     number: getISOWeek(weekStart),
-                    label: `${format(weekStart, 'dd/MM')} - ${format(endOfWeek(weekStart, { weekStartsOn: 1 }), 'dd/MM')}`
                 });
             }
         }
-        return weeks;
+        return weeks.filter(w => getYear(w.start) === year || getYear(w.end) === year);
     }, []);
 
     if (loading) {
@@ -78,16 +93,16 @@ export function AnnualVacationQuadrant() {
             </CardHeader>
             <CardContent>
                 <ScrollArea className="w-full whitespace-nowrap rounded-md border max-h-[70vh]">
-                    <Table className="min-w-full table-auto border-collapse">
+                    <Table className="min-w-full table-fixed border-collapse">
                         <TableHeader className='sticky top-0 z-20 bg-card'>
                             <TableRow>
-                                <TableHead className="w-64 min-w-64 p-2 text-left sticky left-0 z-10 bg-card">Empleado</TableHead>
+                                <TableHead className="w-48 min-w-48 p-2 text-left sticky left-0 z-10 bg-card">Agrupación</TableHead>
                                 {weeksOfYear.map(week => (
-                                    <TableHead key={week.number} className="w-12 min-w-12 p-1 text-center text-xs font-normal border-l">
-                                        <div className='flex flex-col items-center justify-center'>
-                                            <span className='font-semibold'>{week.number}</span>
-                                            <span className='text-muted-foreground' style={{writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)'}}>
-                                                {week.label.substring(0,5)}
+                                    <TableHead key={week.number} className="w-48 min-w-48 p-1 text-center text-xs font-normal border-l">
+                                        <div className='flex flex-col items-center justify-center h-12'>
+                                            <span className='font-semibold'>Semana {week.number}</span>
+                                            <span className='text-muted-foreground'>
+                                                {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
                                             </span>
                                         </div>
                                     </TableHead>
@@ -96,28 +111,29 @@ export function AnnualVacationQuadrant() {
                         </TableHeader>
                         <TableBody>
                             {groupedEmployees.map((group, groupIndex) => (
-                                <>
-                                    <TableRow key={group.name} className="bg-muted/60 hover:bg-muted/60">
-                                        <TableCell className="font-bold text-sm p-2 sticky left-0 z-10 bg-muted/60 flex items-center gap-2">
-                                             <div className={cn('w-2 h-6 rounded-sm', chartColors[groupIndex % chartColors.length])}></div>
-                                            {group.name}
-                                        </TableCell>
-                                        <TableCell colSpan={weeksOfYear.length} className="p-0"></TableCell>
-                                    </TableRow>
-                                    {group.employees.map(emp => (
-                                        <TableRow key={emp.id} className="hover:bg-accent/20">
-                                            <TableCell className="p-2 text-sm sticky left-0 bg-card z-10">{emp.name}</TableCell>
-                                            {weeksOfYear.map(week => (
-                                                <TableCell 
-                                                    key={`${emp.id}-${week.number}`}
-                                                    className="w-12 min-w-12 p-0 border-l"
-                                                >
-                                                   {/* TODO: Add vacation visualization logic here */}
-                                                </TableCell>
-                                            ))}
-                                        </TableRow>
-                                    ))}
-                                </>
+                                <TableRow key={group.name} className="hover:bg-accent/20 h-24 align-top">
+                                    <TableCell className="font-bold text-sm p-2 sticky left-0 z-10 bg-card flex items-center gap-2 h-24">
+                                        <div className={cn('w-2 h-6 rounded-sm', chartColors[groupIndex % chartColors.length])}></div>
+                                        {group.name}
+                                    </TableCell>
+                                    {weeksOfYear.map(week => {
+                                        const vacationingEmployees = group.employees.filter(emp => 
+                                            emp.vacationPeriods.some((period: {start: Date, end: Date}) => 
+                                                period.start <= week.end && period.end >= week.start
+                                            )
+                                        ).map((emp: Employee) => emp.name);
+
+                                        return (
+                                            <TableCell key={`${group.name}-${week.number}`} className="w-48 min-w-48 p-2 border-l align-top">
+                                                <ul className="text-xs space-y-1">
+                                                    {vacationingEmployees.map(name => (
+                                                        <li key={name} className="truncate p-1 bg-primary/10 rounded-sm">{name}</li>
+                                                    ))}
+                                                </ul>
+                                            </TableCell>
+                                        );
+                                    })}
+                                </TableRow>
                             ))}
                         </TableBody>
                     </Table>
