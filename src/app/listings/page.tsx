@@ -122,11 +122,18 @@ export default function ListingsPage() {
     const totalPages = tempDoc.internal.getNumberOfPages();
     
     const columnStyles: { [key: number]: any } = { 0: { cellWidth: 'auto' } };
-    const otherColumnsWidth = (doc.internal.pageSize.width - (pageMargin * 2)) * (1 / (head[0].length));
-
+    
+    const remainingWidth = doc.internal.pageSize.width - (pageMargin * 2);
+    // Calcular el ancho de la columna de empleados
+    const employeeColWidth = Math.max(...body.map(row => doc.getStringUnitWidth(row[0] as string) * doc.getFontSize() / doc.internal.scaleFactor)) + 6;
+    const availableForOtherCols = remainingWidth - employeeColWidth;
+    const otherColumnsWidth = data.columns.length > 0 ? availableForOtherCols / data.columns.length : 0;
+    
+    columnStyles[0] = { cellWidth: employeeColWidth };
     for (let i = 1; i < head[0].length; i++) {
         columnStyles[i] = { cellWidth: otherColumnsWidth };
     }
+
 
     autoTable(doc, {
         head,
