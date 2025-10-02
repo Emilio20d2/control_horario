@@ -175,8 +175,8 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                                     return (
                                         <TableRow key={absence.id}>
                                             <TableCell className="font-medium">{absenceType?.name || 'Desconocido'}</TableCell>
-                                            <TableCell>{format(parseISO(absence.startDate as unknown as string), 'PPP', { locale: es })}</TableCell>
-                                            <TableCell>{absence.endDate ? format(parseISO(absence.endDate as unknown as string), 'PPP', { locale: es }) : 'Indefinida'}</TableCell>
+                                            <TableCell>{format(absence.startDate, 'PPP', { locale: es })}</TableCell>
+                                            <TableCell>{absence.endDate ? format(absence.endDate, 'PPP', { locale: es }) : 'Indefinida'}</TableCell>
                                             <TableCell className="text-right">
                                                  <AlertDialog onOpenChange={(open) => !open && setPassword('')}>
                                                     <AlertDialogTrigger asChild>

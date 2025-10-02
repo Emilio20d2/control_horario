@@ -1,4 +1,5 @@
 
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type {
@@ -290,8 +291,8 @@ const loadData = useCallback(() => {
                 ...emp,
                 employmentPeriods: emp.employmentPeriods.map(p => ({
                     ...p,
-                    startDate: (p.startDate as any)?.toDate ? format((p.startDate as any).toDate(), 'yyyy-MM-dd') : p.startDate,
-                    endDate: p.endDate ? ((p.endDate as any)?.toDate ? format((p.endDate as any).toDate(), 'yyyy-MM-dd') : p.endDate) : null,
+                    startDate: (p.startDate as any)?.toDate ? (p.startDate as any).toDate() : p.startDate,
+                    endDate: p.endDate ? ((p.endDate as any)?.toDate ? (p.endDate as any).toDate() : p.endDate) : null,
                     scheduledAbsences: (p.scheduledAbsences || []).map(a => ({
                         ...a,
                         startDate: (a.startDate as any)?.toDate ? (a.startDate as any).toDate() : parseISO(a.startDate as string),
@@ -1062,6 +1063,7 @@ export const useDataProvider = () => useContext(DataContext);
 
 
     
+
 
 
 
