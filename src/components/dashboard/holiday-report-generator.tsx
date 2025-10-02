@@ -84,6 +84,11 @@ export function HolidayReportGenerator() {
         const tempDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         autoTable(tempDoc, { head: [head], body, startY: 25 });
         const totalPages = tempDoc.internal.getNumberOfPages();
+        
+        const columnStyles: { [key: number]: any } = { 0: { cellWidth: 'auto' } };
+        for (let i = 1; i < head.length; i++) {
+            columnStyles[i] = { cellWidth: 'wrap', halign: 'center' };
+        }
 
         autoTable(doc, {
             head: [head],
@@ -97,9 +102,7 @@ export function HolidayReportGenerator() {
                 textColor: 255, 
                 halign: 'center',
             },
-            columnStyles: {
-                0: { cellWidth: 'auto', halign: 'left' },
-            },
+            columnStyles: columnStyles,
              didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index > 0) {
                     data.cell.text = []; // Limpiar el texto original de la celda

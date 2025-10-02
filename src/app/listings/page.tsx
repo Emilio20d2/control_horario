@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState } from 'react';
@@ -114,6 +113,11 @@ export default function ListingsPage() {
     }
     autoTable(tempDoc, { head, body, startY: tempY });
     const totalPages = tempDoc.internal.getNumberOfPages();
+    
+    const columnStyles: { [key: number]: any } = { 0: { cellWidth: 'auto' } };
+    for (let i = 1; i < head[0].length; i++) {
+        columnStyles[i] = { cellWidth: 'wrap' };
+    }
 
     autoTable(doc, {
         head,
@@ -123,7 +127,7 @@ export default function ListingsPage() {
         pageBreak: 'auto',
         margin: { left: pageMargin, right: pageMargin, top: 15, bottom: 20 }, // Aumentado el margen inferior
         headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
-        columnStyles: { 0: { halign: 'left', cellWidth: 'auto' } },
+        columnStyles: columnStyles,
         didDrawCell: (data) => {
             if (data.section === 'body' && data.column.index > 0) {
                 const columnDef = form.getValues('columns')[data.column.index - 1];
