@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Edit, PlusCircle, Wallet, Briefcase, Gift, Scale, Loader2 } from 'lucide-react';
+import { ChevronLeft, Edit, PlusCircle, Wallet, Briefcase, Gift, Scale, Loader2, Users } from 'lucide-react';
 import { notFound, useParams } from 'next/navigation';
 import { Badge } from "@/components/ui/badge";
 import { EmployeeDetails } from "@/components/employees/employee-details";
@@ -35,7 +35,7 @@ const BalanceCard = ({ title, value, icon: Icon, isLoading }: { title: string; v
 export default function EmployeeDetailPage() {
     const params = useParams();
     const id = params.id as string;
-    const { getEmployeeById, loading, weeklyRecords, getEmployeeFinalBalances } = useDataProvider();
+    const { getEmployeeById, loading, weeklyRecords, getEmployeeFinalBalances, employeeGroups } = useDataProvider();
     const [displayBalances, setDisplayBalances] = useState<{ ordinary: number; holiday: number; leave: number; total: number; } | null>(null);
 
     const employee = getEmployeeById(id);
@@ -76,6 +76,8 @@ export default function EmployeeDetailPage() {
     if (!employee) {
         return notFound();
     }
+    
+    const employeeGroup = employeeGroups.find(g => g.id === employee.groupId);
 
     const activePeriod = employee.employmentPeriods?.find(p => {
         if (!p.endDate) return true;
@@ -106,11 +108,21 @@ export default function EmployeeDetailPage() {
                     <h1 className="text-2xl font-bold tracking-tight font-headline">
                         {employee.name}
                     </h1>
-                     {isContractActive && periodToDisplay ? (
-                        <Badge variant="outline">{periodToDisplay.contractType}</Badge>
-                     ) : (
-                        <Badge variant="destructive">Inactivo</Badge>
-                     )}
+                     <div className="flex items-center gap-2 mt-1">
+                        {isContractActive && periodToDisplay ? (
+                            <Badge variant="outline">{periodToDisplay.contractType}</Badge>
+                        ) : (
+                            <Badge variant="destructive">Inactivo</Badge>
+                        )}
+                        {employeeGroup ? (
+                            <Badge variant="secondary" className="flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {employeeGroup.name}
+                            </Badge>
+                        ) : (
+                            <Badge variant="secondary">Sin Agrupación</Badge>
+                        )}
+                     </div>
                 </div>
                </div>
                 <div className="flex items-center gap-2">
