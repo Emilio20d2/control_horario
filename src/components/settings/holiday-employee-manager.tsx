@@ -14,12 +14,11 @@ import { useToast } from '@/hooks/use-toast';
 import { HolidayEmployee } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { seedHolidayEmployees } from '@/lib/services/settingsService';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 
 export function HolidayEmployeeManager() {
-    const { holidayEmployees, employeeGroups, addHolidayEmployee, updateHolidayEmployee, deleteHolidayEmployee, loading, refreshData } = useDataProvider();
+    const { employees, holidayEmployees, employeeGroups, addHolidayEmployee, updateHolidayEmployee, deleteHolidayEmployee, loading } = useDataProvider();
     const { toast } = useToast();
 
     const [newEmployeeName, setNewEmployeeName] = useState('');
@@ -29,6 +28,14 @@ export function HolidayEmployeeManager() {
     
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingEmployee, setEditingEmployee] = useState<Partial<HolidayEmployee>>({});
+
+    const eventualEmployees = useMemo(() => {
+        if (loading) return [];
+        const mainEmployeeNames = new Set(employees.map(e => e.name.trim().toLowerCase()));
+        return holidayEmployees
+            .filter(he => !mainEmployeeNames.has(he.name.trim().toLowerCase()))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [loading, employees, holidayEmployees]);
 
     const handleAddEmployee = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -108,15 +115,13 @@ export function HolidayEmployeeManager() {
     if (loading) {
         return <Skeleton className="h-96 w-full" />
     }
-    
-    const sortedHolidayEmployees = holidayEmployees ? [...holidayEmployees].sort((a,b) => a.name.localeCompare(b.name)) : [];
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Gestionar Empleados para Informes</CardTitle>
+                <CardTitle>Gestionar Empleados Eventuales</CardTitle>
                 <CardDescription>
-                    Define la lista de empleados que aparecerán en los listados personalizados y el informe de festivos/vacaciones.
+                    Añade o modifica empleados que no forman parte de la plantilla principal pero que necesitan aparecer en ciertos informes.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -166,14 +171,14 @@ export function HolidayEmployeeManager() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {sortedHolidayEmployees.length === 0 && (
+                            {eventualEmployees.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={5} className="text-center h-24">
-                                        No hay empleados en la lista.
+                                        No hay empleados eventuales en la lista.
                                     </TableCell>
                                 </TableRow>
                             )}
-                            {sortedHolidayEmployees.map(emp => {
+                            {eventualEmployees.map(emp => {
                                 const group = employeeGroups.find(g => g.id === emp.groupId);
                                 return (
                                 <TableRow key={emp.id}>

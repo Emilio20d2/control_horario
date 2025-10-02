@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -34,9 +34,16 @@ const formSchema = z.object({
 });
 
 export default function ListingsPage() {
-  const { holidayEmployees } = useDataProvider();
+  const { employees, holidayEmployees } = useDataProvider();
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const unifiedEmployees = useMemo(() => {
+    const mainEmployeeNames = new Set(employees.map(e => e.name.trim().toLowerCase()));
+    const externalEmployees = holidayEmployees.filter(he => !mainEmployeeNames.has(he.name.trim().toLowerCase()));
+
+    return [...employees, ...externalEmployees].sort((a,b) => a.name.localeCompare(b.name));
+  }, [employees, holidayEmployees]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -97,7 +104,7 @@ export default function ListingsPage() {
 
     const head = [['Empleado', ...data.columns.map(c => c.name)]];
 
-    const body = holidayEmployees.map(emp => [
+    const body = unifiedEmployees.map(emp => [
         emp.name,
         ...data.columns.map(col => '')
     ]);
@@ -177,7 +184,7 @@ export default function ListingsPage() {
         <Tabs defaultValue="generator">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="generator">Generador de Listados</TabsTrigger>
-            <TabsTrigger value="employees">Empleados para Informes</TabsTrigger>
+            <TabsTrigger value="employees">Empleados Eventuales</TabsTrigger>
           </TabsList>
           <TabsContent value="generator">
             <Card>
