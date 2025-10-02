@@ -122,8 +122,10 @@ export default function ListingsPage() {
     const totalPages = tempDoc.internal.getNumberOfPages();
     
     const columnStyles: { [key: number]: any } = { 0: { cellWidth: 'auto' } };
+    const otherColumnsWidth = (doc.internal.pageSize.width - (pageMargin * 2)) * (1 / (head[0].length));
+
     for (let i = 1; i < head[0].length; i++) {
-        columnStyles[i] = { cellWidth: 'wrap' };
+        columnStyles[i] = { cellWidth: otherColumnsWidth };
     }
 
     autoTable(doc, {
