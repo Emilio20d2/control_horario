@@ -17,6 +17,8 @@ import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Skeleton } from '../ui/skeleton';
 import { setDocument } from '@/lib/services/firestoreService';
+import { writeBatch, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export function VacationPlanner() {
     const { employees, absenceTypes, loading, refreshData, weeklyRecords, getWeekId } = useDataProvider();
@@ -72,25 +74,32 @@ export function VacationPlanner() {
     
         setIsLoading(true);
         try {
+            const batch = writeBatch(db);
             const daysInPeriod = eachDayOfInterval({ start: period.startDate, end: period.endDate });
             const weekIdsToUpdate = new Set<string>(daysInPeriod.map(day => getWeekId(day)));
     
-            for (const weekId of weekIdsToUpdate) {
+            weekIdsToUpdate.forEach(weekId => {
                 const weekRecord = weeklyRecords[weekId];
                 if (weekRecord && weekRecord.weekData[selectedEmployeeId]) {
-                    const employeeWeekData = JSON.parse(JSON.stringify(weekRecord.weekData[selectedEmployeeId]));
-    
+                    const docRef = doc(db, "weeklyRecords", weekId);
+                    
+                    const updates: Record<string, any> = {};
+
                     daysInPeriod.forEach(day => {
                         const dayKey = format(day, 'yyyy-MM-dd');
-                        if (employeeWeekData.days[dayKey] && employeeWeekData.days[dayKey].absence === vacationAbsenceType.abbreviation) {
-                            employeeWeekData.days[dayKey].absence = 'ninguna';
-                            employeeWeekData.days[dayKey].absenceHours = 0;
+                        if (weekRecord.weekData[selectedEmployeeId].days[dayKey]?.absence === vacationAbsenceType.abbreviation) {
+                             updates[`weekData.${selectedEmployeeId}.days.${dayKey}.absence`] = 'ninguna';
+                             updates[`weekData.${selectedEmployeeId}.days.${dayKey}.absenceHours`] = 0;
                         }
                     });
-                    
-                    await setDocument(`weeklyRecords/${weekId}/weekData`, selectedEmployeeId, employeeWeekData, { merge: true });
+
+                    if(Object.keys(updates).length > 0) {
+                        batch.update(docRef, updates);
+                    }
                 }
-            }
+            });
+            
+            await batch.commit();
     
             toast({ title: 'Periodo de vacaciones eliminado', variant: 'destructive' });
             refreshData();
