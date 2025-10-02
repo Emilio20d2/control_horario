@@ -33,7 +33,7 @@ export function HolidayEmployeeManager() {
     
     const unifiedEmployees = useMemo(() => {
         if (loading) return [];
-        
+
         const mainEmployeesMap = new Map(employees.map(e => [e.id, e]));
         const holidayEmployeesMap = new Map(holidayEmployees.map(he => [he.id, he]));
 
@@ -44,23 +44,27 @@ export function HolidayEmployeeManager() {
             const holidayEmp = holidayEmployeesMap.get(id);
 
             if (mainEmp) {
-                // It's a main employee
                 const activePeriod = mainEmp.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
-                const weeklyHours = getEffectiveWeeklyHours(activePeriod || null, new Date());
+                
+                // Si el empleado fijo no está activo, no lo incluimos
+                if (!activePeriod) {
+                    return null;
+                }
+
+                const weeklyHours = getEffectiveWeeklyHours(activePeriod, new Date());
                 
                 return {
                     id: mainEmp.id,
                     name: mainEmp.name,
                     groupId: mainEmp.groupId,
-                    active: holidayEmp?.active ?? true, // Use holidayEmp status if it exists, otherwise default to true
+                    active: holidayEmp?.active ?? true,
                     workShift: `${weeklyHours.toFixed(2)}h`,
                     isEventual: false,
                 };
             } else if (holidayEmp) {
-                // It's an eventual employee
                 return { ...holidayEmp, isEventual: true };
             }
-            return null; // Should not happen if allEmployeeIds is built correctly
+            return null;
         }).filter((emp): emp is HolidayEmployee & { isEventual: boolean; workShift?: string } => emp !== null)
           .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -302,4 +306,3 @@ export function HolidayEmployeeManager() {
         </Card>
     );
 }
-
