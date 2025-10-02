@@ -1,5 +1,4 @@
 
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type {
@@ -105,7 +104,6 @@ interface DataContextType {
   updateEmployeeGroup: (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => Promise<void>;
   deleteEmployeeGroup: (id: string) => Promise<void>;
   updateEmployeeGroupOrder: (groups: EmployeeGroup[]) => Promise<void>;
-  getVacationSummaryForWeek: (date: Date) => { vacationingEmployees: Set<string>, totalWeeklyHours: number };
 }
 
 const DataContext = createContext<DataContextType>({
@@ -161,7 +159,6 @@ deleteContractType: async () => {},
   updateEmployeeGroup: async (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => {},
   deleteEmployeeGroup: async (id: string) => {},
   updateEmployeeGroupOrder: async (groups: EmployeeGroup[]) => {},
-  getVacationSummaryForWeek: () => ({ vacationingEmployees: new Set(), totalWeeklyHours: 0 }),
 });
 
 const roundToNearestQuarter = (num: number) => {
@@ -997,63 +994,6 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
         await setDocument('holidayReports', reportId, data, { merge: true });
     }
 
-    const getVacationSummaryForWeek = (date: Date): { vacationingEmployees: Set<string>, totalWeeklyHours: number } => {
-        const weekStart = startOfWeek(date, { weekStartsOn: 1 });
-        const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
-        const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
-        if (!vacationType) return { vacationingEmployees: new Set(), totalWeeklyHours: 0 };
-    
-        const employeesOnVacation = new Set<string>();
-        let totalHours = 0;
-    
-        const allPeople = [
-            ...employees.map(e => ({...e, isExternal: false})),
-            ...holidayEmployees.map(e => ({id: e.id, name: e.name, workShift: e.workShift, isExternal: true, groupId: e.groupId}))
-        ];
-    
-        allPeople.forEach(person => {
-            let isOnVacationThisWeek = false;
-            let weeklyHours = 0;
-    
-            if (person.isExternal) {
-                const hoursMatch = person.workShift?.match(/(\d+)/);
-                weeklyHours = hoursMatch ? parseInt(hoursMatch[1], 10) : 0;
-                
-                // TODO: Need a way to store and check vacations for external employees.
-                // For now, they won't be counted until their vacation data is stored.
-    
-            } else {
-                // For internal employees
-                const internalEmployee = person as Employee;
-                const activePeriod = getActivePeriod(internalEmployee.id, weekStart);
-                if (!activePeriod) return;
-                
-                weeklyHours = getEffectiveWeeklyHours(activePeriod, weekStart);
-    
-                activePeriod.scheduledAbsences?.forEach(abs => {
-                    if (abs.absenceTypeId === vacationType.id && abs.endDate) {
-                        const absStart = startOfDay(abs.startDate);
-                        const absEnd = endOfDay(abs.endDate);
-                        // Check for any overlap between the absence and the week
-                        if (isBefore(absStart, weekEnd) && isAfter(absEnd, weekStart)) {
-                            isOnVacationThisWeek = true;
-                        }
-                    }
-                });
-            }
-    
-            if (isOnVacationThisWeek) {
-                employeesOnVacation.add(person.id);
-                totalHours += weeklyHours;
-            }
-        });
-    
-        return {
-            vacationingEmployees: employeesOnVacation,
-            totalWeeklyHours: totalHours,
-        };
-    };
-
   const value = {
     employees,
     holidays,
@@ -1107,7 +1047,6 @@ createAnnualConfig: createAnnualConfigService,
     updateEmployeeGroup,
     deleteEmployeeGroup,
     updateEmployeeGroupOrder,
-    getVacationSummaryForWeek,
   };
 
   return (
@@ -1123,6 +1062,7 @@ export const useDataProvider = () => useContext(DataContext);
 
 
     
+
 
 
 
