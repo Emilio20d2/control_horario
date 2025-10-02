@@ -76,28 +76,29 @@ export function VacationPlanner() {
         try {
             const batch = writeBatch(db);
             const daysInPeriod = eachDayOfInterval({ start: period.startDate, end: period.endDate });
-            const weekIdsToUpdate = new Set<string>(daysInPeriod.map(day => getWeekId(day)));
     
-            weekIdsToUpdate.forEach(weekId => {
-                const weekRecord = weeklyRecords[weekId];
-                if (weekRecord && weekRecord.weekData[selectedEmployeeId]) {
-                    const docRef = doc(db, "weeklyRecords", weekId);
-                    
-                    const updates: Record<string, any> = {};
-
-                    daysInPeriod.forEach(day => {
-                        const dayKey = format(day, 'yyyy-MM-dd');
-                        if (weekRecord.weekData[selectedEmployeeId].days[dayKey]?.absence === vacationAbsenceType.abbreviation) {
-                             updates[`weekData.${selectedEmployeeId}.days.${dayKey}.absence`] = 'ninguna';
-                             updates[`weekData.${selectedEmployeeId}.days.${dayKey}.absenceHours`] = 0;
-                        }
-                    });
-
-                    if(Object.keys(updates).length > 0) {
-                        batch.update(docRef, updates);
-                    }
+            const updatesByWeek: Record<string, Record<string, any>> = {};
+    
+            for (const day of daysInPeriod) {
+                const weekId = getWeekId(day);
+                const dayKey = format(day, 'yyyy-MM-dd');
+    
+                if (!updatesByWeek[weekId]) {
+                    updatesByWeek[weekId] = {};
                 }
-            });
+    
+                updatesByWeek[weekId][`weekData.${selectedEmployeeId}.days.${dayKey}.absence`] = 'ninguna';
+                updatesByWeek[weekId][`weekData.${selectedEmployeeId}.days.${dayKey}.absenceHours`] = 0;
+            }
+    
+            for (const weekId in updatesByWeek) {
+                const weekRecord = weeklyRecords[weekId];
+                // Proceed only if the record exists and is not confirmed
+                if (weekRecord && weekRecord.weekData[selectedEmployeeId] && !weekRecord.weekData[selectedEmployeeId].confirmed) {
+                    const docRef = doc(db, "weeklyRecords", weekId);
+                    batch.update(docRef, updatesByWeek[weekId]);
+                }
+            }
             
             await batch.commit();
     
