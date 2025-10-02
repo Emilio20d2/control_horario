@@ -84,7 +84,6 @@ export default function ListingsPage() {
   const generatePdf = (data: z.infer<typeof formSchema>) => {
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     const pageMargin = 15;
-
     let initialY = pageMargin;
 
     const addHeaderFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
@@ -106,7 +105,7 @@ export default function ListingsPage() {
         doc.setFontSize(10).setFont('helvetica', 'normal');
         doc.text(pageText, doc.internal.pageSize.width - pageMargin, doc.internal.pageSize.height - 10, { align: 'right' });
         
-        initialY = currentY; // Update initialY for the table
+        initialY = currentY; 
     };
 
     const head = [['Empleado', ...data.columns.map(c => c.name)]];
@@ -116,17 +115,15 @@ export default function ListingsPage() {
         ...data.columns.map(col => '')
     ]);
 
-    // Hack para calcular el número total de páginas
-    const tempDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    let tempDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     addHeaderFooter(tempDoc, 1, 1);
-    autoTable(tempDoc, { head, body, startY: initialY });
+    autoTable(tempDoc, { head, body, margin: { top: initialY } });
     const totalPages = tempDoc.internal.getNumberOfPages();
     
-    // --- LÓGICA DE AJUSTE DE COLUMNAS ---
-    const employeeColWidth = Math.max(
+    const employeeColWidth = (Math.max(
         doc.getStringUnitWidth('Empleado') * doc.getFontSize() / doc.internal.scaleFactor,
         ...body.map(row => doc.getStringUnitWidth(String(row[0])) * doc.getFontSize() / doc.internal.scaleFactor)
-    ) / 2 + 6; // Add some padding
+    ) / 2) + 6; 
     
     const columnStyles: { [key: number]: any } = { 0: { cellWidth: employeeColWidth } };
     
@@ -137,19 +134,18 @@ export default function ListingsPage() {
     for (let i = 1; i <= otherColumnsCount; i++) {
         columnStyles[i] = { cellWidth: otherColumnsWidth };
     }
-    // --- FIN DE LÓGICA DE AJUSTE ---
-
-    addHeaderFooter(doc, 1, totalPages);
-
+    
     autoTable(doc, {
         head,
         body,
         theme: 'grid',
         pageBreak: 'auto',
-        startY: initialY,
-        margin: { left: pageMargin, right: pageMargin, bottom: 20 },
+        margin: { left: pageMargin, right: pageMargin, bottom: 20, top: initialY },
         headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
         columnStyles: columnStyles,
+        didDrawPage: (hookData) => {
+            addHeaderFooter(doc, hookData.pageNumber, totalPages);
+        },
         didDrawCell: (data) => {
             if (data.section === 'body' && data.column.index > 0) {
                 const columnDef = form.getValues('columns')[data.column.index - 1];
@@ -159,18 +155,18 @@ export default function ListingsPage() {
                     const cell = data.cell;
                     const options = (columnDef.options || '').split(',').map(opt => opt.trim()).filter(Boolean);
                     const squareSize = 4;
-                    const yPos = cell.y + cell.height / 2; // Centered vertically
-                    
+                    const yPos = cell.y + (cell.height / 2);
+
                     doc.setLineWidth(0.5);
 
                     if (options.length > 0) {
                         const totalOptionsWidth = options.reduce((acc, opt) => acc + (doc.getStringUnitWidth(opt) * 8 / doc.internal.scaleFactor) + 15, 0);
-                        let startX = cell.x + (cell.width - totalOptionsWidth) / 2 + 5;
+                        let currentX = cell.x + (cell.width - totalOptionsWidth) / 2 + 5;
 
                         options.forEach((option) => {
-                            doc.rect(startX, yPos - squareSize / 2, squareSize, squareSize);
-                            doc.text(option, startX + squareSize + 2, yPos, { baseline: 'middle' });
-                            startX += (doc.getStringUnitWidth(option) * 8 / doc.internal.scaleFactor) + 15;
+                            doc.rect(currentX, yPos - squareSize / 2, squareSize, squareSize);
+                            doc.text(option, currentX + squareSize + 2, yPos, { baseline: 'middle' });
+                            currentX += (doc.getStringUnitWidth(option) * 8 / doc.internal.scaleFactor) + 15;
                         });
                     } else {
                          const xPos = cell.x + cell.width / 2 - squareSize / 2;
@@ -179,20 +175,16 @@ export default function ListingsPage() {
                 }
             }
         },
-        didDrawPage: (hookData) => {
-            if(hookData.pageNumber > 1) {
-              addHeaderFooter(doc, hookData.pageNumber, totalPages);
-            }
-        },
     });
-    
-    // Final pass to ensure footer is on all pages if autoTable creates new ones.
-    for (let i = 1; i <= doc.internal.getNumberOfPages(); i++) {
-        doc.setPage(i);
-        addHeaderFooter(doc, i, doc.internal.getNumberOfPages());
+
+    const finalPageCount = doc.internal.getNumberOfPages();
+    if (finalPageCount > totalPages) {
+        for (let i = totalPages + 1; i <= finalPageCount; i++) {
+            doc.setPage(i);
+            addHeaderFooter(doc, i, finalPageCount);
+        }
     }
-
-
+    
     const safeTitle = data.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     doc.save(`listado_${safeTitle}_${format(new Date(), 'yyyyMMdd')}.pdf`);
   };
