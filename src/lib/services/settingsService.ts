@@ -97,7 +97,12 @@ export const deleteContractType = async (id: string): Promise<void> => {
 
 export const addHolidayEmployee = async (data: Partial<Omit<HolidayEmployee, 'id'>> & { id?: string }): Promise<string> => {
     const { id, ...rest } = data;
-    const dataToSave = { ...rest, active: data.active !== undefined ? data.active : true };
+    const dataToSave = { 
+        ...rest, 
+        active: data.active !== undefined ? data.active : true,
+        groupId: data.groupId || null,
+        workShift: data.workShift || null,
+    };
 
     if (id) {
         // If an ID is provided, use setDoc to create or overwrite.
