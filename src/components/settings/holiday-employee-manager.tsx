@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
-import { PlusCircle, Trash2, Loader2, Edit, Check, X } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Edit, Check, X, Save } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import { HolidayEmployee } from '@/lib/types';
@@ -16,6 +16,7 @@ import { Skeleton } from '../ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { cn } from '@/lib/utils';
+import { isAfter, parseISO } from 'date-fns';
 
 
 export function HolidayEmployeeManager() {
@@ -29,47 +30,42 @@ export function HolidayEmployeeManager() {
     
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingEmployee, setEditingEmployee] = useState<Partial<HolidayEmployee>>({});
-
+    
     const unifiedEmployees = useMemo(() => {
         if (loading) return [];
         
         const mainEmployeesMap = new Map(employees.map(e => [e.id, e]));
+        const holidayEmployeesMap = new Map(holidayEmployees.map(he => [he.id, he]));
 
-        // Ensure every main employee has a corresponding holidayEmployee entry
-        const synchronizedHolidayEmployees = holidayEmployees.slice();
-        const mainEmployeeIdsInHolidayList = new Set(holidayEmployees.map(he => he.id));
+        const allEmployeeIds = new Set([...mainEmployeesMap.keys(), ...holidayEmployeesMap.keys()]);
 
-        employees.forEach(mainEmp => {
-            if (!mainEmployeeIdsInHolidayList.has(mainEmp.id)) {
-                // This employee is missing from the holiday list, create a representation for it
-                synchronizedHolidayEmployees.push({
+        return Array.from(allEmployeeIds).map(id => {
+            const mainEmp = mainEmployeesMap.get(id);
+            const holidayEmp = holidayEmployeesMap.get(id);
+
+            if (mainEmp) {
+                // It's a main employee
+                const activePeriod = mainEmp.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
+                const weeklyHours = getEffectiveWeeklyHours(activePeriod || null, new Date());
+                
+                return {
                     id: mainEmp.id,
                     name: mainEmp.name,
-                    active: true, // Default to active for reports
                     groupId: mainEmp.groupId,
-                });
-            }
-        });
-        
-        return synchronizedHolidayEmployees.map(he => {
-            const mainEmp = mainEmployeesMap.get(he.id);
-            if (mainEmp) {
-                // It's a main employee, use their data as the source of truth
-                const activePeriod = mainEmp.employmentPeriods.find(p => !p.endDate);
-                const weeklyHours = getEffectiveWeeklyHours(activePeriod || null, new Date());
-                return {
-                    ...he,
-                    name: mainEmp.name,
-                    groupId: mainEmp.groupId,
+                    active: holidayEmp?.active ?? true, // Use holidayEmp status if it exists, otherwise default to true
                     workShift: `${weeklyHours.toFixed(2)}h`,
                     isEventual: false,
                 };
+            } else if (holidayEmp) {
+                // It's an eventual employee
+                return { ...holidayEmp, isEventual: true };
             }
-            // It's an eventual employee
-            return { ...he, isEventual: true };
-        }).sort((a, b) => a.name.localeCompare(b.name));
+            return null; // Should not happen if allEmployeeIds is built correctly
+        }).filter((emp): emp is HolidayEmployee & { isEventual: boolean; workShift?: string } => emp !== null)
+          .sort((a, b) => a.name.localeCompare(b.name));
 
     }, [loading, employees, holidayEmployees, getEffectiveWeeklyHours]);
+
 
     const handleAddEmployee = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -306,3 +302,4 @@ export function HolidayEmployeeManager() {
         </Card>
     );
 }
+
