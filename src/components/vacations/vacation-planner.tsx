@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,14 +11,14 @@ import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod, ScheduledAbsence } from '@/lib/types';
-import { format, isAfter, parseISO } from 'date-fns';
+import { format, isAfter, parseISO, addDays, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Skeleton } from '../ui/skeleton';
 
 export function VacationPlanner() {
-    const { employees, absenceTypes, loading, refreshData } = useDataProvider();
+    const { employees, absenceTypes, loading, refreshData, weeklyRecords } = useDataProvider();
     const { toast } = useToast();
 
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
@@ -83,11 +82,59 @@ export function VacationPlanner() {
             setIsLoading(false);
         }
     };
-    
-    const employeeScheduledAbsences = (selectedEmployee?.employmentPeriods.find(p => !p.endDate)?.scheduledAbsences || [])
-        .filter(a => a.absenceTypeId === vacationAbsenceType?.id)
-        .sort((a,b) => (a.startDate as Date).getTime() - (b.startDate as Date).getTime());
 
+    const vacationPeriods = useMemo(() => {
+        if (!selectedEmployee || !vacationAbsenceType) return [];
+        
+        const allVacationDays: Date[] = [];
+
+        // 1. Get from scheduled absences
+        const activePeriod = getActivePeriodForEmployee(selectedEmployee);
+        if (activePeriod?.scheduledAbsences) {
+            activePeriod.scheduledAbsences.forEach(absence => {
+                if (absence.absenceTypeId === vacationAbsenceType.id && absence.endDate) {
+                    let currentDate = absence.startDate;
+                    while (currentDate <= absence.endDate) {
+                        allVacationDays.push(currentDate);
+                        currentDate = addDays(currentDate, 1);
+                    }
+                }
+            });
+        }
+
+        // 2. Get from weekly records
+        for (const weekId in weeklyRecords) {
+            const weekRecord = weeklyRecords[weekId];
+            const empData = weekRecord.weekData[selectedEmployee.id];
+            if (empData?.days) {
+                for (const dayStr in empData.days) {
+                    if (empData.days[dayStr].absence === vacationAbsenceType.abbreviation) {
+                        allVacationDays.push(parseISO(dayStr));
+                    }
+                }
+            }
+        }
+        
+        // 3. Remove duplicates and sort
+        const uniqueSortedDays = [...new Set(allVacationDays.map(d => d.getTime()))].map(t => new Date(t)).sort((a,b) => a.getTime() - b.getTime());
+
+        // 4. Group consecutive days into periods
+        const periods: { id: string; startDate: Date; endDate: Date }[] = [];
+        if (uniqueSortedDays.length === 0) return periods;
+
+        let currentPeriodStart = uniqueSortedDays[0];
+        for (let i = 1; i < uniqueSortedDays.length; i++) {
+            if (differenceInDays(uniqueSortedDays[i], uniqueSortedDays[i-1]) > 1) {
+                periods.push({ id: `period-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: uniqueSortedDays[i-1]});
+                currentPeriodStart = uniqueSortedDays[i];
+            }
+        }
+        periods.push({ id: `period-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: uniqueSortedDays[uniqueSortedDays.length - 1] });
+
+        return periods;
+
+    }, [selectedEmployee, vacationAbsenceType, weeklyRecords]);
+    
     if(loading) return <Skeleton className="h-96 w-full" />;
 
     return (
@@ -111,54 +158,60 @@ export function VacationPlanner() {
                     </Select>
                 </div>
                 
-                <Calendar
-                    mode="range"
-                    selected={selectedDateRange}
-                    onSelect={setSelectedDateRange}
-                    locale={es}
-                    disabled={!selectedEmployeeId}
-                />
-
-                <Button onClick={handleAddPeriod} disabled={isLoading || !selectedDateRange?.from || !selectedDateRange?.to}>
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                    Guardar Periodo
-                </Button>
-
-                {selectedEmployee && (
-                    <div className="space-y-4 pt-4">
-                        <h4 className="font-medium">Periodos de Vacaciones de {selectedEmployee.name}</h4>
-                        <div className="border rounded-md max-h-60 overflow-y-auto">
-                             <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Inicio</TableHead>
-                                        <TableHead>Fin</TableHead>
-                                        <TableHead className="text-right">Acción</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {employeeScheduledAbsences.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={3} className="text-center h-24">No hay vacaciones programadas.</TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        employeeScheduledAbsences.map(absence => (
-                                            <TableRow key={absence.id}>
-                                                <TableCell>{format(absence.startDate, 'PPP', { locale: es })}</TableCell>
-                                                <TableCell>{absence.endDate ? format(absence.endDate, 'PPP', { locale: es }) : 'N/A'}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon" onClick={() => handleDeletePeriod(absence.id)} disabled={isLoading}>
-                                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                    <div className="flex flex-col items-center">
+                        <Calendar
+                            mode="range"
+                            selected={selectedDateRange}
+                            onSelect={setSelectedDateRange}
+                            locale={es}
+                            disabled={!selectedEmployeeId || isLoading}
+                            className="rounded-md border"
+                        />
+                        <Button onClick={handleAddPeriod} disabled={isLoading || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
+                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                            Guardar Periodo
+                        </Button>
                     </div>
-                )}
+
+                    {selectedEmployee && (
+                        <div className="space-y-4">
+                            <h4 className="font-medium">Periodos de Vacaciones de {selectedEmployee.name}</h4>
+                            <div className="border rounded-md max-h-96 overflow-y-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Inicio</TableHead>
+                                            <TableHead>Fin</TableHead>
+                                            <TableHead className="text-right">Acción</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {vacationPeriods.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={3} className="text-center h-24">No hay vacaciones programadas.</TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            vacationPeriods.map(period => (
+                                                <TableRow key={period.id}>
+                                                    <TableCell>{format(period.startDate, 'PPP', { locale: es })}</TableCell>
+                                                    <TableCell>{format(period.endDate, 'PPP', { locale: es })}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        {/* Delete functionality might need to be smarter if periods are from weeklyRecords */}
+                                                        {/* For now, let's assume we can only delete 'scheduled' ones, or none at all from here */}
+                                                        {/* <Button variant="ghost" size="icon" onClick={() => handleDeletePeriod(period.id)} disabled={isLoading}>
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                        </Button> */}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </CardContent>
         </Card>
     );
