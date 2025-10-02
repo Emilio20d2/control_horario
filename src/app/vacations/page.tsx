@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GroupManager } from '@/components/vacations/group-manager';
 import { VacationPlanner } from '@/components/vacations/vacation-planner';
+import { VacationSummary } from '@/components/vacations/vacation-summary';
 
 
 export default function VacationsPage() {
@@ -25,8 +26,9 @@ export default function VacationsPage() {
                     </TabsList>
                     <TabsContent value="planner" className="pt-4">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-1">
+                            <div className="lg:col-span-1 space-y-6">
                                <VacationPlanner />
+                               <VacationSummary />
                             </div>
                             <div className="lg:col-span-2">
                                 <Card>

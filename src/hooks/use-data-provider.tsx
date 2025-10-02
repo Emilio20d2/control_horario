@@ -96,7 +96,7 @@ interface DataContextType {
   getWeekId: (d: Date) => string;
   processEmployeeWeekData: (emp: Employee, weekDays: Date[], weekId: string) => DailyEmployeeData | null;
   calculateEmployeeVacations: (emp: Employee) => { vacationDaysTaken: number, suspensionDays: number, vacationDaysAvailable: number };
-  addHolidayEmployee: (name: string) => Promise<string>;
+  addHolidayEmployee: (data: Partial<Omit<HolidayEmployee, 'id'>>) => Promise<string>;
   updateHolidayEmployee: (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>) => Promise<void>;
   deleteHolidayEmployee: (id: string) => Promise<void>;
   addHolidayReport: (report: Omit<HolidayReport, 'id'>) => Promise<string>;
@@ -105,6 +105,7 @@ interface DataContextType {
   updateEmployeeGroup: (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => Promise<void>;
   deleteEmployeeGroup: (id: string) => Promise<void>;
   updateEmployeeGroupOrder: (groups: EmployeeGroup[]) => Promise<void>;
+  getVacationSummaryForWeek: (date: Date) => { vacationingEmployees: number, totalWeeklyHours: number };
 }
 
 const DataContext = createContext<DataContextType>({
@@ -151,7 +152,7 @@ deleteContractType: async () => {},
   getWeekId: () => '',
   processEmployeeWeekData: () => null,
   calculateEmployeeVacations: () => ({ vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31 }),
-  addHolidayEmployee: async (name: string) => '',
+  addHolidayEmployee: async (data) => '',
   updateHolidayEmployee: async (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>) => {},
   deleteHolidayEmployee: async (id: string) => {},
   addHolidayReport: async (report: Omit<HolidayReport, 'id'>) => '',
@@ -160,6 +161,7 @@ deleteContractType: async () => {},
   updateEmployeeGroup: async (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => {},
   deleteEmployeeGroup: async (id: string) => {},
   updateEmployeeGroupOrder: async (groups: EmployeeGroup[]) => {},
+  getVacationSummaryForWeek: () => ({ vacationingEmployees: 0, totalWeeklyHours: 0 }),
 });
 
 const roundToNearestQuarter = (num: number) => {
@@ -995,6 +997,64 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
         await setDocument('holidayReports', reportId, data, { merge: true });
     }
 
+    const getVacationSummaryForWeek = (date: Date): { vacationingEmployees: number, totalWeeklyHours: number } => {
+        const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
+        const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
+        if (!vacationType) return { vacationingEmployees: 0, totalWeeklyHours: 0 };
+    
+        const employeesOnVacation = new Set<string>();
+        let totalHours = 0;
+    
+        const allPeople = [
+            ...employees.map(e => ({...e, isExternal: false})),
+            ...holidayEmployees.map(e => ({id: e.id, name: e.name, workShift: e.workShift, isExternal: true}))
+        ];
+    
+        allPeople.forEach(person => {
+            let isOnVacationThisWeek = false;
+            let weeklyHours = 0;
+    
+            if (person.isExternal) {
+                // For external employees, we assume they are always "active"
+                // but need to parse their hours.
+                const hoursMatch = person.workShift?.match(/(\d+)/);
+                weeklyHours = hoursMatch ? parseInt(hoursMatch[1], 10) : 0;
+                
+                // NOTE: External employees don't have scheduledAbsences, this part needs a strategy.
+                // For now, they won't be counted until their vacation data is stored somewhere.
+    
+            } else {
+                // For internal employees
+                const internalEmployee = person as Employee;
+                const activePeriod = getActivePeriod(internalEmployee.id, weekStart);
+                if (!activePeriod) return;
+                
+                weeklyHours = getEffectiveWeeklyHours(activePeriod, weekStart);
+    
+                activePeriod.scheduledAbsences?.forEach(abs => {
+                    if (abs.absenceTypeId === vacationType.id && abs.endDate) {
+                        const absStart = startOfDay(abs.startDate);
+                        const absEnd = endOfDay(abs.endDate);
+                        if (isBefore(absStart, weekEnd) && isAfter(absEnd, weekStart)) {
+                            isOnVacationThisWeek = true;
+                        }
+                    }
+                });
+            }
+    
+            if (isOnVacationThisWeek) {
+                employeesOnVacation.add(person.id);
+                totalHours += weeklyHours;
+            }
+        });
+    
+        return {
+            vacationingEmployees: employeesOnVacation.size,
+            totalWeeklyHours: totalHours,
+        };
+    };
+
   const value = {
     employees,
     holidays,
@@ -1039,7 +1099,7 @@ createAnnualConfig: createAnnualConfigService,
     getWeekId,
     processEmployeeWeekData,
     calculateEmployeeVacations,
-    addHolidayEmployee,
+    addHolidayEmployee: addHolidayEmployee as (data: Partial<Omit<HolidayEmployee, 'id'>>) => Promise<string>,
     updateHolidayEmployee,
     deleteHolidayEmployee,
     addHolidayReport,
@@ -1048,6 +1108,7 @@ createAnnualConfig: createAnnualConfigService,
     updateEmployeeGroup,
     deleteEmployeeGroup,
     updateEmployeeGroupOrder,
+    getVacationSummaryForWeek,
   };
 
   return (
@@ -1063,6 +1124,7 @@ export const useDataProvider = () => useContext(DataContext);
 
 
     
+
 
 
 
