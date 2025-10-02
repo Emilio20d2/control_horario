@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -42,7 +43,12 @@ export default function ListingsPage() {
     const mainEmployeeNames = new Set(employees.map(e => e.name.trim().toLowerCase()));
     const externalEmployees = holidayEmployees.filter(he => !mainEmployeeNames.has(he.name.trim().toLowerCase()));
 
-    return [...employees, ...externalEmployees].sort((a,b) => a.name.localeCompare(b.name));
+    const allEmployees = [
+        ...employees.map(e => ({...e, isExternal: false})), 
+        ...externalEmployees.map(e => ({...e, isExternal: true}))
+    ];
+
+    return allEmployees.sort((a,b) => a.name.localeCompare(b.name));
   }, [employees, holidayEmployees]);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -193,7 +199,7 @@ export default function ListingsPage() {
         <Tabs defaultValue="generator">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="generator">Generador de Listados</TabsTrigger>
-            <TabsTrigger value="employees">Empleados Eventuales</TabsTrigger>
+            <TabsTrigger value="employees">Empleados para Informes</TabsTrigger>
           </TabsList>
           <TabsContent value="generator">
             <Card>

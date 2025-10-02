@@ -15,6 +15,7 @@ import { HolidayEmployee } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { cn } from '@/lib/utils';
 
 
 export function HolidayEmployeeManager() {
@@ -29,12 +30,18 @@ export function HolidayEmployeeManager() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingEmployee, setEditingEmployee] = useState<Partial<HolidayEmployee>>({});
 
-    const eventualEmployees = useMemo(() => {
+    const unifiedEmployees = useMemo(() => {
         if (loading) return [];
+        
+        const mainEmployeesWithFlag = employees.map(e => ({...e, isEventual: false}));
+
         const mainEmployeeNames = new Set(employees.map(e => e.name.trim().toLowerCase()));
-        return holidayEmployees
+        
+        const eventualEmployees = holidayEmployees
             .filter(he => !mainEmployeeNames.has(he.name.trim().toLowerCase()))
-            .sort((a, b) => a.name.localeCompare(b.name));
+            .map(e => ({...e, isEventual: true}));
+
+        return [...mainEmployeesWithFlag, ...eventualEmployees].sort((a, b) => a.name.localeCompare(b.name));
     }, [loading, employees, holidayEmployees]);
 
     const handleAddEmployee = async (e: React.FormEvent) => {
@@ -119,15 +126,15 @@ export function HolidayEmployeeManager() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Gestionar Empleados Eventuales</CardTitle>
+                <CardTitle>Gestionar Empleados para Informes</CardTitle>
                 <CardDescription>
-                    Añade o modifica empleados que no forman parte de la plantilla principal pero que necesitan aparecer en ciertos informes.
+                    La lista combina empleados fijos (no editables aquí) y empleados eventuales que puedes gestionar a continuación.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 <form onSubmit={handleAddEmployee} className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
                     <div className="space-y-1">
-                        <label className="text-xs font-medium">Nombre Completo</label>
+                        <label className="text-xs font-medium">Nombre Completo (Eventual)</label>
                         <Input
                             placeholder="Nombre del nuevo empleado"
                             value={newEmployeeName}
@@ -136,7 +143,7 @@ export function HolidayEmployeeManager() {
                         />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-xs font-medium">Agrupación</label>
+                        <label className="text-xs font-medium">Agrupación (Eventual)</label>
                         <Select value={newEmployeeGroupId} onValueChange={setNewEmployeeGroupId} disabled={isAdding}>
                             <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                             <SelectContent>
@@ -145,7 +152,7 @@ export function HolidayEmployeeManager() {
                         </Select>
                     </div>
                      <div className="space-y-1">
-                        <label className="text-xs font-medium">Jornada</label>
+                        <label className="text-xs font-medium">Jornada (Eventual)</label>
                         <Input
                             placeholder="Ej: 40h, 20h Finde"
                             value={newEmployeeWorkShift}
@@ -155,7 +162,7 @@ export function HolidayEmployeeManager() {
                     </div>
                     <Button type="submit" disabled={isAdding}>
                         {isAdding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                        Añadir
+                        Añadir Eventual
                     </Button>
                 </form>
 
@@ -171,19 +178,21 @@ export function HolidayEmployeeManager() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {eventualEmployees.length === 0 && (
+                            {unifiedEmployees.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={5} className="text-center h-24">
-                                        No hay empleados eventuales en la lista.
+                                        No hay empleados que mostrar.
                                     </TableCell>
                                 </TableRow>
                             )}
-                            {eventualEmployees.map(emp => {
+                            {unifiedEmployees.map(emp => {
                                 const group = employeeGroups.find(g => g.id === emp.groupId);
+                                const isEditingCurrent = editingId === emp.id;
+                                
                                 return (
-                                <TableRow key={emp.id}>
+                                <TableRow key={emp.id} className={cn(!emp.isEventual && "bg-muted/50")}>
                                     <TableCell className="font-medium">
-                                        {editingId === emp.id ? (
+                                        {isEditingCurrent ? (
                                             <Input 
                                                 value={editingEmployee.name || ''} 
                                                 onChange={(e) => setEditingEmployee(prev => ({...prev, name: e.target.value}))}
@@ -194,7 +203,7 @@ export function HolidayEmployeeManager() {
                                         )}
                                     </TableCell>
                                     <TableCell>
-                                         {editingId === emp.id ? (
+                                         {isEditingCurrent ? (
                                              <Select value={editingEmployee.groupId || ''} onValueChange={v => setEditingEmployee(prev => ({...prev, groupId: v}))}>
                                                 <SelectTrigger className="h-8"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                                                 <SelectContent>
@@ -206,26 +215,26 @@ export function HolidayEmployeeManager() {
                                          )}
                                     </TableCell>
                                      <TableCell>
-                                         {editingId === emp.id ? (
+                                         {isEditingCurrent ? (
                                              <Input 
                                                 value={editingEmployee.workShift || ''} 
                                                 onChange={(e) => setEditingEmployee(prev => ({...prev, workShift: e.target.value}))}
                                                 className="h-8"
                                              />
                                          ) : (
-                                            emp.workShift || <span className="text-muted-foreground">N/A</span>
+                                            emp.isEventual ? emp.workShift : <span className="text-muted-foreground">Ver ficha</span>
                                          )}
                                     </TableCell>
                                     <TableCell className="text-center">
-                                        {editingId !== emp.id && (
+                                        {isEditingCurrent || !emp.isEventual ? null : (
                                             <Switch
-                                                checked={emp.active}
-                                                onCheckedChange={() => handleToggleActive(emp)}
+                                                checked={(emp as HolidayEmployee).active}
+                                                onCheckedChange={() => handleToggleActive(emp as HolidayEmployee)}
                                             />
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        {editingId === emp.id ? (
+                                        {isEditingCurrent ? (
                                             <div className="flex gap-2 justify-end">
                                                 <Button variant="ghost" size="icon" onClick={handleSaveEdit} className="text-green-600 hover:text-green-700">
                                                     <Check className="h-4 w-4" />
@@ -234,9 +243,9 @@ export function HolidayEmployeeManager() {
                                                     <X className="h-4 w-4" />
                                                 </Button>
                                             </div>
-                                        ) : (
+                                        ) : emp.isEventual ? (
                                             <>
-                                                <Button variant="ghost" size="icon" onClick={() => handleEditClick(emp)}>
+                                                <Button variant="ghost" size="icon" onClick={() => handleEditClick(emp as HolidayEmployee)}>
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
                                                 <AlertDialog>
@@ -259,6 +268,8 @@ export function HolidayEmployeeManager() {
                                                     </AlertDialogContent>
                                                 </AlertDialog>
                                             </>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">No editable</span>
                                         )}
                                     </TableCell>
                                 </TableRow>
