@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -7,17 +6,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, isSameDay } from 'date-fns';
-import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
 import type { Employee, EmployeeGroup } from '@/lib/types';
-import { Users, Clock } from 'lucide-react';
+import { Users, Clock, FileDown, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Button } from '../ui/button';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
 
 export function AnnualVacationQuadrant() {
     const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours, holidays } = useDataProvider();
 
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const vacationType = useMemo(() => absenceTypes.find(at => at.name === 'Vacaciones'), [absenceTypes]);
 
     const availableYears = useMemo(() => {
@@ -198,9 +201,100 @@ export function AnnualVacationQuadrant() {
     }, [employeeGroups]);
 
     const groupColors = [
-        'bg-blue-200', 'bg-green-200', 'bg-yellow-200', 'bg-purple-200', 'bg-pink-200', 
-        'bg-indigo-200', 'bg-teal-200', 'bg-orange-200',
+        '#dbeafe', '#dcfce7', '#fef9c3', '#f3e8ff', '#fce7f3', 
+        '#e0e7ff', '#ccfbf1', '#ffedd5',
     ];
+
+    const handleGeneratePdf = () => {
+        setIsGeneratingPdf(true);
+        const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+        const pageMargin = 10;
+        
+        const head = [
+            ['Agrupación'],
+            ...weeksOfYear.map(week => [`S${week.number}\n${format(week.start, 'dd/MM')}`])
+        ];
+        
+        const body = sortedGroups.map((group, groupIndex) => {
+            const rowData = [group.name];
+            weeksOfYear.forEach(week => {
+                const employeesInGroup = groupedEmployeesByWeek[week.key]?.[group.id] || [];
+                rowData.push(employeesInGroup.join('\n'));
+            });
+            return rowData;
+        });
+        
+        // Add unassigned group row
+        const unassignedRow: string[] = ['Sin Agrupación'];
+        weeksOfYear.forEach(week => {
+            const employeesInGroup = groupedEmployeesByWeek[week.key]?.['unassigned'] || [];
+            unassignedRow.push(employeesInGroup.join('\n'));
+        });
+        body.push(unassignedRow);
+
+
+        autoTable(doc, {
+            head: [head.flat()],
+            body: body,
+            startY: 20,
+            theme: 'grid',
+            styles: {
+                fontSize: 6,
+                cellPadding: 1.5,
+                lineColor: '#d1d5db',
+                lineWidth: 0.1,
+            },
+            headStyles: {
+                fillColor: '#2563eb', // primary color
+                textColor: '#ffffff',
+                halign: 'center',
+                valign: 'middle',
+                fontSize: 7,
+            },
+            didDrawPage: (data) => {
+                // Header
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`Cuadrante Anual de Vacaciones - ${selectedYear}`, pageMargin, 15);
+
+                // Footer
+                const pageCount = doc.internal.getNumberOfPages();
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.text(`Página ${data.pageNumber} de ${pageCount}`, doc.internal.pageSize.width - pageMargin, doc.internal.pageSize.height - 10, { align: 'right' });
+            },
+            didParseCell: (data) => {
+                if (data.section === 'body') {
+                    // Color rows by group
+                    const groupIndex = data.row.index;
+                    if (groupIndex < sortedGroups.length) {
+                         data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
+                    } else {
+                        data.cell.styles.fillColor = '#e5e7eb'; // gray-200 for unassigned
+                    }
+
+                    // Color holiday columns
+                    const weekIndex = data.column.index - 1;
+                    if (weekIndex >= 0 && weekIndex < weeksOfYear.length) {
+                        const week = weeksOfYear[weekIndex];
+                        const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                        const hasHoliday = weekDays.some(day => 
+                            holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7)
+                        );
+                        if(hasHoliday && !data.cell.text[0]) {
+                            data.cell.styles.fillColor = '#bfdbfe'; // primary/10
+                        }
+                    }
+                }
+            },
+            columnStyles: {
+                0: { fontStyle: 'bold', cellWidth: 30 },
+            }
+        });
+        
+        doc.save(`cuadrante_vacaciones_${selectedYear}.pdf`);
+        setIsGeneratingPdf(false);
+    };
 
     if (loading) {
         return <Skeleton className="h-[600px] w-full" />;
@@ -213,15 +307,19 @@ export function AnnualVacationQuadrant() {
                     <div>
                         <CardTitle>Cuadrante Anual de Vacaciones</CardTitle>
                     </div>
-                     <div className="w-40">
+                     <div className="flex items-center gap-2">
                         <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Seleccionar año..." />
+                            <SelectTrigger className='w-32'>
+                                <SelectValue placeholder="Año..." />
                             </SelectTrigger>
                             <SelectContent>
                                 {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                             </SelectContent>
                         </Select>
+                        <Button onClick={handleGeneratePdf} disabled={isGeneratingPdf}>
+                            {isGeneratingPdf ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <FileDown className='mr-2 h-4 w-4' />}
+                            Generar PDF
+                        </Button>
                     </div>
                 </div>
             </CardHeader>
@@ -229,6 +327,9 @@ export function AnnualVacationQuadrant() {
                 <Table className="min-w-full table-fixed border-collapse">
                     <TableHeader className='sticky top-0 z-20 bg-card'>
                         <TableRow>
+                            <TableHead className="w-40 min-w-40 p-1 text-center font-semibold border-l sticky left-0 bg-card z-10">
+                                Agrupación
+                            </TableHead>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => 
@@ -253,16 +354,20 @@ export function AnnualVacationQuadrant() {
                     <TableBody>
                         {sortedGroups.map((group, groupIndex) => (
                             <TableRow key={group.id} className="h-10 align-top">
+                                <TableCell className="w-40 min-w-40 p-1.5 border-l align-top text-xs font-semibold sticky left-0 z-10" style={{ backgroundColor: groupColors[groupIndex % groupColors.length] }}>
+                                    {group.name}
+                                </TableCell>
                                 {weeksOfYear.map(week => {
                                     const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                                     const employeesInGroup = groupedEmployeesByWeek[week.key]?.[group.id] || [];
                                     const hasEmployees = employeesInGroup.length > 0;
-                                    const bgColor = hasEmployees ? groupColors[groupIndex % groupColors.length] : (hasHoliday ? 'bg-primary/10' : '');
+                                    const bgColor = hasEmployees ? groupColors[groupIndex % groupColors.length] : (hasHoliday ? '#e0f2fe' : '');
                                     return (
                                         <TableCell 
                                             key={`${group.id}-${week.key}`} 
-                                            className={cn("w-48 min-w-48 p-1.5 border-l align-top text-xs", bgColor)}
+                                            className={cn("w-48 min-w-48 p-1.5 border-l align-top text-xs", bgColor && `bg-[${bgColor}]`)}
+                                            style={{ backgroundColor: bgColor }}
                                         >
                                             <div className="flex flex-col gap-1">
                                                 {employeesInGroup.map(name => (
@@ -275,18 +380,20 @@ export function AnnualVacationQuadrant() {
                             </TableRow>
                         ))}
                          <TableRow className="h-10 align-top">
+                            <TableCell className="w-40 min-w-40 p-1.5 border-l align-top text-xs font-semibold sticky left-0 bg-gray-200 z-10">
+                                Sin Agrupación
+                            </TableCell>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                                 const employeesInGroup = groupedEmployeesByWeek[week.key]?.['unassigned'] || [];
                                 const hasEmployees = employeesInGroup.length > 0;
+                                const bgColor = hasEmployees ? '#e5e7eb' : (hasHoliday ? '#e0f2fe' : '');
                                 return (
                                     <TableCell 
                                         key={`unassigned-${week.key}`} 
-                                        className={cn(
-                                            "w-48 min-w-48 p-1.5 border-l align-top text-xs",
-                                            hasEmployees ? "bg-gray-300" : (hasHoliday ? 'bg-primary/10' : '')
-                                        )}
+                                        className={cn("w-48 min-w-48 p-1.5 border-l align-top text-xs")}
+                                        style={{ backgroundColor: bgColor }}
                                     >
                                         <div className="flex flex-col gap-1">
                                             {employeesInGroup.map(name => (
@@ -302,4 +409,5 @@ export function AnnualVacationQuadrant() {
             </CardContent>
         </Card>
     );
-}
+
+    
