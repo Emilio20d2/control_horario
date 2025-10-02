@@ -239,4 +239,5 @@ export interface HolidayReport {
 export interface EmployeeGroup {
     id: string;
     name: string;
+    order: number;
 }

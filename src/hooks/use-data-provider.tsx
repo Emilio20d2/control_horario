@@ -41,6 +41,7 @@ import {
     createEmployeeGroup,
     updateEmployeeGroup,
     deleteEmployeeGroup,
+    updateEmployeeGroupOrder,
 } from '../lib/services/settingsService';
 import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks } from 'date-fns';
 import { addDocument, setDocument } from '@/lib/services/firestoreService';
@@ -100,9 +101,10 @@ interface DataContextType {
   deleteHolidayEmployee: (id: string) => Promise<void>;
   addHolidayReport: (report: Omit<HolidayReport, 'id'>) => Promise<string>;
   updateHolidayReport: (reportId: string, data: Partial<Omit<HolidayReport, 'id'>>) => Promise<void>;
-  createEmployeeGroup: (name: string) => Promise<string>;
+  createEmployeeGroup: (data: Omit<EmployeeGroup, 'id'>) => Promise<string>;
   updateEmployeeGroup: (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => Promise<void>;
   deleteEmployeeGroup: (id: string) => Promise<void>;
+  updateEmployeeGroupOrder: (groups: EmployeeGroup[]) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType>({
@@ -154,9 +156,10 @@ deleteContractType: async () => {},
   deleteHolidayEmployee: async (id: string) => {},
   addHolidayReport: async (report: Omit<HolidayReport, 'id'>) => '',
   updateHolidayReport: async (reportId: string, data: Partial<Omit<HolidayReport, 'id'>>) => {},
-  createEmployeeGroup: async (name: string) => '',
+  createEmployeeGroup: async (data: Omit<EmployeeGroup, 'id'>) => '',
   updateEmployeeGroup: async (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => {},
   deleteEmployeeGroup: async (id: string) => {},
+  updateEmployeeGroupOrder: async (groups: EmployeeGroup[]) => {},
 });
 
 const roundToNearestQuarter = (num: number) => {
@@ -321,7 +324,7 @@ const loadData = useCallback(() => {
     const unsubUsers = onCollectionUpdate<AppUser[]>('users', (data) => {if(mounted) setUsers(data)});
     const unsubHolidayEmployees = onCollectionUpdate<HolidayEmployee[]>('holidayEmployees', (data) => { if(mounted) setHolidayEmployees(data.sort((a,b) => a.name.localeCompare(b.name))) });
     const unsubHolidayReports = onCollectionUpdate<HolidayReport[]>('holidayReports', (data) => { if(mounted) setHolidayReports(data) });
-    const unsubEmployeeGroups = onCollectionUpdate<EmployeeGroup[]>('employeeGroups', (data) => { if (mounted) setEmployeeGroups(data.sort((a,b) => a.name.localeCompare(b.name))) });
+    const unsubEmployeeGroups = onCollectionUpdate<EmployeeGroup[]>('employeeGroups', (data) => { if (mounted) setEmployeeGroups(data.sort((a,b) => a.order - b.order)) });
 
 
     const allSubscriptionsReady = Promise.all([
@@ -1044,6 +1047,7 @@ createAnnualConfig: createAnnualConfigService,
     createEmployeeGroup,
     updateEmployeeGroup,
     deleteEmployeeGroup,
+    updateEmployeeGroupOrder,
   };
 
   return (
@@ -1059,6 +1063,7 @@ export const useDataProvider = () => useContext(DataContext);
 
 
     
+
 
 
 

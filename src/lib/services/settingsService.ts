@@ -121,8 +121,8 @@ export const seedHolidayEmployees = async (employeeNames: string[]): Promise<voi
 
 
 // --- Employee Group Service Functions ---
-export const createEmployeeGroup = async (name: string): Promise<string> => {
-    const docRef = await addDoc(collection(db, 'employeeGroups'), { name });
+export const createEmployeeGroup = async (data: Omit<EmployeeGroup, 'id'>): Promise<string> => {
+    const docRef = await addDoc(collection(db, 'employeeGroups'), data);
     return docRef.id;
 }
 
@@ -134,4 +134,13 @@ export const updateEmployeeGroup = async (id: string, data: Partial<Omit<Employe
 export const deleteEmployeeGroup = async (id: string): Promise<void> => {
     const docRef = doc(db, 'employeeGroups', id);
     await deleteDoc(docRef);
+}
+
+export const updateEmployeeGroupOrder = async (groups: EmployeeGroup[]): Promise<void> => {
+    const batch = writeBatch(db);
+    groups.forEach(group => {
+        const docRef = doc(db, 'employeeGroups', group.id);
+        batch.update(docRef, { order: group.order });
+    });
+    await batch.commit();
 }
