@@ -5,8 +5,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GroupManager } from '@/components/vacations/group-manager';
-import { VacationPlanner } from '@/components/vacations/vacation-planner';
-import { VacationSummary } from '@/components/vacations/vacation-summary';
+import { AnnualVacationQuadrant } from '@/components/vacations/annual-vacation-quadrant';
 
 
 export default function VacationsPage() {
@@ -25,27 +24,7 @@ export default function VacationsPage() {
                         <TabsTrigger value="groups">Agrupaciones</TabsTrigger>
                     </TabsList>
                     <TabsContent value="planner" className="pt-4">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-1 space-y-6">
-                               <VacationPlanner />
-                               <VacationSummary />
-                            </div>
-                            <div className="lg:col-span-2">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Cuadrante Anual</CardTitle>
-                                        <CardDescription>
-                                            Aquí se mostrará el cuadrante anual de vacaciones de todos los empleados. Próximamente...
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="flex items-center justify-center h-96 border-2 border-dashed rounded-lg">
-                                            <p className="text-muted-foreground">El calendario de vacaciones está en desarrollo.</p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </div>
+                       <AnnualVacationQuadrant />
                     </TabsContent>
                     <TabsContent value="groups" className="pt-4">
                         <GroupManager />

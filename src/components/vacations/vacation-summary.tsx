@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -71,7 +72,7 @@ export function VacationSummary() {
                         </CardHeader>
                         <CardContent>
                              {loading ? <Skeleton className="h-8 w-16" /> : (
-                                <div className="text-2xl font-bold">{summary.vacationingEmployees}</div>
+                                <div className="text-2xl font-bold">{summary.vacationingEmployees.size}</div>
                             )}
                         </CardContent>
                     </Card>
