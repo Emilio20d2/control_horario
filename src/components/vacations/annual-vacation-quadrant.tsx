@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDataProvider } from '@/hooks/use-data-provider';
@@ -12,12 +12,26 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
 import type { Employee, EmployeeGroup } from '@/lib/types';
 import { Users, Clock } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 export function AnnualVacationQuadrant() {
     const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours } = useDataProvider();
 
+    const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     const vacationType = useMemo(() => absenceTypes.find(at => at.name === 'Vacaciones'), [absenceTypes]);
-    const currentYear = useMemo(() => new Date().getFullYear(), []);
+
+    const availableYears = useMemo(() => {
+        const years = new Set<number>();
+        if (weeklyRecords) {
+            Object.keys(weeklyRecords).forEach(id => years.add(parseInt(id.split('-')[0], 10)));
+        }
+        const currentYear = new Date().getFullYear();
+        years.add(currentYear);
+        years.add(currentYear + 1);
+        years.add(currentYear - 1);
+        return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
+    }, [weeklyRecords]);
+
 
     const allEmployees = useMemo(() => {
         if (loading) return [];
@@ -51,7 +65,7 @@ export function AnnualVacationQuadrant() {
 
 
     const weeksOfYear = useMemo(() => {
-        const year = currentYear;
+        const year = selectedYear;
         const firstDayOfYear = new Date(year, 0, 1);
         let firstMonday = startOfWeek(firstDayOfYear, { weekStartsOn: 1 });
     
@@ -79,7 +93,7 @@ export function AnnualVacationQuadrant() {
             }
         }
         return weeks;
-    }, [currentYear]);
+    }, [selectedYear]);
 
     const vacationData = useMemo(() => {
         if (loading || !vacationType) return { weeklySummaries: {}, employeesByWeek: {} };
@@ -105,7 +119,7 @@ export function AnnualVacationQuadrant() {
                     const absenceEnd = absence.endDate ? endOfDay(absence.endDate) : absenceStart;
                     const daysInAbsence = eachDayOfInterval({ start: absenceStart, end: absenceEnd });
                     daysInAbsence.forEach(day => {
-                        if (getYear(day) === currentYear) vacationDays.add(format(day, 'yyyy-MM-dd'));
+                        if (getYear(day) === selectedYear) vacationDays.add(format(day, 'yyyy-MM-dd'));
                     });
                 });
                 // 2. Weekly records
@@ -113,7 +127,7 @@ export function AnnualVacationQuadrant() {
                     const empWeekData = record.weekData[emp.id];
                     if (!empWeekData?.days) return;
                     Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
-                        if (dayData.absence === vacationType.abbreviation && getYear(new Date(dayStr)) === currentYear) {
+                        if (dayData.absence === vacationType.abbreviation && getYear(new Date(dayStr)) === selectedYear) {
                             vacationDays.add(dayStr);
                         }
                     });
@@ -152,7 +166,7 @@ export function AnnualVacationQuadrant() {
 
         return { weeklySummaries, employeesByWeek };
 
-    }, [loading, allEmployees, vacationType, weeksOfYear, weeklyRecords, currentYear, getEffectiveWeeklyHours]);
+    }, [loading, allEmployees, vacationType, weeksOfYear, weeklyRecords, selectedYear, getEffectiveWeeklyHours]);
 
     const groupedEmployeesByWeek = useMemo(() => {
         const result: Record<string, Record<string, string[]>> = {}; // { [weekKey]: { [groupId]: [employeeName, ...] } }
@@ -183,10 +197,24 @@ export function AnnualVacationQuadrant() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Cuadrante Anual de Vacaciones</CardTitle>
-                <CardDescription>
-                    Vista anual de la planificación de vacaciones, ordenada por agrupación.
-                </CardDescription>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Cuadrante Anual de Vacaciones</CardTitle>
+                        <CardDescription>
+                            Vista anual de la planificación de vacaciones, ordenada por agrupación.
+                        </CardDescription>
+                    </div>
+                     <div className="w-40">
+                        <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Seleccionar año..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
             </CardHeader>
             <CardContent>
                 <ScrollArea className="w-full whitespace-nowrap rounded-md border">
