@@ -111,6 +111,7 @@ export function HolidayReportGenerator() {
                     const squareSize = 4; // Cuadrado más grande
                     const text1 = 'PAGO';
                     const text2 = 'DEVO';
+                    const text3 = 'NO';
                     const yPos = cell.y + cell.height / 2 + 1;
 
                     doc.setLineWidth(0.5); // Borde más grueso
@@ -121,9 +122,14 @@ export function HolidayReportGenerator() {
                     doc.text(text1, xPos1 + squareSize + 2, yPos);
 
                     // Posición para el segundo checkbox y texto
-                    const xPos2 = cell.x + cell.width / 2;
+                    const xPos2 = cell.x + cell.width / 2.5;
                     doc.rect(xPos2, yPos - squareSize, squareSize, squareSize);
                     doc.text(text2, xPos2 + squareSize + 2, yPos);
+                    
+                    // Posición para el tercer checkbox y texto
+                    const xPos3 = cell.x + (cell.width / 2.5) * 1.8;
+                    doc.rect(xPos3, yPos - squareSize, squareSize, squareSize);
+                    doc.text(text3, xPos3 + squareSize + 2, yPos);
                 }
             },
             didDrawPage: (data) => addHeaderFooter(doc, data.pageNumber, totalPages),
