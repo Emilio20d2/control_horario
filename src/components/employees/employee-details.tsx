@@ -10,7 +10,7 @@ import { es } from 'date-fns/locale';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
-import { TrendingDown, TrendingUp, Scale, Loader2 } from 'lucide-react';
+import { TrendingDown, TrendingUp, Scale, Loader2, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface EmployeeDetailsProps {
@@ -58,10 +58,15 @@ export function EmployeeDetails({ period, employeeId, allPeriods }: EmployeeDeta
     const { 
         getEffectiveWeeklyHours,
         getProcessedAnnualDataForAllYears,
+        getEmployeeById,
+        employeeGroups,
     } = useDataProvider();
 
     const [annualData, setAnnualData] = useState<Awaited<ReturnType<typeof getProcessedAnnualDataForAllYears>> | null>(null);
     const [isLoadingAnnual, setIsLoadingAnnual] = useState(true);
+
+    const employee = getEmployeeById(employeeId);
+    const employeeGroup = employee ? employeeGroups.find(g => g.id === employee.groupId) : undefined;
 
     const currentWeeklyHours = getEffectiveWeeklyHours(period, new Date());
     
@@ -138,6 +143,17 @@ export function EmployeeDetails({ period, employeeId, allPeriods }: EmployeeDeta
                         <div>
                             <p className="text-sm font-medium text-muted-foreground">Jornada Semanal Vigente</p>
                             <p className="text-xl font-bold">{currentWeeklyHours.toFixed(2)} horas</p>
+                        </div>
+                         <div>
+                            <p className="text-sm font-medium text-muted-foreground">Agrupación</p>
+                            {employeeGroup ? (
+                                <p className="flex items-center gap-1">
+                                    <Users className="h-4 w-4" />
+                                    {employeeGroup.name}
+                                </p>
+                            ) : (
+                                <p>Sin agrupación</p>
+                            )}
                         </div>
                     </div>
                 </div>
