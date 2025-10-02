@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo } from 'react';
@@ -21,15 +22,18 @@ export function AnnualVacationQuadrant() {
     const allEmployees = useMemo(() => {
         if (loading) return [];
         
-        const mainEmployees = employees.map(e => ({...e, isExternal: false}));
-        const externalEmployees = holidayEmployees.map(e => ({
-            id: e.id,
-            name: e.name,
-            groupId: e.groupId,
-            isExternal: true,
-            workShift: e.workShift,
-            employmentPeriods: [],
-        }));
+        const mainEmployees: any[] = employees.map(e => ({...e, isExternal: false}));
+        
+        const externalEmployees = holidayEmployees
+            .filter(he => !mainEmployees.some(me => me.name.trim().toLowerCase() === he.name.trim().toLowerCase()))
+            .map(e => ({
+                id: e.id,
+                name: e.name,
+                groupId: e.groupId,
+                isExternal: true,
+                workShift: e.workShift,
+                employmentPeriods: [],
+            }));
 
         return [...mainEmployees, ...externalEmployees];
 
@@ -58,7 +62,7 @@ export function AnnualVacationQuadrant() {
                     end: weekEnd,
                     number: getISOWeek(weekStart),
                     year: getYear(weekStart),
-                    key: `${getYear(weekStart)}-W${getISOWeek(weekStart)}`
+                    key: `${getYear(weekStart)}-W${String(getISOWeek(weekStart)).padStart(2, '0')}`
                 });
             } else if (getYear(weekStart) > year) {
                 break;

@@ -18,31 +18,6 @@ import { seedHolidayEmployees } from '@/lib/services/settingsService';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 
-const initialHolidayEmployees = [
-  "ALBA PIÑEIRO PEREZ", "ALBERTO BIEL GAUDES", "ALBERTO JAVIER MONDEJAR BELTRAN", "ALEJANDRO MAYORAL MORON",
-  "ALVARO ECHEGOYEN DE GREGORIO ROCASOLA", "ANA GOMEZ ALAMAN", "ANA GRACIA SANCHEZ", "ANA MARIA IVANOV",
-  "ANDREA MARIA BURILLO FRANCES", "ANDREA RUIZ GRACIA", "BEATRIZ MERCEDES MORELLI DELGADO", "BRENDA CASTAN MARGALEJO",
-  "CANDELA GIMENEZ BARCA", "CARMEN DOÑATE BANEGAS", "CARMEN LUCIA URCIA MARCOS", "CAROLINA PEREZ SANCHEZ",
-  "CELIA LAIRLA SAN JOSE", "CLEMENTE ALUNDA CAÑET", "CRISTINA UCHE CHAURE", "CRISTINA VIDAL CASTIELLO",
-  "CRISTOBAL ANDRES FREDES CACERES", "ELISABETH GONZALEZ SERRANO", "EMILIO GOMEZ PARDO", "ESTIBALIZ MUÑOZ ALONSO",
-  "EVA MARIA NUEZ SIERRA", "GABRIELA ALVAREZ MARTIN", "GEMA LAURA CALVO AINSA", "GEMMA RUIZ CEJUDO",
-  "GUILLERMO SORIA MODREGO", "IRIS GIMENEZ MUÑOZ", "ISABEL GARCIA TERES", "JAVIER CORTES REMACHA",
-  "JESSICA LATORRE NAVARRO", "JOHANNA ANDREA PAUCAR LEONES", "LAURA CASAS TURON", "LAURA DE DIEGO LATORRE",
-  "LENA RODRIGUEZ MONTOYA", "LEYRE ORDOÑEZ VELASCO", "LORENA LOZANO LLES", "LORENA NAVARRO CASTELLOT",
-  "MARIA ANGELES IBUARBEN CATALAN", "MARIA ARANTXA GASCA JIMENEZ", "MARIA ARANTZAZU VILLACAMPA-GINER GARCIA",
-  "MARIA CAMPILLO ARANDA", "MARIA CIPRIANA MONJE REBENAQUE", "MARIA JOSE MARTIN ALIAS", "MARIA JOSE ORTIZ RUEDA",
-  "MARIA MAR GRACIA RECH", "MARIA MARTINEZ PEREZ", "MARIA PILAR SANCHEZ PEÑA", "MAXIMILIAN RIVALDO PETRISOR",
-  "MIRIAM RODRIGUEZ GARCIA", "NATALIA AZNAR MARTIN", "NAWAL TEMSAH GHERNATI", "NOELIA LOPEZ PARDO",
-  "NOELIA PARDO CALAVIA", "NOELIA VILLAR GRACIA", "OBDULIA SANCHEZ DOPICO", "PABLO LOPEZ MUOCO",
-  "PAOLA LOPEZ GASCA", "PATRICIA MARCO CORVINOS", "PEDRO RAMIREZ CANO", "RAFFAELA DE LIMA REZENDE",
-  "RAQUEL CHUECA PEREZ", "RAQUEL DOMINGO BERGES", "RAQUEL PLANAS CHOJOLAN", "RAQUEL VELASCO BENITO",
-  "REBECA PASCUAL ANDRES", "SAMUEL RODRIGUEZ MUÑOZ", "SERGIO GALLEGO FRANCO", "SILVIA FEIJOO ROMEO",
-  "SOFIA GALUCHINO BINABURO", "SOFIA OCHOA LASERNA", "SUSANA ALVARO NUEZ", "VALERIA TORRES PAÑOS",
-  "VERONICA CLAVERIA RODRIGUEZ", "VERONICA DANIELA BABEANU", "VERONICA FRAJ CEBRINO", "VICTORIA BITRIAN POSTIGO",
-  "YANIRA GIMENEZ SALESA", "YASMINA SANCHEZ GIMENEZ", "ZAINAB LKHADESSI"
-];
-
-
 export function HolidayEmployeeManager() {
     const { holidayEmployees, employeeGroups, addHolidayEmployee, updateHolidayEmployee, deleteHolidayEmployee, loading, refreshData } = useDataProvider();
     const { toast } = useToast();
@@ -54,18 +29,6 @@ export function HolidayEmployeeManager() {
     
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingEmployee, setEditingEmployee] = useState<Partial<HolidayEmployee>>({});
-
-
-    useEffect(() => {
-        const seedInitialData = async () => {
-            if (!loading && holidayEmployees && holidayEmployees.length === 0) {
-                console.log("Seeding initial holiday employees...");
-                await seedHolidayEmployees(initialHolidayEmployees);
-                refreshData();
-            }
-        };
-        seedInitialData();
-    }, [loading, holidayEmployees, refreshData]);
 
     const handleAddEmployee = async (e: React.FormEvent) => {
         e.preventDefault();
