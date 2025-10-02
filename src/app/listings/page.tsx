@@ -129,14 +129,18 @@ export default function ListingsPage() {
     
     const columnStyles: { [key: number]: any } = { 0: { cellWidth: 'auto' } };
     
-    const remainingWidth = doc.internal.pageSize.width - (pageMargin * 2);
-    // Calcular el ancho de la columna de empleados
-    const employeeColWidth = Math.max(...body.map(row => doc.getStringUnitWidth(row[0] as string) * doc.getFontSize() / doc.internal.scaleFactor)) + 6;
-    const availableForOtherCols = remainingWidth - employeeColWidth;
-    const otherColumnsWidth = data.columns.length > 0 ? availableForOtherCols / data.columns.length : 0;
-    
+    const employeeColWidth = Math.max(
+        doc.getStringUnitWidth('Empleado') * doc.getFontSize() / doc.internal.scaleFactor,
+        ...body.map(row => doc.getStringUnitWidth(String(row[0])) * doc.getFontSize() / doc.internal.scaleFactor)
+    ) + 6;
+
     columnStyles[0] = { cellWidth: employeeColWidth };
-    for (let i = 1; i < head[0].length; i++) {
+    
+    const remainingWidth = doc.internal.pageSize.width - (pageMargin * 2) - employeeColWidth;
+    const otherColumnsCount = data.columns.length;
+    const otherColumnsWidth = otherColumnsCount > 0 ? remainingWidth / otherColumnsCount : 0;
+    
+    for (let i = 1; i <= otherColumnsCount; i++) {
         columnStyles[i] = { cellWidth: otherColumnsWidth };
     }
 
