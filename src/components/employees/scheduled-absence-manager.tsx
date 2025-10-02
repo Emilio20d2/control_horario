@@ -28,12 +28,10 @@ interface ScheduledAbsenceManagerProps {
 export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceManagerProps) {
     const { absenceTypes, refreshData } = useDataProvider();
     const { toast } = useToast();
-    const { reauthenticateWithPassword } = useAuth();
     const [absenceTypeId, setAbsenceTypeId] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [password, setPassword] = useState('');
 
     const nonSplittableAbsenceTypes = absenceTypes
         .filter(at => !at.isAbsenceSplittable && at.name !== 'Vacaciones')
@@ -84,19 +82,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
     };
 
     const handleDeleteAbsence = async (absenceId: string) => {
-        if (!password) {
-            toast({ title: 'Contraseña requerida', description: 'Por favor, introduce tu contraseña para confirmar.', variant: 'destructive' });
-            return;
-        }
         setIsLoading(true);
-
-        const isAuthenticated = await reauthenticateWithPassword(password);
-        if (!isAuthenticated) {
-            toast({ title: 'Error de autenticación', description: 'La contraseña no es correcta.', variant: 'destructive' });
-            setIsLoading(false);
-            return;
-        }
-
         try {
             await deleteScheduledAbsence(employee.id, period.id, absenceId, employee);
             toast({
@@ -114,7 +100,6 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
             });
         } finally {
             setIsLoading(false);
-            setPassword('');
         }
     };
     
@@ -178,7 +163,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                                             <TableCell>{format(absence.startDate, 'PPP', { locale: es })}</TableCell>
                                             <TableCell>{absence.endDate ? format(absence.endDate, 'PPP', { locale: es }) : 'Indefinida'}</TableCell>
                                             <TableCell className="text-right">
-                                                 <AlertDialog onOpenChange={(open) => !open && setPassword('')}>
+                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
                                                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive-foreground">
                                                             <Trash2 className="h-4 w-4"/>
@@ -191,16 +176,6 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                                                                 Esta acción eliminará permanentemente la ausencia programada. Deberás ajustar manualmente las semanas afectadas si ya fueron confirmadas.
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
-                                                        <div className="space-y-2 py-2">
-                                                            <Label htmlFor="password-absence">Contraseña</Label>
-                                                            <Input
-                                                                id="password-absence"
-                                                                type="password"
-                                                                placeholder="Introduce tu contraseña para confirmar"
-                                                                value={password}
-                                                                onChange={(e) => setPassword(e.target.value)}
-                                                            />
-                                                        </div>
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                                             <AlertDialogAction onClick={() => handleDeleteAbsence(absence.id)} disabled={isLoading}>
