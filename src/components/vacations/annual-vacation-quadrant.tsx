@@ -211,7 +211,7 @@ export function AnnualVacationQuadrant() {
         const pageMargin = 10;
         
         const head = [
-            ['Agrupación'],
+            // ['Agrupación'], // No header for the first column
             ...weeksOfYear.map(week => [`S${week.number}\n${format(week.start, 'dd/MM')}`])
         ];
         
@@ -265,24 +265,25 @@ export function AnnualVacationQuadrant() {
             },
             didParseCell: (data) => {
                 if (data.section === 'body') {
-                    // Color rows by group
-                    const groupIndex = data.row.index;
-                    if (groupIndex < sortedGroups.length) {
-                         data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
+                    if (data.column.index === 0) {
+                        const groupIndex = data.row.index;
+                         if (groupIndex < sortedGroups.length) {
+                             data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
+                        } else {
+                            data.cell.styles.fillColor = '#e5e7eb'; // gray-200 for unassigned
+                        }
                     } else {
-                        data.cell.styles.fillColor = '#e5e7eb'; // gray-200 for unassigned
-                    }
-
-                    // Color holiday columns
-                    const weekIndex = data.column.index - 1;
-                    if (weekIndex >= 0 && weekIndex < weeksOfYear.length) {
-                        const week = weeksOfYear[weekIndex];
-                        const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                        const hasHoliday = weekDays.some(day => 
-                            holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7)
-                        );
-                        if(hasHoliday && !data.cell.text[0]) {
-                            data.cell.styles.fillColor = '#bfdbfe'; // primary/10
+                        // Color holiday columns
+                        const weekIndex = data.column.index - 1;
+                        if (weekIndex >= 0 && weekIndex < weeksOfYear.length) {
+                            const week = weeksOfYear[weekIndex];
+                            const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                            const hasHoliday = weekDays.some(day => 
+                                holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7)
+                            );
+                            if(hasHoliday && !data.cell.text[0]) {
+                                data.cell.styles.fillColor = '#bfdbfe'; // primary/10
+                            }
                         }
                     }
                 }
@@ -327,9 +328,9 @@ export function AnnualVacationQuadrant() {
                 <Table className="min-w-full table-fixed border-collapse">
                     <TableHeader className='sticky top-0 z-20 bg-card'>
                         <TableRow>
-                            <TableHead className="w-40 min-w-40 p-1 text-center font-semibold border-l sticky left-0 bg-card z-10">
+                            {/* <TableHead className="w-40 min-w-40 p-1 text-center font-semibold border-l sticky left-0 bg-card z-10">
                                 Agrupación
-                            </TableHead>
+                            </TableHead> */}
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => 
@@ -354,9 +355,9 @@ export function AnnualVacationQuadrant() {
                     <TableBody>
                         {sortedGroups.map((group, groupIndex) => (
                             <TableRow key={group.id} className="h-10 align-top">
-                                <TableCell className="w-40 min-w-40 p-1.5 border-l align-top text-xs font-semibold sticky left-0 z-10" style={{ backgroundColor: groupColors[groupIndex % groupColors.length] }}>
+                                {/* <TableCell className="w-40 min-w-40 p-1.5 border-l align-top text-xs font-semibold sticky left-0 z-10" style={{ backgroundColor: groupColors[groupIndex % groupColors.length] }}>
                                     {group.name}
-                                </TableCell>
+                                </TableCell> */}
                                 {weeksOfYear.map(week => {
                                     const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
@@ -380,9 +381,9 @@ export function AnnualVacationQuadrant() {
                             </TableRow>
                         ))}
                          <TableRow className="h-10 align-top">
-                            <TableCell className="w-40 min-w-40 p-1.5 border-l align-top text-xs font-semibold sticky left-0 bg-gray-200 z-10">
+                            {/* <TableCell className="w-40 min-w-40 p-1.5 border-l align-top text-xs font-semibold sticky left-0 bg-gray-200 z-10">
                                 Sin Agrupación
-                            </TableCell>
+                            </TableCell> */}
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
@@ -409,5 +410,4 @@ export function AnnualVacationQuadrant() {
             </CardContent>
         </Card>
     );
-
-    
+}
