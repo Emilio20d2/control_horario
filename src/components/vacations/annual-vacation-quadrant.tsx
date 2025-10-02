@@ -51,7 +51,7 @@ export function AnnualVacationQuadrant() {
         const mainEmployeeNames = new Set(mainEmployees.map(me => me.name.trim().toLowerCase()));
 
         const externalEmployees = holidayEmployees
-            .filter(he => !mainEmployeeNames.has(he.name.trim().toLowerCase()))
+            .filter(he => he.active && !mainEmployeeNames.has(he.name.trim().toLowerCase()))
             .map(e => ({
                 id: e.id,
                 name: e.name,
@@ -61,7 +61,11 @@ export function AnnualVacationQuadrant() {
                 employmentPeriods: [],
             }));
 
-        return [...mainEmployees, ...externalEmployees];
+        return [...mainEmployees, ...externalEmployees].filter(e => {
+            if (e.isExternal) return true;
+            const holidayEmp = holidayEmployees.find(he => he.id === e.id);
+            return holidayEmp ? holidayEmp.active : true;
+        });
 
     }, [employees, holidayEmployees, loading, getEffectiveWeeklyHours]);
 
@@ -251,30 +255,50 @@ export function AnnualVacationQuadrant() {
                                     <TableCell className="font-semibold text-sm p-2 sticky left-0 z-10 bg-card border-b">
                                         {group.name}
                                     </TableCell>
-                                    {weeksOfYear.map(week => (
-                                        <TableCell key={`${group.id}-${week.key}`} className="w-48 min-w-48 p-1.5 border-l align-top text-xs">
-                                             <div className="flex flex-col gap-1">
-                                                {(groupedEmployeesByWeek[week.key]?.[group.id] || []).map(name => (
-                                                    <div key={name} className={cn("p-1 text-white rounded-sm text-center truncate", `bg-chart-${(groupIndex % 5) + 1}`)}>{name}</div>
-                                                ))}
-                                            </div>
-                                        </TableCell>
-                                    ))}
+                                    {weeksOfYear.map(week => {
+                                         const employeesInGroup = groupedEmployeesByWeek[week.key]?.[group.id] || [];
+                                         const hasEmployees = employeesInGroup.length > 0;
+                                        return (
+                                            <TableCell 
+                                                key={`${group.id}-${week.key}`} 
+                                                className={cn(
+                                                    "w-48 min-w-48 p-1.5 border-l align-top text-xs",
+                                                    hasEmployees && `bg-chart-${(groupIndex % 5) + 1} text-primary-foreground`
+                                                )}
+                                            >
+                                                <div className="flex flex-col gap-1">
+                                                    {employeesInGroup.map(name => (
+                                                        <div key={name} className="truncate p-0.5">{name}</div>
+                                                    ))}
+                                                </div>
+                                            </TableCell>
+                                        )
+                                    })}
                                 </TableRow>
                             ))}
                              <TableRow className="hover:bg-accent/20 h-10 align-top">
                                 <TableCell className="font-semibold text-sm p-2 sticky left-0 z-10 bg-card border-b">
                                     Sin Agrupación
                                 </TableCell>
-                                {weeksOfYear.map(week => (
-                                    <TableCell key={`unassigned-${week.key}`} className="w-48 min-w-48 p-1.5 border-l align-top text-xs">
-                                        <div className="flex flex-col gap-1">
-                                            {(groupedEmployeesByWeek[week.key]?.['unassigned'] || []).map(name => (
-                                                <div key={name} className="p-1 bg-muted/80 text-muted-foreground rounded-sm text-center truncate">{name}</div>
-                                            ))}
-                                        </div>
-                                    </TableCell>
-                                ))}
+                                {weeksOfYear.map(week => {
+                                    const employeesInGroup = groupedEmployeesByWeek[week.key]?.['unassigned'] || [];
+                                    const hasEmployees = employeesInGroup.length > 0;
+                                    return (
+                                        <TableCell 
+                                            key={`unassigned-${week.key}`} 
+                                            className={cn(
+                                                "w-48 min-w-48 p-1.5 border-l align-top text-xs",
+                                                hasEmployees && "bg-muted text-muted-foreground"
+                                            )}
+                                        >
+                                            <div className="flex flex-col gap-1">
+                                                {employeesInGroup.map(name => (
+                                                    <div key={name} className="truncate p-0.5">{name}</div>
+                                                ))}
+                                            </div>
+                                        </TableCell>
+                                    )
+                                })}
                             </TableRow>
                         </TableBody>
                     </Table>
