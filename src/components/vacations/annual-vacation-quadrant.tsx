@@ -206,90 +206,130 @@ export function AnnualVacationQuadrant() {
         '#e0e7ff', '#ccfbf1', '#ffedd5',
     ];
 
+    const allRowsData = useMemo(() => {
+      const rows = [
+          ...sortedGroups.map(g => ({...g, isUnassigned: false})),
+          { id: 'unassigned', name: 'Sin Agrupación', order: 999, isUnassigned: true }
+      ];
+      
+      const maxEmployeesInAnyCell = Math.max(1, ...weeksOfYear.flatMap(week => 
+          rows.map(group => (groupedEmployeesByWeek[week.key]?.[group.id] || []).length)
+      ));
+      
+      return rows.map(group => {
+          const employeesInWeeks = weeksOfYear.map(week => groupedEmployeesByWeek[week.key]?.[group.id] || []);
+          const maxInRow = Math.max(1, ...employeesInWeeks.map(e => e.length));
+          return { ...group, rowSpan: maxInRow };
+      });
+  }, [sortedGroups, weeksOfYear, groupedEmployeesByWeek]);
+
+
     const handleGeneratePdf = () => {
         setIsGeneratingPdf(true);
         try {
             const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a3' });
             const pageMargin = 10;
             const pageWidth = doc.internal.pageSize.width;
-            
-            const allRowsData = [
-                ...sortedGroups.map(g => ({...g, isUnassigned: false})),
-                { id: 'unassigned', name: 'Sin Agrupación', isUnassigned: true, order: 999 }
-            ].sort((a,b) => a.order - b.order);
-
-            const bodyRows = allRowsData.flatMap(group => {
-                const employeesByWeekForGroup = weeksOfYear.map(week => {
-                    const groupId = group.isUnassigned ? 'unassigned' : group.id;
-                    return groupedEmployeesByWeek[week.key]?.[groupId] || [];
-                });
-                
-                const maxEmployeesInRow = Math.max(1, ...employeesByWeekForGroup.map(list => list.length));
-
-                const groupRows: string[][] = [];
-                for(let i = 0; i < maxEmployeesInRow; i++) {
-                    const newRow = weeksOfYear.map((week, weekIndex) => employeesByWeekForGroup[weekIndex][i] || '');
-                    groupRows.push(newRow);
-                }
-                return groupRows;
-            });
-            
-            autoTable(doc, {
-                theme: 'grid',
-                styles: { fontSize: 5, cellPadding: 0.5, lineColor: 200, lineWidth: 0.1 },
-                headStyles: { halign: 'center', valign: 'middle', fillColor: [255, 255, 255], textColor: 0, lineWidth: 0.1, lineColor: 200 },
-                body: bodyRows,
-                didDrawPage: (data) => {
-                    doc.setFontSize(16);
+            const pageHeight = doc.internal.pageSize.height;
+            const contentWidth = pageWidth - (pageMargin * 2);
+    
+            const headerHeight = 20;
+            const rowHeight = 8;
+            const colWidth = 40; 
+            const firstColWidth = 50; 
+    
+            const colsPerPage = Math.floor((contentWidth - firstColWidth) / colWidth);
+            const totalWeekCols = weeksOfYear.length;
+            const totalPages = Math.ceil(totalWeekCols / colsPerPage);
+    
+            for (let page = 0; page < totalPages; page++) {
+                if (page > 0) doc.addPage('a3', 'l');
+                let currentY = pageMargin + headerHeight;
+    
+                // --- Header ---
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`Cuadrante Anual de Vacaciones - ${selectedYear}`, pageMargin, pageMargin + 10);
+    
+                // --- Week Headers ---
+                const startCol = page * colsPerPage;
+                const endCol = Math.min(startCol + colsPerPage, totalWeekCols);
+    
+                let currentX = pageMargin;
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Agrupación', currentX, currentY - 2);
+                currentX += firstColWidth;
+    
+                for (let i = startCol; i < endCol; i++) {
+                    const week = weeksOfYear[i];
+                    const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                    const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
+                    
+                    doc.setFillColor(hasHoliday ? 224, 242, 254 : 248, 250, 252);
+                    doc.rect(currentX, currentY - headerHeight + 5, colWidth, headerHeight - 5, 'F');
+                    
+                    doc.setFontSize(7);
                     doc.setFont('helvetica', 'bold');
-                    doc.text(`Cuadrante Anual de Vacaciones - ${selectedYear}`, pageMargin, 15);
-                },
-                didDrawCell: (data) => {
-                    const isHead = data.section === 'head';
-                    const isBody = data.section === 'body';
+                    doc.text(`Semana ${week.number}`, currentX + colWidth / 2, currentY - headerHeight + 9, { align: 'center' });
+                    
+                    doc.setFontSize(5);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(`${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}`, currentX + colWidth / 2, currentY - headerHeight + 12, { align: 'center' });
 
-                    if (isHead) {
-                        const week = weeksOfYear[data.column.index];
-                        const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                        const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
-                        if(hasHoliday) data.cell.styles.fillColor = '#e0f2fe';
-
-                        doc.setFontSize(7);
-                        doc.setFont('helvetica', 'bold');
-                        doc.text(`S${week.number}`, data.cell.x + data.cell.width / 2, data.cell.y + 4, { align: 'center' });
-                        
-                        doc.setFontSize(5);
-                        doc.setFont('helvetica', 'normal');
-                        const dateRangeText = `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}`;
-                        doc.text(dateRangeText, data.cell.x + data.cell.width / 2, data.cell.y + 7, { align: 'center' });
-
-                        const summary = vacationData.weeklySummaries[week.key];
-                        if (summary) {
-                            const summaryText = `${summary.employeeCount} / ${summary.hourImpact.toFixed(0)}h`;
-                            doc.text(summaryText, data.cell.x + data.cell.width / 2, data.cell.y + 10, { align: 'center' });
+                    const summary = vacationData.weeklySummaries[week.key];
+                    if (summary) {
+                        doc.setFontSize(6);
+                        doc.text(`${summary.employeeCount}E / ${summary.hourImpact.toFixed(0)}h`, currentX + colWidth / 2, currentY - headerHeight + 16, { align: 'center' });
+                    }
+                    currentX += colWidth;
+                }
+    
+                // --- Body Rows ---
+                allRowsData.forEach((group, groupIndex) => {
+                    const groupColor = group.id === 'unassigned' ? '#e5e7eb' : groupColors[groupIndex % groupColors.length];
+                    const numRowsForGroup = group.rowSpan;
+    
+                    doc.setFillColor(248, 250, 252);
+                    doc.rect(pageMargin, currentY, firstColWidth, rowHeight * numRowsForGroup, 'F');
+                    doc.setFontSize(8);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(group.name, pageMargin + 2, currentY + (rowHeight * numRowsForGroup) / 2, { valign: 'middle' });
+    
+                    let cellX = pageMargin + firstColWidth;
+                    for (let i = startCol; i < endCol; i++) {
+                        const week = weeksOfYear[i];
+                        const employeesInCell = groupedEmployeesByWeek[week.key]?.[group.id] || [];
+    
+                        for (let j = 0; j < numRowsForGroup; j++) {
+                             const empName = employeesInCell[j];
+                             if (empName) {
+                                doc.setFillColor(groupColor);
+                                doc.rect(cellX, currentY + j * rowHeight, colWidth, rowHeight, 'F');
+                                doc.setFontSize(6);
+                                doc.setFont('helvetica', 'normal');
+                                doc.text(empName, cellX + 2, currentY + j * rowHeight + rowHeight / 2, { valign: 'middle' });
+                             } else {
+                                doc.setFillColor(255,255,255);
+                                doc.rect(cellX, currentY + j * rowHeight, colWidth, rowHeight, 'F');
+                             }
                         }
+                        cellX += colWidth;
                     }
-
-                    if (isBody) {
-                         const groupIndex = allRowsData.findIndex(group => {
-                            const employeesInGroup = groupedEmployeesByWeek[weeksOfYear[data.column.index].key]?.[group.id] || groupedEmployeesByWeek[weeksOfYear[data.column.index].key]?.[group.isUnassigned ? 'unassigned' : ''] || [];
-                            return employeesInGroup.includes(data.cell.text[0]);
-                         });
-
-                         if (groupIndex !== -1 && data.cell.text.length > 0) {
-                             data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
-                         }
-                    }
-                },
-                columnStyles: weeksOfYear.reduce((acc, _, index) => {
-                    acc[index] = { cellWidth: 25 };
-                    return acc;
-                }, {} as any)
-            });
-
+                    currentY += rowHeight * numRowsForGroup;
+                    doc.setDrawColor(229, 231, 235); // border color
+                    doc.line(pageMargin, currentY, pageWidth - pageMargin, currentY);
+                });
+    
+                // --- Footer ---
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.text(`Página ${page + 1} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 5, { align: 'right' });
+            }
+    
             doc.save(`cuadrante_vacaciones_${selectedYear}.pdf`);
         } catch (error) {
-            console.error(error);
+            console.error("Error generating PDF:", error);
             if (toast) {
                 toast({
                     title: 'Error al generar PDF',
@@ -331,16 +371,24 @@ export function AnnualVacationQuadrant() {
                 </div>
             </CardHeader>
             <CardContent className="overflow-x-auto">
-                <Table className="min-w-full table-fixed border-collapse">
-                    <TableHeader className='sticky top-0 z-20 bg-card'>
-                        <TableRow>
-                            {weeksOfYear.map(week => {
-                                const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                                const hasHoliday = weekDays.some(day => 
-                                    holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7)
-                                );
-                                return (
-                                <TableHead key={week.key} className={cn("w-48 min-w-48 p-1 text-center text-xs font-normal border-l", hasHoliday && "bg-primary/10")}>
+                <div className="grid grid-flow-col auto-cols-max">
+                    {/* First column for Group Names */}
+                    <div className="sticky left-0 z-10 bg-card">
+                        <div className="h-20 border-b flex items-center justify-center p-1 text-xs font-semibold">Agrupación</div>
+                        {allRowsData.map(group => (
+                             <div key={group.id} className="flex items-center justify-center p-1.5 border-b text-xs font-semibold" style={{ height: `${group.rowSpan * 2.5}rem`}}>
+                                {group.name}
+                             </div>
+                        ))}
+                    </div>
+
+                    {/* Weekly Columns */}
+                    {weeksOfYear.map(week => {
+                        const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                        const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
+                        return (
+                            <div key={week.key} className="flex flex-col">
+                                <div className={cn("h-20 p-1 text-center text-xs font-normal border-b border-l", hasHoliday ? "bg-blue-100" : "bg-gray-50")}>
                                     <div className='flex flex-col items-center justify-center h-full'>
                                         <span className='font-semibold'>Semana {week.number}</span>
                                         <span className='text-muted-foreground text-[10px]'>
@@ -351,60 +399,28 @@ export function AnnualVacationQuadrant() {
                                             <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
                                         </div>
                                     </div>
-                                </TableHead>
-                            )})}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {sortedGroups.map((group, groupIndex) => (
-                            <TableRow key={group.id} className="h-10 align-top">
-                                {weeksOfYear.map(week => {
-                                    const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                                    const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
-                                    const employeesInGroup = groupedEmployeesByWeek[week.key]?.[group.id] || [];
-                                    const hasEmployees = employeesInGroup.length > 0;
-                                    const bgColor = hasEmployees ? groupColors[groupIndex % groupColors.length] : (hasHoliday ? '#e0f2fe' : '');
-                                    return (
-                                        <TableCell 
-                                            key={`${group.id}-${week.key}`} 
-                                            className={cn("w-48 min-w-48 p-1.5 border-l align-top text-xs", bgColor && `bg-[${bgColor}]`)}
-                                            style={{ backgroundColor: bgColor }}
-                                        >
-                                            <div className="flex flex-col gap-1">
-                                                {employeesInGroup.map(name => (
-                                                    <div key={name} className="truncate p-0.5">{name}</div>
-                                                ))}
+                                </div>
+                                {allRowsData.map((group, groupIndex) => {
+                                    const employeesInCell = groupedEmployeesByWeek[week.key]?.[group.id] || [];
+                                    return(
+                                    <div key={group.id} className="border-b border-l p-1" style={{ height: `${group.rowSpan * 2.5}rem`}}>
+                                         {employeesInCell.map((name, nameIndex) => (
+                                            <div 
+                                                key={name}
+                                                className="text-[10px] truncate p-0.5 rounded-sm mb-0.5"
+                                                style={{ backgroundColor: group.id === 'unassigned' ? '#e5e7eb' : groupColors[groupIndex % groupColors.length] }}
+                                            >
+                                                {name}
                                             </div>
-                                        </TableCell>
-                                    )
-                                })}
-                            </TableRow>
-                        ))}
-                         <TableRow className="h-10 align-top">
-                            {weeksOfYear.map(week => {
-                                const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                                const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
-                                const employeesInGroup = groupedEmployeesByWeek[week.key]?.['unassigned'] || [];
-                                const hasEmployees = employeesInGroup.length > 0;
-                                const bgColor = hasEmployees ? '#e5e7eb' : (hasHoliday ? '#e0f2fe' : '');
-                                return (
-                                    <TableCell 
-                                        key={`unassigned-${week.key}`} 
-                                        className={cn("w-48 min-w-48 p-1.5 border-l align-top text-xs")}
-                                        style={{ backgroundColor: bgColor }}
-                                    >
-                                        <div className="flex flex-col gap-1">
-                                            {employeesInGroup.map(name => (
-                                                <div key={name} className="truncate p-0.5">{name}</div>
-                                            ))}
-                                        </div>
-                                    </TableCell>
-                                )
-                            })}
-                        </TableRow>
-                    </TableBody>
-                </Table>
+                                         ))}
+                                    </div>
+                                )})}
+                            </div>
+                        )
+                    })}
+                </div>
             </CardContent>
         </Card>
     );
 }
+
