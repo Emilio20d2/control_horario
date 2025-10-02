@@ -56,8 +56,10 @@ export function HolidayReportGenerator() {
             setIsGenerating(false);
             return;
         }
+        
+        const orientation = holidayIdsToReport.length > 2 ? 'l' : 'p';
+        const doc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
 
-        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         const pageMargin = 15;
         
         const addHeaderFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
@@ -81,13 +83,15 @@ export function HolidayReportGenerator() {
         });
 
         // Hack para calcular el número total de páginas
-        const tempDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        const tempDoc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
         autoTable(tempDoc, { head: [head], body, startY: 25 });
         const totalPages = tempDoc.internal.getNumberOfPages();
         
         const columnStyles: { [key: number]: any } = { 0: { cellWidth: 'auto' } };
+        const otherColumnsWidth = (doc.internal.pageSize.width - (pageMargin * 2)) * (1 / (head.length));
+
         for (let i = 1; i < head.length; i++) {
-            columnStyles[i] = { cellWidth: 'wrap', halign: 'center' };
+            columnStyles[i] = { cellWidth: 'wrap', halign: 'center', minCellWidth: 40 };
         }
 
         autoTable(doc, {
@@ -108,28 +112,25 @@ export function HolidayReportGenerator() {
                     data.cell.text = []; // Limpiar el texto original de la celda
                     doc.setFontSize(8);
                     const cell = data.cell;
-                    const squareSize = 4; // Cuadrado más grande
+                    const squareSize = 4;
                     const text1 = 'PAGO';
                     const text2 = 'DEVO';
                     const text3 = 'NO';
                     const yPos = cell.y + cell.height / 2 + 1;
 
-                    doc.setLineWidth(0.5); // Borde más grueso
+                    doc.setLineWidth(0.5);
 
-                    // Posición para el primer checkbox y texto
                     const xPos1 = cell.x + 3;
                     doc.rect(xPos1, yPos - squareSize, squareSize, squareSize);
-                    doc.text(text1, xPos1 + squareSize + 2, yPos);
+                    doc.text(text1, xPos1 + squareSize + 1, yPos);
 
-                    // Posición para el segundo checkbox y texto
                     const xPos2 = cell.x + cell.width / 2.5;
                     doc.rect(xPos2, yPos - squareSize, squareSize, squareSize);
-                    doc.text(text2, xPos2 + squareSize + 2, yPos);
+                    doc.text(text2, xPos2 + squareSize + 1, yPos);
                     
-                    // Posición para el tercer checkbox y texto
                     const xPos3 = cell.x + (cell.width / 2.5) * 1.8;
                     doc.rect(xPos3, yPos - squareSize, squareSize, squareSize);
-                    doc.text(text3, xPos3 + squareSize + 2, yPos);
+                    doc.text(text3, xPos3 + squareSize + 1, yPos);
                 }
             },
             didDrawPage: (data) => addHeaderFooter(doc, data.pageNumber, totalPages),
