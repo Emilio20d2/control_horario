@@ -1,11 +1,10 @@
-
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GroupManager } from '@/components/vacations/group-manager';
 import { AnnualVacationQuadrant } from '@/components/vacations/annual-vacation-quadrant';
+import { VacationPlanner } from '@/components/vacations/vacation-planner';
 
 
 export default function VacationsPage() {
@@ -23,8 +22,9 @@ export default function VacationsPage() {
                         <TabsTrigger value="planner">Planificador Anual</TabsTrigger>
                         <TabsTrigger value="groups">Agrupaciones</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="planner" className="pt-4">
+                    <TabsContent value="planner" className="pt-4 space-y-6">
                        <AnnualVacationQuadrant />
+                       <VacationPlanner />
                     </TabsContent>
                     <TabsContent value="groups" className="pt-4">
                         <GroupManager />
