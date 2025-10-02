@@ -22,10 +22,20 @@ export function AnnualVacationQuadrant() {
     const allEmployees = useMemo(() => {
         if (loading) return [];
         
-        const mainEmployees: any[] = employees.map(e => ({...e, isExternal: false}));
+        const mainEmployees = employees.map(e => {
+            const activePeriod = e.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
+            const weeklyHours = getEffectiveWeeklyHours(activePeriod || null, new Date());
+            return {
+                ...e, 
+                isExternal: false,
+                workShift: `${weeklyHours.toFixed(2)}h`
+            };
+        });
         
+        const mainEmployeeNames = new Set(mainEmployees.map(me => me.name.trim().toLowerCase()));
+
         const externalEmployees = holidayEmployees
-            .filter(he => !mainEmployees.some(me => me.name.trim().toLowerCase() === he.name.trim().toLowerCase()))
+            .filter(he => !mainEmployeeNames.has(he.name.trim().toLowerCase()))
             .map(e => ({
                 id: e.id,
                 name: e.name,
@@ -37,7 +47,7 @@ export function AnnualVacationQuadrant() {
 
         return [...mainEmployees, ...externalEmployees];
 
-    }, [employees, holidayEmployees, loading]);
+    }, [employees, holidayEmployees, loading, getEffectiveWeeklyHours]);
 
 
     const weeksOfYear = useMemo(() => {
@@ -85,8 +95,9 @@ export function AnnualVacationQuadrant() {
         allEmployees.forEach(emp => {
             const vacationDays = new Set<string>();
 
-            // 1. Get from scheduled absences (internal employees)
+            // Get from scheduled absences AND weekly records for internal employees
             if (!emp.isExternal) {
+                // 1. Scheduled absences
                 emp.employmentPeriods.flatMap(p => p.scheduledAbsences ?? [])
                 .filter(a => a.absenceTypeId === vacationType.id)
                 .forEach(absence => {
@@ -97,10 +108,7 @@ export function AnnualVacationQuadrant() {
                         if (getYear(day) === currentYear) vacationDays.add(format(day, 'yyyy-MM-dd'));
                     });
                 });
-            }
-
-            // 2. Get from weekly records (internal employees)
-             if (!emp.isExternal) {
+                // 2. Weekly records
                 Object.values(weeklyRecords).forEach(record => {
                     const empWeekData = record.weekData[emp.id];
                     if (!empWeekData?.days) return;
@@ -112,7 +120,7 @@ export function AnnualVacationQuadrant() {
                 });
             }
 
-            // 3. Populate weekly summaries
+            // Populate weekly summaries
             if (vacationDays.size > 0) {
                 weeksOfYear.forEach(week => {
                     const hasVacationThisWeek = Array.from(vacationDays).some(dayStr => {
@@ -125,7 +133,7 @@ export function AnnualVacationQuadrant() {
                         
                         let weeklyHours = 0;
                         if(emp.isExternal) {
-                            const match = emp.workShift?.match(/(\d+)/);
+                            const match = emp.workShift?.match(/(\d+(\.\d+)?)/);
                             if(match) weeklyHours = parseFloat(match[0]);
                         } else {
                             const activePeriod = emp.employmentPeriods.find(p => {
@@ -203,7 +211,7 @@ export function AnnualVacationQuadrant() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {sortedGroups.map((group) => (
+                            {sortedGroups.map((group, groupIndex) => (
                                 <TableRow key={group.id} className="hover:bg-accent/20 h-10 align-top">
                                     <TableCell className="font-semibold text-sm p-2 sticky left-0 z-10 bg-card border-b">
                                         {group.name}
@@ -212,7 +220,7 @@ export function AnnualVacationQuadrant() {
                                         <TableCell key={`${group.id}-${week.key}`} className="w-48 min-w-48 p-1.5 border-l align-top text-xs">
                                              <div className="flex flex-col gap-1">
                                                 {(groupedEmployeesByWeek[week.key]?.[group.id] || []).map(name => (
-                                                    <div key={name} className="p-1 bg-primary/10 text-primary-foreground rounded-sm text-center truncate">{name}</div>
+                                                    <div key={name} className={cn("p-1 text-white rounded-sm text-center truncate", `bg-chart-${(groupIndex % 5) + 1}`)}>{name}</div>
                                                 ))}
                                             </div>
                                         </TableCell>
