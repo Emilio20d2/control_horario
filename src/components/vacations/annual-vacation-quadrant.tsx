@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -231,7 +232,6 @@ export function AnnualVacationQuadrant() {
                 <Table className="min-w-full table-fixed border-collapse">
                     <TableHeader className='sticky top-0 z-20 bg-card'>
                         <TableRow>
-                            <TableHead className="w-48 min-w-48 p-2 text-left sticky left-0 z-10 bg-card">Agrupación</TableHead>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => 
@@ -255,14 +255,13 @@ export function AnnualVacationQuadrant() {
                     </TableHeader>
                     <TableBody>
                         {sortedGroups.map((group, groupIndex) => (
-                            <TableRow key={group.id} className="h-10 align-top bg-muted/30">
-                                <TableCell className="font-semibold text-sm p-2 sticky left-0 z-10 bg-card border-b">
-                                    {group.name}
-                                </TableCell>
+                            <TableRow key={group.id} className="h-10 align-top">
                                 {weeksOfYear.map(week => {
-                                     const employeesInGroup = groupedEmployeesByWeek[week.key]?.[group.id] || [];
-                                     const hasEmployees = employeesInGroup.length > 0;
-                                     const bgColor = hasEmployees ? groupColors[groupIndex % groupColors.length] : '';
+                                    const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                                    const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
+                                    const employeesInGroup = groupedEmployeesByWeek[week.key]?.[group.id] || [];
+                                    const hasEmployees = employeesInGroup.length > 0;
+                                    const bgColor = hasEmployees ? groupColors[groupIndex % groupColors.length] : (hasHoliday ? 'bg-primary/10' : '');
                                     return (
                                         <TableCell 
                                             key={`${group.id}-${week.key}`} 
@@ -278,11 +277,10 @@ export function AnnualVacationQuadrant() {
                                 })}
                             </TableRow>
                         ))}
-                         <TableRow className="h-10 align-top bg-muted/30">
-                            <TableCell className="font-semibold text-sm p-2 sticky left-0 z-10 bg-card border-b">
-                                Sin Agrupación
-                            </TableCell>
+                         <TableRow className="h-10 align-top">
                             {weeksOfYear.map(week => {
+                                const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                                const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                                 const employeesInGroup = groupedEmployeesByWeek[week.key]?.['unassigned'] || [];
                                 const hasEmployees = employeesInGroup.length > 0;
                                 return (
@@ -290,7 +288,7 @@ export function AnnualVacationQuadrant() {
                                         key={`unassigned-${week.key}`} 
                                         className={cn(
                                             "w-48 min-w-48 p-1.5 border-l align-top text-xs",
-                                            hasEmployees && "bg-gray-300"
+                                            hasEmployees ? "bg-gray-300" : (hasHoliday ? 'bg-primary/10' : '')
                                         )}
                                     >
                                         <div className="flex flex-col gap-1">
@@ -308,5 +306,3 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
-
-  
