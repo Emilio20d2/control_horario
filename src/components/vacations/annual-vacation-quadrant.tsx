@@ -263,7 +263,7 @@ export function AnnualVacationQuadrant() {
                                                 key={`${group.id}-${week.key}`} 
                                                 className={cn(
                                                     "w-48 min-w-48 p-1.5 border-l align-top text-xs",
-                                                    hasEmployees && `bg-chart-${(groupIndex % 5) + 1} text-primary-foreground`
+                                                    hasEmployees && `bg-chart-${(groupIndex % 5) + 1}`
                                                 )}
                                             >
                                                 <div className="flex flex-col gap-1">
