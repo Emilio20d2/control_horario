@@ -170,7 +170,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                                         <TableCell colSpan={4} className="text-center h-24">No hay ausencias programadas.</TableCell>
                                     </TableRow>
                                 )}
-                                {period.scheduledAbsences?.filter(a => a.absenceTypeId !== vacationAbsenceType?.id).map(absence => {
+                                {period.scheduledAbsences?.map(absence => {
                                     const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
                                     return (
                                         <TableRow key={absence.id}>
