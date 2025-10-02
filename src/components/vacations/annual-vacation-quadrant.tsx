@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, isSameDay } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, isSameDay, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
 import { Users, Clock, FileDown, Loader2 } from 'lucide-react';
@@ -249,6 +249,7 @@ export function AnnualVacationQuadrant() {
     
                 let currentX = pageMargin;
     
+                // Draw headers for the weeks in the current page block
                 for (let i = startCol; i < endCol; i++) {
                     const week = weeksOfYear[i];
                     const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
@@ -259,6 +260,7 @@ export function AnnualVacationQuadrant() {
                     } else {
                         doc.setFillColor(248, 250, 252);
                     }
+
                     doc.rect(currentX, currentY - headerHeight + 5, colWidth, headerHeight - 5, 'F');
                     
                     doc.setFontSize(7);
@@ -276,11 +278,12 @@ export function AnnualVacationQuadrant() {
                     }
                     currentX += colWidth;
                 }
-    
+
+                // Draw content for all rows, but only for the columns of the current page block
                 allRowsData.forEach((group, groupIndex) => {
                     const groupColor = group.isUnassigned ? '#e5e7eb' : groupColors[groupIndex % groupColors.length];
                     const numRowsForGroup = group.rowSpan;
-    
+
                     let cellX = pageMargin;
                     for (let i = startCol; i < endCol; i++) {
                         const week = weeksOfYear[i];
