@@ -212,9 +212,6 @@ export function AnnualVacationQuadrant() {
                 <div className="flex justify-between items-start">
                     <div>
                         <CardTitle>Cuadrante Anual de Vacaciones</CardTitle>
-                        <CardDescription>
-                            Vista anual de la planificación de vacaciones, ordenada por agrupación.
-                        </CardDescription>
                     </div>
                      <div className="w-40">
                         <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
