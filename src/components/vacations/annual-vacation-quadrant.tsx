@@ -5,29 +5,72 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
 import type { Employee, EmployeeGroup } from '@/lib/types';
 
 export function AnnualVacationQuadrant() {
-    const { employees, employeeGroups, loading, absenceTypes } = useDataProvider();
+    const { employees, employeeGroups, loading, absenceTypes, weeklyRecords } = useDataProvider();
 
     const vacationType = useMemo(() => absenceTypes.find(at => at.name === 'Vacaciones'), [absenceTypes]);
+    const currentYear = useMemo(() => new Date().getFullYear(), []);
 
     const employeesWithVacations = useMemo(() => {
-        if (!vacationType) return [];
-        return employees.map(emp => {
-            const vacationPeriods = emp.employmentPeriods.flatMap(p => p.scheduledAbsences ?? [])
+        if (!vacationType || loading) return [];
+
+        const yearDayMapByEmployee: Record<string, Set<string>> = {};
+
+        // 1. Process all employees to initialize
+        employees.forEach(emp => {
+            yearDayMapByEmployee[emp.id] = new Set<string>();
+        });
+        
+        // 2. Process scheduled absences from employee data
+        employees.forEach(emp => {
+            emp.employmentPeriods.flatMap(p => p.scheduledAbsences ?? [])
                 .filter(a => a.absenceTypeId === vacationType.id)
-                .map(a => ({
-                    start: startOfDay(a.startDate),
-                    end: a.endDate ? endOfDay(a.endDate) : endOfDay(a.startDate)
-                }));
+                .forEach(absence => {
+                    const absenceStart = startOfDay(absence.startDate);
+                    const absenceEnd = absence.endDate ? endOfDay(absence.endDate) : absenceStart;
+
+                    const daysInAbsence = eachDayOfInterval({ start: absenceStart, end: absenceEnd });
+                    daysInAbsence.forEach(day => {
+                        if (getYear(day) === currentYear) {
+                            yearDayMapByEmployee[emp.id].add(format(day, 'yyyy-MM-dd'));
+                        }
+                    });
+                });
+        });
+
+        // 3. Process weekly records for daily vacation entries
+        Object.values(weeklyRecords).forEach(record => {
+            Object.keys(record.weekData).forEach(employeeId => {
+                if (yearDayMapByEmployee[employeeId]) {
+                    const empWeekData = record.weekData[employeeId];
+                    if (!empWeekData?.days) return;
+
+                    Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                         if (dayData.absence === vacationType.abbreviation && getYear(new Date(dayStr)) === currentYear) {
+                             yearDayMapByEmployee[employeeId].add(dayStr);
+                        }
+                    });
+                }
+            });
+        });
+
+        // 4. Map to final structure with vacation periods
+        return employees.map(emp => {
+            const vacationDays = Array.from(yearDayMapByEmployee[emp.id]);
+            const vacationPeriods = vacationDays.map(day => {
+                const date = new Date(day);
+                return { start: startOfDay(date), end: endOfDay(date) };
+            });
             return { ...emp, vacationPeriods };
         });
-    }, [employees, vacationType]);
+
+    }, [employees, vacationType, weeklyRecords, currentYear, loading]);
 
 
     const groupedEmployees = useMemo(() => {
@@ -57,8 +100,7 @@ export function AnnualVacationQuadrant() {
 
 
     const weeksOfYear = useMemo(() => {
-        const year = new Date().getFullYear();
-        let firstDay = startOfYear(new Date(year, 0, 1));
+        let firstDay = startOfYear(new Date(currentYear, 0, 1));
         if (getISOWeek(firstDay) > 1) {
             firstDay = addWeeks(firstDay, 1);
         }
@@ -66,7 +108,7 @@ export function AnnualVacationQuadrant() {
         const weeks = [];
         for (let i = 0; i < 53; i++) {
             const weekStart = addWeeks(firstDay, i);
-            if (getYear(weekStart) <= year) {
+            if (getYear(weekStart) <= currentYear) {
                  weeks.push({
                     start: weekStart,
                     end: endOfWeek(weekStart, { weekStartsOn: 1 }),
@@ -74,8 +116,8 @@ export function AnnualVacationQuadrant() {
                 });
             }
         }
-        return weeks.filter(w => getYear(w.start) === year || getYear(w.end) === year);
-    }, []);
+        return weeks.filter(w => getYear(w.start) === currentYear || getYear(w.end) === currentYear);
+    }, [currentYear]);
 
     if (loading) {
         return <Skeleton className="h-[600px] w-full" />;
