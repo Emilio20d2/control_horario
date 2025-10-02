@@ -5,98 +5,35 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, parseISO, startOfWeek } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter } from 'date-fns';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
 import type { Employee, EmployeeGroup } from '@/lib/types';
+import { Users, Clock } from 'lucide-react';
 
 export function AnnualVacationQuadrant() {
-    const { employees, employeeGroups, loading, absenceTypes, weeklyRecords } = useDataProvider();
+    const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours } = useDataProvider();
 
     const vacationType = useMemo(() => absenceTypes.find(at => at.name === 'Vacaciones'), [absenceTypes]);
     const currentYear = useMemo(() => new Date().getFullYear(), []);
 
-    const employeesWithVacations = useMemo(() => {
-        if (!vacationType || loading) return [];
-
-        const yearDayMapByEmployee: Record<string, Set<string>> = {};
-
-        // 1. Process all employees to initialize
-        employees.forEach(emp => {
-            yearDayMapByEmployee[emp.id] = new Set<string>();
-        });
+    const allEmployees = useMemo(() => {
+        if (loading) return [];
         
-        // 2. Process scheduled absences from employee data
-        employees.forEach(emp => {
-            emp.employmentPeriods.flatMap(p => p.scheduledAbsences ?? [])
-                .filter(a => a.absenceTypeId === vacationType.id)
-                .forEach(absence => {
-                    const absenceStart = startOfDay(absence.startDate);
-                    const absenceEnd = absence.endDate ? endOfDay(absence.endDate) : absenceStart;
+        const mainEmployees = employees.map(e => ({...e, isExternal: false}));
+        const externalEmployees = holidayEmployees.map(e => ({
+            id: e.id,
+            name: e.name,
+            groupId: e.groupId,
+            isExternal: true,
+            workShift: e.workShift,
+            employmentPeriods: [],
+        }));
 
-                    const daysInAbsence = eachDayOfInterval({ start: absenceStart, end: absenceEnd });
-                    daysInAbsence.forEach(day => {
-                        if (getYear(day) === currentYear) {
-                            yearDayMapByEmployee[emp.id].add(format(day, 'yyyy-MM-dd'));
-                        }
-                    });
-                });
-        });
+        return [...mainEmployees, ...externalEmployees];
 
-        // 3. Process weekly records for daily vacation entries
-        Object.values(weeklyRecords).forEach(record => {
-            Object.keys(record.weekData).forEach(employeeId => {
-                if (yearDayMapByEmployee[employeeId]) {
-                    const empWeekData = record.weekData[employeeId];
-                    if (!empWeekData?.days) return;
-
-                    Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
-                         if (dayData.absence === vacationType.abbreviation && getYear(new Date(dayStr)) === currentYear) {
-                             yearDayMapByEmployee[employeeId].add(dayStr);
-                        }
-                    });
-                }
-            });
-        });
-
-        // 4. Map to final structure with vacation periods
-        return employees.map(emp => {
-            const vacationDays = Array.from(yearDayMapByEmployee[emp.id]);
-            const vacationPeriods = vacationDays.map(day => {
-                const date = new Date(day);
-                return { start: startOfDay(date), end: endOfDay(date) };
-            });
-            return { ...emp, vacationPeriods };
-        });
-
-    }, [employees, vacationType, weeklyRecords, currentYear, loading]);
-
-
-    const groupedEmployees = useMemo(() => {
-        const groupsMap = new Map<string, { name: string; employees: any[] }>();
-        
-        [...employeeGroups].sort((a,b) => a.order - b.order).forEach(group => {
-            groupsMap.set(group.id, { name: group.name, employees: [] });
-        });
-        
-        const otherGroup = { name: 'Sin Agrupación', employees: [] as any[] };
-        groupsMap.set('other', otherGroup);
-
-        employeesWithVacations.forEach(emp => {
-            if (emp.groupId && groupsMap.has(emp.groupId)) {
-                groupsMap.get(emp.groupId)?.employees.push(emp);
-            } else {
-                otherGroup.employees.push(emp);
-            }
-        });
-        
-        for (const group of groupsMap.values()) {
-            group.employees.sort((a, b) => a.name.localeCompare(b.name));
-        }
-
-        return Array.from(groupsMap.values()).filter(g => g.employees.length > 0);
-    }, [employeesWithVacations, employeeGroups]);
+    }, [employees, holidayEmployees, loading]);
 
 
     const weeksOfYear = useMemo(() => {
@@ -104,7 +41,6 @@ export function AnnualVacationQuadrant() {
         const firstDayOfYear = new Date(year, 0, 1);
         let firstMonday = startOfWeek(firstDayOfYear, { weekStartsOn: 1 });
     
-        // Si la primera semana del año pertenece al año anterior, avanza a la siguiente.
         if (getYear(firstMonday) < year) {
             firstMonday = addWeeks(firstMonday, 1);
         }
@@ -116,13 +52,13 @@ export function AnnualVacationQuadrant() {
             const weekStart = addWeeks(firstMonday, i);
             const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
 
-            // Solo incluye semanas que son parte del año actual
             if (getYear(weekStart) === year || getYear(weekEnd) === year) {
                  weeks.push({
                     start: weekStart,
                     end: weekEnd,
                     number: getISOWeek(weekStart),
                     year: getYear(weekStart),
+                    key: `${getYear(weekStart)}-W${getISOWeek(weekStart)}`
                 });
             } else if (getYear(weekStart) > year) {
                 break;
@@ -131,12 +67,107 @@ export function AnnualVacationQuadrant() {
         return weeks;
     }, [currentYear]);
 
+    const vacationData = useMemo(() => {
+        if (loading || !vacationType) return { weeklySummaries: {}, employeesByWeek: {} };
+
+        const weeklySummaries: Record<string, { employeeCount: number; hourImpact: number }> = {};
+        const employeesByWeek: Record<string, { employeeId: string; employeeName: string; groupId?: string }[]> = {};
+
+        weeksOfYear.forEach(week => {
+            weeklySummaries[week.key] = { employeeCount: 0, hourImpact: 0 };
+            employeesByWeek[week.key] = [];
+        });
+
+        allEmployees.forEach(emp => {
+            const vacationDays = new Set<string>();
+
+            // 1. Get from scheduled absences (internal employees)
+            if (!emp.isExternal) {
+                emp.employmentPeriods.flatMap(p => p.scheduledAbsences ?? [])
+                .filter(a => a.absenceTypeId === vacationType.id)
+                .forEach(absence => {
+                    const absenceStart = startOfDay(absence.startDate);
+                    const absenceEnd = absence.endDate ? endOfDay(absence.endDate) : absenceStart;
+                    const daysInAbsence = eachDayOfInterval({ start: absenceStart, end: absenceEnd });
+                    daysInAbsence.forEach(day => {
+                        if (getYear(day) === currentYear) vacationDays.add(format(day, 'yyyy-MM-dd'));
+                    });
+                });
+            }
+
+            // 2. Get from weekly records (internal employees)
+             if (!emp.isExternal) {
+                Object.values(weeklyRecords).forEach(record => {
+                    const empWeekData = record.weekData[emp.id];
+                    if (!empWeekData?.days) return;
+                    Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                        if (dayData.absence === vacationType.abbreviation && getYear(new Date(dayStr)) === currentYear) {
+                            vacationDays.add(dayStr);
+                        }
+                    });
+                });
+            }
+
+            // 3. Populate weekly summaries
+            if (vacationDays.size > 0) {
+                weeksOfYear.forEach(week => {
+                    const hasVacationThisWeek = Array.from(vacationDays).some(dayStr => {
+                        const day = parseISO(dayStr);
+                        return day >= week.start && day <= week.end;
+                    });
+                    
+                    if (hasVacationThisWeek) {
+                        weeklySummaries[week.key].employeeCount++;
+                        
+                        let weeklyHours = 0;
+                        if(emp.isExternal) {
+                            const match = emp.workShift?.match(/(\d+)/);
+                            if(match) weeklyHours = parseFloat(match[0]);
+                        } else {
+                            const activePeriod = emp.employmentPeriods.find(p => {
+                                const periodStart = startOfDay(parseISO(p.startDate as string));
+                                const periodEnd = p.endDate ? endOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
+                                return isAfter(periodEnd, week.start) && isBefore(periodStart, week.end);
+                            });
+                             weeklyHours = getEffectiveWeeklyHours(activePeriod || null, week.start);
+                        }
+                        weeklySummaries[week.key].hourImpact += weeklyHours;
+                        employeesByWeek[week.key].push({ employeeId: emp.id, employeeName: emp.name, groupId: emp.groupId });
+                    }
+                });
+            }
+        });
+
+        return { weeklySummaries, employeesByWeek };
+
+    }, [loading, allEmployees, vacationType, weeksOfYear, weeklyRecords, currentYear, getEffectiveWeeklyHours]);
+
+    const groupedEmployeesByWeek = useMemo(() => {
+        const result: Record<string, Record<string, string[]>> = {}; // { [weekKey]: { [groupId]: [employeeName, ...] } }
+        
+        for (const weekKey in vacationData.employeesByWeek) {
+            result[weekKey] = {};
+            const weekEmployees = vacationData.employeesByWeek[weekKey];
+            
+            weekEmployees.forEach(emp => {
+                const groupId = emp.groupId || 'unassigned';
+                if (!result[weekKey][groupId]) {
+                    result[weekKey][groupId] = [];
+                }
+                result[weekKey][groupId].push(emp.employeeName);
+            });
+        }
+        return result;
+    }, [vacationData.employeesByWeek]);
+    
+    const sortedGroups = useMemo(() => {
+        return [...employeeGroups].sort((a,b) => a.order - b.order);
+    }, [employeeGroups]);
+
     if (loading) {
         return <Skeleton className="h-[600px] w-full" />;
     }
     
-    const chartColors = ['bg-chart-1', 'bg-chart-2', 'bg-chart-3', 'bg-chart-4', 'bg-chart-5'];
-
     return (
         <Card>
             <CardHeader>
@@ -152,38 +183,52 @@ export function AnnualVacationQuadrant() {
                             <TableRow>
                                 <TableHead className="w-48 min-w-48 p-2 text-left sticky left-0 z-10 bg-card">Agrupación</TableHead>
                                 {weeksOfYear.map(week => (
-                                    <TableHead key={`${week.year}-W${week.number}`} className="w-48 min-w-48 p-1 text-center text-xs font-normal border-l">
-                                        <div className='flex flex-col items-center justify-center h-12'>
+                                    <TableHead key={week.key} className="w-48 min-w-48 p-1 text-center text-xs font-normal border-l">
+                                        <div className='flex flex-col items-center justify-center h-full'>
                                             <span className='font-semibold'>Semana {week.number}</span>
-                                            <span className='text-muted-foreground'>
+                                            <span className='text-muted-foreground text-[10px]'>
                                                 {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
                                             </span>
+                                            <div className="flex gap-3 mt-1.5 text-[11px] items-center">
+                                                <div className='flex items-center gap-1'><Users className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.employeeCount ?? 0}</div>
+                                                <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
+                                            </div>
                                         </div>
                                     </TableHead>
                                 ))}
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {groupedEmployees.map((group, groupIndex) => (
-                                group.employees.map((emp, empIndex) => (
-                                     <TableRow key={emp.id} className="hover:bg-accent/20 h-10 align-top">
-                                        <TableCell className={cn("font-medium text-sm p-2 sticky left-0 z-10 bg-card flex items-center gap-2 h-10", empIndex === 0 && "border-t-2 border-primary/50")}>
-                                            {empIndex === 0 && <div className={cn('w-2 h-6 rounded-sm', chartColors[groupIndex % chartColors.length])}></div>}
-                                            <span className={cn(empIndex !== 0 && "pl-4")}>{emp.name}</span>
+                            {sortedGroups.map((group) => (
+                                <TableRow key={group.id} className="hover:bg-accent/20 h-10 align-top">
+                                    <TableCell className="font-semibold text-sm p-2 sticky left-0 z-10 bg-card border-b">
+                                        {group.name}
+                                    </TableCell>
+                                    {weeksOfYear.map(week => (
+                                        <TableCell key={`${group.id}-${week.key}`} className="w-48 min-w-48 p-1.5 border-l align-top text-xs">
+                                             <div className="flex flex-col gap-1">
+                                                {(groupedEmployeesByWeek[week.key]?.[group.id] || []).map(name => (
+                                                    <div key={name} className="p-1 bg-primary/10 text-primary-foreground rounded-sm text-center truncate">{name}</div>
+                                                ))}
+                                            </div>
                                         </TableCell>
-                                        {weeksOfYear.map(week => {
-                                            const hasVacation = emp.vacationPeriods.some((period: {start: Date, end: Date}) => 
-                                                period.start <= week.end && period.end >= week.start
-                                            );
-                                            return (
-                                                <TableCell key={`${emp.id}-${week.year}-W${week.number}`} className={cn("w-48 min-w-48 p-0 border-l", empIndex === 0 && "border-t-2 border-primary/50")}>
-                                                    {hasVacation && <div className={cn('h-10', chartColors[groupIndex % chartColors.length], 'opacity-70')}></div>}
-                                                </TableCell>
-                                            );
-                                        })}
-                                    </TableRow>
-                                ))
+                                    ))}
+                                </TableRow>
                             ))}
+                             <TableRow className="hover:bg-accent/20 h-10 align-top">
+                                <TableCell className="font-semibold text-sm p-2 sticky left-0 z-10 bg-card border-b">
+                                    Sin Agrupación
+                                </TableCell>
+                                {weeksOfYear.map(week => (
+                                    <TableCell key={`unassigned-${week.key}`} className="w-48 min-w-48 p-1.5 border-l align-top text-xs">
+                                        <div className="flex flex-col gap-1">
+                                            {(groupedEmployeesByWeek[week.key]?.['unassigned'] || []).map(name => (
+                                                <div key={name} className="p-1 bg-muted/80 text-muted-foreground rounded-sm text-center truncate">{name}</div>
+                                            ))}
+                                        </div>
+                                    </TableCell>
+                                ))}
+                            </TableRow>
                         </TableBody>
                     </Table>
                     <ScrollBar orientation="horizontal" />
