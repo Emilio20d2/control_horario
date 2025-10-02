@@ -197,6 +197,11 @@ export function AnnualVacationQuadrant() {
         return [...employeeGroups].sort((a,b) => a.order - b.order);
     }, [employeeGroups]);
 
+    const groupColors = [
+        'bg-blue-200', 'bg-green-200', 'bg-yellow-200', 'bg-purple-200', 'bg-pink-200', 
+        'bg-indigo-200', 'bg-teal-200', 'bg-orange-200',
+    ];
+
     if (loading) {
         return <Skeleton className="h-[600px] w-full" />;
     }
@@ -259,13 +264,11 @@ export function AnnualVacationQuadrant() {
                                     {weeksOfYear.map(week => {
                                          const employeesInGroup = groupedEmployeesByWeek[week.key]?.[group.id] || [];
                                          const hasEmployees = employeesInGroup.length > 0;
+                                         const bgColor = hasEmployees ? groupColors[groupIndex % groupColors.length] : '';
                                         return (
                                             <TableCell 
                                                 key={`${group.id}-${week.key}`} 
-                                                className={cn(
-                                                    "w-48 min-w-48 p-1.5 border-l align-top text-xs",
-                                                    hasEmployees && `bg-chart-${(groupIndex % 5) + 1}`
-                                                )}
+                                                className={cn("w-48 min-w-48 p-1.5 border-l align-top text-xs", bgColor)}
                                             >
                                                 <div className="flex flex-col gap-1">
                                                     {employeesInGroup.map(name => (
@@ -309,4 +312,3 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
-
