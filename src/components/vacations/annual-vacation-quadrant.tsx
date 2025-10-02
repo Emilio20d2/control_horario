@@ -189,7 +189,7 @@ export function AnnualVacationQuadrant() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="w-full whitespace-nowrap rounded-md border max-h-[70vh]">
+                <ScrollArea className="w-full whitespace-nowrap rounded-md border">
                     <Table className="min-w-full table-fixed border-collapse">
                         <TableHeader className='sticky top-0 z-20 bg-card'>
                             <TableRow>
