@@ -121,8 +121,9 @@ export function AnnualVacationQuadrant() {
                 emp.employmentPeriods.flatMap(p => p.scheduledAbsences ?? [])
                 .filter(a => a.absenceTypeId === vacationType.id)
                 .forEach(absence => {
+                    if (!absence.endDate) return;
                     const absenceStart = startOfDay(absence.startDate);
-                    const absenceEnd = absence.endDate ? endOfDay(absence.endDate) : absenceStart;
+                    const absenceEnd = endOfDay(absence.endDate);
                     const daysInAbsence = eachDayOfInterval({ start: absenceStart, end: absenceEnd });
                     daysInAbsence.forEach(day => {
                         if (getYear(day) === selectedYear) vacationDays.add(format(day, 'yyyy-MM-dd'));
@@ -251,7 +252,7 @@ export function AnnualVacationQuadrant() {
                         </TableHeader>
                         <TableBody>
                             {sortedGroups.map((group, groupIndex) => (
-                                <TableRow key={group.id} className="hover:bg-accent/20 h-10 align-top">
+                                <TableRow key={group.id} className="h-10 align-top bg-muted/30">
                                     <TableCell className="font-semibold text-sm p-2 sticky left-0 z-10 bg-card border-b">
                                         {group.name}
                                     </TableCell>
@@ -276,7 +277,7 @@ export function AnnualVacationQuadrant() {
                                     })}
                                 </TableRow>
                             ))}
-                             <TableRow className="hover:bg-accent/20 h-10 align-top">
+                             <TableRow className="h-10 align-top bg-muted/30">
                                 <TableCell className="font-semibold text-sm p-2 sticky left-0 z-10 bg-card border-b">
                                     Sin Agrupación
                                 </TableCell>
@@ -288,7 +289,7 @@ export function AnnualVacationQuadrant() {
                                             key={`unassigned-${week.key}`} 
                                             className={cn(
                                                 "w-48 min-w-48 p-1.5 border-l align-top text-xs",
-                                                hasEmployees && "bg-muted text-muted-foreground"
+                                                hasEmployees && "bg-gray-300"
                                             )}
                                         >
                                             <div className="flex flex-col gap-1">
@@ -308,3 +309,4 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
