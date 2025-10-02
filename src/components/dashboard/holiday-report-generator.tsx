@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileDown, Gift, Loader2 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { format, getYear } from 'date-fns';
+import { format, getYear, isAfter, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 
 export function HolidayReportGenerator() {
-    const { holidays, holidayEmployees, loading } = useDataProvider();
+    const { employees, holidays, holidayEmployees, loading, getEffectiveWeeklyHours } = useDataProvider();
     const [selectedHolidays, setSelectedHolidays] = useState<Record<string, boolean>>({});
     const [isGenerating, setIsGenerating] = useState(false);
     const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
@@ -35,10 +35,45 @@ export function HolidayReportGenerator() {
             .sort((a, b) => (a.date as Date).getTime() - (b.date as Date).getTime());
     }, [holidays, selectedYear]);
 
-    const activeHolidayEmployees = useMemo(() => {
-        if (!holidayEmployees) return [];
-        return holidayEmployees.filter(e => e.active).sort((a, b) => a.name.localeCompare(b.name));
-    }, [holidayEmployees]);
+    const unifiedEmployees = useMemo(() => {
+        if (loading) return [];
+        
+        const mainEmployees = employees
+          .filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
+          .map(e => {
+            const activePeriod = e.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
+            const weeklyHours = getEffectiveWeeklyHours(activePeriod || null, new Date());
+            return {
+                id: e.id,
+                name: e.name,
+                active: true, // Main employees are active by default if they have an active period
+                isEventual: false,
+            };
+        });
+        
+        const mainEmployeeNames = new Set(mainEmployees.map(me => me.name.trim().toLowerCase()));
+
+        const externalEmployees = holidayEmployees
+            .filter(he => !mainEmployeeNames.has(he.name.trim().toLowerCase()))
+            .map(e => ({
+                id: e.id,
+                name: e.name,
+                active: e.active,
+                isEventual: true,
+            }));
+
+        const combinedList = [...mainEmployees, ...externalEmployees];
+
+        return combinedList.filter(e => {
+            if (e.isEventual) {
+                return e.active;
+            }
+            // For main employees, check if there's a corresponding holidayEmployee record and if it's active
+            const holidayEmpRecord = holidayEmployees.find(he => he.id === e.id);
+            return holidayEmpRecord ? holidayEmpRecord.active : true; // Default to active if no record exists
+        }).sort((a, b) => a.name.localeCompare(b.name));
+
+    }, [employees, holidayEmployees, loading, getEffectiveWeeklyHours]);
 
     const handleGenerateReport = () => {
         setIsGenerating(true);
@@ -75,7 +110,7 @@ export function HolidayReportGenerator() {
             ...selectedHolidaysData.map(h => format(h!.date as Date, 'dd/MM/yy'))
         ];
 
-        const body = activeHolidayEmployees.map(emp => {
+        const body = unifiedEmployees.map(emp => {
             return [
                 emp.name,
                 ...selectedHolidaysData.map(() => "")
@@ -88,11 +123,23 @@ export function HolidayReportGenerator() {
         const totalPages = tempDoc.internal.getNumberOfPages();
         
         const columnStyles: { [key: number]: any } = { 0: { cellWidth: 'auto' } };
-        const otherColumnsWidth = (doc.internal.pageSize.width - (pageMargin * 2)) * (1 / (head.length));
+        const otherColumnsCount = head.length - 1;
+        
+        // Calculate employee column width based on content
+        const employeeColumnWidth = Math.max(
+            doc.getStringUnitWidth('Empleado') * doc.getFontSize() / doc.internal.scaleFactor,
+            ...body.map(row => doc.getStringUnitWidth(String(row[0])) * doc.getFontSize() / doc.internal.scaleFactor)
+        ) + 6; // Add some padding
+
+        columnStyles[0] = { cellWidth: employeeColumnWidth };
+
+        const remainingWidth = doc.internal.pageSize.width - (pageMargin * 2) - employeeColumnWidth;
+        const otherColumnWidth = otherColumnsCount > 0 ? remainingWidth / otherColumnsCount : 0;
 
         for (let i = 1; i < head.length; i++) {
-            columnStyles[i] = { cellWidth: 'wrap', halign: 'center', minCellWidth: 40 };
+            columnStyles[i] = { cellWidth: otherColumnWidth, halign: 'center' };
         }
+
 
         autoTable(doc, {
             head: [head],
