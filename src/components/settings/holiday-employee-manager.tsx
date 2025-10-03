@@ -175,7 +175,7 @@ export function HolidayEmployeeManager() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <form onSubmit={handleAddEmployee} className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+                <form onSubmit={handleAddEmployee} className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
                     <div className="space-y-1">
                         <label className="text-xs font-medium">Nombre Completo (Eventual)</label>
                         <Input
@@ -184,15 +184,6 @@ export function HolidayEmployeeManager() {
                             onChange={(e) => setNewEmployeeName(e.target.value)}
                             disabled={isAdding}
                         />
-                    </div>
-                    <div className="space-y-1 hidden">
-                        <label className="text-xs font-medium">Agrupación (Eventual)</label>
-                        <Select value={newEmployeeGroupId} onValueChange={setNewEmployeeGroupId} disabled={isAdding}>
-                            <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                            <SelectContent>
-                                {employeeGroups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
                     </div>
                      <div className="space-y-1">
                         <label className="text-xs font-medium">Jornada (Eventual)</label>
@@ -322,3 +313,5 @@ export function HolidayEmployeeManager() {
         </Card>
     );
 }
+
+    

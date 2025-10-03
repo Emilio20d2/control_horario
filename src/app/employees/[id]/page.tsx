@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -115,12 +116,12 @@ export default function EmployeeDetailPage() {
                             <Badge variant="destructive">Inactivo</Badge>
                         )}
                         {employeeGroup ? (
-                            <Badge variant="secondary" className="flex items-center gap-1">
+                            <Badge variant="secondary" className="hidden items-center gap-1">
                                 <Users className="h-3 w-3" />
                                 {employeeGroup.name}
                             </Badge>
                         ) : (
-                            <Badge variant="secondary">Sin Agrupación</Badge>
+                            <Badge variant="secondary" className="hidden">Sin Agrupación</Badge>
                         )}
                      </div>
                 </div>
@@ -173,3 +174,5 @@ export default function EmployeeDetailPage() {
         </div>
     );
 }
+
+    
