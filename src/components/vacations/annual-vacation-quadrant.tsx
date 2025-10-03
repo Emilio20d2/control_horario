@@ -182,7 +182,9 @@ export function AnnualVacationQuadrant() {
             const weekEmployees = vacationData.employeesByWeek[weekKey];
             
             weekEmployees.forEach(emp => {
-                const groupId = emp.groupId || 'unassigned';
+                const groupId = emp.groupId;
+                if (!groupId) return;
+
                 if (!result[weekKey][groupId]) {
                     result[weekKey][groupId] = [];
                 }
@@ -208,10 +210,11 @@ export function AnnualVacationQuadrant() {
             const contentWidth = pageWidth - (pageMargin * 2);
     
             const headerHeight = 20;
-            const rowHeight = 6; 
-            const colWidth = 48;
+            const rowHeight = 7; // Increased row height slightly
             
-            const colsPerPage = Math.floor(contentWidth / colWidth);
+            const colsPerPage = 4; // Set to 4 weeks per page
+            const colWidth = contentWidth / colsPerPage;
+
             const totalWeekCols = weeksOfYear.length;
             const totalPages = Math.ceil(totalWeekCols / colsPerPage);
 
@@ -232,40 +235,46 @@ export function AnnualVacationQuadrant() {
                 const startCol = page * colsPerPage;
                 const endCol = Math.min(startCol + colsPerPage, totalWeekCols);
     
+                // Draw headers
                 let currentX = pageMargin;
-    
                 for (let i = startCol; i < endCol; i++) {
                     const week = weeksOfYear[i];
                     const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                     
                     if (hasHoliday) {
-                        doc.setFillColor(224, 242, 254);
+                        doc.setFillColor(224, 242, 254); // blue-100
                     } else {
-                        doc.setFillColor(248, 250, 252);
+                        doc.setFillColor(248, 250, 252); // gray-50
                     }
                     doc.rect(currentX, initialY - headerHeight + 5, colWidth, headerHeight - 5, 'F');
                     
-                    doc.setFontSize(7);
+                    doc.setFontSize(9); // Larger font for header
                     doc.setFont('helvetica', 'bold');
                     doc.text(`Semana ${week.number}`, currentX + colWidth / 2, initialY - headerHeight + 9, { align: 'center' });
                     
-                    doc.setFontSize(6);
+                    doc.setFontSize(7); // Larger font for header details
                     doc.setFont('helvetica', 'normal');
-                    doc.text(`${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}`, currentX + colWidth / 2, initialY - headerHeight + 12, { align: 'center' });
+                    doc.text(`${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}`, currentX + colWidth / 2, initialY - headerHeight + 13, { align: 'center' });
 
                     const summary = vacationData.weeklySummaries[week.key];
                     if (summary) {
-                        doc.setFontSize(6);
-                        doc.text(`${summary.employeeCount}E / ${summary.hourImpact.toFixed(0)}h`, currentX + colWidth / 2, initialY - headerHeight + 15, { align: 'center' });
+                        doc.setFontSize(7);
+                        doc.text(`${summary.employeeCount}E / ${summary.hourImpact.toFixed(0)}h`, currentX + colWidth / 2, initialY - headerHeight + 17, { align: 'center' });
                     }
                     currentX += colWidth;
                 }
                 
+                // Draw Body
                 let currentY = initialY;
                 allRowsData.forEach((group, groupIndex) => {
                     const groupColor = groupColors[groupIndex % groupColors.length];
                     const numRowsForGroup = group.rowSpan;
+
+                    // Draw Group Name
+                    doc.setFillColor(255, 255, 255);
+                    doc.setDrawColor(229, 231, 235);
+                    doc.rect(pageMargin, currentY, colWidth * (endCol - startCol), rowHeight * numRowsForGroup, 'S'); // Draw border for the whole group block
 
                     let cellX = pageMargin;
                     for (let i = startCol; i < endCol; i++) {
@@ -277,9 +286,9 @@ export function AnnualVacationQuadrant() {
                              if (empName) {
                                 doc.setFillColor(groupColor);
                                 doc.rect(cellX, currentY + j * rowHeight, colWidth, rowHeight, 'F');
-                                doc.setFontSize(5);
+                                doc.setFontSize(7); // Increased font size
                                 doc.setFont('helvetica', 'normal');
-                                doc.text(empName, cellX + 1, currentY + j * rowHeight + rowHeight / 2, { baseline: 'middle', maxWidth: colWidth - 2 });
+                                doc.text(empName, cellX + 2, currentY + j * rowHeight + rowHeight / 2, { baseline: 'middle', maxWidth: colWidth - 4 });
                              } else {
                                 doc.setFillColor(255, 255, 255);
                                 doc.rect(cellX, currentY + j * rowHeight, colWidth, rowHeight, 'F');
@@ -291,7 +300,18 @@ export function AnnualVacationQuadrant() {
                     doc.setDrawColor(229, 231, 235);
                     doc.line(pageMargin, currentY, pageWidth - pageMargin, currentY);
                 });
+                
+                // Draw group names on the side
+                currentY = initialY;
+                allRowsData.forEach((group) => {
+                    const numRowsForGroup = group.rowSpan;
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(group.name, pageMargin - 2, currentY + (rowHeight * numRowsForGroup) / 2, { align: 'right', baseline: 'middle' });
+                    currentY += rowHeight * numRowsForGroup;
+                });
     
+                // Footer
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'normal');
                 doc.text(`Página ${page + 1} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 5, { align: 'right' });
