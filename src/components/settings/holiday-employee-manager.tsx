@@ -67,7 +67,7 @@ export function HolidayEmployeeManager() {
         }).filter((emp): emp is HolidayEmployee & { isEventual: boolean; workShift?: string } => emp !== null)
           .sort((a, b) => a.name.localeCompare(b.name));
 
-    }, [loading, employees, holidayEmployees, getEffectiveWeeklyHours]);
+    }, [loading, employees, holidayEmployees, getEffectiveWeeklyHours, employeeGroups]);
 
 
     const handleAddEmployee = async (e: React.FormEvent) => {
@@ -80,7 +80,6 @@ export function HolidayEmployeeManager() {
         try {
             await addHolidayEmployee({
                 name: newEmployeeName.trim(),
-                groupId: newEmployeeGroupId || null,
                 workShift: newEmployeeWorkShift || null,
             });
             toast({ title: 'Empleado añadido', description: `Se ha añadido a ${newEmployeeName.trim()} a la lista.` });
@@ -114,7 +113,6 @@ export function HolidayEmployeeManager() {
         try {
             await updateHolidayEmployee(editingId, {
                  name: editingEmployee.name.trim(),
-                 groupId: editingEmployee.groupId || null,
                  workShift: editingEmployee.workShift || null,
             });
             toast({ title: 'Empleado actualizado', description: 'Los datos del empleado han sido actualizados.' });

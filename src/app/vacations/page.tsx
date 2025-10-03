@@ -20,16 +20,12 @@ export default function VacationsPage() {
 
             <div className="px-4 md:px-6 pb-4">
                  <Tabs defaultValue="planner" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid w-full grid-cols-1">
                         <TabsTrigger value="planner">Planificador Anual</TabsTrigger>
-                        <TabsTrigger value="groups">Agrupaciones</TabsTrigger>
                     </TabsList>
                     <TabsContent value="planner" className="pt-4 space-y-6">
                        <AnnualVacationQuadrant />
                        <VacationPlanner />
-                    </TabsContent>
-                    <TabsContent value="groups" className="pt-4">
-                        <GroupManager />
                     </TabsContent>
                 </Tabs>
             </div>
