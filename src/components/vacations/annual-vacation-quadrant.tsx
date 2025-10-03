@@ -175,7 +175,7 @@ export function AnnualVacationQuadrant() {
 
         return { weeklySummaries, employeesByWeek, vacationsByEmployee };
 
-    }, [loading, allEmployees, vacationType, weeksOfYear, weeklyRecords, selectedYear, getEffectiveWeeklyHours]);
+    }, [loading, allEmployees, vacationType, weeksOfYear, weeklyRecords, selectedYear, getEffectiveWeeklyHours, startOfDay]);
 
     const groupedEmployeesByWeek = useMemo(() => {
         const result: Record<string, { all: string[], byGroup: Record<string, string[]> }> = {};
@@ -230,7 +230,7 @@ export function AnnualVacationQuadrant() {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr>
-                            <th className="p-1 text-center text-xs font-semibold border w-40 min-w-40 bg-gray-50 sticky left-0 z-10">Grupo</th>
+                            <th className="p-1 text-center text-xs font-semibold border bg-gray-50 sticky left-0 z-10" style={{ width: '0.25px', minWidth: '0.25px', opacity: 0 }}>Grupo</th>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
@@ -254,7 +254,7 @@ export function AnnualVacationQuadrant() {
                      <tbody>
                         {sortedGroups.map((group, groupIndex) => (
                              <tr key={group.id}>
-                                <td className="p-1 border text-xs font-semibold bg-gray-50 sticky left-0 z-10 w-40 min-w-40" style={{backgroundColor: groupColors[groupIndex % groupColors.length]}}>
+                                <td className="p-1 border text-xs font-semibold bg-gray-50 sticky left-0 z-10" style={{ width: '0.25px', minWidth: '0.25px', backgroundColor: groupColors[groupIndex % groupColors.length]}}>
                                     {group.name}
                                 </td>
                                 {weeksOfYear.map(week => {
