@@ -5,23 +5,19 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay, startOfDay } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
-import { Users, Clock, FileDown, Loader2 } from 'lucide-react';
+import { Users, Clock } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Button } from '../ui/button';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { useToast } from '@/hooks/use-toast';
 import type { EmployeeGroup } from '@/lib/types';
 
 
 export function AnnualVacationQuadrant() {
     const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours, holidays } = useDataProvider();
-    const { toast } = useToast();
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
-    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const vacationType = useMemo(() => absenceTypes.find(at => at.name === 'Vacaciones'), [absenceTypes]);
 
     const availableYears = useMemo(() => {
@@ -207,123 +203,6 @@ export function AnnualVacationQuadrant() {
     }, [employeeGroups]);
 
     
-     const handleGeneratePdf = () => {
-        setIsGeneratingPdf(true);
-        try {
-            const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a3' });
-            const pageMargin = 10;
-            const pageWidth = doc.internal.pageSize.width;
-            const pageHeight = doc.internal.pageSize.height;
-    
-            const headerHeight = 20;
-            const rowHeight = 7;
-            const fontSize = 9;
-            const employeeColWidth = 40;
-            
-            const colsPerPage = 5;
-            const totalWeekCols = weeksOfYear.length;
-            const totalPages = Math.ceil(totalWeekCols / colsPerPage);
-
-            for (let page = 0; page < totalPages; page++) {
-                if (page > 0) doc.addPage('a3', 'l');
-                let initialY = pageMargin + headerHeight;
-    
-                doc.setFontSize(16);
-                doc.setFont('helvetica', 'bold');
-                doc.text(`Cuadrante Anual de Vacaciones - ${selectedYear}`, pageMargin, pageMargin + 10);
-    
-                const startCol = page * colsPerPage;
-                const endCol = Math.min(startCol + colsPerPage, totalWeekCols);
-                
-                const contentWidth = pageWidth - (pageMargin * 2);
-                const weekContentWidth = contentWidth - employeeColWidth;
-                const colWidth = weekContentWidth / (endCol - startCol);
-    
-                // Draw headers
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'bold');
-                
-                let currentX = pageMargin;
-                doc.rect(currentX, initialY - headerHeight + 5, employeeColWidth, headerHeight - 5, 'F');
-                doc.text('Empleado', currentX + 5, initialY - headerHeight + 15);
-                currentX += employeeColWidth;
-                
-
-                for (let i = startCol; i < endCol; i++) {
-                    const week = weeksOfYear[i];
-                    const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                    const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
-                    
-                    doc.setFillColor(hasHoliday ? '#e0f2fe' : '#f8fafc');
-                    doc.rect(currentX, initialY - headerHeight + 5, colWidth, headerHeight - 5, 'F');
-                    
-                    doc.setFontSize(10);
-                    doc.setFont('helvetica', 'bold');
-                    doc.text(`Sem. ${week.number}`, currentX + colWidth / 2, initialY - headerHeight + 9, { align: 'center' });
-                    
-                    doc.setFontSize(8);
-                    doc.setFont('helvetica', 'normal');
-                    doc.text(`${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}`, currentX + colWidth / 2, initialY - headerHeight + 13, { align: 'center' });
-                    currentX += colWidth;
-                }
-                
-                // Draw Body
-                let currentY = initialY;
-                allEmployees.forEach((emp, empIndex) => {
-                    doc.setFontSize(fontSize);
-                    doc.setFont('helvetica', 'normal');
-                    doc.rect(pageMargin, currentY, contentWidth, rowHeight);
-                    doc.text(emp.name, pageMargin + 2, currentY + rowHeight / 2 + 1, { baseline: 'middle' });
-                    
-                    let cellX = pageMargin + employeeColWidth;
-
-                    for (let i = startCol; i < endCol; i++) {
-                        const week = weeksOfYear[i];
-                        const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                        const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
-                        const vacationDaysThisWeek = Array.from(vacationData.vacationsByEmployee[emp.id] || []).some(dayStr => {
-                             const day = parseISO(dayStr);
-                             return day >= week.start && day <= week.end;
-                        });
-
-                        doc.setFillColor(hasHoliday ? '#e0f2fe' : '#ffffff');
-                        doc.rect(cellX, currentY, colWidth, rowHeight, 'F');
-                        
-                        if (vacationDaysThisWeek) {
-                            const group = sortedGroups.find(g => g.id === emp.groupId);
-                            const groupIndex = group ? sortedGroups.indexOf(group) : -1;
-                            const color = groupIndex !== -1 ? groupColors[groupIndex % groupColors.length] : '#e5e7eb'; // Default gray
-                             const rgb = doc.convertHexToRgb(color);
-                             doc.setFillColor(rgb.r, rgb.g, rgb.b);
-                             doc.rect(cellX, currentY, colWidth, rowHeight, 'F');
-                        }
-                        cellX += colWidth;
-                    }
-                    currentY += rowHeight;
-                });
-    
-                // Footer
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'normal');
-                doc.text(`Página ${page + 1} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 5, { align: 'right' });
-            }
-    
-            doc.save(`cuadrante_vacaciones_${selectedYear}.pdf`);
-        } catch (error) {
-            console.error("Error generating PDF:", error);
-            if (toast) {
-                toast({
-                    title: 'Error al generar PDF',
-                    description: 'Hubo un problema al crear el documento.',
-                    variant: 'destructive',
-                });
-            }
-        } finally {
-            setIsGeneratingPdf(false);
-        }
-    };
-
-
     if (loading) {
         return <Skeleton className="h-[600px] w-full" />;
     }
@@ -344,10 +223,6 @@ export function AnnualVacationQuadrant() {
                                 {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                             </SelectContent>
                         </Select>
-                        <Button onClick={handleGeneratePdf} disabled={isGeneratingPdf}>
-                            {isGeneratingPdf ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <FileDown className='mr-2 h-4 w-4' />}
-                            Generar PDF
-                        </Button>
                     </div>
                 </div>
             </CardHeader>
@@ -355,6 +230,7 @@ export function AnnualVacationQuadrant() {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr>
+                            <th className="p-1 text-center text-xs font-semibold border w-40 min-w-40 bg-gray-50 sticky left-0 z-10">Grupo</th>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
@@ -378,6 +254,9 @@ export function AnnualVacationQuadrant() {
                      <tbody>
                         {sortedGroups.map((group, groupIndex) => (
                              <tr key={group.id}>
+                                <td className="p-1 border text-xs font-semibold bg-gray-50 sticky left-0 z-10 w-40 min-w-40" style={{backgroundColor: groupColors[groupIndex % groupColors.length]}}>
+                                    {group.name}
+                                </td>
                                 {weeksOfYear.map(week => {
                                     const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
