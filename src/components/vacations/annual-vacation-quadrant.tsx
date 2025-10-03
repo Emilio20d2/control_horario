@@ -215,10 +215,7 @@ export function AnnualVacationQuadrant() {
             const totalWeekCols = weeksOfYear.length;
             const totalPages = Math.ceil(totalWeekCols / colsPerPage);
 
-            const allRowsData = [
-                ...sortedGroups.map(g => ({...g, isUnassigned: false})),
-                { id: 'unassigned', name: 'Sin Agrupación', order: 999, isUnassigned: true }
-            ].map(group => {
+            const allRowsData = sortedGroups.map(group => {
                 const employeesInWeeks = weeksOfYear.map(week => groupedEmployeesByWeek[week.key]?.[group.id] || []);
                 const maxInRow = Math.max(1, ...employeesInWeeks.map(e => e.length));
                 return { ...group, rowSpan: maxInRow };
@@ -267,7 +264,7 @@ export function AnnualVacationQuadrant() {
                 
                 let currentY = initialY;
                 allRowsData.forEach((group, groupIndex) => {
-                    const groupColor = group.isUnassigned ? '#e5e7eb' : groupColors[groupIndex % groupColors.length];
+                    const groupColor = groupColors[groupIndex % groupColors.length];
                     const numRowsForGroup = group.rowSpan;
 
                     let cellX = pageMargin;
@@ -387,21 +384,6 @@ export function AnnualVacationQuadrant() {
                                 ))}
                             </tr>
                         ))}
-                        <tr>
-                           <td className="sticky left-0 bg-white z-10 p-2 border font-semibold text-sm w-48 min-w-48">Sin Agrupación</td>
-                            {weeksOfYear.map(week => (
-                                <td key={`unassigned-${week.key}`} className="border p-1 align-top w-24 min-w-24 h-16">
-                                    {(groupedEmployeesByWeek[week.key]?.['unassigned'] || []).map((name, nameIndex) => (
-                                        <div 
-                                            key={nameIndex}
-                                            className="text-[10px] truncate p-0.5 rounded-sm bg-gray-200"
-                                        >
-                                            {name}
-                                        </div>
-                                    ))}
-                                </td>
-                            ))}
-                        </tr>
                     </tbody>
                 </table>
             </CardContent>
