@@ -8,13 +8,17 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
-import { Users, Clock } from 'lucide-react';
+import { Users, Clock, PlusCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Button } from '../ui/button';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
 
 
 export function AnnualVacationQuadrant() {
     const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours, holidays } = useDataProvider();
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+    const [substitutions, setSubstitutions] = useState<Record<string, Record<string, string>>>({}); // { [weekKey]: { [originalEmpName]: substituteName } }
     const vacationType = useMemo(() => absenceTypes.find(at => at.name === 'Vacaciones'), [absenceTypes]);
 
     const availableYears = useMemo(() => {
@@ -67,6 +71,11 @@ export function AnnualVacationQuadrant() {
 
         return allEmps.sort((a, b) => a.name.localeCompare(b.name));
     }, [employees, holidayEmployees, loading, getEffectiveWeeklyHours]);
+
+    const substituteEmployees = useMemo(() => {
+        const mainEmployeeNames = new Set(employees.map(e => e.name.trim().toLowerCase()));
+        return holidayEmployees.filter(he => he.active && !mainEmployeeNames.has(he.name.trim().toLowerCase()));
+    }, [employees, holidayEmployees]);
 
 
     const weeksOfYear = useMemo(() => {
@@ -199,6 +208,16 @@ export function AnnualVacationQuadrant() {
         return [...employeeGroups].sort((a,b) => a.order - b.order);
     }, [employeeGroups]);
 
+    const handleSetSubstitute = (weekKey: string, originalEmployee: string, substituteName: string) => {
+        setSubstitutions(prev => ({
+            ...prev,
+            [weekKey]: {
+                ...prev[weekKey],
+                [originalEmployee]: substituteName,
+            }
+        }));
+    };
+
     
     if (loading) {
         return <Skeleton className="h-[600px] w-full" />;
@@ -256,6 +275,7 @@ export function AnnualVacationQuadrant() {
                                     const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                                     const employeesInGroupThisWeek = (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || []).sort();
+                                    const currentSubstitutes = substitutions[week.key] || {};
 
                                     const cellStyle: React.CSSProperties = {};
                                     if (employeesInGroupThisWeek.length > 0) {
@@ -265,14 +285,56 @@ export function AnnualVacationQuadrant() {
                                     return (
                                         <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border w-64 min-w-64 h-8 align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50")}>
                                             <div className="flex flex-col gap-0.5">
-                                                {employeesInGroupThisWeek.map((name, nameIndex) => (
-                                                     <div
-                                                        key={nameIndex}
-                                                        className="text-[10px] truncate p-0.5 rounded-sm"
-                                                    >
-                                                        {name}
-                                                    </div>
-                                                ))}
+                                                {employeesInGroupThisWeek.map((name, nameIndex) => {
+                                                    const substitute = currentSubstitutes[name];
+                                                    const availableSubstitutes = substituteEmployees.filter(
+                                                        sub => !Object.values(currentSubstitutes).includes(sub.name) || sub.name === substitute
+                                                    );
+
+                                                    return (
+                                                        <div key={nameIndex} className="text-[10px] p-0.5 rounded-sm flex justify-between items-center group">
+                                                             <div className='flex flex-col'>
+                                                                <span className="truncate font-medium">{name}</span>
+                                                                {substitute && <span className="text-red-600 truncate">Sustituye: {substitute}</span>}
+                                                            </div>
+                                                            <Popover>
+                                                                <PopoverTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-4 w-4 opacity-0 group-hover:opacity-100">
+                                                                        <PlusCircle className="h-3 w-3" />
+                                                                    </Button>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="w-48 p-0">
+                                                                    <Command>
+                                                                        <CommandInput placeholder="Buscar sustituto..." className="h-9" />
+                                                                        <CommandEmpty>No se encontró.</CommandEmpty>
+                                                                        <CommandGroup>
+                                                                            {availableSubstitutes.map(sub => (
+                                                                                <CommandItem
+                                                                                    key={sub.id}
+                                                                                    value={sub.name}
+                                                                                    onSelect={(currentValue) => {
+                                                                                        const newSub = currentValue === substitute ? '' : sub.name;
+                                                                                        handleSetSubstitute(week.key, name, newSub);
+                                                                                    }}
+                                                                                >
+                                                                                    {sub.name}
+                                                                                </CommandItem>
+                                                                            ))}
+                                                                             {substitute && (
+                                                                                <CommandItem
+                                                                                    className="text-destructive"
+                                                                                    onSelect={() => handleSetSubstitute(week.key, name, '')}
+                                                                                >
+                                                                                    Quitar sustituto
+                                                                                </CommandItem>
+                                                                            )}
+                                                                        </CommandGroup>
+                                                                    </Command>
+                                                                </PopoverContent>
+                                                            </Popover>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </td>
                                     )
