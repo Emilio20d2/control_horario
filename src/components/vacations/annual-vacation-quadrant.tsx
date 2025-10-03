@@ -126,8 +126,8 @@ export function AnnualVacationQuadrant() {
                 .filter(a => a.absenceTypeId === vacationType.id)
                 .forEach(absence => {
                     if (!absence.endDate) return;
-                    const absenceStart = parseISO(absence.startDate as string);
-                    const absenceEnd = parseISO(absence.endDate as string);
+                    const absenceStart = absence.startDate as Date;
+                    const absenceEnd = absence.endDate as Date;
                     const daysInAbsence = eachDayOfInterval({ start: absenceStart, end: absenceEnd });
                     daysInAbsence.forEach(day => {
                         if (getYear(day) === selectedYear) vacationDays.add(format(day, 'yyyy-MM-dd'));
@@ -236,11 +236,9 @@ export function AnnualVacationQuadrant() {
                 const startCol = page * colsPerPage;
                 const endCol = Math.min(startCol + colsPerPage, totalWeekCols);
                 
-                // Hide Group column in PDF
                 const groupColWidth = 0;
-                const employeeColWidth = 0;
                 
-                const contentWidth = pageWidth - (pageMargin * 2) - groupColWidth - employeeColWidth;
+                const contentWidth = pageWidth - (pageMargin * 2) - groupColWidth;
                 const colWidth = contentWidth / (endCol - startCol);
     
                 // Draw headers
@@ -280,13 +278,13 @@ export function AnnualVacationQuadrant() {
                 
                 // Draw Body
                 let currentY = initialY;
-                allGroupRows.forEach(groupRow => {
+                allGroupRows.forEach((groupRow, groupIndex) => {
                     doc.setFontSize(fontSize);
                     doc.setFont('helvetica', 'bold');
                     doc.rect(pageMargin, currentY, contentWidth, rowHeight);
                     doc.text(groupRow.name, pageMargin + 2, currentY + rowHeight / 2, { baseline: 'middle' });
                     
-                    let cellX = pageMargin + groupColWidth + employeeColWidth;
+                    let cellX = pageMargin + groupColWidth;
 
                     for (let i = startCol; i < endCol; i++) {
                         const week = weeksOfYear[i];
@@ -298,11 +296,17 @@ export function AnnualVacationQuadrant() {
                         
                         doc.setFillColor(hasHoliday ? '#e0f2fe' : '#ffffff');
                         doc.rect(cellX, currentY, colWidth, rowHeight, 'F');
-
+                        
                         if (employeesInGroupThisWeek.length > 0) {
-                            doc.setFontSize(fontSize - 1);
+                            const empNames = employeesInGroupThisWeek.join(', ');
+                             const color = groupColors[groupIndex % groupColors.length];
+                             const rgb = doc.convertHexToRgb(color);
+                             doc.setFillColor(rgb.r, rgb.g, rgb.b);
+                             doc.rect(cellX, currentY, colWidth, rowHeight, 'F');
+
+                            doc.setFontSize(fontSize);
                             doc.setFont('helvetica', 'normal');
-                            doc.text(employeesInGroupThisWeek.join(', '), cellX + 2, currentY + rowHeight / 2, { baseline: 'middle', maxWidth: colWidth - 4 });
+                            doc.text(empNames, cellX + 2, currentY + rowHeight / 2, { baseline: 'middle', maxWidth: colWidth - 4 });
                         }
                         
                         cellX += colWidth;
@@ -393,14 +397,18 @@ export function AnnualVacationQuadrant() {
                                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                                     const employeesInGroupThisWeek = (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || []).sort();
 
+                                    const cellStyle: React.CSSProperties = {};
+                                    if (employeesInGroupThisWeek.length > 0) {
+                                        cellStyle.backgroundColor = groupColors[groupIndex % groupColors.length];
+                                    }
+
                                     return (
-                                        <td key={`${group.id}-${week.key}`} className={cn("border w-32 min-w-32 h-8 align-top p-1", hasHoliday && "bg-blue-50/50")}>
+                                        <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border w-32 min-w-32 h-8 align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50")}>
                                             <div className="flex flex-col gap-0.5">
                                                 {employeesInGroupThisWeek.map((name, nameIndex) => (
                                                      <div
                                                         key={nameIndex}
                                                         className="text-[10px] truncate p-0.5 rounded-sm"
-                                                        style={{ backgroundColor: groupColors[groupIndex % groupColors.length]}}
                                                     >
                                                         {name}
                                                     </div>
@@ -417,5 +425,3 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
-
-    
