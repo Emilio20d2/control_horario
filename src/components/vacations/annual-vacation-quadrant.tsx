@@ -35,6 +35,7 @@ export function AnnualVacationQuadrant() {
         return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
     }, [weeklyRecords]);
 
+    const groupColors = ['#dbeafe', '#dcfce7', '#fef9c3', '#f3e8ff', '#fce7f3', '#e0e7ff', '#ccfbf1', '#ffedd5'];
 
     const allEmployees = useMemo(() => {
         if (loading) return [];
@@ -198,7 +199,7 @@ export function AnnualVacationQuadrant() {
         return [...employeeGroups].sort((a,b) => a.order - b.order);
     }, [employeeGroups]);
 
-    const groupColors = ['#dbeafe', '#dcfce7', '#fef9c3', '#f3e8ff', '#fce7f3', '#e0e7ff', '#ccfbf1', '#ffedd5'];
+    
 
     const handleGeneratePdf = () => {
         setIsGeneratingPdf(true);
@@ -209,10 +210,10 @@ export function AnnualVacationQuadrant() {
             const pageHeight = doc.internal.pageSize.height;
             const contentWidth = pageWidth - (pageMargin * 2);
     
-            const headerHeight = 20;
-            const rowHeight = 8;
+            const headerHeight = 25;
+            const rowHeight = 12;
             
-            const colsPerPage = 4;
+            const colsPerPage = 4; 
             const colWidth = contentWidth / colsPerPage;
 
             const totalWeekCols = weeksOfYear.length;
@@ -288,11 +289,15 @@ export function AnnualVacationQuadrant() {
                              if (empName) {
                                 doc.setFillColor(groupColor);
                                 doc.rect(cellX, cellY, colWidth, rowHeight, 'F');
-                                doc.setFontSize(9);
+                                doc.setFontSize(12);
                                 doc.setFont('helvetica', 'normal');
                                 doc.text(empName, cellX + 2, cellY + rowHeight / 2, { baseline: 'middle', maxWidth: colWidth - 4 });
                              } else {
-                                doc.setFillColor(hasHoliday ? 224, 242, 254 : 255, 255, 255);
+                                if (hasHoliday) {
+                                    doc.setFillColor(224, 242, 254);
+                                } else {
+                                    doc.setFillColor(255, 255, 255);
+                                }
                                 doc.rect(cellX, cellY, colWidth, rowHeight, 'F');
                              }
                         }
@@ -418,3 +423,5 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
+    
