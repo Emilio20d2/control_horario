@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, isSameDay, endOfDay, startOfDay } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
 import { Users, Clock, FileDown, Loader2 } from 'lucide-react';
@@ -196,6 +196,8 @@ export function AnnualVacationQuadrant() {
         return [...employeeGroups].sort((a,b) => a.order - b.order);
     }, [employeeGroups]);
 
+    const groupColors = ['#dbeafe', '#dcfce7', '#fef9c3', '#f3e8ff', '#fce7f3', '#e0e7ff', '#ccfbf1', '#ffedd5'];
+
     const handleGeneratePdf = () => {
         setIsGeneratingPdf(true);
         try {
@@ -213,7 +215,6 @@ export function AnnualVacationQuadrant() {
             const totalWeekCols = weeksOfYear.length;
             const totalPages = Math.ceil(totalWeekCols / colsPerPage);
 
-            const groupColors = ['#dbeafe', '#dcfce7', '#fef9c3', '#f3e8ff', '#fce7f3', '#e0e7ff', '#ccfbf1', '#ffedd5'];
             const allRowsData = [
                 ...sortedGroups.map(g => ({...g, isUnassigned: false})),
                 { id: 'unassigned', name: 'Sin Agrupación', order: 999, isUnassigned: true }
@@ -242,9 +243,9 @@ export function AnnualVacationQuadrant() {
                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                     
                     if (hasHoliday) {
-                        doc.setFillColor(224, 242, 254); // blue-100
+                        doc.setFillColor(224, 242, 254);
                     } else {
-                        doc.setFillColor(248, 250, 252); // gray-50
+                        doc.setFillColor(248, 250, 252);
                     }
                     doc.rect(currentX, initialY - headerHeight + 5, colWidth, headerHeight - 5, 'F');
                     
