@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay, startOfDay } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
 import { Users, Clock } from 'lucide-react';
@@ -172,7 +172,7 @@ export function AnnualVacationQuadrant() {
 
         return { weeklySummaries, employeesByWeek, vacationsByEmployee };
 
-    }, [loading, allEmployees, vacationType, weeksOfYear, weeklyRecords, selectedYear, getEffectiveWeeklyHours, startOfDay]);
+    }, [loading, allEmployees, vacationType, weeksOfYear, weeklyRecords, selectedYear, getEffectiveWeeklyHours]);
 
     const groupedEmployeesByWeek = useMemo(() => {
         const result: Record<string, { all: string[], byGroup: Record<string, string[]> }> = {};
@@ -227,7 +227,7 @@ export function AnnualVacationQuadrant() {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr>
-                            <th className="p-0 w-0 opacity-0 border text-xs font-semibold bg-gray-50 sticky left-0 z-10" style={{minWidth: '0.25px'}}>Grupo</th>
+                            <th style={{ minWidth: '0.25px', width: '0.25px', padding: 0, border: 'none' }} className="sticky left-0 z-10"></th>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
@@ -251,9 +251,7 @@ export function AnnualVacationQuadrant() {
                      <tbody>
                         {sortedGroups.map((group, groupIndex) => (
                              <tr key={group.id}>
-                                <td style={{ minWidth: '0.25px', backgroundColor: groupColors[groupIndex % groupColors.length]}} className="p-0 w-0 opacity-0 border text-xs font-semibold bg-gray-50 sticky left-0 z-10">
-                                    {group.name}
-                                </td>
+                                <td style={{ minWidth: '0.25px', width: '0.25px', padding: 0, border: 'none', backgroundColor: groupColors[groupIndex % groupColors.length]}} className="sticky left-0 z-10"></td>
                                 {weeksOfYear.map(week => {
                                     const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
