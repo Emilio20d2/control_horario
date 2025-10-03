@@ -4,7 +4,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { GroupManager } from '@/components/vacations/group-manager';
 import { AnnualVacationQuadrant } from '@/components/vacations/annual-vacation-quadrant';
 import { VacationPlanner } from '@/components/vacations/vacation-planner';
 

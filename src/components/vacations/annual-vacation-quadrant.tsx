@@ -164,8 +164,8 @@ export function AnnualVacationQuadrant() {
                             if(match) weeklyHours = parseFloat(match[0]);
                         } else {
                             const activePeriod = emp.employmentPeriods.find(p => {
-                                const periodStart = parseISO(p.startDate as string);
-                                const periodEnd = p.endDate ? parseISO(p.endDate as string) : new Date('9999-12-31');
+                                const periodStart = startOfDay(parseISO(p.startDate as string));
+                                const periodEnd = p.endDate ? endOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
                                 return isAfter(periodEnd, week.start) && isBefore(periodStart, week.end);
                             });
                              weeklyHours = getEffectiveWeeklyHours(activePeriod || null, week.start);
@@ -355,7 +355,6 @@ export function AnnualVacationQuadrant() {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr>
-                            <th className="sticky left-0 bg-white z-10 p-2 border w-40 min-w-40 text-left">Grupo</th>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
@@ -379,7 +378,6 @@ export function AnnualVacationQuadrant() {
                      <tbody>
                         {sortedGroups.map((group, groupIndex) => (
                              <tr key={group.id}>
-                                <td className="sticky left-0 bg-white z-10 p-2 border font-bold text-sm w-40 min-w-40 align-top">{group.name}</td>
                                 {weeksOfYear.map(week => {
                                     const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));

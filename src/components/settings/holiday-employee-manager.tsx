@@ -24,7 +24,6 @@ export function HolidayEmployeeManager() {
     const { toast } = useToast();
 
     const [newEmployeeName, setNewEmployeeName] = useState('');
-    const [newEmployeeGroupId, setNewEmployeeGroupId] = useState('');
     const [newEmployeeWorkShift, setNewEmployeeWorkShift] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     
@@ -84,7 +83,6 @@ export function HolidayEmployeeManager() {
             });
             toast({ title: 'Empleado añadido', description: `Se ha añadido a ${newEmployeeName.trim()} a la lista.` });
             setNewEmployeeName('');
-            setNewEmployeeGroupId('');
             setNewEmployeeWorkShift('');
         } catch (error) {
             console.error(error);
@@ -98,7 +96,6 @@ export function HolidayEmployeeManager() {
         setEditingId(employee.id);
         setEditingEmployee({ 
             name: employee.name,
-            groupId: employee.groupId,
             workShift: employee.workShift,
         });
     };
@@ -294,5 +291,3 @@ export function HolidayEmployeeManager() {
         </Card>
     );
 }
-
-    

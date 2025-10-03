@@ -68,7 +68,6 @@ const weeklyScheduleSchema = z.object({
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'El nombre debe tener al menos 2 caracteres.' }),
-  groupId: z.string().optional(),
   
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'La fecha debe estar en formato AAAA-MM-DD.' }),
   endDate: z.string().nullable().optional(),
@@ -197,7 +196,6 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     try {
         const dataToSave: EmployeeFormData = {
             ...values,
-            groupId: values.groupId || undefined,
             initialOrdinaryHours: values.initialOrdinaryHours ?? 0,
             initialHolidayHours: values.initialHolidayHours ?? 0,
             initialLeaveHours: values.initialLeaveHours ?? 0,
@@ -290,28 +288,6 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             <FormControl>
                             <Input placeholder="Juan Pérez" {...field} />
                             </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="groupId"
-                        render={({ field }) => (
-                        <FormItem className="hidden">
-                            <FormLabel>Agrupación</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                                <SelectTrigger>
-                                <SelectValue placeholder="Selecciona una agrupación" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {employeeGroups.map(g => (
-                                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                            </Select>
                             <FormMessage />
                         </FormItem>
                         )}
@@ -659,9 +635,3 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     </Card>
   );
 }
-
-    
-
-    
-
-    

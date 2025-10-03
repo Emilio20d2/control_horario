@@ -174,7 +174,3 @@ export default function EmployeeDetailPage() {
         </div>
     );
 }
-
-    
-
-    
