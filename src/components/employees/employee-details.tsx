@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -144,7 +145,7 @@ export function EmployeeDetails({ period, employeeId, allPeriods }: EmployeeDeta
                             <p className="text-sm font-medium text-muted-foreground">Jornada Semanal Vigente</p>
                             <p className="text-xl font-bold">{currentWeeklyHours.toFixed(2)} horas</p>
                         </div>
-                         <div>
+                         <div className="hidden">
                             <p className="text-sm font-medium text-muted-foreground">Agrupación</p>
                             {employeeGroup ? (
                                 <p className="flex items-center gap-1">

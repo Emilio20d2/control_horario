@@ -298,7 +298,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         control={form.control}
                         name="groupId"
                         render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="hidden">
                             <FormLabel>Agrupación</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
