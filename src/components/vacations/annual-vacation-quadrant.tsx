@@ -227,7 +227,7 @@ export function AnnualVacationQuadrant() {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr>
-                            <th style={{ width: '0.25px', minWidth: '0.25px' }} className="p-1 border text-xs font-semibold bg-gray-50 sticky left-0 z-10">Grupo</th>
+                            <th className="p-0 w-0 opacity-0 border text-xs font-semibold bg-gray-50 sticky left-0 z-10" style={{minWidth: '0.25px'}}>Grupo</th>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
@@ -251,7 +251,7 @@ export function AnnualVacationQuadrant() {
                      <tbody>
                         {sortedGroups.map((group, groupIndex) => (
                              <tr key={group.id}>
-                                <td style={{ width: '0.25px', minWidth: '0.25px', backgroundColor: groupColors[groupIndex % groupColors.length]}} className="p-1 border text-xs font-semibold bg-gray-50 sticky left-0 z-10">
+                                <td style={{ minWidth: '0.25px', backgroundColor: groupColors[groupIndex % groupColors.length]}} className="p-0 w-0 opacity-0 border text-xs font-semibold bg-gray-50 sticky left-0 z-10">
                                     {group.name}
                                 </td>
                                 {weeksOfYear.map(week => {
@@ -287,5 +287,3 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
-
-    
