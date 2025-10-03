@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
 import { Users, Clock, FileDown, Loader2 } from 'lucide-react';
@@ -73,7 +73,7 @@ export function AnnualVacationQuadrant() {
         });
 
         return allEmps.sort((a, b) => a.name.localeCompare(b.name));
-    }, [employees, holidayEmployees, loading, getEffectiveWeeklyHours, employeeGroups]);
+    }, [employees, holidayEmployees, loading, getEffectiveWeeklyHours]);
 
 
     const weeksOfYear = useMemo(() => {
@@ -108,10 +108,12 @@ export function AnnualVacationQuadrant() {
     }, [selectedYear]);
 
     const vacationData = useMemo(() => {
-        if (loading || !vacationType) return { weeklySummaries: {}, employeesByWeek: {} };
+        if (loading || !vacationType) return { weeklySummaries: {}, employeesByWeek: {}, vacationsByEmployee: {} };
 
         const weeklySummaries: Record<string, { employeeCount: number; hourImpact: number }> = {};
         const employeesByWeek: Record<string, { employeeId: string; employeeName: string; groupId?: string | null; }[]> = {};
+        const vacationsByEmployee: Record<string, Set<string>> = {};
+
 
         weeksOfYear.forEach(week => {
             weeklySummaries[week.key] = { employeeCount: 0, hourImpact: 0 };
@@ -126,8 +128,8 @@ export function AnnualVacationQuadrant() {
                 .filter(a => a.absenceTypeId === vacationType.id)
                 .forEach(absence => {
                     if (!absence.endDate) return;
-                    const absenceStart = absence.startDate as Date;
-                    const absenceEnd = absence.endDate as Date;
+                    const absenceStart = absence.startDate;
+                    const absenceEnd = absence.endDate;
                     const daysInAbsence = eachDayOfInterval({ start: absenceStart, end: absenceEnd });
                     daysInAbsence.forEach(day => {
                         if (getYear(day) === selectedYear) vacationDays.add(format(day, 'yyyy-MM-dd'));
@@ -143,6 +145,8 @@ export function AnnualVacationQuadrant() {
                     });
                 });
             }
+
+            vacationsByEmployee[emp.id] = vacationDays;
 
             if (vacationDays.size > 0) {
                 weeksOfYear.forEach(week => {
@@ -173,7 +177,7 @@ export function AnnualVacationQuadrant() {
             }
         });
 
-        return { weeklySummaries, employeesByWeek };
+        return { weeklySummaries, employeesByWeek, vacationsByEmployee };
 
     }, [loading, allEmployees, vacationType, weeksOfYear, weeklyRecords, selectedYear, getEffectiveWeeklyHours]);
 
@@ -211,20 +215,15 @@ export function AnnualVacationQuadrant() {
             const pageWidth = doc.internal.pageSize.width;
             const pageHeight = doc.internal.pageSize.height;
     
-            const headerHeight = 25;
-            const rowHeight = 12; // Increased row height
-            const fontSize = 10; // Increased font size
+            const headerHeight = 20;
+            const rowHeight = 7;
+            const fontSize = 9;
+            const employeeColWidth = 40;
             
-            const colsPerPage = 5; 
+            const colsPerPage = 5;
             const totalWeekCols = weeksOfYear.length;
             const totalPages = Math.ceil(totalWeekCols / colsPerPage);
 
-            const allGroupRows = sortedGroups.map(group => ({
-                id: group.id,
-                name: group.name,
-                isGroup: true,
-            }));
-    
             for (let page = 0; page < totalPages; page++) {
                 if (page > 0) doc.addPage('a3', 'l');
                 let initialY = pageMargin + headerHeight;
@@ -236,21 +235,19 @@ export function AnnualVacationQuadrant() {
                 const startCol = page * colsPerPage;
                 const endCol = Math.min(startCol + colsPerPage, totalWeekCols);
                 
-                const groupColWidth = 0;
-                
-                const contentWidth = pageWidth - (pageMargin * 2) - groupColWidth;
-                const colWidth = contentWidth / (endCol - startCol);
+                const contentWidth = pageWidth - (pageMargin * 2);
+                const weekContentWidth = contentWidth - employeeColWidth;
+                const colWidth = weekContentWidth / (endCol - startCol);
     
                 // Draw headers
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'bold');
                 
                 let currentX = pageMargin;
-                 if (groupColWidth > 0) {
-                    doc.rect(currentX, initialY - headerHeight + 5, groupColWidth, headerHeight - 5, 'F');
-                    doc.text('Grupo', currentX + 5, initialY - headerHeight + 15);
-                    currentX += groupColWidth;
-                }
+                doc.rect(currentX, initialY - headerHeight + 5, employeeColWidth, headerHeight - 5, 'F');
+                doc.text('Empleado', currentX + 5, initialY - headerHeight + 15);
+                currentX += employeeColWidth;
+                
 
                 for (let i = startCol; i < endCol; i++) {
                     const week = weeksOfYear[i];
@@ -267,48 +264,39 @@ export function AnnualVacationQuadrant() {
                     doc.setFontSize(8);
                     doc.setFont('helvetica', 'normal');
                     doc.text(`${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}`, currentX + colWidth / 2, initialY - headerHeight + 13, { align: 'center' });
-
-                    const summary = vacationData.weeklySummaries[week.key];
-                    if (summary) {
-                        doc.setFontSize(8);
-                        doc.text(`${summary.employeeCount}E / ${summary.hourImpact.toFixed(0)}h`, currentX + colWidth / 2, initialY - headerHeight + 17, { align: 'center' });
-                    }
                     currentX += colWidth;
                 }
                 
                 // Draw Body
                 let currentY = initialY;
-                allGroupRows.forEach((groupRow, groupIndex) => {
+                allEmployees.forEach((emp, empIndex) => {
                     doc.setFontSize(fontSize);
-                    doc.setFont('helvetica', 'bold');
+                    doc.setFont('helvetica', 'normal');
                     doc.rect(pageMargin, currentY, contentWidth, rowHeight);
-                    doc.text(groupRow.name, pageMargin + 2, currentY + rowHeight / 2, { baseline: 'middle' });
+                    doc.text(emp.name, pageMargin + 2, currentY + rowHeight / 2 + 1, { baseline: 'middle' });
                     
-                    let cellX = pageMargin + groupColWidth;
+                    let cellX = pageMargin + employeeColWidth;
 
                     for (let i = startCol; i < endCol; i++) {
                         const week = weeksOfYear[i];
-                        const weekKey = week.key;
                         const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                         const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
+                        const vacationDaysThisWeek = Array.from(vacationData.vacationsByEmployee[emp.id] || []).some(dayStr => {
+                             const day = parseISO(dayStr);
+                             return day >= week.start && day <= week.end;
+                        });
 
-                        const employeesInGroupThisWeek = (groupedEmployeesByWeek[weekKey]?.byGroup?.[groupRow.id] || []).sort();
-                        
                         doc.setFillColor(hasHoliday ? '#e0f2fe' : '#ffffff');
                         doc.rect(cellX, currentY, colWidth, rowHeight, 'F');
                         
-                        if (employeesInGroupThisWeek.length > 0) {
-                            const empNames = employeesInGroupThisWeek.join(', ');
-                             const color = groupColors[groupIndex % groupColors.length];
+                        if (vacationDaysThisWeek) {
+                            const group = sortedGroups.find(g => g.id === emp.groupId);
+                            const groupIndex = group ? sortedGroups.indexOf(group) : -1;
+                            const color = groupIndex !== -1 ? groupColors[groupIndex % groupColors.length] : '#e5e7eb'; // Default gray
                              const rgb = doc.convertHexToRgb(color);
                              doc.setFillColor(rgb.r, rgb.g, rgb.b);
                              doc.rect(cellX, currentY, colWidth, rowHeight, 'F');
-
-                            doc.setFontSize(fontSize);
-                            doc.setFont('helvetica', 'normal');
-                            doc.text(empNames, cellX + 2, currentY + rowHeight / 2, { baseline: 'middle', maxWidth: colWidth - 4 });
                         }
-                        
                         cellX += colWidth;
                     }
                     currentY += rowHeight;
