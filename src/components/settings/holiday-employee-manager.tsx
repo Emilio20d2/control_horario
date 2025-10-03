@@ -257,7 +257,7 @@ export function HolidayEmployeeManager() {
                                             group?.name || <span className="text-muted-foreground">N/A</span>
                                          )}
                                     </TableCell>
-                                     <TableCell>
+                                     <TableCell className="min-w-[120px]">
                                          {isEditingCurrent && emp.isEventual ? (
                                              <Input 
                                                 value={editingEmployee.workShift || ''} 
