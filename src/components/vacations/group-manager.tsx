@@ -130,7 +130,7 @@ export function GroupManager() {
 
                 <div className="space-y-4">
                      <div className="flex justify-between items-center">
-                        <h3 className="text-md font-medium">Orden de las Agrupaciones</h3>
+                        <h3 className="text-md font-medium">Agrupaciones</h3>
                         <Button onClick={handleSaveOrder} disabled={isSavingOrder}>
                             {isSavingOrder ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                             Guardar Orden
@@ -140,7 +140,6 @@ export function GroupManager() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="w-24">Orden</TableHead>
                                     <TableHead>Nombre de la Agrupación</TableHead>
                                     <TableHead className="text-right w-40">Acciones</TableHead>
                                 </TableRow>
@@ -155,14 +154,6 @@ export function GroupManager() {
                                 )}
                                 {localGroups.sort((a,b) => a.order - b.order).map(group => (
                                     <TableRow key={group.id}>
-                                        <TableCell>
-                                            <InputStepper
-                                                value={group.order}
-                                                onChange={(newOrder) => handleOrderChange(group.id, newOrder)}
-                                                step={1}
-                                                min={1}
-                                            />
-                                        </TableCell>
                                         <TableCell className="font-medium">
                                             {editingId === group.id ? (
                                                 <Input 
