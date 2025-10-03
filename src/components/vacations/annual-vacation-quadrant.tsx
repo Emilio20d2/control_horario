@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay, startOfDay } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
 import { Users, Clock, PlusCircle } from 'lucide-react';
@@ -246,7 +246,7 @@ export function AnnualVacationQuadrant() {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr>
-                            <th style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none' }} className="sticky left-0 z-10"></th>
+                            <th style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none', opacity: 0 }} className="sticky left-0 z-10"></th>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
@@ -293,9 +293,9 @@ export function AnnualVacationQuadrant() {
 
                                                     return (
                                                         <div key={nameIndex} className="text-[10px] p-0.5 rounded-sm flex justify-between items-center group">
-                                                             <div className='flex flex-col'>
+                                                             <div className='flex flex-row items-center gap-2'>
                                                                 <span className="truncate font-medium">{name}</span>
-                                                                {substitute && <span className="text-red-600 truncate">Sustituye: {substitute}</span>}
+                                                                {substitute && <span className="text-red-600 truncate">({substitute})</span>}
                                                             </div>
                                                             <Popover>
                                                                 <PopoverTrigger asChild>
