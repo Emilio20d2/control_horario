@@ -214,7 +214,7 @@ export function HolidayEmployeeManager() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="min-w-[200px]">Nombre</TableHead>
-                                <TableHead className="hidden md:table-cell">Agrupación</TableHead>
+                                <TableHead className="hidden">Agrupación</TableHead>
                                 <TableHead className="min-w-[120px]">Jornada</TableHead>
                                 <TableHead className="text-center w-24">Activo</TableHead>
                                 <TableHead className="text-right w-32">Acciones</TableHead>
@@ -245,7 +245,7 @@ export function HolidayEmployeeManager() {
                                             emp.name
                                         )}
                                     </TableCell>
-                                    <TableCell className="hidden md:table-cell">
+                                    <TableCell className="hidden">
                                          {isEditingCurrent && emp.isEventual ? (
                                              <Select value={editingEmployee.groupId || ''} onValueChange={v => setEditingEmployee(prev => ({...prev, groupId: v}))}>
                                                 <SelectTrigger className="h-8"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
