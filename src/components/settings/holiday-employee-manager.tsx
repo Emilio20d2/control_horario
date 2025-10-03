@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -185,7 +184,7 @@ export function HolidayEmployeeManager() {
                             disabled={isAdding}
                         />
                     </div>
-                    <div className="space-y-1 hidden md:block">
+                    <div className="space-y-1 hidden">
                         <label className="text-xs font-medium">Agrupación (Eventual)</label>
                         <Select value={newEmployeeGroupId} onValueChange={setNewEmployeeGroupId} disabled={isAdding}>
                             <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
@@ -234,7 +233,7 @@ export function HolidayEmployeeManager() {
                                 
                                 return (
                                 <TableRow key={emp.id} className={cn(!emp.isEventual && "bg-muted/50")}>
-                                    <TableCell className="font-medium">
+                                    <TableCell className="font-medium min-w-[200px]">
                                         {isEditingCurrent && emp.isEventual ? (
                                             <Input 
                                                 value={editingEmployee.name || ''} 

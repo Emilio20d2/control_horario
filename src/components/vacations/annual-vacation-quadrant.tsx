@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -134,8 +133,8 @@ export function AnnualVacationQuadrant() {
                 .filter(a => a.absenceTypeId === vacationType.id)
                 .forEach(absence => {
                     if (!absence.endDate) return;
-                    const absenceStart = absence.startDate;
-                    const absenceEnd = absence.endDate;
+                    const absenceStart = startOfDay(absence.startDate);
+                    const absenceEnd = endOfDay(absence.endDate);
                     const daysInAbsence = eachDayOfInterval({ start: absenceStart, end: absenceEnd });
                     daysInAbsence.forEach(day => {
                         if (getYear(day) === selectedYear) vacationDays.add(format(day, 'yyyy-MM-dd'));
@@ -218,18 +217,20 @@ export function AnnualVacationQuadrant() {
             const pageMargin = 10;
             const pageWidth = doc.internal.pageSize.width;
             const pageHeight = doc.internal.pageSize.height;
-            const contentWidth = pageWidth - (pageMargin * 2);
     
             const headerHeight = 25;
             const rowHeight = 16;
             
-            const colsPerPage = 5;
-            const colWidth = contentWidth / colsPerPage;
-
+            const colsPerPage = 5; // 5 weeks per page
             const totalWeekCols = weeksOfYear.length;
             const totalPages = Math.ceil(totalWeekCols / colsPerPage);
 
-            const allRowsData = allEmployees;
+            const allRowsData = sortedGroups.map(group => ({
+                isGroup: true,
+                name: group.name,
+                id: group.id,
+                employees: allEmployees.filter(e => e.groupId === group.id),
+            }));
     
             for (let page = 0; page < totalPages; page++) {
                 if (page > 0) doc.addPage('a3', 'l');
@@ -241,6 +242,8 @@ export function AnnualVacationQuadrant() {
     
                 const startCol = page * colsPerPage;
                 const endCol = Math.min(startCol + colsPerPage, totalWeekCols);
+                const contentWidth = pageWidth - (pageMargin * 2);
+                const colWidth = contentWidth / (endCol - startCol);
     
                 // Draw headers
                 let currentX = pageMargin;
@@ -249,11 +252,7 @@ export function AnnualVacationQuadrant() {
                     const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                     
-                    if (hasHoliday) {
-                        doc.setFillColor(224, 242, 254); // blue-100
-                    } else {
-                        doc.setFillColor(248, 250, 252); // gray-50
-                    }
+                    doc.setFillColor(hasHoliday ? '#e0f2fe' : '#f8fafc');
                     doc.rect(currentX, initialY - headerHeight + 5, colWidth, headerHeight - 5, 'F');
                     
                     doc.setFontSize(10);
@@ -274,40 +273,39 @@ export function AnnualVacationQuadrant() {
                 
                 // Draw Body
                 let currentY = initialY;
-                allRowsData.forEach((emp, empIndex) => {
-                    const group = emp.groupId ? employeeGroups.find(g => g.id === emp.groupId) : null;
-                    const groupIndex = group ? sortedGroups.findIndex(g => g.id === group.id) : -1;
-                    const groupColor = groupIndex !== -1 ? groupColors[groupIndex % groupColors.length] : '#ffffff';
+                allRowsData.forEach((groupData, groupIndex) => {
+                    const groupColor = groupColors[groupIndex % groupColors.length];
 
-                    doc.setDrawColor(229, 231, 235); // gray-200
-                    doc.rect(pageMargin, currentY, colWidth * (endCol - startCol), rowHeight, 'S');
+                    groupData.employees.forEach(emp => {
+                        let cellX = pageMargin;
+                        for (let i = startCol; i < endCol; i++) {
+                            const week = weeksOfYear[i];
+                            const weekKey = week.key;
+                            const employeesInWeek = vacationData.employeesByWeek[weekKey] || [];
+                            const isEmployeeOnVacation = employeesInWeek.some(e => e.employeeId === emp.id);
+                             const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                            const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
 
-                    let cellX = pageMargin;
-                    for (let i = startCol; i < endCol; i++) {
-                        const week = weeksOfYear[i];
-                        const weekKey = week.key;
-                        const employeesInWeek = vacationData.employeesByWeek[weekKey] || [];
-                        const isEmployeeOnVacation = employeesInWeek.some(e => e.employeeId === emp.id);
+                            const cellY = currentY;
 
-                        const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                        const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
-
-                        const cellY = currentY;
-
-                        if (isEmployeeOnVacation) {
-                            doc.setFillColor(groupColor);
-                            doc.rect(cellX, cellY, colWidth, rowHeight, 'F');
-                            doc.setFontSize(14);
-                            doc.setFont('helvetica', 'normal');
-                            doc.text(emp.name, cellX + 2, cellY + rowHeight / 2, { baseline: 'middle', maxWidth: colWidth - 4 });
-                        } else {
-                            doc.setFillColor(255, 255, 255);
-                            doc.rect(cellX, cellY, colWidth, rowHeight, 'F');
+                            if (isEmployeeOnVacation) {
+                                doc.setFillColor(groupColor);
+                                doc.rect(cellX, cellY, colWidth, rowHeight, 'F');
+                                doc.setFontSize(10);
+                                doc.setFont('helvetica', 'normal');
+                                doc.text(emp.name, cellX + 2, cellY + rowHeight / 2, { baseline: 'middle', maxWidth: colWidth - 4 });
+                             } else {
+                                if (hasHoliday) {
+                                    doc.setFillColor('#e0f2fe'); // light blue for holiday weeks empty cells
+                                } else {
+                                    doc.setFillColor(255, 255, 255);
+                                }
+                                doc.rect(cellX, cellY, colWidth, rowHeight, 'F');
+                             }
+                             cellX += colWidth;
                         }
-                    }
-                    currentY += rowHeight;
-                    doc.setDrawColor(229, 231, 235);
-                    doc.line(pageMargin, currentY, pageWidth - pageMargin, currentY);
+                        currentY += rowHeight;
+                    });
                 });
     
                 // Footer

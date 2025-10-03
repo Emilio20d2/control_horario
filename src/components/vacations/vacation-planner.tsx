@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -210,9 +209,6 @@ export function VacationPlanner() {
         <Card>
             <CardHeader>
                 <CardTitle>Programar Vacaciones</CardTitle>
-                <CardDescription>
-                    Selecciona un empleado y elige un rango de fechas en el calendario para asignar un periodo de vacaciones.
-                </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="space-y-2">

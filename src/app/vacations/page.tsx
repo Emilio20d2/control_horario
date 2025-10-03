@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +13,7 @@ export default function VacationsPage() {
         <div className="flex flex-col gap-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-4 md:px-6 pt-4">
                 <h1 className="text-2xl font-bold tracking-tight font-headline">
-                Programador de Vacaciones
+                Cuadrante de Vacaciones Anual
                 </h1>
             </div>
 
