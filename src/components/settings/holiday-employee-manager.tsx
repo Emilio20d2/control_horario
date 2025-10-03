@@ -185,7 +185,7 @@ export function HolidayEmployeeManager() {
                             disabled={isAdding}
                         />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 hidden md:block">
                         <label className="text-xs font-medium">Agrupación (Eventual)</label>
                         <Select value={newEmployeeGroupId} onValueChange={setNewEmployeeGroupId} disabled={isAdding}>
                             <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
@@ -213,9 +213,9 @@ export function HolidayEmployeeManager() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Nombre</TableHead>
-                                <TableHead>Agrupación</TableHead>
-                                <TableHead>Jornada</TableHead>
+                                <TableHead className="min-w-[200px]">Nombre</TableHead>
+                                <TableHead className="hidden md:table-cell">Agrupación</TableHead>
+                                <TableHead className="min-w-[120px]">Jornada</TableHead>
                                 <TableHead className="text-center w-24">Activo</TableHead>
                                 <TableHead className="text-right w-32">Acciones</TableHead>
                             </TableRow>
@@ -245,7 +245,7 @@ export function HolidayEmployeeManager() {
                                             emp.name
                                         )}
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell className="hidden md:table-cell">
                                          {isEditingCurrent && emp.isEventual ? (
                                              <Select value={editingEmployee.groupId || ''} onValueChange={v => setEditingEmployee(prev => ({...prev, groupId: v}))}>
                                                 <SelectTrigger className="h-8"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
