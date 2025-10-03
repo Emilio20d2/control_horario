@@ -46,7 +46,6 @@ export function HolidayEmployeeManager() {
             if (mainEmp) {
                 const activePeriod = mainEmp.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
                 
-                // Si el empleado fijo no está activo, no lo incluimos
                 if (!activePeriod) {
                     return null;
                 }
@@ -132,16 +131,14 @@ export function HolidayEmployeeManager() {
             const newActiveState = !employee.active;
     
             if (!holidayEmpExists && !employee.isEventual) {
-                // If it's a main employee without a holidayEmployee record, create it.
                 await addHolidayEmployee({
-                    id: employee.id, // Use the same ID
+                    id: employee.id,
                     name: employee.name,
                     active: newActiveState,
                     groupId: employee.groupId,
                     workShift: employee.workShift
                 });
             } else {
-                // Otherwise, just update the existing record.
                 await updateHolidayEmployee(employee.id, { active: newActiveState });
             }
     
@@ -204,8 +201,7 @@ export function HolidayEmployeeManager() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="min-w-[200px]">Nombre</TableHead>
-                                <TableHead className="hidden">Agrupación</TableHead>
+                                <TableHead className="min-w-[200px]">Empleado</TableHead>
                                 <TableHead className="min-w-[120px]">Jornada</TableHead>
                                 <TableHead className="text-center w-24">Activo</TableHead>
                                 <TableHead className="text-right w-32">Acciones</TableHead>
@@ -214,13 +210,12 @@ export function HolidayEmployeeManager() {
                         <TableBody>
                             {unifiedEmployees.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center h-24">
+                                    <TableCell colSpan={4} className="text-center h-24">
                                         No hay empleados que mostrar.
                                     </TableCell>
                                 </TableRow>
                             )}
                             {unifiedEmployees.map(emp => {
-                                const group = employeeGroups.find(g => g.id === emp.groupId);
                                 const isEditingCurrent = editingId === emp.id;
                                 
                                 return (
@@ -235,18 +230,6 @@ export function HolidayEmployeeManager() {
                                         ) : (
                                             emp.name
                                         )}
-                                    </TableCell>
-                                    <TableCell className="hidden">
-                                         {isEditingCurrent && emp.isEventual ? (
-                                             <Select value={editingEmployee.groupId || ''} onValueChange={v => setEditingEmployee(prev => ({...prev, groupId: v}))}>
-                                                <SelectTrigger className="h-8"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                                                <SelectContent>
-                                                    {employeeGroups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
-                                                </SelectContent>
-                                             </Select>
-                                         ) : (
-                                            group?.name || <span className="text-muted-foreground">N/A</span>
-                                         )}
                                     </TableCell>
                                      <TableCell className="min-w-[120px]">
                                          {isEditingCurrent && emp.isEventual ? (
@@ -313,5 +296,3 @@ export function HolidayEmployeeManager() {
         </Card>
     );
 }
-
-    
