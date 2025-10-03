@@ -227,12 +227,12 @@ export function AnnualVacationQuadrant() {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr>
-                            <th style={{ minWidth: '0.25px', width: '0.25px', padding: 0, border: 'none' }} className="sticky left-0 z-10"></th>
+                            <th style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none' }} className="sticky left-0 z-10"></th>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                                 return (
-                                    <th key={week.key} className={cn("p-1 text-center text-xs font-normal border w-32 min-w-32", hasHoliday ? "bg-blue-100" : "bg-gray-50")}>
+                                    <th key={week.key} className={cn("p-1 text-center text-xs font-normal border w-64 min-w-64", hasHoliday ? "bg-blue-100" : "bg-gray-50")}>
                                         <div className='flex flex-col items-center justify-center h-full'>
                                             <span className='font-semibold'>Semana {week.number}</span>
                                             <span className='text-muted-foreground text-[10px]'>
@@ -251,7 +251,7 @@ export function AnnualVacationQuadrant() {
                      <tbody>
                         {sortedGroups.map((group, groupIndex) => (
                              <tr key={group.id}>
-                                <td style={{ minWidth: '0.25px', width: '0.25px', padding: 0, border: 'none', backgroundColor: groupColors[groupIndex % groupColors.length]}} className="sticky left-0 z-10"></td>
+                                <td style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none', backgroundColor: groupColors[groupIndex % groupColors.length]}} className="sticky left-0 z-10"></td>
                                 {weeksOfYear.map(week => {
                                     const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
@@ -263,7 +263,7 @@ export function AnnualVacationQuadrant() {
                                     }
 
                                     return (
-                                        <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border w-32 min-w-32 h-8 align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50")}>
+                                        <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border w-64 min-w-64 h-8 align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50")}>
                                             <div className="flex flex-col gap-0.5">
                                                 {employeesInGroupThisWeek.map((name, nameIndex) => (
                                                      <div
