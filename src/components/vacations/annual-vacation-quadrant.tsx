@@ -4,18 +4,23 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay, startOfDay } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay, isWithinInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
-import { Users, Clock, PlusCircle } from 'lucide-react';
+import { Users, Clock, PlusCircle, FileDown, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Button } from '../ui/button';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import type { Ausencia } from '@/lib/types';
+
 
 export function AnnualVacationQuadrant() {
     const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours, holidays } = useDataProvider();
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     const [substitutions, setSubstitutions] = useState<Record<string, Record<string, string>>>({}); // { [weekKey]: { [originalEmpName]: substituteName } }
+    const [isGenerating, setIsGenerating] = useState(false);
     
     const schedulableAbsenceTypes = useMemo(() => {
         return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
@@ -108,6 +113,115 @@ export function AnnualVacationQuadrant() {
         }
         return weeks;
     }, [selectedYear]);
+
+    const allAbsences = useMemo((): Ausencia[] => {
+        if (loading) return [];
+        const absenceList: Ausencia[] = [];
+        const schedulableAbsenceTypeIds = new Set(schedulableAbsenceTypes.map(at => at.id));
+
+        employees.forEach(emp => {
+            const group = employeeGroups.find(g => g.id === emp.groupId);
+            if (!group) return;
+
+            emp.employmentPeriods.forEach(period => {
+                period.scheduledAbsences?.forEach(absence => {
+                    if (schedulableAbsenceTypeIds.has(absence.absenceTypeId) && absence.endDate) {
+                        const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
+                        if (getYear(absence.startDate) === selectedYear || getYear(absence.endDate) === selectedYear) {
+                            absenceList.push({
+                                employeeId: emp.id,
+                                employeeName: emp.name,
+                                groupName: group.name,
+                                startDate: absence.startDate,
+                                endDate: absence.endDate,
+                                type: absenceType?.name || 'Ausencia',
+                            });
+                        }
+                    }
+                });
+            });
+        });
+        return absenceList;
+    }, [loading, employees, employeeGroups, schedulableAbsenceTypes, absenceTypes, selectedYear, weeklyRecords]);
+
+    const generateReport = () => {
+        setIsGenerating(true);
+
+        const groupOrder = employeeGroups.sort((a, b) => a.order - b.order).map(g => g.name);
+        const groupChunks = [];
+        for (let i = 0; i < groupOrder.length; i += 5) {
+            groupChunks.push(groupOrder.slice(i, i + 5));
+        }
+        
+        const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+        
+        groupChunks.forEach((chunk, pageIndex) => {
+            if (pageIndex > 0) {
+                doc.addPage();
+            }
+            
+            doc.setFontSize(18);
+            doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, 15, 20);
+            doc.setFontSize(10);
+            doc.text(`Página ${pageIndex + 1} de ${groupChunks.length}`, 297 - 15, 20, { align: 'right' });
+
+            const head = [['Semana', 'Periodo', ...chunk]];
+            const body = [];
+            
+            const yearStart = new Date(selectedYear, 0, 1);
+            for (let i = 0; i < 53; i++) {
+                const weekStart = startOfWeek(addWeeks(yearStart, i), { weekStartsOn: 1 });
+                if (getYear(weekStart) > selectedYear && getISOWeek(weekStart) > 1) break;
+                if (getYear(weekStart) < selectedYear) continue;
+
+                const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+                const row: (string | null)[] = [
+                    String(getISOWeek(weekStart)),
+                    `${format(weekStart, 'dd/MM')} - ${format(weekEnd, 'dd/MM')}`
+                ];
+                
+                let hasAbsenceInRow = false;
+                
+                chunk.forEach(groupName => {
+                    const absencesInWeekAndGroup = allAbsences.filter(a => 
+                        a.groupName === groupName &&
+                        isWithinInterval(weekStart, { start: a.startDate, end: a.endDate })
+                    );
+
+                    if (absencesInWeekAndGroup.length > 0) {
+                        hasAbsenceInRow = true;
+                        row.push(absencesInWeekAndGroup.map(a => a.employeeName).join('\n'));
+                    } else {
+                        row.push('');
+                    }
+                });
+
+                if (hasAbsenceInRow) {
+                    body.push(row);
+                }
+            }
+            
+            autoTable(doc, {
+                head,
+                body,
+                startY: 30,
+                theme: 'grid',
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 2,
+                    valign: 'top',
+                },
+                headStyles: {
+                    fillColor: [240, 240, 240],
+                    textColor: [0, 0, 0],
+                    fontStyle: 'bold',
+                }
+            });
+        });
+        
+        doc.save(`informe_ausencias_${selectedYear}.pdf`);
+        setIsGenerating(false);
+    };
 
     const vacationData = useMemo(() => {
         if (loading || schedulableAbsenceTypes.length === 0) return { weeklySummaries: {}, employeesByWeek: {}, absencesByEmployee: {} };
@@ -253,6 +367,10 @@ export function AnnualVacationQuadrant() {
                                 {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                             </SelectContent>
                         </Select>
+                        <Button onClick={generateReport} disabled={isGenerating || loading}>
+                            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                            Generar Informe
+                        </Button>
                     </div>
                 </div>
             </CardHeader>
@@ -323,7 +441,7 @@ export function AnnualVacationQuadrant() {
                                                                         onValueChange={(value) => {
                                                                             handleSetSubstitute(week.key, emp.name, value);
                                                                         }}
-                                                                        defaultValue={substitute}
+                                                                        defaultValue={substitute || 'ninguno'}
                                                                     >
                                                                         <SelectTrigger className="h-8 text-xs">
                                                                             <SelectValue placeholder="Seleccionar sustituto..." />
