@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -11,7 +12,7 @@ import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown } from 'lucide-reac
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod, Ausencia } from '@/lib/types';
-import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, startOfDay } from 'date-fns';
+import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, startOfDay, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
