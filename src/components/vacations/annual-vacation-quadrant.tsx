@@ -272,10 +272,11 @@ export function AnnualVacationQuadrant() {
                     ]),
                     startY: 30,
                     theme: 'grid',
+                    tableWidth: 'auto',
                     styles: { fontSize: 7, cellPadding: 1, valign: 'top' },
                     headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2, halign: 'center' },
                     columnStyles: {
-                        0: { cellWidth: 0.1, fillColor: false } // Hidden column
+                        0: { cellWidth: 30, fontStyle: 'bold' }
                     },
                 });
             });
@@ -435,3 +436,5 @@ export function AnnualVacationQuadrant() {
     );
 }
 
+
+    
