@@ -254,7 +254,7 @@ export function AnnualVacationQuadrant() {
     
                 const head = [['', ...weekChunk.map(w => {
                     const summary = vacationData.weeklySummaries[w.key];
-                    return `S${w.number} (${format(w.start, 'dd/MM')}) | ${summary?.employeeCount} Empleados - ${summary?.hourImpact.toFixed(0)}h`;
+                    return `S${w.number} (${format(w.start, 'dd/MM')}) | ${summary?.employeeCount} empleados - ${summary?.hourImpact.toFixed(0)}h`;
                 })]];
     
                 const body = sortedGroups.map(group => {
@@ -268,11 +268,7 @@ export function AnnualVacationQuadrant() {
     
                 const pageMargin = 15;
                 const topMargin = 30;
-                const bottomMargin = 10;
-                const availableHeight = doc.internal.pageSize.height - topMargin - bottomMargin;
                 
-                const rowHeight = sortedGroups.length > 0 ? availableHeight / sortedGroups.length : 10;
-
                 const columnStyles: { [key: number]: any } = { 0: { cellWidth: 0.1, fillColor: false } };
                  const remainingWidth = doc.internal.pageSize.width - (pageMargin * 2) - 0.1;
                 const otherColumnsCount = weekChunk.length;
@@ -287,9 +283,6 @@ export function AnnualVacationQuadrant() {
                     startY: topMargin,
                     theme: 'grid',
                     styles: { fontSize: 7, cellPadding: 1, valign: 'top', halign: 'center', font: 'helvetica' },
-                    rowStyles: {
-                        0: {minCellHeight: rowHeight} // Apply calculated height to all rows in the body
-                    },
                     headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2 },
                     columnStyles,
                     didDrawCell: (data) => {
