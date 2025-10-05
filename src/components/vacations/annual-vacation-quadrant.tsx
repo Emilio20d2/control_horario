@@ -1,6 +1,5 @@
 
-
-'use-client';
+'use client';
 
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,8 +11,6 @@ import { Users, Clock, PlusCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Button } from '../ui/button';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
-
 
 export function AnnualVacationQuadrant() {
     const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours, holidays } = useDataProvider();
@@ -307,7 +304,7 @@ export function AnnualVacationQuadrant() {
                                                     const availableSubstitutes = substituteEmployees.filter(
                                                         sub => !Object.values(currentSubstitutes).includes(sub.name) || sub.name === substitute
                                                     );
-                                                     const isSpecialAbsence = emp.absence === 'EXD' || emp.absence === 'PE';
+                                                    const isSpecialAbsence = emp.absence === 'EXD' || emp.absence === 'PE';
 
                                                     return (
                                                         <div key={nameIndex} className="text-[10px] p-0.5 rounded-sm flex justify-between items-center group">
