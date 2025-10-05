@@ -238,6 +238,7 @@ export function AnnualVacationQuadrant() {
         setIsGenerating(true);
         try {
             const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+            const pageMargin = 15;
             
             const weeksInChunks = [];
             for (let i = 0; i < weeksOfYear.length; i += 5) {
@@ -245,53 +246,78 @@ export function AnnualVacationQuadrant() {
             }
     
             weeksInChunks.forEach((weekChunk, pageIndex) => {
-                if (pageIndex > 0) doc.addPage();
+                if (pageIndex > 0) {
+                    doc.addPage();
+                }
     
                 const pageHeight = doc.internal.pageSize.getHeight();
                 const pageWidth = doc.internal.pageSize.getWidth();
-                const pageMargin = 15;
-                const startY = 30;
-                const availableHeight = pageHeight - startY - 15; // 15 for footer margin
+                
+                const startY = 30; // Dejar espacio para la cabecera
+                const availableHeight = pageHeight - startY - 15; // 15 para pie de página
                 const minRowHeight = sortedGroups.length > 0 ? availableHeight / sortedGroups.length : 0;
+                
                 const availableTableWidth = pageWidth - (pageMargin * 2);
                 const columnWidth = availableTableWidth / 5;
 
-                doc.setFontSize(14);
+                // --- Cabecera de la Página ---
+                doc.setFontSize(14).setFont('helvetica', 'bold');
                 doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, pageMargin, 20);
-                doc.setFontSize(8);
+                doc.setFontSize(8).setFont('helvetica', 'normal');
                 doc.text(`Página ${pageIndex + 1} de ${weeksInChunks.length}`, pageWidth - pageMargin, 20, { align: 'right' });
     
-                weekChunk.forEach((week, colIndex) => {
-                    const head = [[
+                const head = [
+                    [''], // Columna oculta de agrupaciones
+                    ...weekChunk.map(week => [
                         `Semana ${week.number}`,
                         `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}`,
                         `${vacationData.weeklySummaries[week.key]?.employeeCount || 0} emp. - ${vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) || 0}h`
-                    ].join('\n')];
+                    ].join('\n'))
+                ];
 
-                    const body = sortedGroups.map(group => {
-                         const employeesInCell = (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [])
+                const body = sortedGroups.map(group => {
+                    const rowData = [group.name]; // El nombre del grupo no se mostrará
+                    weekChunk.forEach(week => {
+                        const employeesInCell = (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [])
                             .map(emp => `${emp.name} (${emp.absence})`)
                             .join('\n');
-                        return [employeesInCell];
+                        rowData.push(employeesInCell);
                     });
-                    
-                    autoTable(doc, {
-                        head: [head],
-                        body: body,
-                        startY: startY,
-                        margin: { left: pageMargin + (colIndex * columnWidth) },
-                        tableWidth: columnWidth,
-                        theme: 'grid',
-                        styles: { fontSize: 7, cellPadding: 1, valign: 'top' },
-                        headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2, halign: 'center' },
-                        bodyStyles: { minCellHeight: minRowHeight, lineWidth: 0.1 },
-                        didDrawCell: (data) => {
-                            if (data.section === 'body') {
-                                const groupIndex = data.row.index;
-                                data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
-                            }
+                    return rowData;
+                });
+    
+                autoTable(doc, {
+                    head: [head],
+                    body: body,
+                    startY: startY,
+                    theme: 'grid',
+                    margin: { left: pageMargin, right: pageMargin },
+                    styles: { fontSize: 7, cellPadding: 1, valign: 'top' },
+                    headStyles: { 
+                        fillColor: [240, 240, 240], 
+                        textColor: [0, 0, 0], 
+                        fontStyle: 'bold', 
+                        lineWidth: 0.2, 
+                        halign: 'center' 
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 0, overflow: 'hidden' }, // Ocultar columna de agrupación
+                        1: { cellWidth: columnWidth },
+                        2: { cellWidth: columnWidth },
+                        3: { cellWidth: columnWidth },
+                        4: { cellWidth: columnWidth },
+                        5: { cellWidth: columnWidth },
+                    },
+                    bodyStyles: { 
+                        minCellHeight: minRowHeight,
+                        lineWidth: 0.1 
+                    },
+                    didDrawCell: (data) => {
+                        if (data.section === 'body') {
+                            const groupIndex = data.row.index;
+                            data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
                         }
-                    });
+                    },
                 });
             });
     
