@@ -259,12 +259,6 @@ export function AnnualVacationQuadrant() {
                     return `S${w.number} (${format(w.start, 'dd/MM')}) | ${employeeCount} empleados - ${hourImpact}h`;
                 })]];
     
-                const pageMargin = 15;
-                const topMargin = 30;
-                const bottomMargin = 15;
-                const availableHeight = doc.internal.pageSize.height - topMargin - bottomMargin;
-                const minRowHeight = sortedGroups.length > 0 ? availableHeight / sortedGroups.length : 10;
-                
                 autoTable(doc, {
                     head,
                     body: sortedGroups.map(group => [
@@ -276,15 +270,13 @@ export function AnnualVacationQuadrant() {
                             return employeesInCell;
                         })
                     ]),
-                    startY: topMargin,
+                    startY: 30,
                     theme: 'grid',
                     styles: { fontSize: 7, cellPadding: 1, valign: 'top' },
                     headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2, halign: 'center' },
-                    bodyStyles: { minCellHeight: minRowHeight },
                     columnStyles: {
                         0: { cellWidth: 0.1, fillColor: false } // Hidden column
                     },
-                    rowPageBreak: 'auto',
                 });
             });
     
