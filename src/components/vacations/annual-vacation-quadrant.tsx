@@ -256,14 +256,21 @@ export function AnnualVacationQuadrant() {
                     const summary = vacationData.weeklySummaries[w.key];
                     const employeeCount = summary?.employeeCount || 0;
                     const hourImpact = summary?.hourImpact.toFixed(0) || 0;
-                    return `Semana ${w.number}\n(${format(w.start, 'dd/MM')} - ${format(w.end, 'dd/MM')})\n${employeeCount} emp. - ${hourImpact}h`;
+                    return `Semana ${w.number}\n${format(w.start, 'dd/MM')} - ${format(w.end, 'dd/MM')}\n${employeeCount} emp. - ${hourImpact}h`;
                 })]];
     
                 const pageHeight = doc.internal.pageSize.getHeight();
                 const startY = 30;
                 const availableHeight = pageHeight - startY - 15;
                 const minRowHeight = sortedGroups.length > 0 ? availableHeight / sortedGroups.length : 0;
-    
+                
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageMargin = 15;
+                const availableTableWidth = pageWidth - (pageMargin * 2);
+                const columnCount = weekChunk.length + 1; // +1 for the hidden group column
+                const equalWidth = availableTableWidth / (columnCount - 1);
+
+
                 autoTable(doc, {
                     head,
                     body: sortedGroups.map(group => [
@@ -281,11 +288,16 @@ export function AnnualVacationQuadrant() {
                     headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2, halign: 'center' },
                     bodyStyles: { minCellHeight: minRowHeight, lineWidth: 0.1 },
                     columnStyles: {
-                        0: { cellWidth: 0.1 } // Hide the first column by making it very narrow
+                        0: { cellWidth: 0.1, minCellWidth: 0.1 },
+                        1: { cellWidth: equalWidth },
+                        2: { cellWidth: equalWidth },
+                        3: { cellWidth: equalWidth },
+                        4: { cellWidth: equalWidth },
+                        5: { cellWidth: equalWidth },
                     },
                     didDrawCell: (data) => {
                          if (data.column.index === 0) {
-                            data.cell.styles.lineWidth = 0; // Remove border for the hidden column
+                            data.cell.styles.lineWidth = 0;
                         }
                     }
                 });
@@ -445,7 +457,3 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
-
-
-    
-
