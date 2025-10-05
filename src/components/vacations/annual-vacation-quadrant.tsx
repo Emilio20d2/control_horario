@@ -12,7 +12,7 @@ import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown } from 'lucide-reac
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod, Ausencia } from '@/lib/types';
-import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, endOfWeek } from 'date-fns';
+import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, endOfWeek, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
@@ -279,7 +279,7 @@ export function AnnualVacationQuadrant() {
                     body: [], // Body is drawn manually
                     startY: 30,
                     theme: 'grid',
-                    styles: { fontSize: 7, cellPadding: 1, valign: 'middle', halign: 'center' },
+                    styles: { fontSize: 7, cellPadding: 1, valign: 'top', halign: 'center' },
                     headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2 },
                     columnStyles,
                     didDrawCell: (data) => {
@@ -475,3 +475,4 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
