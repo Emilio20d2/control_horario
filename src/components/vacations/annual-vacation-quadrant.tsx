@@ -233,6 +233,7 @@ export function AnnualVacationQuadrant() {
                         if (getYear(day) === selectedYear) absenceDays.set(format(day, 'yyyy-MM-dd'), absenceType.abbreviation);
                     });
                 });
+                const allAbsenceDays = new Map<string, string>();
                 Object.values(weeklyRecords).forEach(record => {
                     const empWeekData = record.weekData[emp.id];
                     if (!empWeekData?.days) return;
@@ -451,3 +452,4 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
