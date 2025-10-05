@@ -20,19 +20,32 @@ import { Skeleton } from '../ui/skeleton';
 import { setDocument } from '@/lib/services/firestoreService';
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Badge } from '../ui/badge';
 
 export function VacationPlanner() {
     const { employees, absenceTypes, holidays, loading, refreshData, weeklyRecords, getWeekId } = useDataProvider();
     const { toast } = useToast();
 
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+    const [selectedAbsenceTypeId, setSelectedAbsenceTypeId] = useState<string>('');
     const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(undefined);
     const [isLoading, setIsLoading] = useState(false);
     
     const activeEmployees = employees.filter(e => e.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
     const selectedEmployee = activeEmployees.find(e => e.id === selectedEmployeeId);
     
-    const vacationAbsenceType = absenceTypes.find(at => at.name === 'Vacaciones');
+    const schedulableAbsenceTypes = useMemo(() => {
+        return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
+    }, [absenceTypes]);
+
+    useEffect(() => {
+        if (schedulableAbsenceTypes.length > 0 && !selectedAbsenceTypeId) {
+            const vacationType = schedulableAbsenceTypes.find(at => at.name === 'Vacaciones');
+            if (vacationType) {
+                setSelectedAbsenceTypeId(vacationType.id);
+            }
+        }
+    }, [schedulableAbsenceTypes, selectedAbsenceTypeId]);
 
     const getActivePeriodForEmployee = (employee: Employee | undefined): EmploymentPeriod | undefined => {
         if (!employee) return undefined;
@@ -40,8 +53,8 @@ export function VacationPlanner() {
     };
 
     const handleAddPeriod = async () => {
-        if (!selectedEmployeeId || !selectedDateRange?.from || !selectedDateRange?.to || !vacationAbsenceType) {
-            toast({ title: 'Datos incompletos', description: 'Selecciona un empleado y un rango de fechas.', variant: 'destructive' });
+        if (!selectedEmployeeId || !selectedAbsenceTypeId || !selectedDateRange?.from || !selectedDateRange?.to) {
+            toast({ title: 'Datos incompletos', description: 'Selecciona empleado, tipo de ausencia y un rango de fechas.', variant: 'destructive' });
             return;
         }
 
@@ -54,24 +67,24 @@ export function VacationPlanner() {
         setIsLoading(true);
         try {
             await addScheduledAbsence(selectedEmployeeId, activePeriod.id, {
-                absenceTypeId: vacationAbsenceType.id,
+                absenceTypeId: selectedAbsenceTypeId,
                 startDate: format(selectedDateRange.from, 'yyyy-MM-dd'),
                 endDate: format(selectedDateRange.to, 'yyyy-MM-dd'),
             }, selectedEmployee as Employee);
             
-            toast({ title: 'Periodo de vacaciones añadido', description: `Se han guardado las vacaciones para ${selectedEmployee?.name}.` });
+            toast({ title: 'Periodo de ausencia añadido', description: `Se ha guardado la ausencia para ${selectedEmployee?.name}.` });
             setSelectedDateRange(undefined);
             refreshData(); // Refresh data to show the new period
         } catch (error) {
             console.error(error);
-            toast({ title: 'Error', description: 'No se pudo añadir el periodo de vacaciones.', variant: 'destructive' });
+            toast({ title: 'Error', description: 'No se pudo añadir el periodo de ausencia.', variant: 'destructive' });
         } finally {
             setIsLoading(false);
         }
     };
     
     const handleDeletePeriod = async (periodId: string) => {
-        if (!selectedEmployee || !vacationAbsenceType) return;
+        if (!selectedEmployee) return;
     
         setIsLoading(true);
         try {
@@ -83,10 +96,10 @@ export function VacationPlanner() {
             if (scheduledAbsenceToDelete) {
                 // It's a long-term scheduled absence, delete it from the employee document
                 await deleteScheduledAbsence(selectedEmployee.id, activePeriod.id, periodId, selectedEmployee);
-                toast({ title: 'Periodo de vacaciones eliminado', description: 'Se ha eliminado la ausencia programada de la ficha del empleado.', variant: 'destructive' });
+                toast({ title: 'Periodo de ausencia eliminado', description: 'Se ha eliminado la ausencia programada de la ficha del empleado.', variant: 'destructive' });
             } else {
                 // It's a vacation period aggregated from weekly records
-                const periodToDelete = vacationPeriods.find(p => p.id === periodId);
+                const periodToDelete = absencePeriods.find(p => p.id === periodId);
                 if (!periodToDelete) throw new Error("Period to delete not found.");
 
                 const batch = writeBatch(db);
@@ -112,30 +125,33 @@ export function VacationPlanner() {
                 }
                 
                 await batch.commit();
-                toast({ title: 'Días de vacaciones eliminados', description: 'Los días han sido borrados de los registros semanales no confirmados.', variant: 'destructive' });
+                toast({ title: 'Días de ausencia eliminados', description: 'Los días han sido borrados de los registros semanales no confirmados.', variant: 'destructive' });
             }
             
             refreshData();
         } catch (error) {
             console.error("Error deleting vacation period:", error);
-            toast({ title: 'Error', description: error instanceof Error ? error.message : 'No se pudo eliminar el periodo de vacaciones.', variant: 'destructive' });
+            toast({ title: 'Error', description: error instanceof Error ? error.message : 'No se pudo eliminar el periodo de ausencia.', variant: 'destructive' });
         } finally {
             setIsLoading(false);
         }
     };
 
-    const vacationPeriods = useMemo(() => {
-        if (!selectedEmployee || !vacationAbsenceType) return [];
+    const absencePeriods = useMemo(() => {
+        if (!selectedEmployee) return [];
         
-        const allVacationDays = new Set<string>();
+        const schedulableAbsenceTypeIds = new Set(schedulableAbsenceTypes.map(at => at.id));
+        const schedulableAbsenceTypeAbbrs = new Set(schedulableAbsenceTypes.map(at => at.abbreviation));
+
+        const allAbsenceDays = new Map<string, string>(); // date string -> absenceTypeId
 
         // 1. Get from scheduled absences
         const activePeriod = getActivePeriodForEmployee(selectedEmployee);
         if (activePeriod?.scheduledAbsences) {
             activePeriod.scheduledAbsences.forEach(absence => {
-                if (absence.absenceTypeId === vacationAbsenceType.id && absence.endDate) {
+                if (schedulableAbsenceTypeIds.has(absence.absenceTypeId) && absence.endDate) {
                     eachDayOfInterval({ start: startOfDay(absence.startDate), end: startOfDay(absence.endDate) })
-                        .forEach(d => allVacationDays.add(format(d, 'yyyy-MM-dd')));
+                        .forEach(d => allAbsenceDays.set(format(d, 'yyyy-MM-dd'), absence.absenceTypeId));
                 }
             });
         }
@@ -145,45 +161,53 @@ export function VacationPlanner() {
             const empData = weeklyRecords[weekId]?.weekData?.[selectedEmployee.id];
             if (empData?.days) {
                 for (const dayStr in empData.days) {
-                    if (empData.days[dayStr].absence === vacationAbsenceType.abbreviation) {
-                        allVacationDays.add(dayStr);
+                    const absenceType = absenceTypes.find(at => at.abbreviation === empData.days[dayStr].absence);
+                    if (absenceType && schedulableAbsenceTypeAbbrs.has(absenceType.abbreviation)) {
+                        if (!allAbsenceDays.has(dayStr)) {
+                            allAbsenceDays.set(dayStr, absenceType.id);
+                        }
                     }
                 }
             }
         }
         
-        // 3. Remove duplicates and sort
-        const uniqueSortedDays = Array.from(allVacationDays).map(d => parseISO(d)).sort((a,b) => a.getTime() - b.getTime());
+        const uniqueSortedDays = Array.from(allAbsenceDays.keys()).map(d => parseISO(d)).sort((a,b) => a.getTime() - b.getTime());
 
         // 4. Group consecutive days into periods
-        const periods: { id: string; startDate: Date; endDate: Date; isConfirmed: boolean; }[] = [];
+        const periods: { id: string; startDate: Date; endDate: Date; isConfirmed: boolean; absenceTypeId: string; }[] = [];
         if (uniqueSortedDays.length === 0) return periods;
 
         let currentPeriodStart = uniqueSortedDays[0];
+        let currentAbsenceTypeId = allAbsenceDays.get(format(currentPeriodStart, 'yyyy-MM-dd'))!;
+
         for (let i = 1; i < uniqueSortedDays.length; i++) {
-            if (differenceInDays(uniqueSortedDays[i], uniqueSortedDays[i-1]) > 1) {
+            const dayStr = format(uniqueSortedDays[i], 'yyyy-MM-dd');
+            const dayAbsenceTypeId = allAbsenceDays.get(dayStr)!;
+
+            if (differenceInDays(uniqueSortedDays[i], uniqueSortedDays[i-1]) > 1 || dayAbsenceTypeId !== currentAbsenceTypeId) {
                 const periodEndDate = uniqueSortedDays[i-1];
                 const daysInPeriod = eachDayOfInterval({ start: currentPeriodStart, end: periodEndDate });
                 const isConfirmed = daysInPeriod.some(day => weeklyRecords[getWeekId(day)]?.weekData[selectedEmployee.id]?.confirmed);
                 
-                // Check if this period corresponds to a scheduled absence
-                const scheduledAbsence = activePeriod?.scheduledAbsences?.find(sa => isSameDay(sa.startDate, currentPeriodStart) && sa.endDate && isSameDay(sa.endDate, periodEndDate));
+                const scheduledAbsence = activePeriod?.scheduledAbsences?.find(sa => sa.endDate && isSameDay(sa.startDate, currentPeriodStart) && isSameDay(sa.endDate, periodEndDate) && sa.absenceTypeId === currentAbsenceTypeId);
                 
-                periods.push({ id: scheduledAbsence?.id || `agg-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: periodEndDate, isConfirmed });
+                periods.push({ id: scheduledAbsence?.id || `agg-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: periodEndDate, isConfirmed, absenceTypeId: currentAbsenceTypeId });
+                
                 currentPeriodStart = uniqueSortedDays[i];
+                currentAbsenceTypeId = dayAbsenceTypeId;
             }
         }
         
         const lastPeriodEndDate = uniqueSortedDays[uniqueSortedDays.length - 1];
         const lastPeriodDays = eachDayOfInterval({ start: currentPeriodStart, end: lastPeriodEndDate });
         const isLastPeriodConfirmed = lastPeriodDays.some(day => weeklyRecords[getWeekId(day)]?.weekData[selectedEmployee.id]?.confirmed);
-        const lastScheduledAbsence = activePeriod?.scheduledAbsences?.find(sa => sa.endDate && isSameDay(sa.startDate, currentPeriodStart) && isSameDay(sa.endDate, lastPeriodEndDate));
+        const lastScheduledAbsence = activePeriod?.scheduledAbsences?.find(sa => sa.endDate && isSameDay(sa.startDate, currentPeriodStart) && isSameDay(sa.endDate, lastPeriodEndDate) && sa.absenceTypeId === currentAbsenceTypeId);
 
-        periods.push({ id: lastScheduledAbsence?.id || `agg-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: lastPeriodEndDate, isConfirmed: isLastPeriodConfirmed });
+        periods.push({ id: lastScheduledAbsence?.id || `agg-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: lastPeriodEndDate, isConfirmed: isLastPeriodConfirmed, absenceTypeId: currentAbsenceTypeId });
 
         return periods.sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
 
-    }, [selectedEmployee, vacationAbsenceType, weeklyRecords, getWeekId]);
+    }, [selectedEmployee, schedulableAbsenceTypes, weeklyRecords, getWeekId, absenceTypes]);
     
     const openingHolidays = holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date);
     const otherHolidays = holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date);
@@ -209,19 +233,32 @@ export function VacationPlanner() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Programar Vacaciones</CardTitle>
+                <CardTitle>Programar Ausencias (Vacaciones, Excedencias, etc.)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-                <div className="space-y-2">
-                    <label className="text-sm font-medium">Empleado</label>
-                    <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-                        <SelectTrigger><SelectValue placeholder="Seleccionar empleado..." /></SelectTrigger>
-                        <SelectContent>
-                            {activeEmployees.map(emp => (
-                                <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Empleado</label>
+                        <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                            <SelectTrigger><SelectValue placeholder="Seleccionar empleado..." /></SelectTrigger>
+                            <SelectContent>
+                                {activeEmployees.map(emp => (
+                                    <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                     <div className="space-y-2">
+                        <label className="text-sm font-medium">Tipo de Ausencia</label>
+                        <Select value={selectedAbsenceTypeId} onValueChange={setSelectedAbsenceTypeId} disabled={!selectedEmployeeId}>
+                            <SelectTrigger><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
+                            <SelectContent>
+                                {schedulableAbsenceTypes.map(at => (
+                                    <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
                 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
@@ -244,24 +281,28 @@ export function VacationPlanner() {
 
                     {selectedEmployee && (
                         <div className="space-y-4">
-                            <h4 className="font-medium">Periodos de Vacaciones de {selectedEmployee.name}</h4>
+                            <h4 className="font-medium">Periodos de Ausencia de {selectedEmployee.name}</h4>
                             <div className="border rounded-md max-h-96 overflow-y-auto">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead>Tipo</TableHead>
                                             <TableHead>Inicio</TableHead>
                                             <TableHead>Fin</TableHead>
                                             <TableHead className="text-right">Acción</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {vacationPeriods.length === 0 ? (
+                                        {absencePeriods.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={3} className="text-center h-24">No hay vacaciones programadas.</TableCell>
+                                                <TableCell colSpan={4} className="text-center h-24">No hay ausencias programadas.</TableCell>
                                             </TableRow>
                                         ) : (
-                                            vacationPeriods.map(period => (
+                                            absencePeriods.map(period => {
+                                                const absenceType = absenceTypes.find(at => at.id === period.absenceTypeId);
+                                                return (
                                                 <TableRow key={period.id}>
+                                                    <TableCell><Badge variant="outline">{absenceType?.abbreviation || '??'}</Badge></TableCell>
                                                     <TableCell>{format(period.startDate, 'PPP', { locale: es })}</TableCell>
                                                     <TableCell>{format(period.endDate, 'PPP', { locale: es })}</TableCell>
                                                     <TableCell className="text-right">
@@ -270,7 +311,8 @@ export function VacationPlanner() {
                                                         </Button>
                                                     </TableCell>
                                                 </TableRow>
-                                            ))
+                                                )
+                                            })
                                         )}
                                     </TableBody>
                                 </Table>
