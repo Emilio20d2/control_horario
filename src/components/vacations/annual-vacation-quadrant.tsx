@@ -12,7 +12,7 @@ import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown } from 'lucide-reac
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod, Ausencia } from '@/lib/types';
-import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, endOfWeek, endOfDay } from 'date-fns';
+import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { endOfWeek, endOfDay } from 'date-fns';
 
 
 export function AnnualVacationQuadrant() {
@@ -237,7 +238,7 @@ export function AnnualVacationQuadrant() {
         setIsGenerating(true);
         try {
             const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-            doc.setFont('helvetica');
+            doc.setFont('helvetica', 'normal');
 
             const weeksInChunks = [];
             for (let i = 0; i < weeksOfYear.length; i += 5) {
@@ -254,11 +255,11 @@ export function AnnualVacationQuadrant() {
     
                 const head = [['', ...weekChunk.map(w => {
                     const summary = vacationData.weeklySummaries[w.key];
-                    return `S${w.number} (${format(w.start, 'dd/MM')}) | ${summary?.employeeCount} empleados - ${summary?.hourImpact.toFixed(0)}h`;
+                    return `S${w.number} (${format(w.start, 'dd/MM')}) | ${summary?.employeeCount || 0} empleados - ${summary?.hourImpact.toFixed(0) || 0}h`;
                 })]];
     
                 const body = sortedGroups.map(group => {
-                    const rowData: (string | { employees: { name: string; absence: string }[], substitute?: string })[] = [group.name];
+                    const rowData: any[] = [{ content: group.name, styles: { fillColor: groupColors[sortedGroups.indexOf(group) % groupColors.length] } }];
                     weekChunk.forEach(week => {
                         const employeesInGroupThisWeek = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
                         rowData.push({ employees: employeesInGroupThisWeek });
@@ -268,15 +269,10 @@ export function AnnualVacationQuadrant() {
     
                 const pageMargin = 15;
                 const topMargin = 30;
+                const bottomMargin = 15;
+                const availableHeight = doc.internal.pageSize.height - topMargin - bottomMargin;
+                const minRowHeight = availableHeight / sortedGroups.length;
                 
-                const columnStyles: { [key: number]: any } = { 0: { cellWidth: 0.1, fillColor: false } };
-                 const remainingWidth = doc.internal.pageSize.width - (pageMargin * 2) - 0.1;
-                const otherColumnsCount = weekChunk.length;
-                const otherColumnsWidth = otherColumnsCount > 0 ? remainingWidth / otherColumnsCount : 0;
-                for (let i = 0; i < weekChunk.length; i++) {
-                    columnStyles[i + 1] = { cellWidth: otherColumnsWidth };
-                }
-
                 autoTable(doc, {
                     head,
                     body: [], // Body is drawn manually
@@ -284,13 +280,16 @@ export function AnnualVacationQuadrant() {
                     theme: 'grid',
                     styles: { fontSize: 7, cellPadding: 1, valign: 'top', halign: 'center', font: 'helvetica' },
                     headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2 },
-                    columnStyles,
+                    didParseCell: (data) => {
+                        if (data.section === 'body') {
+                           data.cell.styles.minCellHeight = minRowHeight;
+                        }
+                    },
                     didDrawCell: (data) => {
                         if (data.section === 'body') {
-                           if (data.column.index === 0) {
-                               const groupIndex = data.row.index;
-                               data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
-                           } else {
+                            if (data.column.index === 0) {
+                                // This column is now visually hidden, but keeps structure
+                            } else {
                                 const group = sortedGroups[data.row.index];
                                 const week = weekChunk[data.column.index - 1];
                                 const employeesInCell = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
@@ -310,16 +309,19 @@ export function AnnualVacationQuadrant() {
                                     }
                                     y += 4;
                                 });
-                           }
+                            }
                         }
                     },
                     body: sortedGroups.map(group => {
-                        const row: string[] = [''];
+                        const row: string[] = [group.name];
                         weekChunk.forEach(week => {
                             row.push('');
                         });
                         return row;
                     }),
+                    columnStyles: {
+                        0: { cellWidth: 0.1, fillColor: false } // Hidden column
+                    },
                     rowPageBreak: 'auto',
                 });
             });
