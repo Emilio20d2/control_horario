@@ -11,7 +11,7 @@ import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown } from 'lucide-reac
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod, Ausencia } from '@/lib/types';
-import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay } from 'date-fns';
+import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
@@ -158,7 +158,7 @@ export function AnnualVacationQuadrant() {
     const generateReport = () => {
         setIsGenerating(true);
         try {
-            const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+            const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
             const groupOrder = employeeGroups.sort((a, b) => a.order - b.order).map(g => g.name);
             const weeksInChunks = [];
             for (let i = 0; i < weeksOfYear.length; i += 5) {
@@ -173,9 +173,12 @@ export function AnnualVacationQuadrant() {
                 doc.setFontSize(14);
                 doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, 15, 20);
                 doc.setFontSize(8);
-                doc.text(`Página ${pageIndex + 1} de ${weeksInChunks.length}`, 195, 20, { align: 'right' });
-    
-                const head = [['Agrupación', ...weekChunk.map(w => `S${w.number} (${format(w.start, 'dd/MM')})`)]];
+                doc.text(`Página ${pageIndex + 1} de ${weeksInChunks.length}`, doc.internal.pageSize.width - 15, 20, { align: 'right' });
+                
+                const head = [['Agrupación', ...weekChunk.map(w => {
+                    const summary = vacationData.weeklySummaries[w.key];
+                    return `S${w.number} (${format(w.start, 'dd/MM')})\n${summary?.employeeCount} Empleados\n${summary?.hourImpact.toFixed(0)}h`;
+                })]];
     
                 const body = groupOrder.map(groupName => {
                     const row: string[] = [groupName];
@@ -204,7 +207,9 @@ export function AnnualVacationQuadrant() {
                         fillColor: [240, 240, 240],
                         textColor: [0, 0, 0],
                         fontStyle: 'bold',
-                        halign: 'center'
+                        halign: 'center',
+                        lineColor: [44, 62, 80],
+                        lineWidth: 0.2
                     },
                     columnStyles: {
                         0: { fontStyle: 'bold', cellWidth: 40 },
