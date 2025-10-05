@@ -307,8 +307,6 @@ export function AnnualVacationQuadrant() {
                                                     const availableSubstitutes = substituteEmployees.filter(
                                                         sub => !Object.values(currentSubstitutes).includes(sub.name) || sub.name === substitute
                                                     );
-                                                    
-                                                    const [open, setOpen] = useState(false);
 
                                                     return (
                                                         <div key={nameIndex} className="text-[10px] p-0.5 rounded-sm flex justify-between items-center group">
@@ -316,7 +314,7 @@ export function AnnualVacationQuadrant() {
                                                                 <span className="truncate font-medium">{emp.name} ({emp.absence})</span>
                                                                 {substitute && <span className="text-red-600 truncate">({substitute})</span>}
                                                             </div>
-                                                            <Popover open={open} onOpenChange={setOpen}>
+                                                            <Popover>
                                                                 <PopoverTrigger asChild>
                                                                     <Button variant="ghost" size="icon" className="h-4 w-4">
                                                                         <PlusCircle className="h-3 w-3" />
@@ -333,7 +331,7 @@ export function AnnualVacationQuadrant() {
                                                                                     value={sub.name}
                                                                                     onSelect={() => {
                                                                                         handleSetSubstitute(week.key, emp.name, sub.name);
-                                                                                        setOpen(false);
+                                                                                        (document.activeElement as HTMLElement)?.blur();
                                                                                     }}
                                                                                 >
                                                                                     {sub.name}
@@ -344,7 +342,7 @@ export function AnnualVacationQuadrant() {
                                                                                     className="text-destructive"
                                                                                     onSelect={() => {
                                                                                         handleSetSubstitute(week.key, emp.name, '');
-                                                                                        setOpen(false);
+                                                                                        (document.activeElement as HTMLElement)?.blur();
                                                                                     }}
                                                                                 >
                                                                                     Quitar sustituto
