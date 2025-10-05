@@ -256,14 +256,14 @@ export function AnnualVacationQuadrant() {
                     const summary = vacationData.weeklySummaries[w.key];
                     const employeeCount = summary?.employeeCount || 0;
                     const hourImpact = summary?.hourImpact.toFixed(0) || 0;
-                    return `S${w.number} (${format(w.start, 'dd/MM')}) | ${employeeCount} emp. - ${hourImpact}h`;
+                    return `Semana ${w.number}\n(${format(w.start, 'dd/MM')} - ${format(w.end, 'dd/MM')})\n${employeeCount} emp. - ${hourImpact}h`;
                 })]];
     
                 const pageHeight = doc.internal.pageSize.getHeight();
                 const startY = 30;
-                const availableHeight = pageHeight - startY - 15; // 15 for bottom margin
+                const availableHeight = pageHeight - startY - 15;
                 const minRowHeight = sortedGroups.length > 0 ? availableHeight / sortedGroups.length : 0;
-
+    
                 autoTable(doc, {
                     head,
                     body: sortedGroups.map(group => [
@@ -277,13 +277,17 @@ export function AnnualVacationQuadrant() {
                     ]),
                     startY: startY,
                     theme: 'grid',
-                    tableWidth: 'auto',
                     styles: { fontSize: 7, cellPadding: 1, valign: 'top' },
                     headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2, halign: 'center' },
-                    bodyStyles: { minCellHeight: minRowHeight },
+                    bodyStyles: { minCellHeight: minRowHeight, lineWidth: 0.1 },
                     columnStyles: {
-                        0: { cellWidth: 30, fontStyle: 'bold' }
+                        0: { cellWidth: 0.1 } // Hide the first column by making it very narrow
                     },
+                    didDrawCell: (data) => {
+                         if (data.column.index === 0) {
+                            data.cell.styles.lineWidth = 0; // Remove border for the hidden column
+                        }
+                    }
                 });
             });
     
@@ -444,3 +448,4 @@ export function AnnualVacationQuadrant() {
 
 
     
+
