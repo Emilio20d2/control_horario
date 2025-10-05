@@ -237,7 +237,8 @@ export function AnnualVacationQuadrant() {
         setIsGenerating(true);
         try {
             const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-            
+            doc.setFont('helvetica');
+
             const weeksInChunks = [];
             for (let i = 0; i < weeksOfYear.length; i += 5) {
                 weeksInChunks.push(weeksOfYear.slice(i, i + 5));
@@ -266,8 +267,13 @@ export function AnnualVacationQuadrant() {
                 });
     
                 const pageMargin = 15;
-                const availableWidth = doc.internal.pageSize.width - (pageMargin * 2) - 0.1; // 0.1 for the hidden group col
+                const topMargin = 30;
+                const bottomMargin = 10;
+                const availableWidth = doc.internal.pageSize.width - (pageMargin * 2) - 0.1;
+                const availableHeight = doc.internal.pageSize.height - topMargin - bottomMargin;
+                
                 const columnWidth = availableWidth / weekChunk.length;
+                const rowHeight = availableHeight / sortedGroups.length;
 
                 const columnStyles: { [key: number]: any } = { 0: { cellWidth: 0.1, fillColor: false } };
                 for (let i = 0; i < weekChunk.length; i++) {
@@ -277,9 +283,9 @@ export function AnnualVacationQuadrant() {
                 autoTable(doc, {
                     head,
                     body: [], // Body is drawn manually
-                    startY: 30,
+                    startY: topMargin,
                     theme: 'grid',
-                    styles: { fontSize: 7, cellPadding: 1, valign: 'top', halign: 'center' },
+                    styles: { fontSize: 7, cellPadding: 1, valign: 'top', halign: 'center', font: 'helvetica' },
                     headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2 },
                     columnStyles,
                     didDrawCell: (data) => {
@@ -292,8 +298,8 @@ export function AnnualVacationQuadrant() {
                                 const week = weekChunk[data.column.index - 1];
                                 const employeesInCell = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
                                 
-                                doc.setFontSize(7);
-                                let y = data.cell.y + 3;
+                                doc.setFontSize(9);
+                                let y = data.cell.y + 4; // Initial padding
 
                                 employeesInCell.forEach(emp => {
                                     const substitute = substitutions[week.key]?.[emp.name];
@@ -301,23 +307,28 @@ export function AnnualVacationQuadrant() {
                                     
                                     doc.text(text, data.cell.x + 2, y, { align: 'left' });
                                     if (substitute) {
-                                        doc.text(substitute, data.cell.x + data.cell.width - 2, y, { align: 'right' });
+                                        doc.setTextColor(220, 53, 69); // Bootstrap 'danger' color
+                                        doc.text(`(${substitute})`, data.cell.x + data.cell.width - 2, y, { align: 'right' });
+                                        doc.setTextColor(0, 0, 0); // Reset color
                                     }
                                     y += 4;
                                 });
                            }
                         }
                     },
-                     // Create empty body rows to reserve space
                     body: sortedGroups.map(group => {
                         const row: string[] = [''];
                         weekChunk.forEach(week => {
-                            const employeesInGroupThisWeek = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
-                            // Reserve space by adding newline characters. A bit of a hack.
-                            row.push(employeesInGroupThisWeek.map(() => ' ').join('\n'));
+                            row.push('');
                         });
                         return row;
-                    })
+                    }),
+                    rowPageBreak: 'auto',
+                    didParseCell: (data) => {
+                        if (data.section === 'body') {
+                            data.cell.styles.minCellHeight = rowHeight;
+                        }
+                    },
                 });
             });
     
@@ -475,4 +486,3 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
-
