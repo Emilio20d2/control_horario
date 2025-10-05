@@ -1,24 +1,34 @@
 
-
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
+import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@/components/ui/table';
+import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay, isWithinInterval, startOfDay } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import type { Employee, EmploymentPeriod, Ausencia } from '@/lib/types';
+import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { DateRange } from 'react-day-picker';
+import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Skeleton } from '../ui/skeleton';
-import { Users, Clock, PlusCircle, FileDown, Loader2 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { setDocument } from '@/lib/services/firestoreService';
+import { writeBatch, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Badge } from '../ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Button } from '../ui/button';
+import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { Ausencia } from '@/lib/types';
 
 
 export function AnnualVacationQuadrant() {
     const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours, holidays } = useDataProvider();
+    const { toast } = useToast();
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     const [substitutions, setSubstitutions] = useState<Record<string, Record<string, string>>>({}); // { [weekKey]: { [originalEmpName]: substituteName } }
     const [isGenerating, setIsGenerating] = useState(false);
@@ -147,58 +157,72 @@ export function AnnualVacationQuadrant() {
 
     const generateReport = () => {
         setIsGenerating(true);
+        try {
+            const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+            const groupOrder = employeeGroups.sort((a, b) => a.order - b.order).map(g => g.name);
+            const weeksInChunks = [];
+            for (let i = 0; i < weeksOfYear.length; i += 5) {
+                weeksInChunks.push(weeksOfYear.slice(i, i + 5));
+            }
     
-        const groupOrder = employeeGroups.sort((a, b) => a.order - b.order).map(g => g.name);
-        const weeks = weeksOfYear;
+            weeksInChunks.forEach((weekChunk, pageIndex) => {
+                if (pageIndex > 0) {
+                    doc.addPage();
+                }
     
-        const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+                doc.setFontSize(14);
+                doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, 15, 20);
+                doc.setFontSize(8);
+                doc.text(`Página ${pageIndex + 1} de ${weeksInChunks.length}`, 195, 20, { align: 'right' });
     
-        doc.setFontSize(18);
-        doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, 15, 20);
+                const head = [['Agrupación', ...weekChunk.map(w => `S${w.number} (${format(w.start, 'dd/MM')})`)]];
     
-        const head = [['Agrupación', ...weeks.map(w => String(w.number))]];
-        
-        const body = groupOrder.map(groupName => {
-            const row: string[] = [groupName];
-            weeks.forEach(week => {
-                const absencesInWeekAndGroup = allAbsences.filter(a => {
-                    return a.groupName === groupName &&
-                        isWithinInterval(week.start, { start: a.startDate, end: a.endDate });
+                const body = groupOrder.map(groupName => {
+                    const row: string[] = [groupName];
+                    weekChunk.forEach(week => {
+                        const absencesInWeekAndGroup = allAbsences.filter(a => {
+                            return a.groupName === groupName &&
+                                isWithinInterval(week.start, { start: a.startDate, end: a.endDate });
+                        });
+                        row.push(absencesInWeekAndGroup.map(a => a.employeeName).join('\n'));
+                    });
+                    return row;
                 });
     
-                if (absencesInWeekAndGroup.length > 0) {
-                    row.push(absencesInWeekAndGroup.map(a => a.employeeName).join('\n'));
-                } else {
-                    row.push('');
-                }
+                autoTable(doc, {
+                    head,
+                    body,
+                    startY: 30,
+                    theme: 'grid',
+                    styles: {
+                        fontSize: 7,
+                        cellPadding: 2,
+                        valign: 'top',
+                        overflow: 'linebreak'
+                    },
+                    headStyles: {
+                        fillColor: [240, 240, 240],
+                        textColor: [0, 0, 0],
+                        fontStyle: 'bold',
+                        halign: 'center'
+                    },
+                    columnStyles: {
+                        0: { fontStyle: 'bold', cellWidth: 40 },
+                    }
+                });
             });
-            return row;
-        });
     
-        autoTable(doc, {
-            head,
-            body,
-            startY: 30,
-            theme: 'grid',
-            styles: {
-                fontSize: 5,
-                cellPadding: 1,
-                valign: 'top',
-                overflow: 'linebreak'
-            },
-            headStyles: {
-                fillColor: [240, 240, 240],
-                textColor: [0, 0, 0],
-                fontStyle: 'bold',
-                fontSize: 6,
-            },
-            columnStyles: {
-                0: { fontStyle: 'bold', cellWidth: 30, fontSize: 7 },
-            }
-        });
-        
-        doc.save(`informe_ausencias_${selectedYear}.pdf`);
-        setIsGenerating(false);
+            doc.save(`informe_ausencias_${selectedYear}.pdf`);
+        } catch (e) {
+            console.error(e);
+            toast({
+                title: 'Error al generar el informe',
+                description: 'Ha ocurrido un problema al crear el PDF.',
+                variant: 'destructive'
+            })
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     const vacationData = useMemo(() => {
@@ -206,7 +230,6 @@ export function AnnualVacationQuadrant() {
 
         const weeklySummaries: Record<string, { employeeCount: number; hourImpact: number }> = {};
         const employeesByWeek: Record<string, { employeeId: string; employeeName: string; groupId?: string | null; absenceAbbreviation: string }[]> = {};
-        const absencesByEmployee: Record<string, Set<string>> = {};
         
         const schedulableAbsenceTypeIds = new Set(schedulableAbsenceTypes.map(at => at.id));
         const schedulableAbsenceTypeAbbrs = new Set(schedulableAbsenceTypes.map(at => at.abbreviation));
@@ -218,7 +241,7 @@ export function AnnualVacationQuadrant() {
         });
 
         allEmployees.forEach(emp => {
-            const absenceDays = new Map<string, string>(); // date string -> absence abbreviation
+            const allAbsenceDays = new Map<string, string>(); // date string -> absence abbreviation
 
             if (!emp.isExternal) {
                  emp.employmentPeriods.flatMap(p => p.scheduledAbsences ?? [])
@@ -230,7 +253,7 @@ export function AnnualVacationQuadrant() {
 
                     const daysInAbsence = eachDayOfInterval({ start: absence.startDate, end: absence.endDate });
                     daysInAbsence.forEach(day => {
-                        if (getYear(day) === selectedYear) absenceDays.set(format(day, 'yyyy-MM-dd'), absenceType.abbreviation);
+                        if (getYear(day) === selectedYear) allAbsenceDays.set(format(day, 'yyyy-MM-dd'), absenceType.abbreviation);
                     });
                 });
                 
@@ -240,21 +263,21 @@ export function AnnualVacationQuadrant() {
                     Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
                         const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
                         if (absenceType && schedulableAbsenceTypeAbbrs.has(absenceType.abbreviation) && getYear(new Date(dayStr)) === selectedYear) {
-                            if (!absenceDays.has(dayStr)) {
-                                absenceDays.set(dayStr, dayData.absence);
+                            if (!allAbsenceDays.has(dayStr)) {
+                                allAbsenceDays.set(dayStr, dayData.absence);
                             }
                         }
                     });
                 });
             }
 
-            if (absenceDays.size > 0) {
+            if (allAbsenceDays.size > 0) {
                 weeksOfYear.forEach(week => {
                     let absenceThisWeek: string | undefined = undefined;
-                    for (const dayStr of Array.from(absenceDays.keys())) {
+                    for (const dayStr of Array.from(allAbsenceDays.keys())) {
                         const day = parseISO(dayStr);
                         if (day >= week.start && day <= week.end) {
-                           absenceThisWeek = absenceDays.get(dayStr);
+                           absenceThisWeek = allAbsenceDays.get(dayStr);
                            break;
                         }
                     }
@@ -281,7 +304,7 @@ export function AnnualVacationQuadrant() {
             }
         });
 
-        return { weeklySummaries, employeesByWeek, absencesByEmployee };
+        return { weeklySummaries, employeesByWeek, absencesByEmployee: {} };
 
     }, [loading, allEmployees, schedulableAbsenceTypes, weeksOfYear, weeklyRecords, selectedYear, getEffectiveWeeklyHours, absenceTypes]);
 
