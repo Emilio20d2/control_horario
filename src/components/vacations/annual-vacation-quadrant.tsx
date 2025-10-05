@@ -12,7 +12,7 @@ import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown } from 'lucide-reac
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod, Ausencia } from '@/lib/types';
-import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, endOfWeek } from 'date-fns';
+import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, endOfWeek, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
@@ -105,8 +105,6 @@ export function AnnualVacationQuadrant() {
         }
 
         const weeks = [];
-        let currentWeekStart = firstMonday;
-
         for (let i = 0; i < 53; i++) {
             const weekStart = addWeeks(firstMonday, i);
             const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
@@ -160,7 +158,7 @@ export function AnnualVacationQuadrant() {
         setIsGenerating(true);
         try {
             const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-            const groupOrder = sortedGroups.map(g => g.id);
+            
             const weeksInChunks = [];
             for (let i = 0; i < weeksOfYear.length; i += 5) {
                 weeksInChunks.push(weeksOfYear.slice(i, i + 5));
@@ -174,36 +172,22 @@ export function AnnualVacationQuadrant() {
                 doc.setFontSize(8);
                 doc.text(`Página ${pageIndex + 1} de ${weeksInChunks.length}`, doc.internal.pageSize.width - 15, 20, { align: 'right' });
     
-                const head = [['Empleado (Agrupación)', ...weekChunk.map(w => {
+                const head = [['', ...weekChunk.map(w => {
                     const summary = vacationData.weeklySummaries[w.key];
                     return `S${w.number} (${format(w.start, 'dd/MM')})\n${summary?.employeeCount} Empleados\n${summary?.hourImpact.toFixed(0)}h`;
                 })]];
     
-                const employeesWithAbsenceInChunk = new Set<string>();
-                weekChunk.forEach(week => {
-                    Object.values(groupedEmployeesByWeek[week.key]?.byGroup || {}).flat().forEach(emp => employeesWithAbsenceInChunk.add(emp.name));
-                });
-    
-                const sortedEmployeesForPage = Array.from(employeesWithAbsenceInChunk).sort((a, b) => {
-                    const empA = allEmployees.find(e => e.name === a);
-                    const empB = allEmployees.find(e => e.name === b);
-                    const groupA = empA ? sortedGroups.find(g => g.id === empA.groupId) : undefined;
-                    const groupB = empB ? sortedGroups.find(g => g.id === empB.groupId) : undefined;
-                    const groupOrderA = groupA ? groupA.order : Infinity;
-                    const groupOrderB = groupB ? groupB.order : Infinity;
-                    if (groupOrderA !== groupOrderB) return groupOrderA - groupOrderB;
-                    return a.localeCompare(b);
-                });
-    
-                const body = sortedEmployeesForPage.map(empName => {
-                    const emp = allEmployees.find(e => e.name === empName);
-                    const group = emp ? sortedGroups.find(g => g.id === emp.groupId) : undefined;
-                    const firstCell = `${empName} (${group?.name || 'N/A'})`;
-                    const row: string[] = [firstCell];
-                    
+                const body = sortedGroups.map(group => {
+                    const row: string[] = ['']; // Empty cell for hidden group column
                     weekChunk.forEach(week => {
-                        const empInWeek = groupedEmployeesByWeek[week.key]?.all.find(e => e.name === empName);
-                        row.push(empInWeek ? empInWeek.absence : '');
+                        const employeesInGroupThisWeek = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
+                        const cellContent = employeesInGroupThisWeek
+                            .map(emp => {
+                                const substitute = substitutions[week.key]?.[emp.name];
+                                return substitute ? `${emp.name} (${substitute})` : emp.name;
+                            })
+                            .join('\n');
+                        row.push(cellContent);
                     });
                     return row;
                 });
@@ -215,7 +199,13 @@ export function AnnualVacationQuadrant() {
                     theme: 'grid',
                     styles: { fontSize: 7, cellPadding: 1, valign: 'middle', halign: 'center' },
                     headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2 },
-                    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40, halign: 'left' } },
+                    columnStyles: { 0: { cellWidth: 0.1 } }, // Hide the first column
+                    didDrawCell: (data) => {
+                        if (data.section === 'body' && data.column.index === 0) {
+                           const groupIndex = data.row.index;
+                           data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
+                        }
+                    },
                 });
             });
     
@@ -259,7 +249,7 @@ export function AnnualVacationQuadrant() {
                     const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
                     if (!absenceType) return;
 
-                    const daysInAbsence = eachDayOfInterval({ start: absence.startDate, end: absence.endDate });
+                    const daysInAbsence = eachDayOfInterval({ start: startOfDay(absence.startDate), end: startOfDay(absence.endDate) });
                     daysInAbsence.forEach(day => {
                         if (getYear(day) === selectedYear) allAbsenceDays.set(format(day, 'yyyy-MM-dd'), absenceType.abbreviation);
                     });
@@ -299,8 +289,8 @@ export function AnnualVacationQuadrant() {
                             if(match) weeklyHours = parseFloat(match[0]);
                         } else {
                             const activePeriod = emp.employmentPeriods.find(p => {
-                                const periodStart = parseISO(p.startDate as string);
-                                const periodEnd = p.endDate ? parseISO(p.endDate as string) : new Date('9999-12-31');
+                                const periodStart = startOfDay(parseISO(p.startDate as string));
+                                const periodEnd = p.endDate ? endOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
                                 return isAfter(periodEnd, week.start) && isBefore(periodStart, week.end);
                             });
                              weeklyHours = getEffectiveWeeklyHours(activePeriod || null, week.start);
