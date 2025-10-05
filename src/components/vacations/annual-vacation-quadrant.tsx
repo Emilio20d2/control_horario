@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay, startOfDay } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
 import { Users, Clock, PlusCircle } from 'lucide-react';
@@ -307,10 +307,11 @@ export function AnnualVacationQuadrant() {
                                                     const availableSubstitutes = substituteEmployees.filter(
                                                         sub => !Object.values(currentSubstitutes).includes(sub.name) || sub.name === substitute
                                                     );
+                                                     const isSpecialAbsence = emp.absence === 'EXD' || emp.absence === 'PE';
 
                                                     return (
                                                         <div key={nameIndex} className="text-[10px] p-0.5 rounded-sm flex justify-between items-center group">
-                                                             <div className='flex flex-row items-center gap-2'>
+                                                             <div className={cn('flex flex-row items-center gap-2', isSpecialAbsence && 'text-blue-600')}>
                                                                 <span className="truncate font-medium">{emp.name} ({emp.absence})</span>
                                                                 {substitute && <span className="text-red-600 truncate">({substitute})</span>}
                                                             </div>
@@ -356,3 +357,4 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
