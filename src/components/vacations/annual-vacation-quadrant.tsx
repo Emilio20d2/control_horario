@@ -12,7 +12,7 @@ import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown } from 'lucide-reac
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod, Ausencia } from '@/lib/types';
-import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, endOfWeek, startOfDay } from 'date-fns';
+import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
@@ -124,105 +124,6 @@ export function AnnualVacationQuadrant() {
         return weeks;
     }, [selectedYear]);
 
-    const allAbsences = useMemo((): Ausencia[] => {
-        if (loading) return [];
-        const absenceList: Ausencia[] = [];
-        const schedulableAbsenceTypeIds = new Set(schedulableAbsenceTypes.map(at => at.id));
-
-        employees.forEach(emp => {
-            const group = employeeGroups.find(g => g.id === emp.groupId);
-            if (!group) return;
-
-            emp.employmentPeriods.forEach(period => {
-                period.scheduledAbsences?.forEach(absence => {
-                    if (schedulableAbsenceTypeIds.has(absence.absenceTypeId) && absence.endDate) {
-                        const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
-                        if (getYear(absence.startDate) === selectedYear || getYear(absence.endDate) === selectedYear) {
-                            absenceList.push({
-                                employeeId: emp.id,
-                                employeeName: emp.name,
-                                groupName: group.name,
-                                startDate: absence.startDate,
-                                endDate: absence.endDate,
-                                type: absenceType?.name || 'Ausencia',
-                            });
-                        }
-                    }
-                });
-            });
-        });
-        return absenceList;
-    }, [loading, employees, employeeGroups, schedulableAbsenceTypes, absenceTypes, selectedYear, weeklyRecords]);
-
-    const generateReport = () => {
-        setIsGenerating(true);
-        try {
-            const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-            
-            const weeksInChunks = [];
-            for (let i = 0; i < weeksOfYear.length; i += 5) {
-                weeksInChunks.push(weeksOfYear.slice(i, i + 5));
-            }
-    
-            weeksInChunks.forEach((weekChunk, pageIndex) => {
-                if (pageIndex > 0) doc.addPage();
-    
-                doc.setFontSize(14);
-                doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, 15, 20);
-                doc.setFontSize(8);
-                doc.text(`Página ${pageIndex + 1} de ${weeksInChunks.length}`, doc.internal.pageSize.width - 15, 20, { align: 'right' });
-    
-                const head = [['', ...weekChunk.map(w => {
-                    const summary = vacationData.weeklySummaries[w.key];
-                    return `S${w.number} (${format(w.start, 'dd/MM')})\n${summary?.employeeCount} Empleados\n${summary?.hourImpact.toFixed(0)}h`;
-                })]];
-    
-                const body = sortedGroups.map(group => {
-                    const row: string[] = ['']; // Empty cell for hidden group column
-                    weekChunk.forEach(week => {
-                        const employeesInGroupThisWeek = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
-                        const cellContent = employeesInGroupThisWeek
-                            .map(emp => {
-                                const substitute = substitutions[week.key]?.[emp.name];
-                                return substitute ? `${emp.name} (${substitute})` : emp.name;
-                            })
-                            .join('\n');
-                        row.push(cellContent);
-                    });
-                    return row;
-                });
-    
-                autoTable(doc, {
-                    head,
-                    body,
-                    startY: 30,
-                    theme: 'grid',
-                    styles: { fontSize: 7, cellPadding: 1, valign: 'middle', halign: 'center' },
-                    headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2 },
-                    columnStyles: { 0: { cellWidth: 0.1 } }, // Hide the first column
-                    didDrawCell: (data) => {
-                        if (data.section === 'body' && data.column.index === 0) {
-                           const groupIndex = data.row.index;
-                           data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
-                        }
-                    },
-                });
-            });
-    
-            doc.save(`informe_ausencias_${selectedYear}.pdf`);
-        } catch (e) {
-            console.error(e);
-            toast({
-                title: 'Error al generar el informe',
-                description: 'Ha ocurrido un problema al crear el PDF.',
-                variant: 'destructive'
-            })
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-    
-
     const vacationData = useMemo(() => {
         if (loading || schedulableAbsenceTypes.length === 0) return { weeklySummaries: {}, employeesByWeek: {}, absencesByEmployee: {} };
 
@@ -331,6 +232,107 @@ export function AnnualVacationQuadrant() {
     const sortedGroups = useMemo(() => {
         return [...employeeGroups].sort((a,b) => a.order - b.order);
     }, [employeeGroups]);
+
+    const generateReport = () => {
+        setIsGenerating(true);
+        try {
+            const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+            
+            const weeksInChunks = [];
+            for (let i = 0; i < weeksOfYear.length; i += 5) {
+                weeksInChunks.push(weeksOfYear.slice(i, i + 5));
+            }
+    
+            weeksInChunks.forEach((weekChunk, pageIndex) => {
+                if (pageIndex > 0) doc.addPage();
+    
+                doc.setFontSize(14);
+                doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, 15, 20);
+                doc.setFontSize(8);
+                doc.text(`Página ${pageIndex + 1} de ${weeksInChunks.length}`, doc.internal.pageSize.width - 15, 20, { align: 'right' });
+    
+                const head = [['', ...weekChunk.map(w => {
+                    const summary = vacationData.weeklySummaries[w.key];
+                    return `S${w.number} (${format(w.start, 'dd/MM')})\n${summary?.employeeCount} Empleados\n${summary?.hourImpact.toFixed(0)}h`;
+                })]];
+    
+                const body = sortedGroups.map(group => {
+                    const rowData: (string | { employees: { name: string; absence: string }[], substitute?: string })[] = [group.name];
+                    weekChunk.forEach(week => {
+                        const employeesInGroupThisWeek = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
+                        rowData.push({ employees: employeesInGroupThisWeek });
+                    });
+                    return rowData;
+                });
+    
+                const pageMargin = 15;
+                const availableWidth = doc.internal.pageSize.width - (pageMargin * 2) - 0.1; // 0.1 for the hidden group col
+                const columnWidth = availableWidth / weekChunk.length;
+
+                const columnStyles: { [key: number]: any } = { 0: { cellWidth: 0.1, fillColor: false } };
+                for (let i = 0; i < weekChunk.length; i++) {
+                    columnStyles[i + 1] = { cellWidth: columnWidth };
+                }
+
+                autoTable(doc, {
+                    head,
+                    body: [], // Body is drawn manually
+                    startY: 30,
+                    theme: 'grid',
+                    styles: { fontSize: 7, cellPadding: 1, valign: 'middle', halign: 'center' },
+                    headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2 },
+                    columnStyles,
+                    didDrawCell: (data) => {
+                        if (data.section === 'body') {
+                           if (data.column.index === 0) {
+                               const groupIndex = data.row.index;
+                               data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
+                           } else {
+                                const group = sortedGroups[data.row.index];
+                                const week = weekChunk[data.column.index - 1];
+                                const employeesInCell = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
+                                
+                                doc.setFontSize(7);
+                                let y = data.cell.y + 3;
+
+                                employeesInCell.forEach(emp => {
+                                    const substitute = substitutions[week.key]?.[emp.name];
+                                    const text = `${emp.name} (${emp.absence})`;
+                                    
+                                    doc.text(text, data.cell.x + 2, y, { align: 'left' });
+                                    if (substitute) {
+                                        doc.text(substitute, data.cell.x + data.cell.width - 2, y, { align: 'right' });
+                                    }
+                                    y += 4;
+                                });
+                           }
+                        }
+                    },
+                     // Create empty body rows to reserve space
+                    body: sortedGroups.map(group => {
+                        const row: string[] = [''];
+                        weekChunk.forEach(week => {
+                            const employeesInGroupThisWeek = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
+                            // Reserve space by adding newline characters. A bit of a hack.
+                            row.push(employeesInGroupThisWeek.map(() => ' ').join('\n'));
+                        });
+                        return row;
+                    })
+                });
+            });
+    
+            doc.save(`informe_ausencias_${selectedYear}.pdf`);
+        } catch (e) {
+            console.error(e);
+            toast({
+                title: 'Error al generar el informe',
+                description: 'Ha ocurrido un problema al crear el PDF.',
+                variant: 'destructive'
+            })
+        } finally {
+            setIsGenerating(false);
+        }
+    };
 
     const handleSetSubstitute = (weekKey: string, originalEmployee: string, substituteName: string) => {
         setSubstitutions(prev => {
@@ -473,4 +475,3 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
-
