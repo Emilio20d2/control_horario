@@ -320,36 +320,25 @@ export function AnnualVacationQuadrant() {
                                                                         <PlusCircle className="h-3 w-3" />
                                                                     </Button>
                                                                 </PopoverTrigger>
-                                                                <PopoverContent className="w-48 p-0">
-                                                                    <Command>
-                                                                        <CommandInput placeholder="Buscar sustituto..." className="h-9" />
-                                                                        <CommandEmpty>No se encontró.</CommandEmpty>
-                                                                        <CommandGroup>
+                                                                <PopoverContent className="w-48 p-1">
+                                                                     <Select
+                                                                        onValueChange={(value) => {
+                                                                            handleSetSubstitute(week.key, emp.name, value);
+                                                                        }}
+                                                                        defaultValue={substitute}
+                                                                    >
+                                                                        <SelectTrigger className="h-8 text-xs">
+                                                                            <SelectValue placeholder="Seleccionar sustituto..." />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            <SelectItem value="">Quitar sustituto</SelectItem>
                                                                             {availableSubstitutes.map(sub => (
-                                                                                <CommandItem
-                                                                                    key={sub.id}
-                                                                                    value={sub.name}
-                                                                                    onSelect={() => {
-                                                                                        handleSetSubstitute(week.key, emp.name, sub.name);
-                                                                                        (document.activeElement as HTMLElement)?.blur();
-                                                                                    }}
-                                                                                >
+                                                                                <SelectItem key={sub.id} value={sub.name}>
                                                                                     {sub.name}
-                                                                                </CommandItem>
+                                                                                </SelectItem>
                                                                             ))}
-                                                                             {substitute && (
-                                                                                <CommandItem
-                                                                                    className="text-destructive"
-                                                                                    onSelect={() => {
-                                                                                        handleSetSubstitute(week.key, emp.name, '');
-                                                                                        (document.activeElement as HTMLElement)?.blur();
-                                                                                    }}
-                                                                                >
-                                                                                    Quitar sustituto
-                                                                                </CommandItem>
-                                                                            )}
-                                                                        </CommandGroup>
-                                                                    </Command>
+                                                                        </SelectContent>
+                                                                    </Select>
                                                                 </PopoverContent>
                                                             </Popover>
                                                         </div>
