@@ -223,7 +223,7 @@ export function AnnualVacationQuadrant() {
     const handleSetSubstitute = (weekKey: string, originalEmployee: string, substituteName: string) => {
         setSubstitutions(prev => {
             const newWeekSubstitutions = { ...(prev[weekKey] || {}) };
-            if (substituteName === '') {
+            if (substituteName === 'ninguno') {
                 delete newWeekSubstitutions[originalEmployee];
             } else {
                 newWeekSubstitutions[originalEmployee] = substituteName;
@@ -331,7 +331,7 @@ export function AnnualVacationQuadrant() {
                                                                             <SelectValue placeholder="Seleccionar sustituto..." />
                                                                         </SelectTrigger>
                                                                         <SelectContent>
-                                                                            <SelectItem value="">Quitar sustituto</SelectItem>
+                                                                            <SelectItem value="ninguno">Quitar sustituto</SelectItem>
                                                                             {availableSubstitutes.map(sub => (
                                                                                 <SelectItem key={sub.id} value={sub.name}>
                                                                                     {sub.name}
