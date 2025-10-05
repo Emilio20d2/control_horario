@@ -251,7 +251,7 @@ export function AnnualVacationQuadrant() {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr>
-                            <th style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none' }} className="sticky left-0 z-10"></th>
+                            <th style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none', opacity: 0 }} className="sticky left-0 z-10"></th>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
@@ -295,6 +295,8 @@ export function AnnualVacationQuadrant() {
                                                     const availableSubstitutes = substituteEmployees.filter(
                                                         sub => !Object.values(currentSubstitutes).includes(sub.name) || sub.name === substitute
                                                     );
+                                                    
+                                                    const [open, setOpen] = useState(false);
 
                                                     return (
                                                         <div key={nameIndex} className="text-[10px] p-0.5 rounded-sm flex justify-between items-center group">
@@ -302,9 +304,9 @@ export function AnnualVacationQuadrant() {
                                                                 <span className="truncate font-medium">{name}</span>
                                                                 {substitute && <span className="text-red-600 truncate">({substitute})</span>}
                                                             </div>
-                                                            <Popover>
+                                                            <Popover open={open} onOpenChange={setOpen}>
                                                                 <PopoverTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-4 w-4 opacity-0 group-hover:opacity-100">
+                                                                    <Button variant="ghost" size="icon" className="h-4 w-4">
                                                                         <PlusCircle className="h-3 w-3" />
                                                                     </Button>
                                                                 </PopoverTrigger>
@@ -319,6 +321,7 @@ export function AnnualVacationQuadrant() {
                                                                                     value={sub.name}
                                                                                     onSelect={() => {
                                                                                         handleSetSubstitute(week.key, name, sub.name);
+                                                                                        setOpen(false);
                                                                                     }}
                                                                                 >
                                                                                     {sub.name}
@@ -327,7 +330,10 @@ export function AnnualVacationQuadrant() {
                                                                              {substitute && (
                                                                                 <CommandItem
                                                                                     className="text-destructive"
-                                                                                    onSelect={() => handleSetSubstitute(week.key, name, '')}
+                                                                                    onSelect={() => {
+                                                                                        handleSetSubstitute(week.key, name, '');
+                                                                                        setOpen(false);
+                                                                                    }}
                                                                                 >
                                                                                     Quitar sustituto
                                                                                 </CommandItem>
@@ -351,3 +357,4 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
