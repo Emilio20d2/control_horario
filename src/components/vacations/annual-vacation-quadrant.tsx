@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay, isWithinInterval } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay, isWithinInterval, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
 import { Users, Clock, PlusCircle, FileDown, Loader2 } from 'lucide-react';
@@ -233,15 +233,15 @@ export function AnnualVacationQuadrant() {
                         if (getYear(day) === selectedYear) absenceDays.set(format(day, 'yyyy-MM-dd'), absenceType.abbreviation);
                     });
                 });
-                const allAbsenceDays = new Map<string, string>();
+                
                 Object.values(weeklyRecords).forEach(record => {
                     const empWeekData = record.weekData[emp.id];
                     if (!empWeekData?.days) return;
                     Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
                         const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
                         if (absenceType && schedulableAbsenceTypeAbbrs.has(absenceType.abbreviation) && getYear(new Date(dayStr)) === selectedYear) {
-                            if (!allAbsenceDays.has(dayStr)) {
-                                allAbsenceDays.set(dayStr, dayData.absence);
+                            if (!absenceDays.has(dayStr)) {
+                                absenceDays.set(dayStr, dayData.absence);
                             }
                         }
                     });
@@ -452,4 +452,3 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
-
