@@ -256,9 +256,14 @@ export function AnnualVacationQuadrant() {
                     const summary = vacationData.weeklySummaries[w.key];
                     const employeeCount = summary?.employeeCount || 0;
                     const hourImpact = summary?.hourImpact.toFixed(0) || 0;
-                    return `S${w.number} (${format(w.start, 'dd/MM')}) | ${employeeCount} empleados - ${hourImpact}h`;
+                    return `S${w.number} (${format(w.start, 'dd/MM')}) | ${employeeCount} emp. - ${hourImpact}h`;
                 })]];
     
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const startY = 30;
+                const availableHeight = pageHeight - startY - 15; // 15 for bottom margin
+                const minRowHeight = sortedGroups.length > 0 ? availableHeight / sortedGroups.length : 0;
+
                 autoTable(doc, {
                     head,
                     body: sortedGroups.map(group => [
@@ -270,11 +275,12 @@ export function AnnualVacationQuadrant() {
                             return employeesInCell;
                         })
                     ]),
-                    startY: 30,
+                    startY: startY,
                     theme: 'grid',
                     tableWidth: 'auto',
                     styles: { fontSize: 7, cellPadding: 1, valign: 'top' },
                     headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2, halign: 'center' },
+                    bodyStyles: { minCellHeight: minRowHeight },
                     columnStyles: {
                         0: { cellWidth: 30, fontStyle: 'bold' }
                     },
