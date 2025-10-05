@@ -238,7 +238,6 @@ export function AnnualVacationQuadrant() {
         setIsGenerating(true);
         try {
             const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-            const pageMargin = 15;
             
             const weeksInChunks = [];
             for (let i = 0; i < weeksOfYear.length; i += 5) {
@@ -252,14 +251,13 @@ export function AnnualVacationQuadrant() {
     
                 const pageHeight = doc.internal.pageSize.getHeight();
                 const pageWidth = doc.internal.pageSize.getWidth();
+                const pageMargin = 15;
+                const headerHeight = 30;
+                const footerHeight = 15;
                 
-                const startY = 30; // Dejar espacio para la cabecera
-                const availableHeight = pageHeight - startY - 15; // 15 para pie de página
+                const availableHeight = pageHeight - headerHeight - footerHeight;
                 const minRowHeight = sortedGroups.length > 0 ? availableHeight / sortedGroups.length : 0;
                 
-                const availableTableWidth = pageWidth - (pageMargin * 2);
-                const columnWidth = availableTableWidth / 5;
-
                 // --- Cabecera de la Página ---
                 doc.setFontSize(14).setFont('helvetica', 'bold');
                 doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, pageMargin, 20);
@@ -267,8 +265,7 @@ export function AnnualVacationQuadrant() {
                 doc.text(`Página ${pageIndex + 1} de ${weeksInChunks.length}`, pageWidth - pageMargin, 20, { align: 'right' });
     
                 const head = [
-                    [''], // Columna oculta de agrupaciones
-                    ...weekChunk.map(week => [
+                    weekChunk.map(week => [
                         `Semana ${week.number}`,
                         `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}`,
                         `${vacationData.weeklySummaries[week.key]?.employeeCount || 0} emp. - ${vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) || 0}h`
@@ -276,7 +273,7 @@ export function AnnualVacationQuadrant() {
                 ];
 
                 const body = sortedGroups.map(group => {
-                    const rowData = [group.name]; // El nombre del grupo no se mostrará
+                    const rowData: string[] = [];
                     weekChunk.forEach(week => {
                         const employeesInCell = (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [])
                             .map(emp => `${emp.name} (${emp.absence})`)
@@ -287,30 +284,20 @@ export function AnnualVacationQuadrant() {
                 });
     
                 autoTable(doc, {
-                    head: [head],
+                    head: head,
                     body: body,
-                    startY: startY,
+                    startY: headerHeight,
                     theme: 'grid',
-                    margin: { left: pageMargin, right: pageMargin },
-                    styles: { fontSize: 7, cellPadding: 1, valign: 'top' },
+                    margin: { left: pageMargin, right: pageMargin, bottom: footerHeight },
+                    styles: { fontSize: 7, cellPadding: 1, valign: 'top', lineWidth: 0.1 },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
                         fontStyle: 'bold', 
-                        lineWidth: 0.2, 
-                        halign: 'center' 
+                        halign: 'center',
                     },
-                    columnStyles: {
-                        0: { cellWidth: 0, overflow: 'hidden' }, // Ocultar columna de agrupación
-                        1: { cellWidth: columnWidth },
-                        2: { cellWidth: columnWidth },
-                        3: { cellWidth: columnWidth },
-                        4: { cellWidth: columnWidth },
-                        5: { cellWidth: columnWidth },
-                    },
-                    bodyStyles: { 
+                    bodyStyles: {
                         minCellHeight: minRowHeight,
-                        lineWidth: 0.1 
                     },
                     didDrawCell: (data) => {
                         if (data.section === 'body') {
@@ -475,3 +462,5 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
+    
