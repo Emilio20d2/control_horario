@@ -258,67 +258,28 @@ export function AnnualVacationQuadrant() {
                     return `S${w.number} (${format(w.start, 'dd/MM')}) | ${summary?.employeeCount || 0} empleados - ${summary?.hourImpact.toFixed(0) || 0}h`;
                 })]];
     
-                const body = sortedGroups.map(group => {
-                    const rowData: any[] = [{ content: group.name, styles: { fillColor: groupColors[sortedGroups.indexOf(group) % groupColors.length] } }];
-                    weekChunk.forEach(week => {
-                        const employeesInGroupThisWeek = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
-                        rowData.push({ employees: employeesInGroupThisWeek });
-                    });
-                    return rowData;
-                });
-    
                 const pageMargin = 15;
                 const topMargin = 30;
                 const bottomMargin = 15;
                 const availableHeight = doc.internal.pageSize.height - topMargin - bottomMargin;
-                const minRowHeight = availableHeight / sortedGroups.length;
+                const minRowHeight = sortedGroups.length > 0 ? availableHeight / sortedGroups.length : 10;
                 
                 autoTable(doc, {
                     head,
-                    body: [], // Body is drawn manually
+                    body: sortedGroups.map(group => [
+                        { content: group.name, styles: { fillColor: groupColors[sortedGroups.indexOf(group) % groupColors.length] } },
+                        ...weekChunk.map(week => {
+                            const employeesInCell = (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [])
+                                .map(emp => `${emp.name} (${emp.absence})`)
+                                .join('\n');
+                            return employeesInCell;
+                        })
+                    ]),
                     startY: topMargin,
                     theme: 'grid',
-                    styles: { fontSize: 7, cellPadding: 1, valign: 'top', halign: 'center', font: 'helvetica' },
-                    headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2 },
-                    didParseCell: (data) => {
-                        if (data.section === 'body') {
-                           data.cell.styles.minCellHeight = minRowHeight;
-                        }
-                    },
-                    didDrawCell: (data) => {
-                        if (data.section === 'body') {
-                            if (data.column.index === 0) {
-                                // This column is now visually hidden, but keeps structure
-                            } else {
-                                const group = sortedGroups[data.row.index];
-                                const week = weekChunk[data.column.index - 1];
-                                const employeesInCell = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
-                                
-                                doc.setFontSize(9);
-                                let y = data.cell.y + 4; // Initial padding
-
-                                employeesInCell.forEach(emp => {
-                                    const substitute = substitutions[week.key]?.[emp.name];
-                                    const text = `${emp.name} (${emp.absence})`;
-                                    
-                                    doc.text(text, data.cell.x + 2, y, { align: 'left' });
-                                    if (substitute) {
-                                        doc.setTextColor(220, 53, 69); // Bootstrap 'danger' color
-                                        doc.text(`(${substitute})`, data.cell.x + data.cell.width - 2, y, { align: 'right' });
-                                        doc.setTextColor(0, 0, 0); // Reset color
-                                    }
-                                    y += 4;
-                                });
-                            }
-                        }
-                    },
-                    body: sortedGroups.map(group => {
-                        const row: string[] = [group.name];
-                        weekChunk.forEach(week => {
-                            row.push('');
-                        });
-                        return row;
-                    }),
+                    styles: { fontSize: 7, cellPadding: 1, valign: 'top', font: 'helvetica' },
+                    headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2, halign: 'center' },
+                    bodyStyles: { minCellHeight: minRowHeight },
                     columnStyles: {
                         0: { cellWidth: 0.1, fillColor: false } // Hidden column
                     },
@@ -480,3 +441,4 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
