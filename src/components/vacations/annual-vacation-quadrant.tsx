@@ -238,8 +238,7 @@ export function AnnualVacationQuadrant() {
         setIsGenerating(true);
         try {
             const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-            doc.setFont('helvetica', 'normal');
-
+            
             const weeksInChunks = [];
             for (let i = 0; i < weeksOfYear.length; i += 5) {
                 weeksInChunks.push(weeksOfYear.slice(i, i + 5));
@@ -255,7 +254,9 @@ export function AnnualVacationQuadrant() {
     
                 const head = [['', ...weekChunk.map(w => {
                     const summary = vacationData.weeklySummaries[w.key];
-                    return `S${w.number} (${format(w.start, 'dd/MM')}) | ${summary?.employeeCount || 0} empleados - ${summary?.hourImpact.toFixed(0) || 0}h`;
+                    const employeeCount = summary?.employeeCount || 0;
+                    const hourImpact = summary?.hourImpact.toFixed(0) || 0;
+                    return `S${w.number} (${format(w.start, 'dd/MM')}) | ${employeeCount} empleados - ${hourImpact}h`;
                 })]];
     
                 const pageMargin = 15;
@@ -277,7 +278,7 @@ export function AnnualVacationQuadrant() {
                     ]),
                     startY: topMargin,
                     theme: 'grid',
-                    styles: { fontSize: 7, cellPadding: 1, valign: 'top', font: 'helvetica' },
+                    styles: { fontSize: 7, cellPadding: 1, valign: 'top' },
                     headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.2, halign: 'center' },
                     bodyStyles: { minCellHeight: minRowHeight },
                     columnStyles: {
