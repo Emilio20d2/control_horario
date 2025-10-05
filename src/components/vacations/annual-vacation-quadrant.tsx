@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay, isWithinInterval, startOfDay } from 'date-fns';
+import { addWeeks, endOfWeek, format, getISOWeek, getYear, startOfYear, eachDayOfInterval, parseISO, startOfWeek, isBefore, isAfter, getISODay, endOfDay, isSameDay, isWithinInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
 import { Users, Clock, PlusCircle, FileDown, Loader2 } from 'lucide-react';
@@ -146,77 +147,54 @@ export function AnnualVacationQuadrant() {
 
     const generateReport = () => {
         setIsGenerating(true);
-
+    
         const groupOrder = employeeGroups.sort((a, b) => a.order - b.order).map(g => g.name);
-        const groupChunks = [];
-        for (let i = 0; i < groupOrder.length; i += 5) {
-            groupChunks.push(groupOrder.slice(i, i + 5));
-        }
-        
+        const weeks = weeksOfYear;
+    
         const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+    
+        doc.setFontSize(18);
+        doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, 15, 20);
+    
+        const head = [['Agrupación', ...weeks.map(w => String(w.number))]];
         
-        groupChunks.forEach((chunk, pageIndex) => {
-            if (pageIndex > 0) {
-                doc.addPage();
-            }
-            
-            doc.setFontSize(18);
-            doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, 15, 20);
-            doc.setFontSize(10);
-            doc.text(`Página ${pageIndex + 1} de ${groupChunks.length}`, 297 - 15, 20, { align: 'right' });
-
-            const head = [['Semana', 'Periodo', ...chunk]];
-            const body = [];
-            
-            const yearStart = new Date(selectedYear, 0, 1);
-            for (let i = 0; i < 53; i++) {
-                const weekStart = startOfWeek(addWeeks(yearStart, i), { weekStartsOn: 1 });
-                if (getYear(weekStart) > selectedYear && getISOWeek(weekStart) > 1) break;
-                if (getYear(weekStart) < selectedYear) continue;
-
-                const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-                const row: (string | null)[] = [
-                    String(getISOWeek(weekStart)),
-                    `${format(weekStart, 'dd/MM')} - ${format(weekEnd, 'dd/MM')}`
-                ];
-                
-                let hasAbsenceInRow = false;
-                
-                chunk.forEach(groupName => {
-                    const absencesInWeekAndGroup = allAbsences.filter(a => 
-                        a.groupName === groupName &&
-                        isWithinInterval(weekStart, { start: a.startDate, end: a.endDate })
-                    );
-
-                    if (absencesInWeekAndGroup.length > 0) {
-                        hasAbsenceInRow = true;
-                        row.push(absencesInWeekAndGroup.map(a => a.employeeName).join('\n'));
-                    } else {
-                        row.push('');
-                    }
+        const body = groupOrder.map(groupName => {
+            const row: string[] = [groupName];
+            weeks.forEach(week => {
+                const absencesInWeekAndGroup = allAbsences.filter(a => {
+                    return a.groupName === groupName &&
+                        isWithinInterval(week.start, { start: a.startDate, end: a.endDate });
                 });
-
-                if (hasAbsenceInRow) {
-                    body.push(row);
-                }
-            }
-            
-            autoTable(doc, {
-                head,
-                body,
-                startY: 30,
-                theme: 'grid',
-                styles: {
-                    fontSize: 8,
-                    cellPadding: 2,
-                    valign: 'top',
-                },
-                headStyles: {
-                    fillColor: [240, 240, 240],
-                    textColor: [0, 0, 0],
-                    fontStyle: 'bold',
+    
+                if (absencesInWeekAndGroup.length > 0) {
+                    row.push(absencesInWeekAndGroup.map(a => a.employeeName).join('\n'));
+                } else {
+                    row.push('');
                 }
             });
+            return row;
+        });
+    
+        autoTable(doc, {
+            head,
+            body,
+            startY: 30,
+            theme: 'grid',
+            styles: {
+                fontSize: 5,
+                cellPadding: 1,
+                valign: 'top',
+                overflow: 'linebreak'
+            },
+            headStyles: {
+                fillColor: [240, 240, 240],
+                textColor: [0, 0, 0],
+                fontStyle: 'bold',
+                fontSize: 6,
+            },
+            columnStyles: {
+                0: { fontStyle: 'bold', cellWidth: 30, fontSize: 7 },
+            }
         });
         
         doc.save(`informe_ausencias_${selectedYear}.pdf`);
@@ -259,9 +237,10 @@ export function AnnualVacationQuadrant() {
                     const empWeekData = record.weekData[emp.id];
                     if (!empWeekData?.days) return;
                     Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
-                        if (schedulableAbsenceTypeAbbrs.has(dayData.absence) && getYear(new Date(dayStr)) === selectedYear) {
-                            if (!absenceDays.has(dayStr)) {
-                                absenceDays.set(dayStr, dayData.absence);
+                        const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
+                        if (absenceType && schedulableAbsenceTypeAbbrs.has(absenceType.abbreviation) && getYear(new Date(dayStr)) === selectedYear) {
+                            if (!allAbsenceDays.has(dayStr)) {
+                                allAbsenceDays.set(dayStr, dayData.absence);
                             }
                         }
                     });
@@ -472,5 +451,3 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
-
-    
