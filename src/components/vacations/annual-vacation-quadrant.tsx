@@ -355,6 +355,11 @@ export function AnnualVacationQuadrant() {
         setIsGenerating(true);
         try {
             const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const headerHeight = 30;
+            const footerHeight = 15;
+            const pageMargin = 15;
             
             const weeksInChunks = [];
             for (let i = 0; i < weeksOfYear.length; i += 5) {
@@ -365,13 +370,7 @@ export function AnnualVacationQuadrant() {
                 if (pageIndex > 0) {
                     doc.addPage();
                 }
-    
-                const pageHeight = doc.internal.pageSize.getHeight();
-                const pageWidth = doc.internal.pageSize.getWidth();
-                const headerHeight = 30;
-                const footerHeight = 15;
-                const pageMargin = 15;
-                
+
                 const availableHeight = pageHeight - headerHeight - footerHeight;
                 const minRowHeight = sortedGroups.length > 0 ? availableHeight / sortedGroups.length : 0;
                 
@@ -393,7 +392,12 @@ export function AnnualVacationQuadrant() {
                 );
                 
                 const firstColumnWidth = 0;
-                const otherColumnWidth = (pageWidth - (pageMargin * 2) - firstColumnWidth) / 5;
+                const otherColumnWidth = (pageWidth - (pageMargin * 2) - firstColumnWidth) / weekChunk.length;
+
+                const columnStyles: { [key: number]: any } = {};
+                for (let i = 0; i < weekChunk.length; i++) {
+                    columnStyles[i] = { cellWidth: otherColumnWidth };
+                }
 
                 autoTable(doc, {
                     head: [headContent],
@@ -411,13 +415,7 @@ export function AnnualVacationQuadrant() {
                     bodyStyles: {
                         minCellHeight: minRowHeight,
                     },
-                     columnStyles: {
-                        0: { cellWidth: otherColumnWidth },
-                        1: { cellWidth: otherColumnWidth },
-                        2: { cellWidth: otherColumnWidth },
-                        3: { cellWidth: otherColumnWidth },
-                        4: { cellWidth: otherColumnWidth },
-                    },
+                     columnStyles: columnStyles,
                     didDrawCell: (data) => {
                         if (data.section === 'body') {
                             const groupIndex = data.row.index;
@@ -472,10 +470,10 @@ export function AnnualVacationQuadrant() {
                             return (
                                 <th key={week.key} className={cn("p-1 text-center font-normal border min-w-[20rem]", hasHoliday ? "bg-blue-100" : "bg-gray-50", isFullscreen ? "flex-1" : "w-80")}>
                                     <div className='flex flex-col items-center justify-center h-full'>
-                                        <span className='font-semibold text-sm'>
+                                        <span className='font-semibold text-lg'>
                                             {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
                                         </span>
-                                        <div className="flex gap-3 mt-1.5 text-xs items-center">
+                                        <div className="flex gap-3 mt-1.5 text-sm items-center">
                                             <div className='flex items-center gap-1'><Users className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.employeeCount ?? 0}</div>
                                             <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
                                         </div>
@@ -531,7 +529,7 @@ export function AnnualVacationQuadrant() {
                                                                 {substitute && <span className="text-red-600 truncate text-sm">({substitute})</span>}
                                                             </button>
                                                         </div>
-                                                        <Popover>
+                                                         <Popover>
                                                             <PopoverTrigger asChild>
                                                                 <button className="opacity-100 transition-opacity">
                                                                     <PlusCircle className="h-4 w-4 text-gray-500 hover:text-black" />
@@ -571,7 +569,7 @@ export function AnnualVacationQuadrant() {
     
     if (isFullscreen) {
         return (
-            <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col" style={{ height: '100vh'}}>
+            <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col" style={{ height: 'calc(100vh - 1rem)' }}>
                 <Dialog open={!!editingAbsence} onOpenChange={(open) => !open && setEditingAbsence(null)}>
                     <DialogContent>
                         {editingAbsence && (
@@ -621,12 +619,11 @@ export function AnnualVacationQuadrant() {
                         )}
                     </DialogContent>
                 </Dialog>
-                <div className="flex justify-end mb-2 shrink-0">
-                    <Button 
+                <div className="absolute top-4 right-4 z-20">
+                     <Button 
                         variant="ghost" 
                         size="icon" 
-                        onClick={() => setIsFullscreen(false)} 
-                        className="z-10"
+                        onClick={() => setIsFullscreen(false)}
                     >
                         <Minimize className="h-6 w-6" />
                     </Button>
