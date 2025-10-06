@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -355,10 +354,10 @@ export function AnnualVacationQuadrant() {
         setIsGenerating(true);
         try {
             const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-            
+    
             const weeksInChunks = [];
-            for (let i = 0; i < weeksOfYear.length; i += 5) {
-                weeksInChunks.push(weeksOfYear.slice(i, i + 5));
+            for (let i = 0; i < weeksOfYear.length; i += 4) {
+                weeksInChunks.push(weeksOfYear.slice(i, i + 4));
             }
     
             weeksInChunks.forEach((weekChunk, pageIndex) => {
@@ -370,6 +369,7 @@ export function AnnualVacationQuadrant() {
                 const pageWidth = doc.internal.pageSize.getWidth();
                 const pageMargin = 15;
                 const footerHeight = 15;
+                const tableHeaderHeight = 20; 
     
                 const addHeaderFooter = (data: any) => {
                     doc.setFontSize(14).setFont('helvetica', 'bold');
@@ -396,14 +396,17 @@ export function AnnualVacationQuadrant() {
     
                 const totalPages = weeksInChunks.length;
     
+                const availableHeight = pageHeight - 30 - footerHeight - tableHeaderHeight;
+                const minRowHeight = availableHeight / (sortedGroups.length || 1);
+
                 autoTable(doc, {
                     head: [headContent],
                     body: groupBodyData,
-                    startY: 30, // StartY position for the table
+                    startY: 30,
                     theme: 'grid',
                     pageBreak: 'auto',
                     margin: { left: pageMargin, right: pageMargin, bottom: footerHeight, top: 30 },
-                    styles: { fontSize: 8, cellPadding: 1, valign: 'top', lineWidth: 0.1 },
+                    styles: { fontSize: 8, cellPadding: 3, valign: 'top', lineWidth: 0.1 },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
@@ -570,7 +573,7 @@ export function AnnualVacationQuadrant() {
     if (isFullscreen) {
         return (
             <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col" style={{ height: '100dvh' }}>
-                 <div className="absolute top-2 right-2 z-20">
+                <div className="absolute top-2 right-2 z-20">
                      <Button 
                         variant="ghost" 
                         size="icon" 
@@ -668,3 +671,4 @@ export function AnnualVacationQuadrant() {
 
 
 
+    
