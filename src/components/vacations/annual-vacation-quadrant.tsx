@@ -355,17 +355,17 @@ export function AnnualVacationQuadrant() {
         return <Skeleton className="h-[600px] w-full" />;
     }
 
-    const QuadrantTable = () => (
-        <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-                <thead>
-                    <tr>
+    const QuadrantTable = ({ isFullscreen }: { isFullscreen?: boolean }) => (
+        <div className={cn("overflow-auto", isFullscreen && "h-full flex flex-col")}>
+            <table className={cn("w-full border-collapse", isFullscreen && "flex flex-col flex-1")}>
+                <thead className={cn(isFullscreen && "block")}>
+                    <tr className={cn(isFullscreen && "flex")}>
                         <th style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none' }} className="sticky left-0 z-10 bg-transparent"></th>
                         {weeksOfYear.map(week => {
                             const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                             const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                             return (
-                                <th key={week.key} className={cn("p-1 text-center text-xs font-normal border w-64 min-w-64", hasHoliday ? "bg-blue-100" : "bg-gray-50")}>
+                                <th key={week.key} className={cn("p-1 text-center text-xs font-normal border w-64 min-w-64", hasHoliday ? "bg-blue-100" : "bg-gray-50", isFullscreen && "flex-1")}>
                                     <div className='flex flex-col items-center justify-center h-full'>
                                         <span className='font-semibold'>Semana {week.number}</span>
                                         <span className='text-muted-foreground text-[10px]'>
@@ -381,9 +381,9 @@ export function AnnualVacationQuadrant() {
                         })}
                     </tr>
                 </thead>
-                    <tbody>
+                <tbody className={cn(isFullscreen && "block flex-1 overflow-y-hidden")}>
                     {sortedGroups.map((group, groupIndex) => (
-                            <tr key={group.id}>
+                        <tr key={group.id} className={cn(isFullscreen && "flex flex-1")}>
                             <td style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none', backgroundColor: groupColors[groupIndex % groupColors.length]}} className="sticky left-0 z-10"></td>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
@@ -397,7 +397,7 @@ export function AnnualVacationQuadrant() {
                                 }
 
                                 return (
-                                    <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border w-64 min-w-64 h-8 align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50")}>
+                                    <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border w-64 min-w-64 align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50", isFullscreen ? "flex-1 overflow-y-auto" : "h-8")}>
                                         <div className="flex flex-col gap-0.5">
                                             {employeesInGroupThisWeek.map((emp, nameIndex) => {
                                                 const substitute = currentSubstitutes[emp.name];
@@ -455,16 +455,18 @@ export function AnnualVacationQuadrant() {
     
     if (isFullscreen) {
         return (
-            <div className="fixed inset-0 bg-background z-50 overflow-auto p-4">
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => setIsFullscreen(false)} 
-                    className="absolute top-4 right-4 z-10"
-                >
-                    <Minimize className="h-6 w-6" />
-                </Button>
-                <QuadrantTable />
+            <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col">
+                <div className="flex justify-end mb-2">
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setIsFullscreen(false)} 
+                        className="z-10"
+                    >
+                        <Minimize className="h-6 w-6" />
+                    </Button>
+                </div>
+                <QuadrantTable isFullscreen={true} />
             </div>
         );
     }
