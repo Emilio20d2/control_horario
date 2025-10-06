@@ -375,34 +375,26 @@ export function AnnualVacationQuadrant() {
                 const availableHeight = pageHeight - headerHeight - footerHeight;
                 const minRowHeight = sortedGroups.length > 0 ? availableHeight / sortedGroups.length : 0;
                 
-                // --- Cabecera de la Página ---
                 doc.setFontSize(14).setFont('helvetica', 'bold');
                 doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, pageMargin, 20);
                 doc.setFontSize(8).setFont('helvetica', 'normal');
                 doc.text(`Página ${pageIndex + 1} de ${weeksInChunks.length}`, pageWidth - pageMargin, 20, { align: 'right' });
     
-                const head = [
-                    weekChunk.map(week => [
-                        `Semana ${week.number}`,
-                        `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}`,
-                        `${vacationData.weeklySummaries[week.key]?.employeeCount || 0} emp. - ${vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) || 0}h`
-                    ].join('\n'))
-                ];
+                const headContent = weekChunk.map(week => 
+                    `Semana ${week.number}\n${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}\n${vacationData.weeklySummaries[week.key]?.employeeCount || 0} emp. - ${vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) || 0}h`
+                );
 
-                const body = sortedGroups.map(group => {
-                    const rowData: string[] = [];
-                    weekChunk.forEach(week => {
-                        const employeesInCell = (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [])
+                const tableBody = sortedGroups.map(group => 
+                    weekChunk.map(week => 
+                        (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [])
                             .map(emp => `${emp.name} (${emp.absence})`)
-                            .join('\n');
-                        rowData.push(employeesInCell);
-                    });
-                    return rowData;
-                });
-    
+                            .join('\n')
+                    )
+                );
+                
                 autoTable(doc, {
-                    head: [[""]],
-                    body: body,
+                    head: [headContent],
+                    body: tableBody,
                     startY: headerHeight,
                     theme: 'grid',
                     margin: { left: pageMargin, right: pageMargin, bottom: footerHeight },
@@ -422,7 +414,6 @@ export function AnnualVacationQuadrant() {
                             data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
                         }
                     },
-                    columnStyles: { 0: { cellWidth: 0.1 } }
                 });
             });
     
@@ -501,8 +492,8 @@ export function AnnualVacationQuadrant() {
                                 }
 
                                 return (
-                                    <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border min-w-80 align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50", isFullscreen ? "flex-1 w-80 overflow-y-auto" : "h-8 w-80")}>
-                                        <div className="flex flex-col gap-0">
+                                    <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border min-w-80 align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50", isFullscreen ? "flex-1 w-80 overflow-y-auto" : "w-80")}>
+                                        <div className="flex flex-col">
                                             {employeesInGroupThisWeek.map((emp, nameIndex) => {
                                                 const substitute = currentSubstitutes[emp.name];
                                                 const availableSubstitutes = substituteEmployees.filter(
@@ -514,6 +505,7 @@ export function AnnualVacationQuadrant() {
 
                                                 return (
                                                     <div key={nameIndex} className="p-0.5 rounded-sm flex justify-between items-center group">
+                                                        <div className="flex items-center gap-1.5">
                                                             <button 
                                                                 className={cn('flex flex-row items-center gap-2 text-left', isSpecialAbsence && 'text-blue-600')}
                                                                 onClick={() => {
@@ -529,6 +521,31 @@ export function AnnualVacationQuadrant() {
                                                                 <span className="truncate font-medium text-xs">{emp.name} ({emp.absence})</span>
                                                                 {substitute && <span className="text-red-600 truncate text-xs">({substitute})</span>}
                                                             </button>
+                                                        </div>
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
+                                                                <button className="transition-opacity">
+                                                                    <PlusCircle className="h-3.5 w-3.5 text-gray-500 hover:text-black" />
+                                                                </button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-56 p-2">
+                                                                <p className="text-sm font-medium p-2">Asignar sustituto</p>
+                                                                <Select
+                                                                    onValueChange={(value) => handleSetSubstitute(week.key, emp.name, value)}
+                                                                    defaultValue={substitute}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Seleccionar..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="ninguno">Ninguno</SelectItem>
+                                                                        {availableSubstitutes.map(sub => (
+                                                                            <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </PopoverContent>
+                                                        </Popover>
                                                     </div>
                                                 );
                                             })}
