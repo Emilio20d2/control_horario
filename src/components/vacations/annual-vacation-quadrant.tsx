@@ -505,7 +505,7 @@ export function AnnualVacationQuadrant() {
 
                                                 return (
                                                     <div key={nameIndex} className="p-0.5 rounded-sm flex justify-between items-center group">
-                                                        <div className="flex items-center gap-1.5">
+                                                        <div className="flex items-center">
                                                             <button 
                                                                 className={cn('flex flex-row items-center gap-2 text-left', isSpecialAbsence && 'text-blue-600')}
                                                                 onClick={() => {
@@ -518,8 +518,8 @@ export function AnnualVacationQuadrant() {
                                                                     }
                                                                 }}
                                                             >
-                                                                <span className="truncate font-medium text-xs">{emp.name} ({emp.absence})</span>
-                                                                {substitute && <span className="text-red-600 truncate text-xs">({substitute})</span>}
+                                                                <span className="truncate font-semibold text-sm">{emp.name} ({emp.absence})</span>
+                                                                {substitute && <span className="text-red-600 truncate text-sm">({substitute})</span>}
                                                             </button>
                                                         </div>
                                                         <Popover>
@@ -562,7 +562,7 @@ export function AnnualVacationQuadrant() {
     
     if (isFullscreen) {
         return (
-            <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col">
+            <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col h-screen" style={{ height: '100vh'}}>
                 <Dialog open={!!editingAbsence} onOpenChange={(open) => !open && setEditingAbsence(null)}>
                     <DialogContent>
                         {editingAbsence && (
@@ -612,7 +612,7 @@ export function AnnualVacationQuadrant() {
                         )}
                     </DialogContent>
                 </Dialog>
-                <div className="flex justify-end mb-2">
+                <div className="flex justify-end mb-2 shrink-0">
                     <Button 
                         variant="ghost" 
                         size="icon" 
@@ -659,3 +659,4 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
