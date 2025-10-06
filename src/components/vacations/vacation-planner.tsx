@@ -208,6 +208,11 @@ export function VacationPlanner() {
         return periods.sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
 
     }, [selectedEmployee, schedulableAbsenceTypes, weeklyRecords, getWeekId, absenceTypes]);
+
+    const employeeAbsenceDays = useMemo(() => {
+        if (!selectedEmployee) return [];
+        return absencePeriods.flatMap(p => eachDayOfInterval({ start: p.startDate, end: p.endDate }));
+    }, [absencePeriods, selectedEmployee]);
     
     const openingHolidays = holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date);
     const otherHolidays = holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date);
@@ -215,6 +220,7 @@ export function VacationPlanner() {
     const modifiers = {
         opening: openingHolidays,
         other: otherHolidays,
+        employeeAbsence: employeeAbsenceDays,
     };
 
     const modifiersStyles = {
@@ -225,6 +231,9 @@ export function VacationPlanner() {
         other: {
             backgroundColor: '#fecaca', // red-200
             color: '#991b1b', // red-800
+        },
+        employeeAbsence: {
+            backgroundColor: '#dbeafe', // blue-100
         }
     };
     
