@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -36,6 +36,8 @@ export function AnnualVacationQuadrant() {
     const [substitutions, setSubstitutions] = useState<Record<string, Record<string, string>>>({}); // { [weekKey]: { [originalEmpName]: substituteName } }
     const [isGenerating, setIsGenerating] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const tableContainerRef = useRef<HTMLDivElement>(null);
+    const scrollPositionRef = useRef<number | null>(null);
 
     const [editingAbsence, setEditingAbsence] = useState<{
         employee: any;
@@ -46,6 +48,12 @@ export function AnnualVacationQuadrant() {
     const [editedDateRange, setEditedDateRange] = useState<DateRange | undefined>(undefined);
     const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
 
+    useEffect(() => {
+        if (scrollPositionRef.current !== null && tableContainerRef.current) {
+            tableContainerRef.current.scrollLeft = scrollPositionRef.current;
+            scrollPositionRef.current = null;
+        }
+    });
 
     useEffect(() => {
         if (editingAbsence) {
@@ -61,6 +69,11 @@ export function AnnualVacationQuadrant() {
 
     const handleUpdateAbsence = async () => {
         if (!editingAbsence || !editedDateRange?.from) return;
+
+        if (tableContainerRef.current) {
+            scrollPositionRef.current = tableContainerRef.current.scrollLeft;
+        }
+
         setIsGenerating(true);
         try {
             const { employee, absence, periodId } = editingAbsence;
@@ -86,6 +99,11 @@ export function AnnualVacationQuadrant() {
     
     const handleDeleteAbsence = async () => {
         if (!editingAbsence) return;
+
+        if (tableContainerRef.current) {
+            scrollPositionRef.current = tableContainerRef.current.scrollLeft;
+        }
+
         setIsGenerating(true);
         try {
             const { employee, absence, periodId } = editingAbsence;
@@ -399,15 +417,14 @@ export function AnnualVacationQuadrant() {
                     })
                 );
     
-                const availableHeight = pageHeight - 30 - 20; // page height - top margin - bottom margin
-                const minRowHeight = availableHeight / sortedGroups.length;
-
+                const availableHeight = pageHeight - 30 - 20;
+    
                 autoTable(doc, {
                     head: [headContent],
                     body: groupBodyData,
                     startY: 30,
                     theme: 'grid',
-                    styles: { fontSize: 8, cellPadding: 2, valign: 'middle' },
+                    styles: { fontSize: 8, cellPadding: 3, valign: 'middle' },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
@@ -426,7 +443,6 @@ export function AnnualVacationQuadrant() {
                     didDrawPage: (data) => {
                         addHeaderFooter(data);
                     },
-                    minRowHeight: minRowHeight,
                 });
             });
     
@@ -464,7 +480,7 @@ export function AnnualVacationQuadrant() {
     }
 
     const QuadrantTable = ({ isFullscreen }: { isFullscreen?: boolean }) => (
-        <div className={cn("overflow-auto", isFullscreen && "h-full w-full")}>
+        <div ref={tableContainerRef} className={cn("overflow-auto", isFullscreen && "h-full w-full")}>
             <table className="w-full border-collapse">
                 <thead className="sticky top-0 z-20 bg-background">
                     <tr>
@@ -579,7 +595,7 @@ export function AnnualVacationQuadrant() {
                     variant="ghost" 
                     size="icon" 
                     onClick={() => setIsFullscreen(false)}
-                    className="absolute top-2 right-2 z-30"
+                    className="absolute top-2 right-2 z-50"
                 >
                     <Minimize className="h-6 w-6" />
                 </Button>
@@ -675,5 +691,6 @@ export function AnnualVacationQuadrant() {
 
 
     
+
 
 
