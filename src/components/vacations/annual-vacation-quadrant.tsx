@@ -2,13 +2,13 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@/components/ui/table';
-import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown, Maximize, Minimize } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod, Ausencia } from '@/lib/types';
@@ -34,7 +34,20 @@ export function AnnualVacationQuadrant() {
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     const [substitutions, setSubstitutions] = useState<Record<string, Record<string, string>>>({}); // { [weekKey]: { [originalEmpName]: substituteName } }
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && isFullscreen) {
+                setIsFullscreen(false);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isFullscreen]);
+
+
     const schedulableAbsenceTypes = useMemo(() => {
         return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
     }, [absenceTypes]);
@@ -284,7 +297,7 @@ export function AnnualVacationQuadrant() {
                 });
     
                 autoTable(doc, {
-                    head: head,
+                    head: [[""]],
                     body: body,
                     startY: headerHeight,
                     theme: 'grid',
@@ -305,6 +318,7 @@ export function AnnualVacationQuadrant() {
                             data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
                         }
                     },
+                    columnStyles: { 0: { cellWidth: 0.1 } }
                 });
             });
     
@@ -340,6 +354,120 @@ export function AnnualVacationQuadrant() {
     if (loading) {
         return <Skeleton className="h-[600px] w-full" />;
     }
+
+    const QuadrantTable = () => (
+        <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+                <thead>
+                    <tr>
+                        <th style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none' }} className="sticky left-0 z-10 bg-transparent"></th>
+                        {weeksOfYear.map(week => {
+                            const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                            const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
+                            return (
+                                <th key={week.key} className={cn("p-1 text-center text-xs font-normal border w-64 min-w-64", hasHoliday ? "bg-blue-100" : "bg-gray-50")}>
+                                    <div className='flex flex-col items-center justify-center h-full'>
+                                        <span className='font-semibold'>Semana {week.number}</span>
+                                        <span className='text-muted-foreground text-[10px]'>
+                                            {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
+                                        </span>
+                                        <div className="flex gap-3 mt-1.5 text-[11px] items-center">
+                                            <div className='flex items-center gap-1'><Users className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.employeeCount ?? 0}</div>
+                                            <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
+                                        </div>
+                                    </div>
+                                </th>
+                            )
+                        })}
+                    </tr>
+                </thead>
+                    <tbody>
+                    {sortedGroups.map((group, groupIndex) => (
+                            <tr key={group.id}>
+                            <td style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none', backgroundColor: groupColors[groupIndex % groupColors.length]}} className="sticky left-0 z-10"></td>
+                            {weeksOfYear.map(week => {
+                                const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                                const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
+                                const employeesInGroupThisWeek = (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || []).sort((a, b) => a.name.localeCompare(b.name));
+                                const currentSubstitutes = substitutions[week.key] || {};
+
+                                const cellStyle: React.CSSProperties = {};
+                                if (employeesInGroupThisWeek.length > 0) {
+                                    cellStyle.backgroundColor = groupColors[groupIndex % groupColors.length];
+                                }
+
+                                return (
+                                    <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border w-64 min-w-64 h-8 align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50")}>
+                                        <div className="flex flex-col gap-0.5">
+                                            {employeesInGroupThisWeek.map((emp, nameIndex) => {
+                                                const substitute = currentSubstitutes[emp.name];
+                                                const availableSubstitutes = substituteEmployees.filter(
+                                                    sub => !Object.values(currentSubstitutes).includes(sub.name) || sub.name === substitute
+                                                );
+                                                const isSpecialAbsence = emp.absence === 'EXD' || emp.absence === 'PE';
+
+                                                return (
+                                                    <div key={nameIndex} className="text-[10px] p-0.5 rounded-sm flex justify-between items-center group">
+                                                            <div className={cn('flex flex-row items-center gap-2', isSpecialAbsence && 'text-blue-600')}>
+                                                            <span className="truncate font-medium">{emp.name} ({emp.absence})</span>
+                                                            {substitute && <span className="text-red-600 truncate">({substitute})</span>}
+                                                        </div>
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-4 w-4">
+                                                                    <PlusCircle className="h-3 w-3" />
+                                                                </Button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-48 p-1">
+                                                                    <Select
+                                                                    onValueChange={(value) => {
+                                                                        handleSetSubstitute(week.key, emp.name, value);
+                                                                    }}
+                                                                    defaultValue={substitute || 'ninguno'}
+                                                                >
+                                                                    <SelectTrigger className="h-8 text-xs">
+                                                                        <SelectValue placeholder="Seleccionar sustituto..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="ninguno">Quitar sustituto</SelectItem>
+                                                                        {availableSubstitutes.map(sub => (
+                                                                            <SelectItem key={sub.id} value={sub.name}>
+                                                                                {sub.name}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </td>
+                                )
+                            })}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+    
+    if (isFullscreen) {
+        return (
+            <div className="fixed inset-0 bg-background z-50 overflow-auto p-4">
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setIsFullscreen(false)} 
+                    className="absolute top-4 right-4 z-10"
+                >
+                    <Minimize className="h-6 w-6" />
+                </Button>
+                <QuadrantTable />
+            </div>
+        );
+    }
     
     return (
         <Card>
@@ -359,108 +487,17 @@ export function AnnualVacationQuadrant() {
                         </Select>
                         <Button onClick={generateReport} disabled={isGenerating || loading}>
                             {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                            Generar Informe
+                            Informe
+                        </Button>
+                        <Button variant="outline" size="icon" onClick={() => setIsFullscreen(true)}>
+                            <Maximize className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                    <thead>
-                        <tr>
-                            <th style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none' }} className="sticky left-0 z-10 bg-transparent"></th>
-                            {weeksOfYear.map(week => {
-                                const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                                const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
-                                return (
-                                    <th key={week.key} className={cn("p-1 text-center text-xs font-normal border w-64 min-w-64", hasHoliday ? "bg-blue-100" : "bg-gray-50")}>
-                                        <div className='flex flex-col items-center justify-center h-full'>
-                                            <span className='font-semibold'>Semana {week.number}</span>
-                                            <span className='text-muted-foreground text-[10px]'>
-                                                {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
-                                            </span>
-                                            <div className="flex gap-3 mt-1.5 text-[11px] items-center">
-                                                <div className='flex items-center gap-1'><Users className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.employeeCount ?? 0}</div>
-                                                <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
-                                            </div>
-                                        </div>
-                                    </th>
-                                )
-                            })}
-                        </tr>
-                    </thead>
-                     <tbody>
-                        {sortedGroups.map((group, groupIndex) => (
-                             <tr key={group.id}>
-                                <td style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none', backgroundColor: groupColors[groupIndex % groupColors.length]}} className="sticky left-0 z-10"></td>
-                                {weeksOfYear.map(week => {
-                                    const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                                    const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
-                                    const employeesInGroupThisWeek = (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || []).sort((a, b) => a.name.localeCompare(b.name));
-                                    const currentSubstitutes = substitutions[week.key] || {};
-
-                                    const cellStyle: React.CSSProperties = {};
-                                    if (employeesInGroupThisWeek.length > 0) {
-                                        cellStyle.backgroundColor = groupColors[groupIndex % groupColors.length];
-                                    }
-
-                                    return (
-                                        <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border w-64 min-w-64 h-8 align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50")}>
-                                            <div className="flex flex-col gap-0.5">
-                                                {employeesInGroupThisWeek.map((emp, nameIndex) => {
-                                                    const substitute = currentSubstitutes[emp.name];
-                                                    const availableSubstitutes = substituteEmployees.filter(
-                                                        sub => !Object.values(currentSubstitutes).includes(sub.name) || sub.name === substitute
-                                                    );
-                                                    const isSpecialAbsence = emp.absence === 'EXD' || emp.absence === 'PE';
-
-                                                    return (
-                                                        <div key={nameIndex} className="text-[10px] p-0.5 rounded-sm flex justify-between items-center group">
-                                                             <div className={cn('flex flex-row items-center gap-2', isSpecialAbsence && 'text-blue-600')}>
-                                                                <span className="truncate font-medium">{emp.name} ({emp.absence})</span>
-                                                                {substitute && <span className="text-red-600 truncate">({substitute})</span>}
-                                                            </div>
-                                                            <Popover>
-                                                                <PopoverTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-4 w-4">
-                                                                        <PlusCircle className="h-3 w-3" />
-                                                                    </Button>
-                                                                </PopoverTrigger>
-                                                                <PopoverContent className="w-48 p-1">
-                                                                     <Select
-                                                                        onValueChange={(value) => {
-                                                                            handleSetSubstitute(week.key, emp.name, value);
-                                                                        }}
-                                                                        defaultValue={substitute || 'ninguno'}
-                                                                    >
-                                                                        <SelectTrigger className="h-8 text-xs">
-                                                                            <SelectValue placeholder="Seleccionar sustituto..." />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="ninguno">Quitar sustituto</SelectItem>
-                                                                            {availableSubstitutes.map(sub => (
-                                                                                <SelectItem key={sub.id} value={sub.name}>
-                                                                                    {sub.name}
-                                                                                </SelectItem>
-                                                                            ))}
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                </PopoverContent>
-                                                            </Popover>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </td>
-                                    )
-                                })}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            <CardContent>
+                <QuadrantTable />
             </CardContent>
         </Card>
     );
 }
-
-    
