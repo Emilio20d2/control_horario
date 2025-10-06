@@ -399,14 +399,15 @@ export function AnnualVacationQuadrant() {
                     })
                 );
     
-                const columnWidth = (pageWidth - 2 * pageMargin) / weekChunk.length;
+                const availableHeight = pageHeight - 30 - 20; // page height - top margin - bottom margin
+                const minRowHeight = availableHeight / sortedGroups.length;
 
                 autoTable(doc, {
                     head: [headContent],
                     body: groupBodyData,
                     startY: 30,
                     theme: 'grid',
-                    styles: { fontSize: 8, cellPadding: 3, valign: 'top', lineWidth: 0.1 },
+                    styles: { fontSize: 8, cellPadding: 2, valign: 'middle' },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
@@ -415,10 +416,6 @@ export function AnnualVacationQuadrant() {
                         fontSize: 9,
                         cellPadding: 2,
                     },
-                    columnStyles: weekChunk.reduce((acc: any, _, index) => {
-                        acc[index] = { cellWidth: columnWidth };
-                        return acc;
-                    }, {}),
                     willDrawCell: (data) => {
                          if (data.section === 'body' && data.row.index >= 0 && data.row.index < sortedGroups.length) {
                              const groupColor = groupColors[data.row.index % groupColors.length];
@@ -428,7 +425,8 @@ export function AnnualVacationQuadrant() {
                     },
                     didDrawPage: (data) => {
                         addHeaderFooter(data);
-                    }
+                    },
+                    minRowHeight: minRowHeight,
                 });
             });
     
@@ -466,16 +464,18 @@ export function AnnualVacationQuadrant() {
     }
 
     const QuadrantTable = ({ isFullscreen }: { isFullscreen?: boolean }) => (
-        <div className={cn("overflow-auto", isFullscreen && "h-full flex flex-col")}>
-            <table className={cn("w-full border-collapse", isFullscreen && "flex flex-col flex-1")}>
-                <thead className={cn(isFullscreen && "block sticky top-0 z-20 bg-background")}>
-                    <tr className={cn(isFullscreen && "flex")}>
-                        <th style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none' }} className="sticky left-0 z-10 bg-transparent"></th>
+        <div className={cn("overflow-auto", isFullscreen && "h-full w-full")}>
+            <table className="w-full border-collapse">
+                <thead className="sticky top-0 z-20 bg-background">
+                    <tr>
+                        <th className="sticky left-0 z-30 bg-background p-0" style={{ width: '1px' }}>
+                            <div className="w-1 h-full" />
+                        </th>
                         {weeksOfYear.map(week => {
                             const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                             const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                             return (
-                                <th key={week.key} className={cn("p-1 text-center font-normal border min-w-[20rem]", hasHoliday ? "bg-blue-100" : "bg-gray-50", isFullscreen ? "flex-1" : "w-80")}>
+                                <th key={week.key} className={cn("p-1 text-center font-normal border min-w-[20rem]", hasHoliday ? "bg-blue-100" : "bg-gray-50", "w-80")}>
                                     <div className='flex flex-col items-center justify-center h-full'>
                                         <span className='font-semibold text-lg'>
                                             {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
@@ -490,10 +490,10 @@ export function AnnualVacationQuadrant() {
                         })}
                     </tr>
                 </thead>
-                <tbody className={cn(isFullscreen && "block flex-1 overflow-y-auto")}>
+                <tbody>
                     {sortedGroups.map((group, groupIndex) => (
-                        <tr key={group.id} className={cn(isFullscreen && "flex flex-1")}>
-                            <td style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none', backgroundColor: groupColors[groupIndex % groupColors.length]}} className="sticky left-0 z-10"></td>
+                        <tr key={group.id}>
+                            <td style={{ backgroundColor: groupColors[groupIndex % groupColors.length]}} className="sticky left-0 z-10 w-1 p-0"></td>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
@@ -506,7 +506,7 @@ export function AnnualVacationQuadrant() {
                                 }
 
                                 return (
-                                    <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border min-w-[20rem] align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50", isFullscreen ? "flex-1 overflow-y-auto" : "w-80")}>
+                                    <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border min-w-[20rem] align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50", "w-80")}>
                                         <div className="flex flex-col gap-0">
                                             {employeesInGroupThisWeek.map((emp, nameIndex) => {
                                                 const substitute = currentSubstitutes[emp.name];
@@ -675,4 +675,5 @@ export function AnnualVacationQuadrant() {
 
 
     
+
 
