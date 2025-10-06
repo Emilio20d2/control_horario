@@ -357,8 +357,6 @@ export function AnnualVacationQuadrant() {
             const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
             const pageHeight = doc.internal.pageSize.getHeight();
             const pageWidth = doc.internal.pageSize.getWidth();
-            const headerHeight = 30;
-            const footerHeight = 15;
             const pageMargin = 15;
             
             const weeksInChunks = [];
@@ -368,12 +366,9 @@ export function AnnualVacationQuadrant() {
     
             weeksInChunks.forEach((weekChunk, pageIndex) => {
                 if (pageIndex > 0) {
-                    doc.addPage();
+                    doc.addPage('l', 'a4');
                 }
 
-                const availableHeight = pageHeight - headerHeight - footerHeight;
-                const minRowHeight = sortedGroups.length > 0 ? availableHeight / sortedGroups.length : 0;
-                
                 doc.setFontSize(14).setFont('helvetica', 'bold');
                 doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, pageMargin, 20);
                 doc.setFontSize(8).setFont('helvetica', 'normal');
@@ -383,34 +378,29 @@ export function AnnualVacationQuadrant() {
                     const summary = vacationData.weeklySummaries[week.key];
                     return `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}\n${summary?.employeeCount || 0} emp. - ${summary?.hourImpact.toFixed(0) || 0}h`;
                 });
+                
+                const groupBodyData: string[][] = [];
+                const rowHeights: number[] = [];
 
-                const bodyData = sortedGroups.map(group => {
-                    return weekChunk.map(week => {
+                sortedGroups.forEach(group => {
+                    const rowData = weekChunk.map(week => {
                         const employeesInGroup = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
                         const currentSubstitutes = substitutions[week.key] || {};
-
                         return employeesInGroup.map(emp => {
                             const substituteName = currentSubstitutes[emp.name];
-                            return substituteName 
-                                ? `${emp.name} (${emp.absence}) (${substituteName})`
-                                : `${emp.name} (${emp.absence})`;
+                            return substituteName ? `${emp.name} (${emp.absence}) (${substituteName})` : `${emp.name} (${emp.absence})`;
                         }).join('\n');
                     });
+                    groupBodyData.push(rowData);
                 });
-                
-                const columnWidth = (pageWidth - (pageMargin * 2)) / weekChunk.length;
-
-                const columnStyles: { [key: number]: any } = {};
-                for (let i = 0; i < weekChunk.length; i++) {
-                    columnStyles[i] = { cellWidth: columnWidth };
-                }
 
                 autoTable(doc, {
                     head: [headContent],
-                    body: bodyData,
-                    startY: headerHeight,
+                    body: groupBodyData,
+                    startY: 30,
                     theme: 'grid',
-                    margin: { left: pageMargin, right: pageMargin, bottom: footerHeight },
+                    pageBreak: 'auto',
+                    margin: { left: pageMargin, right: pageMargin, bottom: 15 },
                     styles: { fontSize: 8, cellPadding: 1.5, valign: 'top', lineWidth: 0.1 },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
@@ -420,16 +410,14 @@ export function AnnualVacationQuadrant() {
                         fontSize: 9,
                         cellPadding: 2,
                     },
-                    bodyStyles: {
-                        minCellHeight: minRowHeight,
-                    },
-                     columnStyles: columnStyles,
-                    didDrawCell: (data) => {
-                        if (data.section === 'body') {
-                            const groupIndex = data.row.index;
-                            data.cell.styles.fillColor = groupColors[groupIndex % groupColors.length];
-                        }
-                    },
+                    didDrawPage: (data) => {
+                        // We will draw the colored rectangles for each group row here
+                        data.table.body.forEach((row, rowIndex) => {
+                            const groupColor = groupColors[rowIndex % groupColors.length];
+                            doc.setFillColor(groupColor);
+                            doc.rect(data.settings.margin.left!, row.y, data.table.width, row.height, 'F');
+                        });
+                    }
                 });
             });
     
