@@ -44,6 +44,8 @@ export function AnnualVacationQuadrant() {
     } | null>(null);
 
     const [editedDateRange, setEditedDateRange] = useState<DateRange | undefined>(undefined);
+    const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
+
 
     useEffect(() => {
         if (editingAbsence) {
@@ -51,6 +53,7 @@ export function AnnualVacationQuadrant() {
                 from: editingAbsence.absence.startDate,
                 to: editingAbsence.absence.endDate,
             });
+            setCalendarMonth(editingAbsence.absence.startDate);
         } else {
             setEditedDateRange(undefined);
         }
@@ -403,7 +406,7 @@ export function AnnualVacationQuadrant() {
                     body: groupBodyData,
                     startY: 30,
                     theme: 'grid',
-                    styles: { fontSize: 8, cellPadding: 2, valign: 'top', lineWidth: 0.1 },
+                    styles: { fontSize: 8, cellPadding: 3, valign: 'top', lineWidth: 0.1 },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
@@ -599,6 +602,8 @@ export function AnnualVacationQuadrant() {
                                             onSelect={setEditedDateRange}
                                             locale={es}
                                             className="rounded-md border"
+                                            month={calendarMonth}
+                                            onMonthChange={setCalendarMonth}
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -670,3 +675,4 @@ export function AnnualVacationQuadrant() {
 
 
     
+
