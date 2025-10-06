@@ -365,7 +365,7 @@ export function AnnualVacationQuadrant() {
                             const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                             const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                             return (
-                                <th key={week.key} className={cn("p-1 text-center text-xs font-normal border w-64 min-w-64", hasHoliday ? "bg-blue-100" : "bg-gray-50", isFullscreen && "flex-1")}>
+                                <th key={week.key} className={cn("p-1 text-center text-xs font-normal border w-80 min-w-80", hasHoliday ? "bg-blue-100" : "bg-gray-50", isFullscreen && "flex-1")}>
                                     <div className='flex flex-col items-center justify-center h-full'>
                                         <span className='font-semibold'>Semana {week.number}</span>
                                         <span className='text-muted-foreground text-[10px]'>
@@ -381,7 +381,7 @@ export function AnnualVacationQuadrant() {
                         })}
                     </tr>
                 </thead>
-                <tbody className={cn(isFullscreen && "block flex-1 overflow-y-hidden")}>
+                <tbody className={cn(isFullscreen && "block flex-1 overflow-y-auto")}>
                     {sortedGroups.map((group, groupIndex) => (
                         <tr key={group.id} className={cn(isFullscreen && "flex flex-1")}>
                             <td style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none', backgroundColor: groupColors[groupIndex % groupColors.length]}} className="sticky left-0 z-10"></td>
@@ -397,8 +397,8 @@ export function AnnualVacationQuadrant() {
                                 }
 
                                 return (
-                                    <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border w-64 min-w-64 align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50", isFullscreen ? "flex-1 overflow-y-auto" : "h-8")}>
-                                        <div className="flex flex-col gap-0.5">
+                                    <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border w-80 min-w-80 align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50", isFullscreen ? "flex-1 overflow-y-auto" : "h-8")}>
+                                        <div className="flex flex-col">
                                             {employeesInGroupThisWeek.map((emp, nameIndex) => {
                                                 const substitute = currentSubstitutes[emp.name];
                                                 const availableSubstitutes = substituteEmployees.filter(
@@ -407,7 +407,7 @@ export function AnnualVacationQuadrant() {
                                                 const isSpecialAbsence = emp.absence === 'EXD' || emp.absence === 'PE';
 
                                                 return (
-                                                    <div key={nameIndex} className="text-[10px] p-0.5 rounded-sm flex justify-between items-center group">
+                                                    <div key={nameIndex} className="text-xs p-0.5 rounded-sm flex justify-between items-center group">
                                                             <div className={cn('flex flex-row items-center gap-2', isSpecialAbsence && 'text-blue-600')}>
                                                             <span className="truncate font-medium">{emp.name} ({emp.absence})</span>
                                                             {substitute && <span className="text-red-600 truncate">({substitute})</span>}
