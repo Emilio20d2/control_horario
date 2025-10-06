@@ -365,22 +365,19 @@ export function AnnualVacationQuadrant() {
                 if (pageIndex > 0) {
                     doc.addPage('l', 'a4');
                 }
-
-                const pageNumber = pageIndex + 1;
-                const totalPages = weeksInChunks.length;
+    
                 const pageHeight = doc.internal.pageSize.getHeight();
                 const pageWidth = doc.internal.pageSize.getWidth();
                 const pageMargin = 15;
-                const headerHeight = 30;
                 const footerHeight = 15;
-                
+    
                 const addHeaderFooter = (data: any) => {
                     doc.setFontSize(14).setFont('helvetica', 'bold');
                     doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, pageMargin, 20);
                     doc.setFontSize(8).setFont('helvetica', 'normal');
-                    doc.text(`Página ${data.pageNumber} de ${totalPages}`, pageWidth - pageMargin, 20, { align: 'right' });
+                    doc.text(`Página ${data.pageNumber} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 10, { align: 'right' });
                 };
-
+    
                 const headContent = weekChunk.map(week => {
                     const summary = vacationData.weeklySummaries[week.key];
                     return `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}\n${summary?.employeeCount || 0} emp. - ${summary?.hourImpact.toFixed(0) || 0}h`;
@@ -396,15 +393,17 @@ export function AnnualVacationQuadrant() {
                         }).join('\n');
                     })
                 );
-
+    
+                const totalPages = weeksInChunks.length;
+    
                 autoTable(doc, {
                     head: [headContent],
                     body: groupBodyData,
-                    startY: headerHeight,
+                    startY: 30, // StartY position for the table
                     theme: 'grid',
                     pageBreak: 'auto',
-                    margin: { left: pageMargin, right: pageMargin, bottom: footerHeight },
-                    styles: { fontSize: 8, cellPadding: 1.5, valign: 'top', lineWidth: 0.1 },
+                    margin: { left: pageMargin, right: pageMargin, bottom: footerHeight, top: 30 },
+                    styles: { fontSize: 8, cellPadding: 1, valign: 'top', lineWidth: 0.1 },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
@@ -422,16 +421,6 @@ export function AnnualVacationQuadrant() {
                     },
                     didDrawPage: (data) => {
                         addHeaderFooter(data);
-                    },
-                    didParseCell: (data) => {
-                        if (data.section === 'body') {
-                           const pageContentHeight = pageHeight - headerHeight - footerHeight - data.table.head[0].height;
-                           const rowHeight = pageContentHeight / sortedGroups.length;
-                           if (data.cell.colSpan === 1) { // Apply to first cell of each row
-                                data.row.height = rowHeight;
-                                data.row.minHeight = rowHeight;
-                           }
-                        }
                     }
                 });
             });
@@ -581,6 +570,15 @@ export function AnnualVacationQuadrant() {
     if (isFullscreen) {
         return (
             <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col" style={{ height: '100dvh' }}>
+                 <div className="absolute top-2 right-2 z-20">
+                     <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setIsFullscreen(false)}
+                    >
+                        <Minimize className="h-6 w-6" />
+                    </Button>
+                </div>
                 <Dialog open={!!editingAbsence} onOpenChange={(open) => !open && setEditingAbsence(null)}>
                     <DialogContent>
                         {editingAbsence && (
@@ -630,15 +628,6 @@ export function AnnualVacationQuadrant() {
                         )}
                     </DialogContent>
                 </Dialog>
-                <div className="absolute top-2 right-2 z-20">
-                     <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => setIsFullscreen(false)}
-                    >
-                        <Minimize className="h-6 w-6" />
-                    </Button>
-                </div>
                 <QuadrantTable isFullscreen={true} />
             </div>
         );
@@ -676,5 +665,6 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
 
 
