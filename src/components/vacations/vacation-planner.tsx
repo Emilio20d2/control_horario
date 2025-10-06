@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -34,6 +34,22 @@ export function VacationPlanner() {
     const activeEmployees = employees.filter(e => e.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
     const selectedEmployee = activeEmployees.find(e => e.id === selectedEmployeeId);
     
+    const tableContainerRef = useRef<HTMLDivElement>(null);
+    const scrollPositionRef = useRef<number>(0);
+
+    useEffect(() => {
+        if (tableContainerRef.current) {
+            tableContainerRef.current.scrollLeft = scrollPositionRef.current;
+        }
+    });
+
+    const handleEmployeeChange = (employeeId: string) => {
+        if (tableContainerRef.current) {
+            scrollPositionRef.current = tableContainerRef.current.scrollLeft;
+        }
+        setSelectedEmployeeId(employeeId);
+    };
+
     const schedulableAbsenceTypes = useMemo(() => {
         return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
     }, [absenceTypes]);
@@ -248,7 +264,7 @@ export function VacationPlanner() {
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Empleado</label>
-                        <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                        <Select value={selectedEmployeeId} onValueChange={handleEmployeeChange}>
                             <SelectTrigger><SelectValue placeholder="Seleccionar empleado..." /></SelectTrigger>
                             <SelectContent>
                                 {activeEmployees.map(emp => (
@@ -291,7 +307,7 @@ export function VacationPlanner() {
                     {selectedEmployee && (
                         <div className="space-y-4">
                             <h4 className="font-medium">Periodos de Ausencia de {selectedEmployee.name}</h4>
-                            <div className="border rounded-md max-h-96 overflow-y-auto">
+                            <div ref={tableContainerRef} className="border rounded-md max-h-96 overflow-y-auto">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
