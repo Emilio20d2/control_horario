@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -360,6 +361,8 @@ export function AnnualVacationQuadrant() {
                 weeksInChunks.push(weeksOfYear.slice(i, i + 4));
             }
     
+            const totalPages = weeksInChunks.length;
+    
             weeksInChunks.forEach((weekChunk, pageIndex) => {
                 if (pageIndex > 0) {
                     doc.addPage('l', 'a4');
@@ -368,8 +371,6 @@ export function AnnualVacationQuadrant() {
                 const pageHeight = doc.internal.pageSize.getHeight();
                 const pageWidth = doc.internal.pageSize.getWidth();
                 const pageMargin = 15;
-                const footerHeight = 15;
-                const tableHeaderHeight = 20; 
     
                 const addHeaderFooter = (data: any) => {
                     doc.setFontSize(14).setFont('helvetica', 'bold');
@@ -382,7 +383,7 @@ export function AnnualVacationQuadrant() {
                     const summary = vacationData.weeklySummaries[week.key];
                     return `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}\n${summary?.employeeCount || 0} emp. - ${summary?.hourImpact.toFixed(0) || 0}h`;
                 });
-                
+
                 const groupBodyData = sortedGroups.map(group => 
                     weekChunk.map(week => {
                         const employeesInGroup = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
@@ -394,19 +395,12 @@ export function AnnualVacationQuadrant() {
                     })
                 );
     
-                const totalPages = weeksInChunks.length;
-    
-                const availableHeight = pageHeight - 30 - footerHeight - tableHeaderHeight;
-                const minRowHeight = availableHeight / (sortedGroups.length || 1);
-
                 autoTable(doc, {
                     head: [headContent],
                     body: groupBodyData,
                     startY: 30,
                     theme: 'grid',
-                    pageBreak: 'auto',
-                    margin: { left: pageMargin, right: pageMargin, bottom: footerHeight, top: 30 },
-                    styles: { fontSize: 8, cellPadding: 3, valign: 'top', lineWidth: 0.1 },
+                    styles: { fontSize: 8, cellPadding: 2, valign: 'top', lineWidth: 0.1 },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
@@ -414,6 +408,12 @@ export function AnnualVacationQuadrant() {
                         halign: 'center',
                         fontSize: 9,
                         cellPadding: 2,
+                    },
+                    columnStyles: {
+                        0: { cellWidth: (pageWidth - 2 * pageMargin) / (weekChunk.length || 1) },
+                        1: { cellWidth: (pageWidth - 2 * pageMargin) / (weekChunk.length || 1) },
+                        2: { cellWidth: (pageWidth - 2 * pageMargin) / (weekChunk.length || 1) },
+                        3: { cellWidth: (pageWidth - 2 * pageMargin) / (weekChunk.length || 1) },
                     },
                     willDrawCell: (data) => {
                         if (data.section === 'body') {
