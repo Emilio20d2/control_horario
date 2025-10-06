@@ -379,38 +379,46 @@ export function AnnualVacationQuadrant() {
                 doc.setFontSize(8).setFont('helvetica', 'normal');
                 doc.text(`Página ${pageIndex + 1} de ${weeksInChunks.length}`, pageWidth - pageMargin, 20, { align: 'right' });
     
-                const headContent = weekChunk.map(week => 
-                     `Semana ${week.number}\n${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}\n${vacationData.weeklySummaries[week.key]?.employeeCount || 0} emp. - ${vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) || 0}h`
-                );
+                const headContent = weekChunk.map(week => {
+                    const summary = vacationData.weeklySummaries[week.key];
+                    return `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}\n${summary?.employeeCount || 0} emp. - ${summary?.hourImpact.toFixed(0) || 0}h`;
+                });
 
-                const tableBody = sortedGroups.map(group => 
-                    weekChunk.map(week => 
-                        (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [])
-                            .map(emp => `${emp.name} (${emp.absence})`)
-                            .join('\n')
-                    )
-                );
+                const bodyData = sortedGroups.map(group => {
+                    return weekChunk.map(week => {
+                        const employeesInGroup = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
+                        const currentSubstitutes = substitutions[week.key] || {};
+
+                        return employeesInGroup.map(emp => {
+                            const substituteName = currentSubstitutes[emp.name];
+                            return substituteName 
+                                ? `${emp.name} (${emp.absence}) (${substituteName})`
+                                : `${emp.name} (${emp.absence})`;
+                        }).join('\n');
+                    });
+                });
                 
-                const firstColumnWidth = 0;
-                const otherColumnWidth = (pageWidth - (pageMargin * 2) - firstColumnWidth) / weekChunk.length;
+                const columnWidth = (pageWidth - (pageMargin * 2)) / weekChunk.length;
 
                 const columnStyles: { [key: number]: any } = {};
                 for (let i = 0; i < weekChunk.length; i++) {
-                    columnStyles[i] = { cellWidth: otherColumnWidth };
+                    columnStyles[i] = { cellWidth: columnWidth };
                 }
 
                 autoTable(doc, {
                     head: [headContent],
-                    body: tableBody,
+                    body: bodyData,
                     startY: headerHeight,
                     theme: 'grid',
                     margin: { left: pageMargin, right: pageMargin, bottom: footerHeight },
-                    styles: { fontSize: 7, cellPadding: 1, valign: 'top', lineWidth: 0.1 },
+                    styles: { fontSize: 8, cellPadding: 1.5, valign: 'top', lineWidth: 0.1 },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
                         fontStyle: 'bold', 
                         halign: 'center',
+                        fontSize: 9,
+                        cellPadding: 2,
                     },
                     bodyStyles: {
                         minCellHeight: minRowHeight,
@@ -569,7 +577,7 @@ export function AnnualVacationQuadrant() {
     
     if (isFullscreen) {
         return (
-            <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col" style={{ height: 'calc(100vh - 1rem)' }}>
+            <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col" style={{ height: '100vh' }}>
                 <Dialog open={!!editingAbsence} onOpenChange={(open) => !open && setEditingAbsence(null)}>
                     <DialogContent>
                         {editingAbsence && (
@@ -665,4 +673,3 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
-
