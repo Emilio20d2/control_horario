@@ -374,12 +374,12 @@ export function AnnualVacationQuadrant() {
                 const headerHeight = 30;
                 const footerHeight = 15;
                 
-                const addHeaderFooter = () => {
+                const addHeaderFooter = (data: any) => {
                     doc.setFontSize(14).setFont('helvetica', 'bold');
                     doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, pageMargin, 20);
                     doc.setFontSize(8).setFont('helvetica', 'normal');
-                    doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth - pageMargin, 20, { align: 'right' });
-                }
+                    doc.text(`Página ${data.pageNumber} de ${totalPages}`, pageWidth - pageMargin, 20, { align: 'right' });
+                };
 
                 const headContent = weekChunk.map(week => {
                     const summary = vacationData.weeklySummaries[week.key];
@@ -397,10 +397,6 @@ export function AnnualVacationQuadrant() {
                     })
                 );
 
-                const tableHeaderHeight = 15; // Estimated header height
-                const availableBodyHeight = pageHeight - headerHeight - footerHeight - tableHeaderHeight;
-                const minRowHeight = availableBodyHeight / sortedGroups.length;
-
                 autoTable(doc, {
                     head: [headContent],
                     body: groupBodyData,
@@ -408,7 +404,7 @@ export function AnnualVacationQuadrant() {
                     theme: 'grid',
                     pageBreak: 'auto',
                     margin: { left: pageMargin, right: pageMargin, bottom: footerHeight },
-                    styles: { fontSize: 8, cellPadding: 1, valign: 'top', lineWidth: 0.1 },
+                    styles: { fontSize: 8, cellPadding: 1.5, valign: 'top', lineWidth: 0.1 },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
@@ -416,10 +412,6 @@ export function AnnualVacationQuadrant() {
                         halign: 'center',
                         fontSize: 9,
                         cellPadding: 2,
-                        minCellHeight: tableHeaderHeight,
-                    },
-                    bodyStyles: {
-                        minCellHeight: minRowHeight,
                     },
                     willDrawCell: (data) => {
                         if (data.section === 'body') {
@@ -428,9 +420,19 @@ export function AnnualVacationQuadrant() {
                             doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
                         }
                     },
-                    didDrawPage: () => {
-                        addHeaderFooter();
+                    didDrawPage: (data) => {
+                        addHeaderFooter(data);
                     },
+                    didParseCell: (data) => {
+                        if (data.section === 'body') {
+                           const pageContentHeight = pageHeight - headerHeight - footerHeight - data.table.head[0].height;
+                           const rowHeight = pageContentHeight / sortedGroups.length;
+                           if (data.cell.colSpan === 1) { // Apply to first cell of each row
+                                data.row.height = rowHeight;
+                                data.row.minHeight = rowHeight;
+                           }
+                        }
+                    }
                 });
             });
     
@@ -578,7 +580,7 @@ export function AnnualVacationQuadrant() {
     
     if (isFullscreen) {
         return (
-            <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col" style={{ height: '100vh' }}>
+            <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col" style={{ height: '100dvh' }}>
                 <Dialog open={!!editingAbsence} onOpenChange={(open) => !open && setEditingAbsence(null)}>
                     <DialogContent>
                         {editingAbsence && (
@@ -628,7 +630,7 @@ export function AnnualVacationQuadrant() {
                         )}
                     </DialogContent>
                 </Dialog>
-                <div className="absolute top-4 right-4 z-20">
+                <div className="absolute top-2 right-2 z-20">
                      <Button 
                         variant="ghost" 
                         size="icon" 
@@ -674,4 +676,5 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
 
