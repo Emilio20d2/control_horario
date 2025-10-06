@@ -373,14 +373,14 @@ export function AnnualVacationQuadrant() {
                 const pageMargin = 15;
                 const headerHeight = 30;
                 const footerHeight = 15;
-                const availableHeight = pageHeight - headerHeight - footerHeight;
+                
+                const addHeaderFooter = () => {
+                    doc.setFontSize(14).setFont('helvetica', 'bold');
+                    doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, pageMargin, 20);
+                    doc.setFontSize(8).setFont('helvetica', 'normal');
+                    doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth - pageMargin, 20, { align: 'right' });
+                }
 
-                // Add header
-                doc.setFontSize(14).setFont('helvetica', 'bold');
-                doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, pageMargin, 20);
-                doc.setFontSize(8).setFont('helvetica', 'normal');
-                doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth - pageMargin, 20, { align: 'right' });
-    
                 const headContent = weekChunk.map(week => {
                     const summary = vacationData.weeklySummaries[week.key];
                     return `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}\n${summary?.employeeCount || 0} emp. - ${summary?.hourImpact.toFixed(0) || 0}h`;
@@ -397,6 +397,10 @@ export function AnnualVacationQuadrant() {
                     })
                 );
 
+                const tableHeaderHeight = 15; // Estimated header height
+                const availableBodyHeight = pageHeight - headerHeight - footerHeight - tableHeaderHeight;
+                const minRowHeight = availableBodyHeight / sortedGroups.length;
+
                 autoTable(doc, {
                     head: [headContent],
                     body: groupBodyData,
@@ -412,6 +416,10 @@ export function AnnualVacationQuadrant() {
                         halign: 'center',
                         fontSize: 9,
                         cellPadding: 2,
+                        minCellHeight: tableHeaderHeight,
+                    },
+                    bodyStyles: {
+                        minCellHeight: minRowHeight,
                     },
                     willDrawCell: (data) => {
                         if (data.section === 'body') {
@@ -419,6 +427,9 @@ export function AnnualVacationQuadrant() {
                             doc.setFillColor(groupColor);
                             doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
                         }
+                    },
+                    didDrawPage: () => {
+                        addHeaderFooter();
                     },
                 });
             });
@@ -567,7 +578,7 @@ export function AnnualVacationQuadrant() {
     
     if (isFullscreen) {
         return (
-            <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col" style={{ height: 'calc(100vh - 1rem)' }}>
+            <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col" style={{ height: '100vh' }}>
                 <Dialog open={!!editingAbsence} onOpenChange={(open) => !open && setEditingAbsence(null)}>
                     <DialogContent>
                         {editingAbsence && (
@@ -663,3 +674,4 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
