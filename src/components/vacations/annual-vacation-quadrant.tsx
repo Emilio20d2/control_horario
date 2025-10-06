@@ -37,7 +37,7 @@ export function AnnualVacationQuadrant() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const tableContainerRef = useRef<HTMLDivElement>(null);
-    const scrollPositionRef = useRef<number | null>(null);
+    const [scrollLeft, setScrollLeft] = useState(0);
 
     const [editingAbsence, setEditingAbsence] = useState<{
         employee: any;
@@ -47,14 +47,6 @@ export function AnnualVacationQuadrant() {
 
     const [editedDateRange, setEditedDateRange] = useState<DateRange | undefined>(undefined);
     const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
-
-    useEffect(() => {
-        // This effect runs when the dialog is closed (`editingAbsence` becomes null).
-        if (!editingAbsence && scrollPositionRef.current !== null && tableContainerRef.current) {
-            tableContainerRef.current.scrollLeft = scrollPositionRef.current;
-            scrollPositionRef.current = null; // Reset after applying
-        }
-    }, [editingAbsence]);
 
     useEffect(() => {
         if (editingAbsence) {
@@ -68,12 +60,14 @@ export function AnnualVacationQuadrant() {
         }
     }, [editingAbsence]);
 
+    useEffect(() => {
+        if (tableContainerRef.current) {
+            tableContainerRef.current.scrollLeft = scrollLeft;
+        }
+    }, [scrollLeft]);
+
     const handleUpdateAbsence = async () => {
         if (!editingAbsence || !editedDateRange?.from) return;
-
-        if (tableContainerRef.current) {
-            scrollPositionRef.current = tableContainerRef.current.scrollLeft;
-        }
 
         setIsGenerating(true);
         try {
@@ -100,10 +94,6 @@ export function AnnualVacationQuadrant() {
     
     const handleDeleteAbsence = async () => {
         if (!editingAbsence) return;
-
-        if (tableContainerRef.current) {
-            scrollPositionRef.current = tableContainerRef.current.scrollLeft;
-        }
 
         setIsGenerating(true);
         try {
@@ -481,7 +471,11 @@ export function AnnualVacationQuadrant() {
     }
 
     const QuadrantTable = ({ isFullscreen }: { isFullscreen?: boolean }) => (
-        <div ref={tableContainerRef} className={cn("overflow-auto", isFullscreen && "h-full w-full")}>
+        <div 
+            ref={tableContainerRef} 
+            className={cn("overflow-auto", isFullscreen && "h-full w-full")}
+            onScroll={(e) => setScrollLeft(e.currentTarget.scrollLeft)}
+        >
             <table className="w-full border-collapse">
                 <thead className="sticky top-0 z-20 bg-background">
                     <tr>
@@ -607,7 +601,7 @@ export function AnnualVacationQuadrant() {
                                 <DialogHeader>
                                     <DialogTitle>Editar Ausencia de {editingAbsence.employee.name}</DialogTitle>
                                     <DialogDescription>
-                                        Modifica el rango de fechas, el tipo de ausencia o asigna un sustituto.
+                                        Modifica el rango de fechas para esta ausencia.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="grid gap-4 py-4">
@@ -623,16 +617,33 @@ export function AnnualVacationQuadrant() {
                                             onMonthChange={setCalendarMonth}
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Tipo de Ausencia</label>
-                                        <Select value={editingAbsence.absence.absenceTypeId}>
-                                            <SelectTrigger><SelectValue/></SelectTrigger>
-                                            <SelectContent>
-                                                {schedulableAbsenceTypes.map(at => (
-                                                    <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                    <div className="space-y-4">
+                                        <h4 className="font-medium text-sm text-muted-foreground">Periodos de Ausencia ({selectedYear})</h4>
+                                        <div className="border rounded-md max-h-40 overflow-y-auto">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Tipo</TableHead>
+                                                        <TableHead>Inicio</TableHead>
+                                                        <TableHead>Fin</TableHead>
+                                                        <TableHead>Días</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {(vacationData.absencesByEmployee[editingAbsence.employee.id] || []).filter(p => getYear(p.startDate) === selectedYear).map(period => {
+                                                        const absenceType = absenceTypes.find(at => at.id === period.absenceTypeId);
+                                                        return (
+                                                        <TableRow key={period.id}>
+                                                            <TableCell><Badge variant="outline">{absenceType?.abbreviation || '??'}</Badge></TableCell>
+                                                            <TableCell>{format(period.startDate, 'dd/MM/yy')}</TableCell>
+                                                            <TableCell>{format(period.endDate, 'dd/MM/yy')}</TableCell>
+                                                            <TableCell>{differenceInDays(period.endDate, period.startDate) + 1}</TableCell>
+                                                        </TableRow>
+                                                        )
+                                                    })}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
                                     </div>
                                 </div>
                                 <DialogFooter>
@@ -692,6 +703,7 @@ export function AnnualVacationQuadrant() {
 
 
     
+
 
 
 
