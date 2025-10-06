@@ -403,7 +403,7 @@ export function AnnualVacationQuadrant() {
                     body: groupBodyData,
                     startY: 30,
                     theme: 'grid',
-                    styles: { fontSize: 8, cellPadding: 3, valign: 'top', lineWidth: 0.1 },
+                    styles: { fontSize: 8, cellPadding: 2, valign: 'top', lineWidth: 0.1 },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
@@ -504,7 +504,7 @@ export function AnnualVacationQuadrant() {
 
                                 return (
                                     <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border min-w-[20rem] align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50", isFullscreen ? "flex-1 overflow-y-auto" : "w-80")}>
-                                        <div className="flex flex-col">
+                                        <div className="flex flex-col gap-0">
                                             {employeesInGroupThisWeek.map((emp, nameIndex) => {
                                                 const substitute = currentSubstitutes[emp.name];
                                                 const availableSubstitutes = substituteEmployees.filter(
@@ -572,16 +572,14 @@ export function AnnualVacationQuadrant() {
     if (isFullscreen) {
         return (
             <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col" style={{ height: '100dvh' }}>
-                <div className="absolute top-2 right-2 z-20">
-                     <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => setIsFullscreen(false)}
-                        className="absolute top-2 right-2 z-20"
-                    >
-                        <Minimize className="h-6 w-6" />
-                    </Button>
-                </div>
+                 <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setIsFullscreen(false)}
+                    className="absolute top-2 right-2 z-30"
+                >
+                    <Minimize className="h-6 w-6" />
+                </Button>
                 <Dialog open={!!editingAbsence} onOpenChange={(open) => !open && setEditingAbsence(null)}>
                     <DialogContent>
                         {editingAbsence && (
