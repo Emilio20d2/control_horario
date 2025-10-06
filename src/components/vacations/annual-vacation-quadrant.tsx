@@ -355,9 +355,6 @@ export function AnnualVacationQuadrant() {
         setIsGenerating(true);
         try {
             const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-            const pageHeight = doc.internal.pageSize.getHeight();
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const pageMargin = 15;
             
             const weeksInChunks = [];
             for (let i = 0; i < weeksOfYear.length; i += 5) {
@@ -369,39 +366,45 @@ export function AnnualVacationQuadrant() {
                     doc.addPage('l', 'a4');
                 }
 
+                const pageNumber = pageIndex + 1;
+                const totalPages = weeksInChunks.length;
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageMargin = 15;
+                const headerHeight = 30;
+                const footerHeight = 15;
+                const availableHeight = pageHeight - headerHeight - footerHeight;
+
+                // Add header
                 doc.setFontSize(14).setFont('helvetica', 'bold');
                 doc.text(`Informe de Ausencias por Agrupaciones - ${selectedYear}`, pageMargin, 20);
                 doc.setFontSize(8).setFont('helvetica', 'normal');
-                doc.text(`Página ${pageIndex + 1} de ${weeksInChunks.length}`, pageWidth - pageMargin, 20, { align: 'right' });
+                doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth - pageMargin, 20, { align: 'right' });
     
                 const headContent = weekChunk.map(week => {
                     const summary = vacationData.weeklySummaries[week.key];
                     return `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}\n${summary?.employeeCount || 0} emp. - ${summary?.hourImpact.toFixed(0) || 0}h`;
                 });
                 
-                const groupBodyData: string[][] = [];
-                const rowHeights: number[] = [];
-
-                sortedGroups.forEach(group => {
-                    const rowData = weekChunk.map(week => {
+                const groupBodyData = sortedGroups.map(group => 
+                    weekChunk.map(week => {
                         const employeesInGroup = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
                         const currentSubstitutes = substitutions[week.key] || {};
                         return employeesInGroup.map(emp => {
                             const substituteName = currentSubstitutes[emp.name];
                             return substituteName ? `${emp.name} (${emp.absence}) (${substituteName})` : `${emp.name} (${emp.absence})`;
                         }).join('\n');
-                    });
-                    groupBodyData.push(rowData);
-                });
+                    })
+                );
 
                 autoTable(doc, {
                     head: [headContent],
                     body: groupBodyData,
-                    startY: 30,
+                    startY: headerHeight,
                     theme: 'grid',
                     pageBreak: 'auto',
-                    margin: { left: pageMargin, right: pageMargin, bottom: 15 },
-                    styles: { fontSize: 8, cellPadding: 1.5, valign: 'top', lineWidth: 0.1 },
+                    margin: { left: pageMargin, right: pageMargin, bottom: footerHeight },
+                    styles: { fontSize: 8, cellPadding: 1, valign: 'top', lineWidth: 0.1 },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
@@ -410,14 +413,13 @@ export function AnnualVacationQuadrant() {
                         fontSize: 9,
                         cellPadding: 2,
                     },
-                    didDrawPage: (data) => {
-                        // We will draw the colored rectangles for each group row here
-                        data.table.body.forEach((row, rowIndex) => {
-                            const groupColor = groupColors[rowIndex % groupColors.length];
+                    willDrawCell: (data) => {
+                        if (data.section === 'body') {
+                            const groupColor = groupColors[data.row.index % groupColors.length];
                             doc.setFillColor(groupColor);
-                            doc.rect(data.settings.margin.left!, row.y, data.table.width, row.height, 'F');
-                        });
-                    }
+                            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+                        }
+                    },
                 });
             });
     
@@ -510,7 +512,7 @@ export function AnnualVacationQuadrant() {
                                                     <div key={nameIndex} className="p-0 rounded-sm flex justify-between items-center group">
                                                         <div className="flex items-center">
                                                             <button
-                                                                className={cn('flex flex-row items-center gap-2 text-left', isSpecialAbsence && 'text-blue-600')}
+                                                                className={cn('flex flex-row items-center gap-2 text-left text-sm font-semibold', isSpecialAbsence && 'text-blue-600')}
                                                                 onClick={() => {
                                                                     if (employeeData && absenceData) {
                                                                         setEditingAbsence({
@@ -521,8 +523,8 @@ export function AnnualVacationQuadrant() {
                                                                     }
                                                                 }}
                                                             >
-                                                                <span className="truncate font-semibold text-sm">{emp.name} ({emp.absence})</span>
-                                                                {substitute && <span className="text-red-600 truncate text-sm">({substitute})</span>}
+                                                                <span className="truncate">{emp.name} ({emp.absence})</span>
+                                                                {substitute && <span className="text-red-600 truncate">({substitute})</span>}
                                                             </button>
                                                         </div>
                                                          <Popover>
@@ -565,7 +567,7 @@ export function AnnualVacationQuadrant() {
     
     if (isFullscreen) {
         return (
-            <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col" style={{ height: '100vh' }}>
+            <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col" style={{ height: 'calc(100vh - 1rem)' }}>
                 <Dialog open={!!editingAbsence} onOpenChange={(open) => !open && setEditingAbsence(null)}>
                     <DialogContent>
                         {editingAbsence && (
