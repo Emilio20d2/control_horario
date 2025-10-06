@@ -368,9 +368,9 @@ export function AnnualVacationQuadrant() {
     
                 const pageHeight = doc.internal.pageSize.getHeight();
                 const pageWidth = doc.internal.pageSize.getWidth();
-                const pageMargin = 15;
                 const headerHeight = 30;
                 const footerHeight = 15;
+                const pageMargin = 15;
                 
                 const availableHeight = pageHeight - headerHeight - footerHeight;
                 const minRowHeight = sortedGroups.length > 0 ? availableHeight / sortedGroups.length : 0;
@@ -470,13 +470,12 @@ export function AnnualVacationQuadrant() {
                             const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                             const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                             return (
-                                <th key={week.key} className={cn("p-1 text-center font-normal border min-w-[20rem]", hasHoliday ? "bg-blue-100" : "bg-gray-50", isFullscreen ? "flex-1 w-80" : "w-80")}>
+                                <th key={week.key} className={cn("p-1 text-center font-normal border min-w-[20rem]", hasHoliday ? "bg-blue-100" : "bg-gray-50", isFullscreen ? "flex-1" : "w-80")}>
                                     <div className='flex flex-col items-center justify-center h-full'>
-                                        <span className='font-semibold'>Semana {week.number}</span>
-                                        <span className='text-muted-foreground text-[10px]'>
+                                        <span className='font-semibold text-sm'>
                                             {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
                                         </span>
-                                        <div className="flex gap-3 mt-1.5 text-[11px] items-center">
+                                        <div className="flex gap-3 mt-1.5 text-xs items-center">
                                             <div className='flex items-center gap-1'><Users className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.employeeCount ?? 0}</div>
                                             <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
                                         </div>
@@ -502,7 +501,7 @@ export function AnnualVacationQuadrant() {
                                 }
 
                                 return (
-                                    <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border min-w-[20rem] align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50", isFullscreen ? "flex-1 w-80 overflow-y-auto" : "w-80")}>
+                                    <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border min-w-[20rem] align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50", isFullscreen ? "flex-1 overflow-y-auto" : "w-80")}>
                                         <div className="flex flex-col">
                                             {employeesInGroupThisWeek.map((emp, nameIndex) => {
                                                 const substitute = currentSubstitutes[emp.name];
@@ -669,3 +668,4 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
