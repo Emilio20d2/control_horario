@@ -356,9 +356,10 @@ export function AnnualVacationQuadrant() {
         try {
             const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
     
+            const WEEKS_PER_PAGE = 4;
             const weeksInChunks = [];
-            for (let i = 0; i < weeksOfYear.length; i += 4) {
-                weeksInChunks.push(weeksOfYear.slice(i, i + 4));
+            for (let i = 0; i < weeksOfYear.length; i += WEEKS_PER_PAGE) {
+                weeksInChunks.push(weeksOfYear.slice(i, i + WEEKS_PER_PAGE));
             }
     
             const totalPages = weeksInChunks.length;
@@ -395,12 +396,14 @@ export function AnnualVacationQuadrant() {
                     })
                 );
     
+                const columnWidth = (pageWidth - 2 * pageMargin) / weekChunk.length;
+
                 autoTable(doc, {
                     head: [headContent],
                     body: groupBodyData,
                     startY: 30,
                     theme: 'grid',
-                    styles: { fontSize: 8, cellPadding: 2, valign: 'top', lineWidth: 0.1 },
+                    styles: { fontSize: 8, cellPadding: 3, valign: 'top', lineWidth: 0.1 },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
@@ -409,18 +412,16 @@ export function AnnualVacationQuadrant() {
                         fontSize: 9,
                         cellPadding: 2,
                     },
-                    columnStyles: {
-                        0: { cellWidth: (pageWidth - 2 * pageMargin) / (weekChunk.length || 1) },
-                        1: { cellWidth: (pageWidth - 2 * pageMargin) / (weekChunk.length || 1) },
-                        2: { cellWidth: (pageWidth - 2 * pageMargin) / (weekChunk.length || 1) },
-                        3: { cellWidth: (pageWidth - 2 * pageMargin) / (weekChunk.length || 1) },
-                    },
+                    columnStyles: weekChunk.reduce((acc: any, _, index) => {
+                        acc[index] = { cellWidth: columnWidth };
+                        return acc;
+                    }, {}),
                     willDrawCell: (data) => {
-                        if (data.section === 'body') {
-                            const groupColor = groupColors[data.row.index % groupColors.length];
-                            doc.setFillColor(groupColor);
-                            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-                        }
+                         if (data.section === 'body' && data.row.index >= 0 && data.row.index < sortedGroups.length) {
+                             const groupColor = groupColors[data.row.index % groupColors.length];
+                             doc.setFillColor(groupColor);
+                             doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+                         }
                     },
                     didDrawPage: (data) => {
                         addHeaderFooter(data);
@@ -464,7 +465,7 @@ export function AnnualVacationQuadrant() {
     const QuadrantTable = ({ isFullscreen }: { isFullscreen?: boolean }) => (
         <div className={cn("overflow-auto", isFullscreen && "h-full flex flex-col")}>
             <table className={cn("w-full border-collapse", isFullscreen && "flex flex-col flex-1")}>
-                <thead className={cn(isFullscreen && "block")}>
+                <thead className={cn(isFullscreen && "block sticky top-0 z-20 bg-background")}>
                     <tr className={cn(isFullscreen && "flex")}>
                         <th style={{ minWidth: '0.25px', width: '0.25px', maxWidth: '0.25px', padding: 0, border: 'none' }} className="sticky left-0 z-10 bg-transparent"></th>
                         {weeksOfYear.map(week => {
@@ -514,24 +515,22 @@ export function AnnualVacationQuadrant() {
                                                 const absenceData = vacationData.absencesByEmployee[emp.id]?.find(a => isWithinInterval(week.start, {start: a.startDate, end: a.endDate}));
 
                                                 return (
-                                                    <div key={nameIndex} className="p-0 rounded-sm flex justify-between items-center group">
-                                                        <div className="flex items-center">
-                                                            <button
-                                                                className={cn('flex flex-row items-center gap-2 text-left text-sm font-semibold', isSpecialAbsence && 'text-blue-600')}
-                                                                onClick={() => {
-                                                                    if (employeeData && absenceData) {
-                                                                        setEditingAbsence({
-                                                                            employee: employeeData,
-                                                                            absence: absenceData,
-                                                                            periodId: absenceData.periodId
-                                                                        });
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <span className="truncate">{emp.name} ({emp.absence})</span>
-                                                                {substitute && <span className="text-red-600 truncate">({substitute})</span>}
-                                                            </button>
-                                                        </div>
+                                                    <div key={nameIndex} className="py-0 px-1 rounded-sm flex justify-between items-center group">
+                                                        <button
+                                                            className={cn('flex flex-row items-center gap-2 text-left text-sm font-semibold', isSpecialAbsence && 'text-blue-600')}
+                                                            onClick={() => {
+                                                                if (employeeData && absenceData) {
+                                                                    setEditingAbsence({
+                                                                        employee: employeeData,
+                                                                        absence: absenceData,
+                                                                        periodId: absenceData.periodId
+                                                                    });
+                                                                }
+                                                            }}
+                                                        >
+                                                            <span className="truncate">{emp.name} ({emp.absence})</span>
+                                                            {substitute && <span className="text-red-600 truncate">({substitute})</span>}
+                                                        </button>
                                                          <Popover>
                                                             <PopoverTrigger asChild>
                                                                 <button className="opacity-100 transition-opacity">
@@ -578,6 +577,7 @@ export function AnnualVacationQuadrant() {
                         variant="ghost" 
                         size="icon" 
                         onClick={() => setIsFullscreen(false)}
+                        className="absolute top-2 right-2 z-20"
                     >
                         <Minimize className="h-6 w-6" />
                     </Button>
