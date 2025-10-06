@@ -41,7 +41,7 @@ export function VacationPlanner() {
         if (tableContainerRef.current) {
             tableContainerRef.current.scrollLeft = scrollPositionRef.current;
         }
-    });
+    }, [selectedEmployeeId]);
 
     const handleEmployeeChange = (employeeId: string) => {
         if (tableContainerRef.current) {

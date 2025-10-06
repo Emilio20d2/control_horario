@@ -49,11 +49,12 @@ export function AnnualVacationQuadrant() {
     const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
 
     useEffect(() => {
-        if (scrollPositionRef.current !== null && tableContainerRef.current) {
+        // This effect runs when the dialog is closed (`editingAbsence` becomes null).
+        if (!editingAbsence && scrollPositionRef.current !== null && tableContainerRef.current) {
             tableContainerRef.current.scrollLeft = scrollPositionRef.current;
-            scrollPositionRef.current = null;
+            scrollPositionRef.current = null; // Reset after applying
         }
-    });
+    }, [editingAbsence]);
 
     useEffect(() => {
         if (editingAbsence) {
@@ -595,7 +596,7 @@ export function AnnualVacationQuadrant() {
                     variant="ghost" 
                     size="icon" 
                     onClick={() => setIsFullscreen(false)}
-                    className="absolute top-2 right-2 z-50"
+                    className="absolute top-2 right-2 z-[60]"
                 >
                     <Minimize className="h-6 w-6" />
                 </Button>
@@ -691,6 +692,7 @@ export function AnnualVacationQuadrant() {
 
 
     
+
 
 
 
