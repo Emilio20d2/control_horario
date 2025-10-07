@@ -4,33 +4,33 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%; /* Blanco */
+    --background: 0 0% 100%; /* Blanco nieve */
     --foreground: 206 11% 28%; /* Gris carbón azulado */
 
-    --card: 214 24% 87%; /* Gris azulado */
+    --card: 210 27% 93.5%; /* Gris hielo */
     --card-foreground: 206 11% 28%;
  
-    --popover: 214 24% 87%;
+    --popover: 210 27% 93.5%;
     --popover-foreground: 206 11% 28%;
  
-    --primary: 212 20% 64%; /* Azul grisáceo */
-    --primary-foreground: 0 0% 100%;
+    --primary: 212 28% 78.2%; /* Azul niebla */
+    --primary-foreground: 206 11% 28%;
  
-    --secondary: 214 24% 87%;
+    --secondary: 210 27% 93.5%;
     --secondary-foreground: 206 11% 28%;
  
-    --muted: 214 24% 87%;
-    --muted-foreground: 212 8% 51%; /* Gris acero */
+    --muted: 210 27% 93.5%;
+    --muted-foreground: 212 8% 51%; /* Gris acero suave */
  
-    --accent: 212 20% 64%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 212 28% 78.2%;
+    --accent-foreground: 206 11% 28%;
  
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 212 8% 51%; /* Gris acero */
+    --border: 212 8% 51%; /* Gris acero suave */
     --input: 212 8% 51%;
-    --ring: 212 20% 64%;
+    --ring: 212 28% 78.2%;
  
     --radius: 0.5rem;
   }
@@ -45,8 +45,8 @@
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
  
-    --primary: 212 20% 64%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 212 28% 78.2%;
+    --primary-foreground: 206 11% 28%;
  
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -54,15 +54,15 @@
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
  
-    --accent: 212 20% 64%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 212 28% 78.2%;
+    --accent-foreground: 206 11% 28%;
  
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
  
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212 20% 64%;
+    --ring: 212 28% 78.2%;
   }
 }
  
