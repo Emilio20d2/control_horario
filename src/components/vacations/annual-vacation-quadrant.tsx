@@ -30,7 +30,7 @@ import { endOfWeek, endOfDay } from 'date-fns';
 
 
 export function AnnualVacationQuadrant() {
-    const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours, holidays, refreshData, getWeekId } from useDataProvider();
+    const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours, holidays, refreshData, getWeekId } = useDataProvider();
     const { toast } = useToast();
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     const [substitutions, setSubstitutions] = useState<Record<string, Record<string, string>>>({}); // { [weekKey]: { [originalEmpName]: substituteName } }
@@ -420,42 +420,25 @@ export function AnnualVacationQuadrant() {
                     const employeesInGroupThisChunk = weekChunk.map(week => {
                         const employeesInGroupForWeek = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
                         const currentSubstitutes = substitutions[week.key] || {};
-                        return employeesInGroupForWeek.map(emp => {
-                            const substituteName = currentSubstitutes[emp.name] || '';
-                            const isSpecial = emp.absence === 'EXD' || emp.absence === 'PE';
-                            let text = `${emp.name} (${emp.absence})`;
-                            if (substituteName) {
-                                text += `\n(${substituteName})`;
-                            }
-                            return { text, isSpecial, hasSubstitute: !!substituteName };
+                        
+                        const cellTexts = employeesInGroupForWeek.map(emp => {
+                             const substituteName = currentSubstitutes[emp.name] || '';
+                             let text = `${emp.name} (${emp.absence})`;
+                             if (substituteName) {
+                                 text += `\n(${substituteName})`;
+                             }
+                             return text;
                         });
+                        return cellTexts.join('\n\n'); // Use double newline as a hard separator for employees
                     });
-                    return employeesInGroupThisChunk;
+                    return [group.name, ...employeesInGroupThisChunk];
                 });
     
                 autoTable(doc, {
-                    head: [[]],
-                    body: sortedGroups.map(g => [g.name]),
+                    head: [['Grupo', ...headContent]],
+                    body: bodyRows,
                     startY: 30,
                     theme: 'grid',
-                    tableWidth: 40,
-                    didDrawPage: addHeaderFooter,
-                    styles: {
-                        cellPadding: 3,
-                        valign: 'middle',
-                        halign: 'center',
-                        fontStyle: 'bold',
-                        fillColor: [240, 240, 240],
-                        textColor: [0,0,0],
-                    }
-                });
-
-                autoTable(doc, {
-                    head: [headContent],
-                    body: bodyRows.map(row => row.map(cellData => cellData.map(d => d.text).join('\n\n'))),
-                    startY: 30,
-                    theme: 'grid',
-                    margin: { left: 40 + 15 },
                     didDrawPage: addHeaderFooter,
                     headStyles: { 
                         fillColor: [240, 240, 240], 
@@ -466,37 +449,45 @@ export function AnnualVacationQuadrant() {
                         cellPadding: 1,
                     },
                     columnStyles: {
-                        0: { cellWidth: (doc.internal.pageSize.getWidth() - 40 - pageMargin * 2) / WEEKS_PER_PAGE },
-                        1: { cellWidth: (doc.internal.pageSize.getWidth() - 40 - pageMargin * 2) / WEEKS_PER_PAGE },
-                        2: { cellWidth: (doc.internal.pageSize.getWidth() - 40 - pageMargin * 2) / WEEKS_PER_PAGE },
-                        3: { cellWidth: (doc.internal.pageSize.getWidth() - 40 - pageMargin * 2) / WEEKS_PER_PAGE },
+                        0: { cellWidth: 40, fontStyle: 'bold', halign: 'center', valign: 'middle' },
+                        1: { cellWidth: (pageWidth - 40 - pageMargin * 2) / WEEKS_PER_PAGE },
+                        2: { cellWidth: (pageWidth - 40 - pageMargin * 2) / WEEKS_PER_PAGE },
+                        3: { cellWidth: (pageWidth - 40 - pageMargin * 2) / WEEKS_PER_PAGE },
+                        4: { cellWidth: (pageWidth - 40 - pageMargin * 2) / WEEKS_PER_PAGE },
                     },
                     styles: {
                         fontSize: 8,
-                        valign: 'middle',
+                        valign: 'top',
                         cellPadding: 1,
                         lineHeight: 2,
                     },
                     didParseCell: (data) => {
-                        if (data.section === 'body') {
-                            data.cell.styles.fillColor = false;
-                            
-                            const groupIndex = data.row.index;
-                            const weekIndex = data.column.index;
-                            const employeesInCell = bodyRows[groupIndex]?.[weekIndex] || [];
-                            
-                            if (employeesInCell.length > 0) {
-                                const styledText = employeesInCell.map(emp => {
-                                    const parts = [];
-                                    const mainText = `${emp.text.split('\n')[0]}`;
-                                    const substituteText = emp.hasSubstitute ? `\n${emp.text.split('\n')[1]}` : '';
+                        if (data.section === 'body' && data.column.index > 0) {
+                           data.cell.styles.fillColor = false;
+                           
+                            const cellText = data.cell.raw as string;
+                            if (cellText) {
+                                const styledText = cellText.split('\n\n').map(empBlock => {
+                                    const lines = empBlock.split('\n');
+                                    const mainLine = lines[0];
+                                    const subLine = lines[1];
 
-                                    parts.push({ text: mainText, styles: { textColor: emp.isSpecial ? [0, 0, 255] : [0, 0, 0] } });
-                                    if (emp.hasSubstitute) {
-                                        parts.push({ text: substituteText, styles: { textColor: [255, 0, 0] } });
+                                    const isSpecial = mainLine.includes('(EXD)') || mainLine.includes('(PE)');
+                                    
+                                    const textParts: any[] = [];
+                                    textParts.push({ text: mainLine, styles: { textColor: isSpecial ? [0, 0, 255] : [0, 0, 0] } });
+                                    if(subLine) {
+                                        textParts.push({ text: `\n${subLine}`, styles: { textColor: [255, 0, 0] } });
                                     }
-                                    return parts;
+                                    // Add a separator for the next employee block
+                                    textParts.push({ text: '\n', styles: { fontSize: 4 } }); 
+                                    return textParts;
                                 }).flat();
+                                
+                                // Remove the last separator
+                                if (styledText.length > 0) {
+                                    styledText.pop();
+                                }
                                 data.cell.content = styledText;
                             }
                         }
@@ -574,14 +565,8 @@ export function AnnualVacationQuadrant() {
             };
         });
     };
-
     
-    if (loading) {
-        return <Skeleton className="h-[600px] w-full" />;
-    }
-
     const QuadrantTable = ({ isFullscreen }: { isFullscreen?: boolean }) => {
-
         return (
              <div ref={tableContainerRef} className={cn("overflow-auto", isFullscreen && "h-full w-full")} onScroll={(e) => { if(!isFullscreen) {scrollPositionRef.current = e.currentTarget.scrollLeft} }}>
                 <table className="w-full border-collapse">
@@ -692,6 +677,10 @@ export function AnnualVacationQuadrant() {
         );
     };
     
+    if (loading) {
+        return <Skeleton className="h-[600px] w-full" />;
+    }
+
     if (isFullscreen) {
         return (
             <div className="fixed inset-0 bg-background z-50 p-4 flex flex-col" style={{ height: '100dvh' }}>
@@ -812,6 +801,8 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
+
 
 
 
