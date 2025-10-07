@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod } from '@/lib/types';
 import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getMonth, getYear, getWeeksInMonth, startOfMonth, endOfMonth, eachWeekOfInterval, addWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { DateRange, DayPicker, Row, RowProps } from 'react-day-picker';
+import { DateRange, DayPicker, Row, RowProps, CaptionProps, useNavigation } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Skeleton } from '../ui/skeleton';
 import { setDocument } from '@/lib/services/firestoreService';
@@ -23,6 +23,48 @@ import { db } from '@/lib/firebase';
 import { Badge } from '../ui/badge';
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from '@/lib/utils';
+
+function CustomCaption(props: CaptionProps) {
+    const { fromDate, toDate, goToMonth, nextMonth, previousMonth } = useNavigation();
+    const { getTheoreticalHoursAndTurn, selectedEmployeeId } = useDataProvider();
+
+    const getTurnForWeek = (date: Date) => {
+        if (!selectedEmployeeId) return null;
+        const { turnId } = getTheoreticalHoursAndTurn(selectedEmployeeId, date);
+        return turnId ? turnId.replace('turn', 'T') : null;
+    };
+    
+    const firstWeekTurn = getTurnForWeek(props.displayMonth);
+
+    return (
+        <div className="flex justify-between items-center px-2 py-1">
+            <h2 className="font-semibold text-lg flex items-center gap-2">
+                {format(props.displayMonth, 'MMMM yyyy', { locale: es })}
+                {firstWeekTurn && <Badge variant="outline">{firstWeekTurn}</Badge>}
+            </h2>
+            <div className="flex gap-1">
+                <Button
+                    disabled={!previousMonth}
+                    onClick={() => previousMonth && goToMonth(previousMonth)}
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7"
+                >
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                    disabled={!nextMonth}
+                    onClick={() => nextMonth && goToMonth(nextMonth)}
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7"
+                >
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+            </div>
+      </div>
+    );
+  }
 
 export function VacationPlanner() {
     const { employees, absenceTypes, holidays, loading, refreshData, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn } = useDataProvider();
@@ -256,20 +298,6 @@ export function VacationPlanner() {
         }
     };
 
-    const Week = (props: RowProps) => {
-        if (!selectedEmployeeId) return <Row {...props} />;
-        
-        const { turnId } = getTheoreticalHoursAndTurn(selectedEmployeeId, props.dates[0]);
-        
-        return (
-            <div className="flex items-center relative">
-                <Row {...props} />
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 pr-2">
-                    <Badge variant="outline">{turnId ? turnId.replace('turn', 'T') : 'N/A'}</Badge>
-                </div>
-            </div>
-        );
-    }
 
     if(loading) return <Skeleton className="h-96 w-full" />;
 
@@ -317,8 +345,8 @@ export function VacationPlanner() {
                             modifiersStyles={modifiersStyles}
                             month={calendarMonth}
                             onMonthChange={setCalendarMonth}
-                            components={{
-                                Row: Week,
+                             components={{
+                                Caption: (props) => <CustomCaption {...props} data-employee-id={selectedEmployeeId} />,
                             }}
                         />
                         <Button onClick={handleAddPeriod} disabled={isLoading || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
