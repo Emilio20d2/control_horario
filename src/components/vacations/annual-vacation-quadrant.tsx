@@ -583,7 +583,7 @@ export function AnnualVacationQuadrant() {
                     <thead className="sticky top-0 z-20 bg-background">
                         <tr>
                             <th className="sticky left-0 z-30 bg-background p-0" style={{ width: '1px' }}>
-                                <div className="w-1 h-full" />
+                                <div className="w-px h-full" />
                             </th>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
@@ -607,7 +607,7 @@ export function AnnualVacationQuadrant() {
                     <tbody>
                         {sortedGroups.map((group, groupIndex) => (
                             <tr key={group.id}>
-                                <td style={{ backgroundColor: groupColors[groupIndex % groupColors.length]}} className="sticky left-0 z-10 w-1 p-0"></td>
+                                <td style={{ backgroundColor: groupColors[groupIndex % groupColors.length], width: '1px' }} className="sticky left-0 z-10 p-0"></td>
                                 {weeksOfYear.map(week => {
                                     const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
@@ -815,3 +815,4 @@ export function AnnualVacationQuadrant() {
     
 
     
+
