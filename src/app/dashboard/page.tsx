@@ -786,7 +786,7 @@ export default function DashboardPage() {
           </div>
           <div className="overflow-x-auto pb-4">
             <div className="flex gap-4 px-4 md:px-6 flex-nowrap">
-                <Card className="min-w-[280px] sm:min-w-0">
+                <Card className="w-[280px] flex-shrink-0">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Informe Resumen Anual</CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
@@ -814,7 +814,7 @@ export default function DashboardPage() {
                         </Button>
                     </CardContent>
                 </Card>
-                <Card className="min-w-[280px] sm:min-w-0">
+                <Card className="w-[280px] flex-shrink-0">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Informe Jornada Anual</CardTitle>
                     <BookUser className="h-4 w-4 text-muted-foreground" />
@@ -842,7 +842,7 @@ export default function DashboardPage() {
                         </Button>
                     </CardContent>
                 </Card>
-                <Card className="min-w-[280px] sm:min-w-0">
+                <Card className="w-[280px] flex-shrink-0">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                     Informe Ausencias por Empleado
@@ -873,7 +873,7 @@ export default function DashboardPage() {
                 </CardContent>
                 </Card>
                 <HolidayReportGenerator />
-                <Card className="min-w-[280px] sm:min-w-0">
+                <Card className="w-[280px] flex-shrink-0">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Horas Complementarias</CardTitle>
                         <CardDescription>
@@ -897,7 +897,7 @@ export default function DashboardPage() {
                         </Button>
                     </CardContent>
                 </Card>
-                <Card className="min-w-[280px] sm:min-w-0">
+                <Card className="w-[280px] flex-shrink-0">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Informe Semanal Horas</CardTitle>
                     <Library className="h-4 w-4 text-muted-foreground" />
