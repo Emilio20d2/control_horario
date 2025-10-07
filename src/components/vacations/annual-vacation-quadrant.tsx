@@ -24,8 +24,6 @@ import { Badge } from '../ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../ui/dialog';
 import { cn } from '@/lib/utils';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { endOfWeek, endOfDay } from 'date-fns';
 
 
@@ -279,7 +277,7 @@ const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean }>(({ 
     const groupColors = ['#dbeafe', '#dcfce7', '#fef9c3', '#f3e8ff', '#fce7f3', '#e0e7ff', '#ccfbf1', '#ffedd5'];
     
      return (
-             <div ref={ref} className={cn("overflow-auto", isFullscreen && "h-full flex-grow")}>
+             <div ref={ref} className="overflow-auto h-full flex-grow">
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-20 bg-background">
                         <tr>
@@ -398,6 +396,15 @@ const FullscreenQuadrant = ({
     tableContainerRef: React.RefObject<HTMLDivElement>;
     scrollPositionRef: React.MutableRefObject<{ top: number; left: number }>;
 }) => {
+    
+    useLayoutEffect(() => {
+        const container = tableContainerRef.current;
+        if (container) {
+            container.scrollTop = scrollPositionRef.current.top;
+            container.scrollLeft = scrollPositionRef.current.left;
+        }
+    });
+
     useEffect(() => {
         const handleScroll = () => {
             if (tableContainerRef.current) {
@@ -419,15 +426,7 @@ const FullscreenQuadrant = ({
             }
         };
     }, [tableContainerRef, scrollPositionRef]);
-
-    useLayoutEffect(() => {
-        const container = tableContainerRef.current;
-        if (container) {
-            container.scrollTop = scrollPositionRef.current.top;
-            container.scrollLeft = scrollPositionRef.current.left;
-        }
-    });
-
+    
     return (
         <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
             <DialogContent className="max-w-full h-full p-2 bg-background flex flex-col border-0 shadow-none gap-0">
@@ -447,7 +446,7 @@ const FullscreenQuadrant = ({
 
 
 export function AnnualVacationQuadrant() {
-    const { loading, absenceTypes, vacationData: providerVacationData, getWeekId, getTheoreticalHoursAndTurn } = useDataProvider();
+    const { loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn } = useDataProvider();
     const { toast } = useToast();
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     
@@ -481,8 +480,6 @@ export function AnnualVacationQuadrant() {
 
     const availableYears = useMemo(() => {
         const years = new Set<number>();
-        // Assuming weeklyRecords is available from context
-        const { weeklyRecords } = providerVacationData;
         if (weeklyRecords) {
             Object.keys(weeklyRecords).forEach(id => years.add(parseInt(id.split('-')[0], 10)));
         }
@@ -491,7 +488,7 @@ export function AnnualVacationQuadrant() {
         years.add(currentYear + 1);
         years.add(currentYear - 1);
         return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
-    }, [providerVacationData]);
+    }, [weeklyRecords]);
     
     const handleUpdateAbsence = async () => {
         if (!editingAbsence || !editedDateRange?.from) return;
@@ -554,6 +551,8 @@ export function AnnualVacationQuadrant() {
     if (loading) {
         return <Skeleton className="h-[600px] w-full" />;
     }
+    
+    const vacationPeriods = editingAbsence ? editingAbsence.employee.absencePeriods : [];
 
     return (
         <>
@@ -600,7 +599,7 @@ export function AnnualVacationQuadrant() {
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {(providerVacationData.absencesByEmployee[editingAbsence.employee.id] || []).filter((p: any) => getYear(p.startDate) === selectedYear).map((period: any) => {
+                                                {(vacationPeriods || []).filter((p: any) => getYear(p.startDate) === selectedYear).map((period: any) => {
                                                     const absenceType = absenceTypes.find(at => at.id === period.absenceTypeId);
                                                     return (
                                                     <TableRow key={period.id}>
