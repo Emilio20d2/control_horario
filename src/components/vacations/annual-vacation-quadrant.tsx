@@ -37,7 +37,6 @@ export function AnnualVacationQuadrant() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const tableContainerRef = useRef<HTMLDivElement>(null);
-    
     const scrollPositionRef = useRef(0);
 
     const [editingAbsence, setEditingAbsence] = useState<{
@@ -70,7 +69,7 @@ export function AnnualVacationQuadrant() {
     
         const container = tableContainerRef.current;
         if (container) {
-            container.addEventListener('scroll', handleScroll);
+            container.addEventListener('scroll', handleScroll, { passive: true });
         }
         
         return () => {
@@ -82,7 +81,7 @@ export function AnnualVacationQuadrant() {
     
     useEffect(() => {
         const container = tableContainerRef.current;
-        if (container && (isFullscreen || !isFullscreen)) {
+        if (container && isFullscreen) {
              setTimeout(() => {
                 if(container) {
                     container.scrollLeft = scrollPositionRef.current;
@@ -403,9 +402,7 @@ export function AnnualVacationQuadrant() {
             const totalPages = weeksInChunks.length;
     
             weeksInChunks.forEach((weekChunk, pageIndex) => {
-                if (pageIndex > 0) {
-                    doc.addPage('l', 'a4');
-                }
+                if (pageIndex > 0) doc.addPage('l', 'a4');
     
                 const pageHeight = doc.internal.pageSize.getHeight();
                 const pageWidth = doc.internal.pageSize.getWidth();
@@ -422,72 +419,73 @@ export function AnnualVacationQuadrant() {
                     const summary = vacationData.weeklySummaries[week.key];
                     return `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}\n${summary?.employeeCount || 0} emp. - ${summary?.hourImpact.toFixed(0) || 0}h`;
                 });
-
+                
                 const bodyRows = sortedGroups.map(group => {
                     return weekChunk.map(week => {
                         const employeesInGroup = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
                         const currentSubstitutes = substitutions[week.key] || {};
                         
                         return employeesInGroup.map(emp => {
-                            const substituteName = currentSubstitutes[emp.name];
-                            return { name: emp.name, absence: emp.absence, substitute: substituteName };
-                        });
+                            const substituteName = currentSubstitutes[emp.name] || '';
+                            return { 
+                                name: emp.name, 
+                                absence: emp.absence, 
+                                substitute: substituteName,
+                                isSpecial: emp.absence === 'EXD' || emp.absence === 'PE'
+                            };
+                        }).sort((a, b) => a.name.localeCompare(b.name));
                     });
                 });
-                
+
+                const finalBody = bodyRows.map(row => row.map(cellData => 
+                    cellData.map(item =>
+                        `${item.name} (${item.absence})` + (item.substitute ? ` (${item.substitute})` : '')
+                    ).join('\n')
+                ));
+
                 autoTable(doc, {
                     head: [headContent],
-                    body: bodyRows as any,
+                    body: finalBody,
                     startY: 30,
                     theme: 'grid',
                     didDrawPage: addHeaderFooter,
-                    columnStyles: { 
-                        0: { cellWidth: (doc.internal.pageSize.getWidth() - pageMargin * 2) / WEEKS_PER_PAGE },
-                        1: { cellWidth: (doc.internal.pageSize.getWidth() - pageMargin * 2) / WEEKS_PER_PAGE },
-                        2: { cellWidth: (doc.internal.pageSize.getWidth() - pageMargin * 2) / WEEKS_PER_PAGE },
-                        3: { cellWidth: (doc.internal.pageSize.getWidth() - pageMargin * 2) / WEEKS_PER_PAGE },
-                    },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
                         fontStyle: 'bold', 
                         halign: 'center',
                         fontSize: 9,
+                        cellPadding: 1,
+                    },
+                    columnStyles: { 
+                        0: { cellWidth: (doc.internal.pageSize.getWidth() - pageMargin * 2) / WEEKS_PER_PAGE },
+                        1: { cellWidth: (doc.internal.pageSize.getWidth() - pageMargin * 2) / WEEKS_PER_PAGE },
+                        2: { cellWidth: (doc.internal.pageSize.getWidth() - pageMargin * 2) / WEEKS_PER_PAGE },
+                        3: { cellWidth: (doc.internal.pageSize.getWidth() - pageMargin * 2) / WEEKS_PER_PAGE },
                     },
                     didParseCell: (data) => {
-                        data.cell.styles.cellPadding = 2; // Reduced padding
-                        data.cell.styles.valign = 'top';
                         if (data.section === 'body') {
-                           data.cell.styles.fillColor = false;
-                        }
-                    },
-                    didDrawCell: (data) => {
-                        if (data.section === 'body' && Array.isArray(data.cell.raw)) {
-                            const cellData = data.cell.raw as { name: string, absence: string, substitute?: string }[];
-                            doc.setFontSize(8);
-                            doc.setTextColor(0, 0, 0);
-                            doc.setFont('helvetica', 'normal');
+                            data.cell.styles.fillColor = false;
+                            data.cell.styles.fontSize = 8;
+                            data.cell.styles.cellPadding = 1;
+                            data.cell.styles.lineColor = [200, 200, 200];
                             
-                            let y = data.cell.y + 4; 
-                            const lineHeight = 5;
-                            
-                            cellData.forEach(item => {
-                                let isSpecialAbsence = item.absence === 'EXD' || item.absence === 'PE';
-                                if (isSpecialAbsence) {
-                                    doc.setTextColor(0, 0, 255); // Blue
+                            const groupIndex = data.row.index;
+                            const weekIndex = data.column.index;
+                            const employeesInCell = bodyRows[groupIndex]?.[weekIndex] || [];
+                           
+                            let styledText = [];
+                            for(const emp of employeesInCell) {
+                                let parts = [{ text: `${emp.name} (${emp.absence})` }];
+                                if (emp.substitute) {
+                                    parts.push({ text: ` (${emp.substitute})`, styles: { textColor: [255, 0, 0] } });
                                 }
-                                doc.text(`${item.name} (${item.absence})`, data.cell.x + 2, y);
-                                if (isSpecialAbsence) {
-                                    doc.setTextColor(0, 0, 0); // Reset
+                                if (emp.isSpecial) {
+                                    parts[0].styles = { textColor: [0, 0, 255] };
                                 }
-                                
-                                if (item.substitute) {
-                                    doc.setTextColor(255, 0, 0); // Red
-                                    doc.text(` (${item.substitute})`, data.cell.x + 2 + doc.getStringUnitWidth(`${item.name} (${item.absence})`) * (doc.getFontSize() / doc.internal.scaleFactor) + 1, y);
-                                    doc.setTextColor(0, 0, 0); // Reset
-                                }
-                                y += lineHeight;
-                            });
+                                styledText.push(parts);
+                            }
+                            data.cell.content = styledText;
                         }
                     },
                 });
@@ -536,13 +534,8 @@ export function AnnualVacationQuadrant() {
                 columnStyles: {
                     0: { cellWidth: 60 },
                     1: { cellWidth: 'auto' },
-                    2: { cellWidth: 50, cellHeight: 20 },
+                    2: { cellWidth: 50, minCellHeight: 20 },
                 },
-                didDrawCell: (data) => {
-                    if (data.column.index === 2 && data.section === 'body') {
-                        // Dibuja un rectángulo para la firma si es necesario
-                    }
-                }
             });
 
             doc.save(`listado_firmas_vacaciones_${selectedYear}.pdf`);
@@ -806,5 +799,6 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
 
 
