@@ -332,7 +332,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 const dayId = format(day, 'yyyy-MM-dd');
                 const dayData = localWeekData.days?.[dayId];
 
-                if (!dayData) return <TableCell key={day.toISOString()} className="p-1 min-w-[140px]" />;
+                if (!dayData) return <TableCell key={day.toISOString()} className="p-1 min-w-[140px] sm:min-w-[150px]" />;
                 
                 const isHoliday = dayData.isHoliday;
                 const holidayType = dayData.holidayType;
@@ -347,7 +347,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     dayData.absence === 'ninguna';
 
                 return (
-                    <TableCell key={day.toISOString()} className={cn("p-1 align-top text-xs min-w-[140px]", isHoliday && "bg-primary/10")}>
+                    <TableCell key={day.toISOString()} className={cn("p-1 align-top text-xs min-w-[140px] sm:min-w-[150px]", isHoliday && "bg-primary/10")}>
                         <div className="flex flex-col gap-1 h-full">
                             <div className='w-full space-y-1 flex-grow'>
                                 <p className="text-muted-foreground text-xs h-4">
@@ -355,43 +355,60 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                                     <span className='hidden sm:inline'>Teóricas: </span>
                                     {(dayData.theoreticalHours ?? 0).toFixed(2)}h
                                 </p>
+                                
+                                <div className="space-y-1 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
+                                     <span className="text-xs font-medium text-muted-foreground hidden sm:inline">Trab:</span>
+                                    <InputStepper
+                                        label="H. Trabajadas"
+                                        value={dayData.workedHours}
+                                        onChange={(v) => handleDailyDataChange(day, 'workedHours', v)}
+                                        inputClassName="text-xs"
+                                        disabled={isConfirmed}
+                                        className='sm:w-[105px]'
+                                    />
+                                </div>
 
-                                <InputStepper
-                                    label="H. Trabajadas"
-                                    value={dayData.workedHours}
-                                    onChange={(v) => handleDailyDataChange(day, 'workedHours', v)}
-                                    inputClassName="text-xs"
-                                    disabled={isConfirmed}
-                                />
 
                                 {absenceType && !absenceType.computesFullDay && (
-                                     <InputStepper
-                                        label={absenceType.name}
-                                        value={dayData.absenceHours}
-                                        onChange={(v) => handleDailyDataChange(day, 'absenceHours', v)}
-                                        disabled={isConfirmed}
-                                        inputClassName="text-xs"
-                                    />
+                                     <div className="space-y-1 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
+                                         <span className="text-xs font-medium text-muted-foreground hidden sm:inline">Aus:</span>
+                                         <InputStepper
+                                            label={absenceType.name}
+                                            value={dayData.absenceHours}
+                                            onChange={(v) => handleDailyDataChange(day, 'absenceHours', v)}
+                                            disabled={isConfirmed}
+                                            inputClassName="text-xs"
+                                            className='sm:w-[105px]'
+                                        />
+                                     </div>
                                 )}
                                 
                                 {absenceType && absenceType.computesFullDay && (
-                                     <InputStepper
-                                        label={absenceType.name}
-                                        value={dayData.absenceHours}
-                                        onChange={(v) => handleDailyDataChange(day, 'absenceHours', v)}
-                                        disabled={isConfirmed}
-                                        inputClassName="text-xs"
-                                    />
+                                    <div className="space-y-1 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
+                                         <span className="text-xs font-medium text-muted-foreground hidden sm:inline">Aus:</span>
+                                         <InputStepper
+                                            label={absenceType.name}
+                                            value={dayData.absenceHours}
+                                            onChange={(v) => handleDailyDataChange(day, 'absenceHours', v)}
+                                            disabled={isConfirmed}
+                                            inputClassName="text-xs"
+                                            className='sm:w-[105px]'
+                                        />
+                                    </div>
                                 )}
                                 
                                 {showLeaveHours && (
-                                    <InputStepper
-                                        label="H. Libranza"
-                                        value={dayData.leaveHours}
-                                        onChange={(v) => handleDailyDataChange(day, 'leaveHours', v)}
-                                        disabled={isConfirmed}
-                                        inputClassName="text-xs"
-                                    />
+                                     <div className="space-y-1 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
+                                         <span className="text-xs font-medium text-muted-foreground hidden sm:inline">Lib:</span>
+                                        <InputStepper
+                                            label="H. Libranza"
+                                            value={dayData.leaveHours}
+                                            onChange={(v) => handleDailyDataChange(day, 'leaveHours', v)}
+                                            disabled={isConfirmed}
+                                            inputClassName="text-xs"
+                                            className='sm:w-[105px]'
+                                        />
+                                     </div>
                                 )}
                             </div>
 
@@ -410,5 +427,3 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         </TableRow>
     );
 };
-
-    
