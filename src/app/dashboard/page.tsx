@@ -30,10 +30,10 @@ const chartConfig = {
       label: "Balance",
       color: "hsl(var(--primary))",
     },
-} satisfies ChartConfig
+} satisfies ChartConfig;
 
 export default function DashboardPage() {
-    const { employees, weeklyRecords, loading, absenceTypes, holidays, getProcessedAnnualDataForEmployee, getEmployeeFinalBalances, calculateTheoreticalAnnualWorkHours, getEmployeeBalancesForWeek, getWeekId, calculateCurrentAnnualComputedHours, getEffectiveWeeklyHours, getTheoreticalHoursAndTurn, getActivePeriod, processEmployeeWeekData, calculateBalancePreview, vacationData } from useDataProvider();
+    const { employees, weeklyRecords, loading, absenceTypes, holidays, getProcessedAnnualDataForEmployee, getEmployeeFinalBalances, calculateTheoreticalAnnualWorkHours, getEmployeeBalancesForWeek, getWeekId, calculateCurrentAnnualComputedHours, getEffectiveWeeklyHours, getTheoreticalHoursAndTurn, getActivePeriod, processEmployeeWeekData, calculateBalancePreview, vacationData } = useDataProvider();
     
     // Default to a date from data if available, otherwise today
     const [referenceDate, setReferenceDate] = useState(new Date());
@@ -784,14 +784,73 @@ export default function DashboardPage() {
               Panel de Control
             </h1>
           </div>
-          <div className="flex gap-4 px-4 md:px-6 overflow-x-auto pb-4 md:grid md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-            <Card className="min-w-[280px] sm:min-w-0">
+          <div className="overflow-x-auto pb-4">
+            <div className="flex gap-4 px-4 md:px-6 flex-nowrap">
+                <Card className="min-w-[280px] sm:min-w-0">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Informe Resumen Anual</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Select value={reportEmployeeId} onValueChange={setReportEmployeeId}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Seleccionar empleado..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {activeEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Select value={String(reportYear)} onValueChange={v => setReportYear(Number(v))}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Seleccionar año..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={generateAnnualReport} disabled={isGenerating || !reportEmployeeId} className="w-full">
+                            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                            {isGenerating ? 'Generando...' : 'Generar Resumen'}
+                        </Button>
+                    </CardContent>
+                </Card>
+                <Card className="min-w-[280px] sm:min-w-0">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Informe Jornada Anual</CardTitle>
+                    <BookUser className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Select value={detailedReportEmployeeId} onValueChange={setDetailedReportEmployeeId}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Seleccionar empleado..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {activeEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Select value={String(detailedReportYear)} onValueChange={v => setDetailedReportYear(Number(v))}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Seleccionar año..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={generateAnnualDetailedReport} disabled={isGeneratingDetailed || !detailedReportEmployeeId} className="w-full">
+                            {isGeneratingDetailed ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                            {isGeneratingDetailed ? 'Generando...' : 'Generar Informe'}
+                        </Button>
+                    </CardContent>
+                </Card>
+                <Card className="min-w-[280px] sm:min-w-0">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Informe Resumen Anual</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium">
+                    Informe Ausencias por Empleado
+                    </CardTitle>
+                    <CalendarX2 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <Select value={reportEmployeeId} onValueChange={setReportEmployeeId}>
+                    <Select value={absenceReportEmployeeId} onValueChange={setAbsenceReportEmployeeId}>
                         <SelectTrigger className="w-full">
                             <SelectValue placeholder="Seleccionar empleado..." />
                         </SelectTrigger>
@@ -799,7 +858,7 @@ export default function DashboardPage() {
                             {activeEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
-                     <Select value={String(reportYear)} onValueChange={v => setReportYear(Number(v))}>
+                    <Select value={String(absenceReportYear)} onValueChange={v => setAbsenceReportYear(Number(v))}>
                         <SelectTrigger className="w-full">
                             <SelectValue placeholder="Seleccionar año..." />
                         </SelectTrigger>
@@ -807,115 +866,58 @@ export default function DashboardPage() {
                             {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                         </SelectContent>
                     </Select>
-                    <Button onClick={generateAnnualReport} disabled={isGenerating || !reportEmployeeId} className="w-full">
-                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                        {isGenerating ? 'Generando...' : 'Generar Resumen'}
+                    <Button onClick={handleGenerateAbsenceReport} disabled={isGeneratingAbsenceReport || !absenceReportEmployeeId} className="w-full">
+                        {isGeneratingAbsenceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                        {isGeneratingAbsenceReport ? 'Generando...' : 'Generar Resumen'}
                     </Button>
                 </CardContent>
-              </Card>
-            <Card className="min-w-[280px] sm:min-w-0">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Informe Jornada Anual</CardTitle>
-                  <BookUser className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Select value={detailedReportEmployeeId} onValueChange={setDetailedReportEmployeeId}>
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Seleccionar empleado..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {activeEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                     <Select value={String(detailedReportYear)} onValueChange={v => setDetailedReportYear(Number(v))}>
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Seleccionar año..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Button onClick={generateAnnualDetailedReport} disabled={isGeneratingDetailed || !detailedReportEmployeeId} className="w-full">
-                        {isGeneratingDetailed ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                        {isGeneratingDetailed ? 'Generando...' : 'Generar Informe'}
-                    </Button>
-                </CardContent>
-              </Card>
-            <Card className="min-w-[280px] sm:min-w-0">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Informe Ausencias por Empleado
-                </CardTitle>
-                <CalendarX2 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent className="space-y-4">
-                 <Select value={absenceReportEmployeeId} onValueChange={setAbsenceReportEmployeeId}>
-                    <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Seleccionar empleado..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {activeEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                 <Select value={String(absenceReportYear)} onValueChange={v => setAbsenceReportYear(Number(v))}>
-                    <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Seleccionar año..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                <Button onClick={handleGenerateAbsenceReport} disabled={isGeneratingAbsenceReport || !absenceReportEmployeeId} className="w-full">
-                    {isGeneratingAbsenceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                    {isGeneratingAbsenceReport ? 'Generando...' : 'Generar Resumen'}
-                </Button>
-              </CardContent>
-            </Card>
-            <HolidayReportGenerator />
-            <Card className="min-w-[280px] sm:min-w-0">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Horas Complementarias</CardTitle>
-                     <CardDescription>
-                        Total semana: <span className="font-bold text-primary">+{complementaryHours.toFixed(2)}h</span>
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Select value={complementaryHoursReportWeek} onValueChange={setComplementaryHoursReportWeek}>
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Seleccionar semana..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {availableWeeks.map(w => (
-                                <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Button onClick={handleGenerateReport} className="w-full">
-                        <FileDown className="mr-2 h-4 w-4" />
-                        Generar Informe
-                    </Button>
-                </CardContent>
-            </Card>
-            <Card className="min-w-[280px] sm:min-w-0">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Informe Semanal Horas</CardTitle>
-                  <Library className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Select value={selectedBalanceReportWeek} onValueChange={setSelectedBalanceReportWeek}>
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Seleccionar semana..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {availableWeeks.map(w => <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Button onClick={handleGenerateBalanceReport} disabled={isGeneratingBalanceReport || !selectedBalanceReportWeek} className="w-full">
-                        {isGeneratingBalanceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                        {isGeneratingBalanceReport ? 'Generando...' : 'Generar Informe'}
-                    </Button>
-                </CardContent>
-              </Card>
+                </Card>
+                <HolidayReportGenerator />
+                <Card className="min-w-[280px] sm:min-w-0">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Horas Complementarias</CardTitle>
+                        <CardDescription>
+                            Total semana: <span className="font-bold text-primary">+{complementaryHours.toFixed(2)}h</span>
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Select value={complementaryHoursReportWeek} onValueChange={setComplementaryHoursReportWeek}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Seleccionar semana..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableWeeks.map(w => (
+                                    <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={handleGenerateReport} className="w-full">
+                            <FileDown className="mr-2 h-4 w-4" />
+                            Generar Informe
+                        </Button>
+                    </CardContent>
+                </Card>
+                <Card className="min-w-[280px] sm:min-w-0">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Informe Semanal Horas</CardTitle>
+                    <Library className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Select value={selectedBalanceReportWeek} onValueChange={setSelectedBalanceReportWeek}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Seleccionar semana..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableWeeks.map(w => <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={handleGenerateBalanceReport} disabled={isGeneratingBalanceReport || !selectedBalanceReportWeek} className="w-full">
+                            {isGeneratingBalanceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                            {isGeneratingBalanceReport ? 'Generando...' : 'Generar Informe'}
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
           </div>
     
            <div className="px-4 md:px-6 pb-4">
