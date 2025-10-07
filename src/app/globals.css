@@ -7,7 +7,7 @@
     --background: 0 0% 100%; /* Blanco nieve */
     --foreground: 206 11% 28%; /* Gris carbón azulado */
 
-    --card: 210 27% 93.5%; /* Gris hielo */
+    --card: 0 0% 100%; /* Transparente para coincidir con el fondo */
     --card-foreground: 206 11% 28%;
  
     --popover: 210 27% 93.5%;
@@ -39,7 +39,7 @@
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
  
-    --card: 222 47% 15%;
+    --card: 222 47% 11%;
     --card-foreground: 210 40% 98%;
  
     --popover: 222 47% 11%;

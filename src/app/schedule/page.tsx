@@ -196,7 +196,7 @@ export default function SchedulePage() {
             });
     
         return (
-            <Card className="rounded-none border-0 border-t">
+            <Card className="rounded-none border-0 border-t bg-card">
                 <CardHeader>
                     <h2 className="text-xl font-bold text-center">Vista Anual de {employee.name} - {selectedYear}</h2>
                 </CardHeader>
@@ -235,7 +235,7 @@ export default function SchedulePage() {
     }
     
     const renderWeeklyView = () => (
-        <Card className="rounded-none border-0 border-t">
+        <Card className="rounded-none border-0 border-t bg-card">
             <CardHeader><WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} /></CardHeader>
             <CardContent className="p-0">
                 <div className="overflow-x-auto">
