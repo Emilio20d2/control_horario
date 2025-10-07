@@ -84,7 +84,9 @@ export function AnnualVacationQuadrant() {
         const container = tableContainerRef.current;
         if (container && (isFullscreen || !isFullscreen)) {
              setTimeout(() => {
-                container.scrollLeft = scrollPositionRef.current;
+                if(container) {
+                    container.scrollLeft = scrollPositionRef.current;
+                }
             }, 0);
         }
     }, [isFullscreen]);
@@ -422,17 +424,15 @@ export function AnnualVacationQuadrant() {
                 });
 
                 const bodyRows = sortedGroups.map(group => {
-                    const rowData = weekChunk.map(week => {
+                    return weekChunk.map(week => {
                         const employeesInGroup = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
                         const currentSubstitutes = substitutions[week.key] || {};
                         
-                        const cellText = employeesInGroup.map(emp => {
+                        return employeesInGroup.map(emp => {
                             const substituteName = currentSubstitutes[emp.name];
                             return { name: emp.name, absence: emp.absence, substitute: substituteName };
                         });
-                        return cellText;
                     });
-                    return rowData;
                 });
                 
                 autoTable(doc, {
@@ -441,7 +441,12 @@ export function AnnualVacationQuadrant() {
                     startY: 30,
                     theme: 'grid',
                     didDrawPage: addHeaderFooter,
-                    columnStyles: { 0: { cellWidth: (doc.internal.pageSize.getWidth() - 30) / WEEKS_PER_PAGE }}, // Equal width
+                    columnStyles: { 
+                        0: { cellWidth: (doc.internal.pageSize.getWidth() - pageMargin * 2) / WEEKS_PER_PAGE },
+                        1: { cellWidth: (doc.internal.pageSize.getWidth() - pageMargin * 2) / WEEKS_PER_PAGE },
+                        2: { cellWidth: (doc.internal.pageSize.getWidth() - pageMargin * 2) / WEEKS_PER_PAGE },
+                        3: { cellWidth: (doc.internal.pageSize.getWidth() - pageMargin * 2) / WEEKS_PER_PAGE },
+                    },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
@@ -450,21 +455,21 @@ export function AnnualVacationQuadrant() {
                         fontSize: 9,
                     },
                     didParseCell: (data) => {
-                        data.cell.styles.cellPadding = 3; // Reduced padding
+                        data.cell.styles.cellPadding = 2; // Reduced padding
                         data.cell.styles.valign = 'top';
-                        // Remove background color for body cells
                         if (data.section === 'body') {
-                           data.cell.styles.fillColor = [255,255,255];
+                           data.cell.styles.fillColor = false;
                         }
                     },
                     didDrawCell: (data) => {
                         if (data.section === 'body' && Array.isArray(data.cell.raw)) {
                             const cellData = data.cell.raw as { name: string, absence: string, substitute?: string }[];
+                            doc.setFontSize(8);
                             doc.setTextColor(0, 0, 0);
                             doc.setFont('helvetica', 'normal');
                             
                             let y = data.cell.y + 4; 
-                            const lineHeight = 5; // Increased line height
+                            const lineHeight = 5;
                             
                             cellData.forEach(item => {
                                 let isSpecialAbsence = item.absence === 'EXD' || item.absence === 'PE';
@@ -572,7 +577,7 @@ export function AnnualVacationQuadrant() {
     const QuadrantTable = ({ isFullscreen }: { isFullscreen?: boolean }) => {
 
         return (
-             <div ref={tableContainerRef} className={cn("overflow-auto", isFullscreen && "h-full w-full")}>
+             <div ref={tableContainerRef} className={cn("overflow-auto", isFullscreen && "h-full w-full")} onScroll={(e) => { scrollPositionRef.current = e.currentTarget.scrollLeft }}>
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-20 bg-background">
                         <tr>
@@ -801,4 +806,5 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
 
