@@ -33,7 +33,7 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export default function DashboardPage() {
-    const { employees, weeklyRecords, loading, absenceTypes, holidays, getProcessedAnnualDataForEmployee, getEmployeeFinalBalances, calculateTheoreticalAnnualWorkHours, getEmployeeBalancesForWeek, getWeekId, calculateCurrentAnnualComputedHours, getEffectiveWeeklyHours, getTheoreticalHoursAndTurn, getActivePeriod, processEmployeeWeekData, calculateBalancePreview, vacationData } = useDataProvider();
+    const { employees, weeklyRecords, loading, absenceTypes, holidays, getProcessedAnnualDataForEmployee, getEmployeeFinalBalances, calculateTheoreticalAnnualWorkHours, getEmployeeBalancesForWeek, getWeekId, calculateCurrentAnnualComputedHours, getEffectiveWeeklyHours, getTheoreticalHoursAndTurn, getActivePeriod, processEmployeeWeekData, calculateBalancePreview, vacationData } from useDataProvider();
     
     // Default to a date from data if available, otherwise today
     const [referenceDate, setReferenceDate] = useState(new Date());
@@ -784,7 +784,7 @@ export default function DashboardPage() {
               Panel de Control
             </h1>
           </div>
-          <div className="flex gap-4 px-4 md:px-6 overflow-x-auto pb-4 md:grid md:grid-cols-3 xl:grid-cols-6">
+          <div className="flex gap-4 px-4 md:px-6 overflow-x-auto pb-4 md:grid md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
             <Card className="min-w-[280px] sm:min-w-0">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Informe Resumen Anual</CardTitle>
