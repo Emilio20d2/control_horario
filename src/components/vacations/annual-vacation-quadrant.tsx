@@ -578,7 +578,7 @@ export function AnnualVacationQuadrant() {
     
     const QuadrantTable = ({ isFullscreen }: { isFullscreen?: boolean }) => {
         return (
-             <div ref={tableContainerRef} className={cn("overflow-auto", isFullscreen && "h-full w-full")} onScroll={(e) => { if(!isFullscreen) {scrollPositionRef.current = e.currentTarget.scrollLeft} }}>
+             <div ref={tableContainerRef} className={cn("overflow-auto", isFullscreen && "h-full flex-grow")} onScroll={(e) => { if(!isFullscreen) {scrollPositionRef.current = e.currentTarget.scrollLeft} }}>
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-20 bg-background">
                         <tr>
@@ -821,6 +821,7 @@ export function AnnualVacationQuadrant() {
     
 
     
+
 
 
 
