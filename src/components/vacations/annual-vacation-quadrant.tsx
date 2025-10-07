@@ -27,9 +27,8 @@ import { cn } from '@/lib/utils';
 import { endOfWeek, endOfDay } from 'date-fns';
 
 
-const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean }>(({ isFullscreen }, ref) => {
+const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selectedYear: number }>(({ isFullscreen, selectedYear }, ref) => {
     const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours, holidays, getWeekId, getTheoreticalHoursAndTurn } = useDataProvider();
-    const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     const [substitutions, setSubstitutions] = useState<Record<string, Record<string, string>>>({}); // { [weekKey]: { [originalEmpName]: substituteName } }
     
     const allEmployees = useMemo(() => {
@@ -389,12 +388,14 @@ const FullscreenQuadrant = ({
     isFullscreen,
     setIsFullscreen,
     tableContainerRef,
-    scrollPositionRef
+    scrollPositionRef,
+    selectedYear,
 }: {
     isFullscreen: boolean;
     setIsFullscreen: (value: boolean) => void;
     tableContainerRef: React.RefObject<HTMLDivElement>;
     scrollPositionRef: React.MutableRefObject<{ top: number; left: number }>;
+    selectedYear: number;
 }) => {
     
     useLayoutEffect(() => {
@@ -438,7 +439,7 @@ const FullscreenQuadrant = ({
                 >
                     <Minimize className="h-6 w-6" />
                 </Button>
-                <QuadrantTable ref={tableContainerRef} isFullscreen={true} />
+                <QuadrantTable ref={tableContainerRef} isFullscreen={true} selectedYear={selectedYear} />
             </DialogContent>
         </Dialog>
     );
@@ -561,6 +562,7 @@ export function AnnualVacationQuadrant() {
                 setIsFullscreen={setIsFullscreen}
                 tableContainerRef={tableContainerRef}
                 scrollPositionRef={scrollPositionRef}
+                selectedYear={selectedYear}
             />
 
             <Dialog open={!!editingAbsence} onOpenChange={(open) => { if (!open) { setEditingAbsence(null); } }}>
@@ -662,7 +664,7 @@ export function AnnualVacationQuadrant() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <QuadrantTable ref={tableContainerRef} />
+                    <QuadrantTable ref={tableContainerRef} selectedYear={selectedYear} />
                 </CardContent>
             </Card>
         </>
