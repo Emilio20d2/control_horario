@@ -37,7 +37,8 @@ export function AnnualVacationQuadrant() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const tableContainerRef = useRef<HTMLDivElement>(null);
-    const [scrollLeft, setScrollLeft] = useState(0);
+    
+    const scrollPositionRef = useRef(0);
 
     const [editingAbsence, setEditingAbsence] = useState<{
         employee: any;
@@ -59,6 +60,32 @@ export function AnnualVacationQuadrant() {
             setEditedDateRange(undefined);
         }
     }, [editingAbsence]);
+    
+    useEffect(() => {
+        const handleScroll = (event: Event) => {
+            if (tableContainerRef.current) {
+                scrollPositionRef.current = tableContainerRef.current.scrollLeft;
+            }
+        };
+
+        const container = tableContainerRef.current;
+        if (container) {
+            container.addEventListener('scroll', handleScroll);
+        }
+        
+        return () => {
+            if (container) {
+                container.removeEventListener('scroll', handleScroll);
+            }
+        };
+    }, [tableContainerRef.current]);
+
+    useEffect(() => {
+        if (tableContainerRef.current) {
+            tableContainerRef.current.scrollLeft = scrollPositionRef.current;
+        }
+    }, [isFullscreen]);
+
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -390,43 +417,69 @@ export function AnnualVacationQuadrant() {
                     const summary = vacationData.weeklySummaries[week.key];
                     return `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}\n${summary?.employeeCount || 0} emp. - ${summary?.hourImpact.toFixed(0) || 0}h`;
                 });
-
-                const groupBodyData = sortedGroups.map(group => 
-                    weekChunk.map(week => {
+    
+                 const bodyRows = sortedGroups.map(group => {
+                    return weekChunk.map(week => {
                         const employeesInGroup = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
                         const currentSubstitutes = substitutions[week.key] || {};
-                        return employeesInGroup.map(emp => {
+                        
+                        const cellText = employeesInGroup.map(emp => {
                             const substituteName = currentSubstitutes[emp.name];
-                            return substituteName ? `${emp.name} (${emp.absence}) (${substituteName})` : `${emp.name} (${emp.absence})`;
-                        }).join('\n');
-                    })
-                );
-    
-                const availableHeight = pageHeight - 30 - 20;
-    
+                            return { name: emp.name, absence: emp.absence, substitute: substituteName };
+                        });
+                        
+                        return cellText; // Return array of objects
+                    });
+                });
+                
                 autoTable(doc, {
                     head: [headContent],
-                    body: groupBodyData,
+                    body: [], // Start with empty body, we'll draw it ourselves
                     startY: 30,
                     theme: 'grid',
-                    styles: { fontSize: 8, cellPadding: 3, valign: 'middle' },
+                    didDrawPage: addHeaderFooter,
+                    columnStyles: { 0: { cellWidth: (doc.internal.pageSize.getWidth() - 30) / WEEKS_PER_PAGE }}, // Equal width
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
                         fontStyle: 'bold', 
                         halign: 'center',
                         fontSize: 9,
-                        cellPadding: 2,
                     },
-                    willDrawCell: (data) => {
-                         if (data.section === 'body' && data.row.index >= 0 && data.row.index < sortedGroups.length) {
-                             const groupColor = groupColors[data.row.index % groupColors.length];
-                             doc.setFillColor(groupColor);
-                             doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-                         }
+                    didParseCell: (data) => {
+                        data.cell.styles.cellPadding = 1.5;
+                        data.cell.styles.valign = 'top';
                     },
-                    didDrawPage: (data) => {
-                        addHeaderFooter(data);
+                    didDrawCell: (data) => {
+                        if (data.section === 'body') {
+                             doc.setTextColor(0, 0, 0); // Reset color
+                             doc.setFont('helvetica', 'normal');
+                             
+                             const groupIndex = data.row.index;
+                             const colIndex = data.column.index;
+                             const cellData = bodyRows[groupIndex][colIndex];
+                             
+                             let y = data.cell.y + 4; // Initial padding
+                             const lineHeight = 4.5; // Custom line height
+                             
+                             cellData.forEach(item => {
+                                let isSpecialAbsence = item.absence === 'EXD' || item.absence === 'PE';
+                                if (isSpecialAbsence) {
+                                    doc.setTextColor(0, 0, 255); // Blue
+                                }
+                                doc.text(`${item.name} (${item.absence})`, data.cell.x + 2, y);
+                                if (isSpecialAbsence) {
+                                    doc.setTextColor(0, 0, 0); // Reset
+                                }
+                                
+                                if (item.substitute) {
+                                    doc.setTextColor(255, 0, 0); // Red
+                                    doc.text(` (${item.substitute})`, data.cell.x + 2 + doc.getStringUnitWidth(`${item.name} (${item.absence})`) * (doc.getFontSize() / doc.internal.scaleFactor) + 1, y);
+                                    doc.setTextColor(0, 0, 0); // Reset
+                                }
+                                y += lineHeight;
+                            });
+                        }
                     },
                 });
             });
@@ -513,27 +566,9 @@ export function AnnualVacationQuadrant() {
     }
 
     const QuadrantTable = ({ isFullscreen }: { isFullscreen?: boolean }) => {
-        const scrollPositionRef = useRef(0);
-    
-        useEffect(() => {
-            const container = tableContainerRef.current;
-            if (container) {
-                // Restore scroll position when table is re-rendered (e.g., after fullscreen toggle)
-                container.scrollLeft = scrollPositionRef.current;
-            }
-        }, [weeksOfYear]);
-    
-        const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-            // Save scroll position
-            scrollPositionRef.current = e.currentTarget.scrollLeft;
-        };
 
         return (
-            <div 
-                ref={tableContainerRef} 
-                className={cn("overflow-auto", isFullscreen && "h-full w-full")}
-                onScroll={handleScroll}
-            >
+             <div ref={tableContainerRef} className={cn("overflow-auto", isFullscreen && "h-full w-full")}>
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-20 bg-background">
                         <tr>
@@ -744,7 +779,7 @@ export function AnnualVacationQuadrant() {
                         </Select>
                         <Button onClick={generateGroupReport} disabled={isGenerating || loading}>
                             {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                            Informe de Grupos
+                            Imprimir Cuadrante
                         </Button>
                          <Button onClick={generateSignatureReport} disabled={isGenerating || loading}>
                             {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSignature className="mr-2 h-4 w-4" />}
