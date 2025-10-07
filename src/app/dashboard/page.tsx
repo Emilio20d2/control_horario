@@ -11,7 +11,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, FileDown, CalendarX2, Library, BookUser, AlertTriangle } from 'lucide-react';
+import { Users, FileDown, CalendarX2, Library, BookUser, AlertTriangle, FileSignature } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Bar, CartesianGrid, XAxis, BarChart as RechartsBarChart } from 'recharts';
@@ -33,7 +33,7 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export default function DashboardPage() {
-    const { employees, weeklyRecords, loading, absenceTypes, holidays, getProcessedAnnualDataForEmployee, getEmployeeFinalBalances, calculateTheoreticalAnnualWorkHours, getEmployeeBalancesForWeek, getWeekId, calculateCurrentAnnualComputedHours, getEffectiveWeeklyHours, getTheoreticalHoursAndTurn, getActivePeriod, processEmployeeWeekData, calculateBalancePreview } = useDataProvider();
+    const { employees, weeklyRecords, loading, absenceTypes, holidays, getProcessedAnnualDataForEmployee, getEmployeeFinalBalances, calculateTheoreticalAnnualWorkHours, getEmployeeBalancesForWeek, getWeekId, calculateCurrentAnnualComputedHours, getEffectiveWeeklyHours, getTheoreticalHoursAndTurn, getActivePeriod, processEmployeeWeekData, calculateBalancePreview, vacationData } = useDataProvider();
     
     // Default to a date from data if available, otherwise today
     const [referenceDate, setReferenceDate] = useState(new Date());
@@ -58,6 +58,10 @@ export default function DashboardPage() {
     const [absenceReportYear, setAbsenceReportYear] = useState(2025);
     const [isGeneratingAbsenceReport, setIsGeneratingAbsenceReport] = useState(false);
     
+    // For signature report
+    const [signatureReportYear, setSignatureReportYear] = useState(2025);
+    const [isGeneratingSignatureReport, setIsGeneratingSignatureReport] = useState(false);
+
     const [isGeneratingBalanceReport, setIsGeneratingBalanceReport] = useState(false);
 
 

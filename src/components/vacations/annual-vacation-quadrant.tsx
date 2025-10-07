@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@/components/ui/table';
-import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown, Maximize, Minimize, Calendar as CalendarIcon } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown, Maximize, Minimize, Calendar as CalendarIcon, FileSignature } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod, Ausencia } from '@/lib/types';
@@ -37,7 +37,7 @@ export function AnnualVacationQuadrant() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const tableContainerRef = useRef<HTMLDivElement>(null);
-    const scrollPositionRef = useRef(0);
+    const [scrollLeft, setScrollLeft] = useState(0);
 
     const [editingAbsence, setEditingAbsence] = useState<{
         employee: any;
@@ -60,56 +60,6 @@ export function AnnualVacationQuadrant() {
         }
     }, [editingAbsence]);
 
-    useEffect(() => {
-        if (tableContainerRef.current) {
-            tableContainerRef.current.scrollLeft = scrollPositionRef.current;
-        }
-    }, []);
-
-    const handleUpdateAbsence = async () => {
-        if (!editingAbsence || !editedDateRange?.from) return;
-
-        setIsGenerating(true);
-        try {
-            const { employee, absence, periodId } = editingAbsence;
-            
-            await deleteScheduledAbsence(employee.id, periodId, absence.id, employee);
-            
-            await addScheduledAbsence(employee.id, periodId, {
-                absenceTypeId: absence.absenceTypeId,
-                startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
-                endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
-            }, employee);
-
-            toast({ title: 'Ausencia actualizada', description: `La ausencia de ${employee.name} ha sido modificada.` });
-            refreshData();
-            setEditingAbsence(null);
-        } catch (error) {
-            console.error("Error updating absence:", error);
-            toast({ title: 'Error al actualizar', description: 'No se pudo modificar la ausencia.', variant: 'destructive' });
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-    
-    const handleDeleteAbsence = async () => {
-        if (!editingAbsence) return;
-
-        setIsGenerating(true);
-        try {
-            const { employee, absence, periodId } = editingAbsence;
-            await deleteScheduledAbsence(employee.id, periodId, absence.id, employee);
-            toast({ title: 'Ausencia eliminada', description: `La ausencia de ${employee.name} ha sido eliminada.`, variant: 'destructive'});
-            refreshData();
-            setEditingAbsence(null);
-        } catch (error) {
-            console.error("Error deleting absence:", error);
-            toast({ title: 'Error al eliminar', description: 'No se pudo eliminar la ausencia.', variant: 'destructive' });
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-    
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape' && isFullscreen) {
@@ -363,7 +313,51 @@ export function AnnualVacationQuadrant() {
         return [...employeeGroups].sort((a,b) => a.order - b.order);
     }, [employeeGroups]);
 
-    const generateReport = () => {
+    const handleUpdateAbsence = async () => {
+        if (!editingAbsence || !editedDateRange?.from) return;
+
+        setIsGenerating(true);
+        try {
+            const { employee, absence, periodId } = editingAbsence;
+            
+            await deleteScheduledAbsence(employee.id, periodId, absence.id, employee);
+            
+            await addScheduledAbsence(employee.id, periodId, {
+                absenceTypeId: absence.absenceTypeId,
+                startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
+                endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
+            }, employee);
+
+            toast({ title: 'Ausencia actualizada', description: `La ausencia de ${employee.name} ha sido modificada.` });
+            refreshData();
+            setEditingAbsence(null);
+        } catch (error) {
+            console.error("Error updating absence:", error);
+            toast({ title: 'Error al actualizar', description: 'No se pudo modificar la ausencia.', variant: 'destructive' });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+    
+    const handleDeleteAbsence = async () => {
+        if (!editingAbsence) return;
+
+        setIsGenerating(true);
+        try {
+            const { employee, absence, periodId } = editingAbsence;
+            await deleteScheduledAbsence(employee.id, periodId, absence.id, employee);
+            toast({ title: 'Ausencia eliminada', description: `La ausencia de ${employee.name} ha sido eliminada.`, variant: 'destructive'});
+            refreshData();
+            setEditingAbsence(null);
+        } catch (error) {
+            console.error("Error deleting absence:", error);
+            toast({ title: 'Error al eliminar', description: 'No se pudo eliminar la ausencia.', variant: 'destructive' });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const generateGroupReport = () => {
         setIsGenerating(true);
         try {
             const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
@@ -449,6 +443,54 @@ export function AnnualVacationQuadrant() {
             setIsGenerating(false);
         }
     };
+    
+    const generateSignatureReport = () => {
+        setIsGenerating(true);
+        try {
+            const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+            
+            doc.setFontSize(16).setFont('helvetica', 'bold');
+            doc.text(`Listado de Conformidad de Vacaciones - ${selectedYear}`, 15, 20);
+
+            const activeEmployees = allEmployees.filter(emp => !emp.isExternal);
+
+            const body = activeEmployees.map(emp => {
+                const vacationAbsenceType = absenceTypes.find(at => at.name === 'Vacaciones');
+                const empVacations = vacationData.absencesByEmployee[emp.id]
+                    .filter(abs => abs.absenceTypeId === vacationAbsenceType?.id)
+                    .map(p => `${format(p.startDate, 'dd/MM', { locale: es })} - ${format(p.endDate, 'dd/MM', { locale: es })}`)
+                    .join('\n');
+                
+                return [emp.name, empVacations, ''];
+            });
+
+            autoTable(doc, {
+                head: [['Empleado', 'Periodos de Vacaciones', 'Firma']],
+                body: body,
+                startY: 30,
+                theme: 'grid',
+                styles: { fontSize: 9, cellPadding: 2, valign: 'middle' },
+                headStyles: { fillColor: [41, 128, 185] },
+                columnStyles: {
+                    0: { cellWidth: 60 },
+                    1: { cellWidth: 'auto' },
+                    2: { cellWidth: 50, cellHeight: 20 },
+                },
+                didDrawCell: (data) => {
+                    if (data.column.index === 2 && data.section === 'body') {
+                        // Dibuja un rectángulo para la firma si es necesario
+                    }
+                }
+            });
+
+            doc.save(`listado_firmas_vacaciones_${selectedYear}.pdf`);
+        } catch (error) {
+             console.error("Error generating signature report:", error);
+            toast({ title: 'Error al generar informe', description: 'No se pudo crear el PDF de firmas.', variant: 'destructive' });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
 
     const handleSetSubstitute = (weekKey: string, originalEmployee: string, substituteName: string) => {
         setSubstitutions(prev => {
@@ -471,15 +513,18 @@ export function AnnualVacationQuadrant() {
     }
 
     const QuadrantTable = ({ isFullscreen }: { isFullscreen?: boolean }) => {
-
+        const scrollPositionRef = useRef(0);
+    
         useEffect(() => {
             const container = tableContainerRef.current;
             if (container) {
+                // Restore scroll position when table is re-rendered (e.g., after fullscreen toggle)
                 container.scrollLeft = scrollPositionRef.current;
             }
-        }, [isFullscreen, weeksOfYear]);
+        }, [weeksOfYear]);
     
         const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+            // Save scroll position
             scrollPositionRef.current = e.currentTarget.scrollLeft;
         };
 
@@ -608,7 +653,7 @@ export function AnnualVacationQuadrant() {
                 >
                     <Minimize className="h-6 w-6" />
                 </Button>
-                <Dialog open={!!editingAbsence} onOpenChange={(open) => !open && setEditingAbsence(null)}>
+                <Dialog open={!!editingAbsence} onOpenChange={(open) => { if (!open) { setEditingAbsence(null); } }}>
                     <DialogContent>
                         {editingAbsence && (
                             <>
@@ -644,7 +689,7 @@ export function AnnualVacationQuadrant() {
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {(vacationData.absencesByEmployee[editingAbsence.employee.id] || []).filter(p => getYear(p.startDate) === selectedYear).map(period => {
+                                                    {(vacationData.absencesByEmployee[editingAbsence.employee.id] || []).filter((p: any) => getYear(p.startDate) === selectedYear).map((period: any) => {
                                                         const absenceType = absenceTypes.find(at => at.id === period.absenceTypeId);
                                                         return (
                                                         <TableRow key={period.id}>
@@ -697,9 +742,13 @@ export function AnnualVacationQuadrant() {
                                 {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                             </SelectContent>
                         </Select>
-                        <Button onClick={generateReport} disabled={isGenerating || loading}>
+                        <Button onClick={generateGroupReport} disabled={isGenerating || loading}>
                             {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                            Informe
+                            Informe de Grupos
+                        </Button>
+                         <Button onClick={generateSignatureReport} disabled={isGenerating || loading}>
+                            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSignature className="mr-2 h-4 w-4" />}
+                            Listado para Firmas
                         </Button>
                         <Button variant="outline" size="icon" onClick={() => setIsFullscreen(true)}>
                             <Maximize className="h-4 w-4" />
@@ -713,13 +762,3 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
-
-
-
-    
-
-
-
-
-
-
