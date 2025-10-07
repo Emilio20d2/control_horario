@@ -63,3 +63,32 @@ npm run dev
 ```
 
 Abre [http://localhost:3000](http://localhost:3000) en tu navegador para ver la aplicación en funcionamiento.
+
+## Cómo Sincronizar Cambios con GitHub
+
+Cuando realices cambios en el código (ya sea manualmente o con la ayuda de la IA), puedes subirlos a tu repositorio de GitHub siguiendo estos pasos desde la terminal de tu ordenador:
+
+1.  **Revisa el estado de tus archivos:**
+    Este comando te mostrará todos los archivos que han sido modificados.
+    ```bash
+    git status
+    ```
+
+2.  **Prepara todos los cambios para subirlos:**
+    Con este comando, añades todos los archivos modificados y nuevos al "área de preparación" (staging).
+    ```bash
+    git add .
+    ```
+
+3.  **Confirma los cambios con un mensaje:**
+    Crea un "paquete" (commit) con tus cambios. Es una buena práctica escribir un mensaje claro y descriptivo.
+    ```bash
+    git commit -m "Describe aquí los cambios que has hecho, por ejemplo: Mejoras en la interfaz para móviles"
+    ```
+
+4.  **Sube los cambios a GitHub:**
+    Finalmente, envía tu paquete de cambios al repositorio remoto en GitHub. Si tu rama principal se llama `main` (lo más común), usa ese nombre.
+    ```bash
+    git push origin main
+    ```
+    *Nota: Si tu rama principal se llama de otra forma (como `master`), reemplaza `main` por el nombre correcto.*
