@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Card,
@@ -43,6 +43,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import type { EmployeeGroup } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 export default function SettingsPage() {
@@ -62,11 +63,18 @@ export default function SettingsPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const currentTab = searchParams.get('tab') || 'holidays';
-    const currentYearForHolidays = getYear(new Date());
-
+    
     const [password, setPassword] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
-    
+    const [selectedHolidayYear, setSelectedHolidayYear] = useState(getYear(new Date()));
+
+    const holidayYears = useMemo(() => {
+        const years = new Set(holidays.map(h => getYear(h.date as Date)));
+        const currentYear = getYear(new Date());
+        years.add(currentYear);
+        years.add(currentYear + 1);
+        return Array.from(years).sort((a, b) => b - a);
+    }, [holidays]);
 
 
     const handleTabChange = (value: string) => {
@@ -189,8 +197,22 @@ export default function SettingsPage() {
                     <div className="md:col-span-2">
                         <Card>
                             <CardHeader>
-                                <CardTitle>Calendario de Festivos y Aperturas</CardTitle>
-                                <CardDescription>Gestionar los días festivos y aperturas especiales.</CardDescription>
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <CardTitle>Calendario de Festivos y Aperturas</CardTitle>
+                                        <CardDescription>Gestionar los días festivos y aperturas especiales.</CardDescription>
+                                    </div>
+                                    <Select value={String(selectedHolidayYear)} onValueChange={v => setSelectedHolidayYear(Number(v))}>
+                                        <SelectTrigger className="w-32">
+                                            <SelectValue placeholder="Año" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {holidayYears.map(year => (
+                                                <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </CardHeader>
                             <CardContent>
                                 {loading ? renderSkeleton() : (
@@ -205,7 +227,7 @@ export default function SettingsPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {holidays
-                                            .filter(holiday => getYear(holiday.date as Date) === currentYearForHolidays)
+                                            .filter(holiday => getYear(holiday.date as Date) === selectedHolidayYear)
                                             .map(holiday => (
                                             <TableRow key={holiday.id}>
                                                 <TableCell className="font-medium">{holiday.name}</TableCell>
