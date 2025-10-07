@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -60,6 +60,7 @@ export function AnnualVacationQuadrant() {
         }
     }, [editingAbsence]);
     
+    // Always save scroll position on scroll
     useEffect(() => {
         const handleScroll = () => {
             if (tableContainerRef.current) {
@@ -82,13 +83,14 @@ export function AnnualVacationQuadrant() {
         };
     }, []);
     
-    useEffect(() => {
+    // Restore scroll position after every render
+    useLayoutEffect(() => {
         const container = tableContainerRef.current;
         if (container) {
             container.scrollTop = scrollPositionRef.current.top;
             container.scrollLeft = scrollPositionRef.current.left;
         }
-    }, [isFullscreen]);
+    });
 
 
     useEffect(() => {
@@ -316,14 +318,6 @@ export function AnnualVacationQuadrant() {
         return { weeklySummaries, employeesByWeek, absencesByEmployee };
 
     }, [loading, allEmployees, schedulableAbsenceTypes, weeksOfYear, weeklyRecords, selectedYear, getEffectiveWeeklyHours, absenceTypes]);
-
-     useEffect(() => {
-        const container = tableContainerRef.current;
-        if (container) {
-            container.scrollTop = scrollPositionRef.current.top;
-            container.scrollLeft = scrollPositionRef.current.left;
-        }
-    }, [vacationData]);
 
     const groupedEmployeesByWeek = useMemo(() => {
         const result: Record<string, { all: {name: string, absence: string, id: string}[], byGroup: Record<string, {name: string, absence: string, id: string}[]> }> = {};
@@ -716,7 +710,7 @@ export function AnnualVacationQuadrant() {
                         variant="ghost" 
                         size="icon" 
                         onClick={() => setIsFullscreen(false)}
-                        className="absolute top-2 right-2 z-[10000]"
+                        className="absolute top-2 right-2 z-[9999]"
                     >
                         <Minimize className="h-6 w-6" />
                     </Button>
