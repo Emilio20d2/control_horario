@@ -8,63 +8,19 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@/components/ui/table';
-import { PlusCircle, Trash2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod } from '@/lib/types';
 import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getMonth, getYear, getWeeksInMonth, startOfMonth, endOfMonth, eachWeekOfInterval, addWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { DateRange, DayPicker, Row, RowProps, CaptionProps, useNavigation } from 'react-day-picker';
+import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Skeleton } from '../ui/skeleton';
 import { setDocument } from '@/lib/services/firestoreService';
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Badge } from '../ui/badge';
-import { buttonVariants } from "@/components/ui/button"
-import { cn } from '@/lib/utils';
-
-function CustomCaption(props: CaptionProps) {
-    const { fromDate, toDate, goToMonth, nextMonth, previousMonth } = useNavigation();
-    const { getTheoreticalHoursAndTurn, selectedEmployeeId } = useDataProvider();
-
-    const getTurnForWeek = (date: Date) => {
-        if (!selectedEmployeeId) return null;
-        const { turnId } = getTheoreticalHoursAndTurn(selectedEmployeeId, date);
-        return turnId ? turnId.replace('turn', 'T') : null;
-    };
-    
-    const firstWeekTurn = getTurnForWeek(props.displayMonth);
-
-    return (
-        <div className="flex justify-between items-center px-2 py-1">
-            <h2 className="font-semibold text-lg flex items-center gap-2">
-                {format(props.displayMonth, 'MMMM yyyy', { locale: es })}
-                {firstWeekTurn && <Badge variant="outline">{firstWeekTurn}</Badge>}
-            </h2>
-            <div className="flex gap-1">
-                <Button
-                    disabled={!previousMonth}
-                    onClick={() => previousMonth && goToMonth(previousMonth)}
-                    variant="outline"
-                    size="icon"
-                    className="h-7 w-7"
-                >
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                    disabled={!nextMonth}
-                    onClick={() => nextMonth && goToMonth(nextMonth)}
-                    variant="outline"
-                    size="icon"
-                    className="h-7 w-7"
-                >
-                    <ChevronRight className="h-4 w-4" />
-                </Button>
-            </div>
-      </div>
-    );
-  }
 
 export function VacationPlanner() {
     const { employees, absenceTypes, holidays, loading, refreshData, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn } = useDataProvider();
@@ -107,6 +63,21 @@ export function VacationPlanner() {
             }
         }
     }, [schedulableAbsenceTypes, selectedAbsenceTypeId]);
+    
+    const monthWeeks = useMemo(() => {
+        const firstDay = startOfMonth(calendarMonth);
+        const lastDay = endOfMonth(calendarMonth);
+        return eachWeekOfInterval({ start: firstDay, end: lastDay }, { weekStartsOn: 1 });
+    }, [calendarMonth]);
+
+    const weekTurns = useMemo(() => {
+        if (!selectedEmployeeId) return [];
+        return monthWeeks.map(weekStart => {
+            const { turnId } = getTheoreticalHoursAndTurn(selectedEmployeeId, weekStart);
+            return turnId ? turnId.replace('turn', 'T') : '-';
+        });
+    }, [monthWeeks, selectedEmployeeId, getTheoreticalHoursAndTurn]);
+
 
     const getActivePeriodForEmployee = (employee: Employee | undefined): EmploymentPeriod | undefined => {
         if (!employee) return undefined;
@@ -333,26 +304,36 @@ export function VacationPlanner() {
                 </div>
                 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                    <div className="flex flex-col items-start">
-                        <Calendar
-                            mode="range"
-                            selected={selectedDateRange}
-                            onSelect={setSelectedDateRange}
-                            locale={es}
-                            disabled={!selectedEmployeeId || isLoading}
-                            className="rounded-md border"
-                            modifiers={modifiers}
-                            modifiersStyles={modifiersStyles}
-                            month={calendarMonth}
-                            onMonthChange={setCalendarMonth}
-                             components={{
-                                Caption: (props) => <CustomCaption {...props} data-employee-id={selectedEmployeeId} />,
-                            }}
-                        />
-                        <Button onClick={handleAddPeriod} disabled={isLoading || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
-                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                            Guardar Periodo
-                        </Button>
+                    <div className="flex items-start gap-4">
+                        <div className="flex flex-col items-start">
+                            <Calendar
+                                mode="range"
+                                selected={selectedDateRange}
+                                onSelect={setSelectedDateRange}
+                                locale={es}
+                                disabled={!selectedEmployeeId || isLoading}
+                                className="rounded-md border"
+                                modifiers={modifiers}
+                                modifiersStyles={modifiersStyles}
+                                month={calendarMonth}
+                                onMonthChange={setCalendarMonth}
+                            />
+                            <Button onClick={handleAddPeriod} disabled={isLoading || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
+                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                                Guardar Periodo
+                            </Button>
+                        </div>
+                        {selectedEmployeeId && (
+                             <div className="flex flex-col space-y-2 pt-12">
+                                {/* This div acts as a spacer to align with calendar header */}
+                                <div className="h-10 mb-2"></div>
+                                {weekTurns.map((turn, index) => (
+                                    <div key={index} className="flex h-9 w-9 items-center justify-center rounded-md border bg-muted text-muted-foreground text-sm font-bold">
+                                        {turn}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {selectedEmployee && (
