@@ -256,8 +256,11 @@ export function VacationPlanner() {
         }
     };
 
-    const WeekWithTurn = (props: RowProps) => {
+    const Week = (props: RowProps) => {
+        if (!selectedEmployeeId) return <Row {...props} />;
+        
         const { turnId } = getTheoreticalHoursAndTurn(selectedEmployeeId, props.dates[0]);
+        
         return (
             <div className="flex items-center relative">
                 <Row {...props} />
@@ -302,7 +305,7 @@ export function VacationPlanner() {
                 </div>
                 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                    <div className="flex flex-col items-center">
+                    <div className="flex flex-col items-start">
                         <Calendar
                             mode="range"
                             selected={selectedDateRange}
@@ -314,7 +317,9 @@ export function VacationPlanner() {
                             modifiersStyles={modifiersStyles}
                             month={calendarMonth}
                             onMonthChange={setCalendarMonth}
-                            components={{ Row: WeekWithTurn }}
+                            components={{
+                                Row: Week,
+                            }}
                         />
                         <Button onClick={handleAddPeriod} disabled={isLoading || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
