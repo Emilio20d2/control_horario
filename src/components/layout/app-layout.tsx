@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { ReactNode } from 'react';
@@ -36,21 +35,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { cn } from '@/lib/utils';
-
-const AppIcon = () => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-8 w-8 text-primary"
-    >
-      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-    </svg>
-  );
+import Image from 'next/image';
 
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -100,8 +85,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="flex h-screen w-full flex-col bg-background">
       <header className="sticky top-0 inset-x-0 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">
         <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-            <AppIcon />
-            <span className="text-xl font-semibold font-headline">Control Horario</span>
+            <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
         </Link>
         
         <MainNav className="hidden md:flex items-center gap-4 mx-auto" />
@@ -145,7 +129,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     <SheetHeader>
                         <SheetTitle>
                             <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-                                <AppIcon />
+                                <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
                                 <span className="text-xl font-semibold font-headline">Control Horario</span>
                             </Link>
                         </SheetTitle>

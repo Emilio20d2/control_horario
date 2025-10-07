@@ -10,21 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
-
-const AppIcon = () => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-10 w-10 text-primary"
-    >
-      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-    </svg>
-  );
+import Image from 'next/image';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -64,7 +50,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
             <div className="mb-4 flex justify-center">
-                <AppIcon />
+                <Image src="/logo.png" alt="Logo de la aplicación" width={64} height={64} className="h-16 w-16" />
             </div>
           <CardTitle className="text-2xl font-bold font-headline">Iniciar Sesión</CardTitle>
           <CardDescription>Accede a tu panel de Control Horario</CardDescription>
