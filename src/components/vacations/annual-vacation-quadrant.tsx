@@ -39,14 +39,14 @@ export function AnnualVacationQuadrant() {
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const scrollPositionRef = useRef(0);
 
-    const [editingAbsence, setEditingAbsence = useState<{
+    const [editingAbsence, setEditingAbsence] = useState<{
         employee: any;
         absence: any;
         periodId: string;
     } | null>(null);
 
-    const [editedDateRange, setEditedDateRange = useState<DateRange | undefined>(undefined);
-    const [calendarMonth, setCalendarMonth = useState<Date>(new Date());
+    const [editedDateRange, setEditedDateRange] = useState<DateRange | undefined>(undefined);
+    const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
 
     useEffect(() => {
         if (editingAbsence) {
@@ -464,6 +464,12 @@ export function AnnualVacationQuadrant() {
                         cellPadding: 1,
                         lineHeight: 2,
                     },
+                    willDrawCell: (data) => {
+                        if (data.column.index === 0) {
+                            data.cell.styles.lineWidth = 0;
+                            return false;
+                        }
+                    },
                     didParseCell: (data) => {
                         if (data.column.index === 0) {
                             return;
@@ -805,5 +811,7 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
+    
 
     
