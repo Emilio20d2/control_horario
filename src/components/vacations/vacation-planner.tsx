@@ -320,7 +320,7 @@ export function VacationPlanner() {
                                 month={calendarMonth}
                                 onMonthChange={setCalendarMonth}
                             />
-                            <div className="flex flex-col space-y-2 -translate-y-0.5">
+                            <div className="flex flex-col space-y-2 -translate-y-2.5">
                                 {weekTurns.map((turn, index) => (
                                     <div key={index} className="flex h-9 w-9 items-center justify-center rounded-md border bg-muted text-muted-foreground text-sm font-bold">
                                         {turn}
