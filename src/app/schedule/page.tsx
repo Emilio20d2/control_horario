@@ -241,7 +241,7 @@ export default function SchedulePage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="sticky left-0 bg-card z-10 p-2 text-xs w-[170px] sm:w-[200px] min-w-[170px] sm:min-w-[200px]">Empleado</TableHead>
+                                <TableHead className="sticky left-0 bg-card z-20 p-2 text-xs w-[170px] sm:w-[200px] min-w-[170px] sm:min-w-[200px]">Empleado</TableHead>
                                 {weekDays.map(d => <TableHead key={d.toISOString()} className={cn("text-left p-2 text-xs min-w-[140px]", holidays.some(h => isSameDay(h.date, d)) && "bg-primary/10")}><span className="sm:hidden">{format(d, 'E', {locale:es})}</span><span className="hidden sm:inline">{format(d, 'E dd/MM', {locale:es})}</span></TableHead>)}
                             </TableRow>
                         </TableHeader>
