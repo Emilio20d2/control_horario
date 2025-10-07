@@ -699,12 +699,12 @@ export function AnnualVacationQuadrant() {
 
     if (isFullscreen) {
         return (
-            <div className="fixed inset-0 bg-background z-[100] flex flex-col h-screen">
+            <div className="fixed inset-0 bg-background z-[9999] flex flex-col h-screen">
                  <Button 
                     variant="ghost" 
                     size="icon" 
                     onClick={() => setIsFullscreen(false)}
-                    className="absolute top-4 right-4 z-[110]"
+                    className="absolute top-4 right-4 z-[10000]"
                 >
                     <Minimize className="h-6 w-6" />
                 </Button>
@@ -821,6 +821,7 @@ export function AnnualVacationQuadrant() {
     
 
     
+
 
 
 
