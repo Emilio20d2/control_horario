@@ -4,33 +4,33 @@
 
 @layer base {
   :root {
-    --background: 45 83% 96%; /* Floral White */
-    --foreground: 224 10% 10%;
+    --background: 0 0% 100%; /* Blanco */
+    --foreground: 0 0% 33%; /* Gris oscuro */
 
-    --card: 0 0% 91%; /* Platinum */
-    --card-foreground: 224 10% 10%;
+    --card: 210 17% 83%; /* Gris azul claro */
+    --card-foreground: 0 0% 33%;
  
-    --popover: 0 0% 91%; /* Platinum */
-    --popover-foreground: 224 10% 10%;
+    --popover: 210 17% 83%;
+    --popover-foreground: 0 0% 33%;
  
-    --primary: 133 8% 78%; /* Jet Stream */
-    --primary-foreground: 224 10% 10%;
+    --primary: 37 57% 75%; /* Beige cálido */
+    --primary-foreground: 0 0% 33%;
  
-    --secondary: 0 0% 91%; /* Platinum */
-    --secondary-foreground: 224 10% 10%;
+    --secondary: 210 17% 83%;
+    --secondary-foreground: 0 0% 33%;
  
-    --muted: 0 0% 91%; /* Platinum */
-    --muted-foreground: 215 16% 47%;
+    --muted: 210 17% 83%;
+    --muted-foreground: 20 3% 54%; /* Gris medio */
  
-    --accent: 38 41% 86%; /* Almond */
-    --accent-foreground: 224 10% 10%;
+    --accent: 37 57% 75%;
+    --accent-foreground: 0 0% 33%;
  
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 15 10% 83%; /* American Silver */
-    --input: 15 10% 83%; /* American Silver */
-    --ring: 133 8% 78%; /* Jet Stream */
+    --border: 20 3% 54%; /* Gris medio */
+    --input: 20 3% 54%;
+    --ring: 37 57% 75%;
  
     --radius: 0.5rem;
   }
@@ -39,30 +39,30 @@
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
  
-    --card: 222 47% 11%;
+    --card: 222 47% 15%;
     --card-foreground: 210 40% 98%;
  
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
  
-    --primary: 133 8% 78%; /* Jet Stream */
-    --primary-foreground: 224 10% 10%;
+    --primary: 37 57% 75%;
+    --primary-foreground: 0 0% 33%;
  
-    --secondary: 240 4% 65%; /* Metallic Silver */
+    --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
  
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
  
-    --accent: 38 41% 86%; /* Almond */
-    --accent-foreground: 224 10% 10%;
+    --accent: 37 57% 75%;
+    --accent-foreground: 0 0% 33%;
  
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
  
-    --border: 15 10% 83%; /* American Silver */
-    --input: 15 10% 83%; /* American Silver */
-    --ring: 133 8% 78%; /* Jet Stream */
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 37 57% 75%;
   }
 }
  
