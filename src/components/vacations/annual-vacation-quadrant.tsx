@@ -39,14 +39,14 @@ export function AnnualVacationQuadrant() {
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const scrollPositionRef = useRef(0);
 
-    const [editingAbsence, setEditingAbsence] = useState<{
+    const [editingAbsence, setEditingAbsence = useState<{
         employee: any;
         absence: any;
         periodId: string;
     } | null>(null);
 
-    const [editedDateRange, setEditedDateRange] = useState<DateRange | undefined>(undefined);
-    const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
+    const [editedDateRange, setEditedDateRange = useState<DateRange | undefined>(undefined);
+    const [calendarMonth, setCalendarMonth = useState<Date>(new Date());
 
     useEffect(() => {
         if (editingAbsence) {
@@ -431,7 +431,7 @@ export function AnnualVacationQuadrant() {
                         });
                         return cellTexts.join('\n\n');
                     });
-                    return [group.name, ...employeesInGroupThisChunk];
+                    return ['', ...employeesInGroupThisChunk];
                 });
 
                 const columnStyles: { [key: number]: any } = {
@@ -449,11 +449,6 @@ export function AnnualVacationQuadrant() {
                     startY: 30,
                     theme: 'grid',
                     didDrawPage: addHeaderFooter,
-                    willDrawCell: (data) => {
-                        if (data.column.index === 0) {
-                            return false;
-                        }
-                    },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
@@ -470,7 +465,10 @@ export function AnnualVacationQuadrant() {
                         lineHeight: 2,
                     },
                     didParseCell: (data) => {
-                        if (data.section === 'body' && data.column.index > 0) {
+                        if (data.column.index === 0) {
+                            return;
+                        }
+                        if (data.section === 'body') {
                            data.cell.styles.fillColor = false;
                            
                             const cellText = data.cell.raw as string;
@@ -807,12 +805,5 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
-
-
-
-
-
-
-
 
     
