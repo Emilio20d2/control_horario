@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -242,7 +241,7 @@ export default function SchedulePage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="sticky left-0 bg-card z-10 p-2 text-xs w-[150px] sm:w-[200px] min-w-[150px] sm:min-w-[200px]">Empleado</TableHead>
+                                <TableHead className="sticky left-0 bg-card z-10 p-2 text-xs w-[170px] sm:w-[200px] min-w-[170px] sm:min-w-[200px]">Empleado</TableHead>
                                 {weekDays.map(d => <TableHead key={d.toISOString()} className={cn("text-left p-2 text-xs min-w-[140px]", holidays.some(h => isSameDay(h.date, d)) && "bg-primary/10")}><span className="sm:hidden">{format(d, 'E', {locale:es})}</span><span className="hidden sm:inline">{format(d, 'E dd/MM', {locale:es})}</span></TableHead>)}
                             </TableRow>
                         </TableHeader>
@@ -267,7 +266,7 @@ export default function SchedulePage() {
     <div className="flex flex-col gap-0">
         <div className="flex flex-col sm:flex-row justify-between items-center px-4 md:px-6 py-4 gap-4">
             <h1 className="text-2xl font-bold tracking-tight font-headline">Registro Horario</h1>
-            <div className="flex gap-2 sm:gap-4 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
                 <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
                     <SelectTrigger className="w-full sm:w-[250px] h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -282,3 +281,5 @@ export default function SchedulePage() {
     </div>
   );
 }
+
+    
