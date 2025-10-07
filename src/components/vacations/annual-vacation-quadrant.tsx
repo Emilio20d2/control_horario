@@ -429,17 +429,31 @@ export function AnnualVacationQuadrant() {
                              }
                              return text;
                         });
-                        return cellTexts.join('\n\n'); // Use double newline as a hard separator for employees
+                        return cellTexts.join('\n\n');
                     });
                     return [group.name, ...employeesInGroupThisChunk];
                 });
+
+                const columnStyles: { [key: number]: any } = {
+                  0: { cellWidth: 0.1 },
+                };
+                const availableWidth = pageWidth - (pageMargin * 2) - 0.1;
+                const weekColumnWidth = availableWidth / WEEKS_PER_PAGE;
+                for (let i = 0; i < WEEKS_PER_PAGE; i++) {
+                    columnStyles[i + 1] = { cellWidth: weekColumnWidth };
+                }
     
                 autoTable(doc, {
-                    head: [['Grupo', ...headContent]],
+                    head: [[' ', ...headContent]],
                     body: bodyRows,
                     startY: 30,
                     theme: 'grid',
                     didDrawPage: addHeaderFooter,
+                    willDrawCell: (data) => {
+                        if (data.column.index === 0) {
+                            return false;
+                        }
+                    },
                     headStyles: { 
                         fillColor: [240, 240, 240], 
                         textColor: [0, 0, 0], 
@@ -448,13 +462,7 @@ export function AnnualVacationQuadrant() {
                         fontSize: 9,
                         cellPadding: 1,
                     },
-                    columnStyles: {
-                        0: { cellWidth: 40, fontStyle: 'bold', halign: 'center', valign: 'middle' },
-                        1: { cellWidth: (pageWidth - 40 - pageMargin * 2) / WEEKS_PER_PAGE },
-                        2: { cellWidth: (pageWidth - 40 - pageMargin * 2) / WEEKS_PER_PAGE },
-                        3: { cellWidth: (pageWidth - 40 - pageMargin * 2) / WEEKS_PER_PAGE },
-                        4: { cellWidth: (pageWidth - 40 - pageMargin * 2) / WEEKS_PER_PAGE },
-                    },
+                    columnStyles: columnStyles,
                     styles: {
                         fontSize: 8,
                         valign: 'top',
@@ -479,12 +487,10 @@ export function AnnualVacationQuadrant() {
                                     if(subLine) {
                                         textParts.push({ text: `\n${subLine}`, styles: { textColor: [255, 0, 0] } });
                                     }
-                                    // Add a separator for the next employee block
                                     textParts.push({ text: '\n', styles: { fontSize: 4 } }); 
                                     return textParts;
                                 }).flat();
                                 
-                                // Remove the last separator
                                 if (styledText.length > 0) {
                                     styledText.pop();
                                 }
@@ -807,3 +813,6 @@ export function AnnualVacationQuadrant() {
 
 
 
+
+
+    
