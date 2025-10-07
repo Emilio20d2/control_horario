@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -784,9 +783,8 @@ export default function DashboardPage() {
               Panel de Control
             </h1>
           </div>
-          <div className="overflow-x-auto pb-4">
-            <div className="flex gap-4 px-4 md:px-6 flex-nowrap">
-                <Card className="w-[280px] flex-shrink-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 md:px-6">
+                <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Informe Resumen Anual</CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
@@ -814,7 +812,7 @@ export default function DashboardPage() {
                         </Button>
                     </CardContent>
                 </Card>
-                <Card className="w-[280px] flex-shrink-0">
+                <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Informe Jornada Anual</CardTitle>
                     <BookUser className="h-4 w-4 text-muted-foreground" />
@@ -842,7 +840,7 @@ export default function DashboardPage() {
                         </Button>
                     </CardContent>
                 </Card>
-                <Card className="w-[280px] flex-shrink-0">
+                <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                     Informe Ausencias por Empleado
@@ -873,7 +871,7 @@ export default function DashboardPage() {
                 </CardContent>
                 </Card>
                 <HolidayReportGenerator />
-                <Card className="w-[280px] flex-shrink-0">
+                <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Horas Complementarias</CardTitle>
                         <CardDescription>
@@ -897,7 +895,7 @@ export default function DashboardPage() {
                         </Button>
                     </CardContent>
                 </Card>
-                <Card className="w-[280px] flex-shrink-0">
+                <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Informe Semanal Horas</CardTitle>
                     <Library className="h-4 w-4 text-muted-foreground" />
@@ -918,7 +916,6 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
-          </div>
     
            <div className="px-4 md:px-6 pb-4">
             <Card>
