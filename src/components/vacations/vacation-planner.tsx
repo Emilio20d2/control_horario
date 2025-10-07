@@ -71,12 +71,14 @@ export function VacationPlanner() {
     }, [calendarMonth]);
 
     const weekTurns = useMemo(() => {
-        if (!selectedEmployeeId) return [];
+        const employeeForTurns = selectedEmployee || activeEmployees[0];
+        if (!employeeForTurns) return [];
+
         return monthWeeks.map(weekStart => {
-            const { turnId } = getTheoreticalHoursAndTurn(selectedEmployeeId, weekStart);
+            const { turnId } = getTheoreticalHoursAndTurn(employeeForTurns.id, weekStart);
             return turnId ? turnId.replace('turn', 'T') : '-';
         });
-    }, [monthWeeks, selectedEmployeeId, getTheoreticalHoursAndTurn]);
+    }, [monthWeeks, selectedEmployee, activeEmployees, getTheoreticalHoursAndTurn]);
 
 
     const getActivePeriodForEmployee = (employee: Employee | undefined): EmploymentPeriod | undefined => {
@@ -318,22 +320,18 @@ export function VacationPlanner() {
                                 month={calendarMonth}
                                 onMonthChange={setCalendarMonth}
                             />
-                            <Button onClick={handleAddPeriod} disabled={isLoading || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
+                            <Button onClick={handleAddPeriod} disabled={isLoading || !selectedEmployeeId || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
                                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                                 Guardar Periodo
                             </Button>
                         </div>
-                        {selectedEmployeeId && (
-                             <div className="flex flex-col space-y-2 pt-12">
-                                {/* This div acts as a spacer to align with calendar header */}
-                                <div className="h-10 mb-2"></div>
-                                {weekTurns.map((turn, index) => (
-                                    <div key={index} className="flex h-9 w-9 items-center justify-center rounded-md border bg-muted text-muted-foreground text-sm font-bold">
-                                        {turn}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                        <div className="flex flex-col space-y-2 pt-[72px]">
+                            {weekTurns.map((turn, index) => (
+                                <div key={index} className="flex h-9 w-9 items-center justify-center rounded-md border bg-muted text-muted-foreground text-sm font-bold">
+                                    {turn}
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     {selectedEmployee && (
