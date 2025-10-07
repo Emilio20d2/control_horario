@@ -697,133 +697,124 @@ export function AnnualVacationQuadrant() {
         return <Skeleton className="h-[600px] w-full" />;
     }
 
-    if (isFullscreen) {
-        return (
-            <div className="fixed inset-0 bg-background z-[9999] flex flex-col h-screen">
-                 <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => setIsFullscreen(false)}
-                    className="absolute top-4 right-4 z-[10000]"
-                >
-                    <Minimize className="h-6 w-6" />
-                </Button>
-                <Dialog open={!!editingAbsence} onOpenChange={(open) => { if (!open) { setEditingAbsence(null); } }}>
-                    <DialogContent>
-                        {editingAbsence && (
-                            <>
-                                <DialogHeader>
-                                    <DialogTitle>Editar Ausencia de {editingAbsence.employee.name}</DialogTitle>
-                                    <DialogDescription>
-                                        Modifica el rango de fechas para esta ausencia.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <div className="grid gap-4 py-4">
-                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium">Rango de Fechas</label>
-                                        <Calendar
-                                            mode="range"
-                                            selected={editedDateRange}
-                                            onSelect={setEditedDateRange}
-                                            locale={es}
-                                            className="rounded-md border"
-                                            month={calendarMonth}
-                                            onMonthChange={setCalendarMonth}
-                                        />
-                                    </div>
-                                    <div className="space-y-4">
-                                        <h4 className="font-medium text-sm text-muted-foreground">Periodos de Ausencia ({selectedYear})</h4>
-                                        <div className="border rounded-md max-h-40 overflow-y-auto">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Tipo</TableHead>
-                                                        <TableHead>Inicio</TableHead>
-                                                        <TableHead>Fin</TableHead>
-                                                        <TableHead>Días</TableHead>
+    return (
+        <>
+            <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
+                <DialogContent className="max-w-full h-full p-2 bg-background flex flex-col border-0 shadow-none gap-0">
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setIsFullscreen(false)}
+                        className="absolute top-2 right-2 z-10"
+                    >
+                        <Minimize className="h-6 w-6" />
+                    </Button>
+                    <QuadrantTable isFullscreen={true} />
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!editingAbsence} onOpenChange={(open) => { if (!open) { setEditingAbsence(null); } }}>
+                <DialogContent>
+                    {editingAbsence && (
+                        <>
+                            <DialogHeader>
+                                <DialogTitle>Editar Ausencia de {editingAbsence.employee.name}</DialogTitle>
+                                <DialogDescription>
+                                    Modifica el rango de fechas para esta ausencia.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                    <div className="space-y-2">
+                                    <label className="text-sm font-medium">Rango de Fechas</label>
+                                    <Calendar
+                                        mode="range"
+                                        selected={editedDateRange}
+                                        onSelect={setEditedDateRange}
+                                        locale={es}
+                                        className="rounded-md border"
+                                        month={calendarMonth}
+                                        onMonthChange={setCalendarMonth}
+                                    />
+                                </div>
+                                <div className="space-y-4">
+                                    <h4 className="font-medium text-sm text-muted-foreground">Periodos de Ausencia ({selectedYear})</h4>
+                                    <div className="border rounded-md max-h-40 overflow-y-auto">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Tipo</TableHead>
+                                                    <TableHead>Inicio</TableHead>
+                                                    <TableHead>Fin</TableHead>
+                                                    <TableHead>Días</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {(vacationData.absencesByEmployee[editingAbsence.employee.id] || []).filter((p: any) => getYear(p.startDate) === selectedYear).map((period: any) => {
+                                                    const absenceType = absenceTypes.find(at => at.id === period.absenceTypeId);
+                                                    return (
+                                                    <TableRow key={period.id}>
+                                                        <TableCell><Badge variant="outline">{absenceType?.abbreviation || '??'}</Badge></TableCell>
+                                                        <TableCell>{format(period.startDate, 'dd/MM/yy')}</TableCell>
+                                                        <TableCell>{format(period.endDate, 'dd/MM/yy')}</TableCell>
+                                                        <TableCell>{differenceInDays(period.endDate, period.startDate) + 1}</TableCell>
                                                     </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {(vacationData.absencesByEmployee[editingAbsence.employee.id] || []).filter((p: any) => getYear(p.startDate) === selectedYear).map((period: any) => {
-                                                        const absenceType = absenceTypes.find(at => at.id === period.absenceTypeId);
-                                                        return (
-                                                        <TableRow key={period.id}>
-                                                            <TableCell><Badge variant="outline">{absenceType?.abbreviation || '??'}</Badge></TableCell>
-                                                            <TableCell>{format(period.startDate, 'dd/MM/yy')}</TableCell>
-                                                            <TableCell>{format(period.endDate, 'dd/MM/yy')}</TableCell>
-                                                            <TableCell>{differenceInDays(period.endDate, period.startDate) + 1}</TableCell>
-                                                        </TableRow>
-                                                        )
-                                                    })}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
+                                                    )
+                                                })}
+                                            </TableBody>
+                                        </Table>
                                     </div>
                                 </div>
-                                <DialogFooter>
-                                    <Button variant="destructive" onClick={handleDeleteAbsence} disabled={isGenerating}>
-                                        {isGenerating ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
-                                    </Button>
-                                    <DialogClose asChild>
-                                        <Button variant="outline">Cancelar</Button>
-                                    </DialogClose>
-                                    <Button onClick={handleUpdateAbsence} disabled={isGenerating}>
-                                        {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Guardar Cambios
-                                    </Button>
-                                </DialogFooter>
-                            </>
-                        )}
-                    </DialogContent>
-                </Dialog>
-                <QuadrantTable isFullscreen={true} />
-            </div>
-        );
-    }
-    
-    return (
-        <Card>
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <div>
-                        <CardTitle>Cuadrante Anual de Ausencias</CardTitle>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="destructive" onClick={handleDeleteAbsence} disabled={isGenerating}>
+                                    {isGenerating ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
+                                </Button>
+                                <DialogClose asChild>
+                                    <Button variant="outline">Cancelar</Button>
+                                </DialogClose>
+                                <Button onClick={handleUpdateAbsence} disabled={isGenerating}>
+                                    {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Guardar Cambios
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <CardTitle>Cuadrante Anual de Ausencias</CardTitle>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+                                <SelectTrigger className='w-32'>
+                                    <SelectValue placeholder="Año..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Button onClick={generateGroupReport} disabled={isGenerating || loading}>
+                                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                Imprimir Cuadrante
+                            </Button>
+                            <Button onClick={generateSignatureReport} disabled={isGenerating || loading}>
+                                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSignature className="mr-2 h-4 w-4" />}
+                                Listado para Firmas
+                            </Button>
+                            <Button variant="outline" size="icon" onClick={() => setIsFullscreen(true)}>
+                                <Maximize className="h-4 w-4" />
+                            </Button>
+                        </div>
                     </div>
-                     <div className="flex items-center gap-2">
-                        <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
-                            <SelectTrigger className='w-32'>
-                                <SelectValue placeholder="Año..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <Button onClick={generateGroupReport} disabled={isGenerating || loading}>
-                            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                            Imprimir Cuadrante
-                        </Button>
-                         <Button onClick={generateSignatureReport} disabled={isGenerating || loading}>
-                            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSignature className="mr-2 h-4 w-4" />}
-                            Listado para Firmas
-                        </Button>
-                        <Button variant="outline" size="icon" onClick={() => setIsFullscreen(true)}>
-                            <Maximize className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <QuadrantTable />
-            </CardContent>
-        </Card>
+                </CardHeader>
+                <CardContent>
+                    <QuadrantTable />
+                </CardContent>
+            </Card>
+        </>
     );
 }
-
-    
-
-    
-
-
-
-
-
-
