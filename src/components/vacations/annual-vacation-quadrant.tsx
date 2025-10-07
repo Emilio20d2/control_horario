@@ -30,7 +30,7 @@ import { endOfWeek, endOfDay } from 'date-fns';
 
 
 export function AnnualVacationQuadrant() {
-    const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours, holidays, refreshData, getWeekId } = useDataProvider();
+    const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours, holidays, refreshData, getWeekId, getTheoreticalHoursAndTurn } = useDataProvider();
     const { toast } = useToast();
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     const [substitutions, setSubstitutions] = useState<Record<string, Record<string, string>>>({}); // { [weekKey]: { [originalEmpName]: substituteName } }
@@ -588,12 +588,18 @@ export function AnnualVacationQuadrant() {
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
+                                const firstEmployee = allEmployees[0];
+                                const turnInfo = firstEmployee ? getTheoreticalHoursAndTurn(firstEmployee.id, week.start) : { turnId: null };
+                                
                                 return (
                                     <th key={week.key} className={cn("p-1 text-center font-normal border min-w-[20rem]", hasHoliday ? "bg-blue-100" : "bg-gray-50", "w-80")}>
                                         <div className='flex flex-col items-center justify-center h-full'>
-                                            <span className='font-semibold text-lg'>
-                                                {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
-                                            </span>
+                                            <div className='flex items-center gap-2'>
+                                                <span className='font-semibold text-lg'>
+                                                    {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
+                                                </span>
+                                                {turnInfo.turnId && <Badge variant="secondary">{turnInfo.turnId.replace('turn','T')}</Badge>}
+                                            </div>
                                             <div className="flex gap-3 mt-1.5 text-sm items-center">
                                                 <div className='flex items-center gap-1'><Users className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.employeeCount ?? 0}</div>
                                                 <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
@@ -815,5 +821,6 @@ export function AnnualVacationQuadrant() {
     
 
     
+
 
 
