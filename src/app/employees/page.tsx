@@ -29,12 +29,15 @@ import { isAfter, parseISO, startOfDay, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useEffect, useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useIsMobile } from '@/hooks/use-is-mobile';
+import { EmployeeCard } from '@/components/employees/employee-card';
 
 
 export default function EmployeesPage() {
     const { employees, loading, weeklyRecords, getEmployeeFinalBalances, calculateEmployeeVacations } = useDataProvider();
     const [balances, setBalances] = useState<Record<string, { ordinary: number; holiday: number; leave: number; total: number; }>>({});
     const [balancesLoading, setBalancesLoading] = useState(true);
+    const isMobile = useIsMobile();
 
     const { activeEmployees, inactiveEmployees } = useMemo(() => {
         const active: Employee[] = [];
@@ -176,6 +179,37 @@ export default function EmployeesPage() {
     </Table>
   );
 
+  const EmployeeList = ({ employees, showBalances }: { employees: Employee[], showBalances: boolean }) => {
+    if (isMobile) {
+        return (
+            <div className="grid grid-cols-1 gap-4">
+                 {loading ? (
+                    Array.from({ length: 5 }).map((_, index) => <Skeleton key={index} className="h-48 w-full" />)
+                ) : employees.length > 0 ? (
+                    employees.map(employee => {
+                        const employeeBalances = showBalances && !balancesLoading ? balances[employee.id] : undefined;
+                        const vacationInfo = showBalances ? calculateEmployeeVacations(employee) : undefined;
+                        const lastPeriod = [...employee.employmentPeriods].sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
+                        return (
+                            <EmployeeCard 
+                                key={employee.id}
+                                employee={employee}
+                                balances={employeeBalances}
+                                vacationInfo={vacationInfo}
+                                lastPeriod={lastPeriod}
+                                showBalances={showBalances}
+                            />
+                        )
+                    })
+                ) : (
+                    <p className="text-center text-muted-foreground py-12">No se han encontrado empleados en esta categoría.</p>
+                )}
+            </div>
+        )
+    }
+    return <EmployeeTable employees={employees} showBalances={showBalances} />;
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-4 md:px-6 pt-4">
@@ -202,10 +236,10 @@ export default function EmployeesPage() {
                     <TabsTrigger value="inactive">Inactivos ({inactiveEmployees.length})</TabsTrigger>
                 </TabsList>
                 <TabsContent value="active" className="pt-4">
-                    <EmployeeTable employees={activeEmployees} showBalances={true} />
+                    <EmployeeList employees={activeEmployees} showBalances={true} />
                 </TabsContent>
                 <TabsContent value="inactive" className="pt-4">
-                    <EmployeeTable employees={inactiveEmployees} showBalances={false} />
+                    <EmployeeList employees={inactiveEmployees} showBalances={false} />
                 </TabsContent>
             </Tabs>
             </CardContent>
