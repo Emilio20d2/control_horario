@@ -37,7 +37,7 @@ export function AnnualVacationQuadrant() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const tableContainerRef = useRef<HTMLDivElement>(null);
-    const scrollPositionRef = useRef(0);
+    const scrollPositionRef = useRef({ top: 0, left: 0 });
 
     const [editingAbsence, setEditingAbsence] = useState<{
         employee: any;
@@ -63,7 +63,10 @@ export function AnnualVacationQuadrant() {
     useEffect(() => {
         const handleScroll = () => {
             if (tableContainerRef.current) {
-                scrollPositionRef.current = tableContainerRef.current.scrollLeft;
+                scrollPositionRef.current = {
+                    top: tableContainerRef.current.scrollTop,
+                    left: tableContainerRef.current.scrollLeft
+                };
             }
         };
     
@@ -81,8 +84,9 @@ export function AnnualVacationQuadrant() {
     
     useEffect(() => {
         const container = tableContainerRef.current;
-        if (container && isFullscreen) {
-            container.scrollLeft = scrollPositionRef.current;
+        if (container) {
+            container.scrollTop = scrollPositionRef.current.top;
+            container.scrollLeft = scrollPositionRef.current.left;
         }
     }, [isFullscreen]);
 
@@ -97,7 +101,6 @@ export function AnnualVacationQuadrant() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isFullscreen]);
-
 
     const schedulableAbsenceTypes = useMemo(() => {
         return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
@@ -313,6 +316,14 @@ export function AnnualVacationQuadrant() {
         return { weeklySummaries, employeesByWeek, absencesByEmployee };
 
     }, [loading, allEmployees, schedulableAbsenceTypes, weeksOfYear, weeklyRecords, selectedYear, getEffectiveWeeklyHours, absenceTypes]);
+
+     useEffect(() => {
+        const container = tableContainerRef.current;
+        if (container) {
+            container.scrollTop = scrollPositionRef.current.top;
+            container.scrollLeft = scrollPositionRef.current.left;
+        }
+    }, [vacationData]);
 
     const groupedEmployeesByWeek = useMemo(() => {
         const result: Record<string, { all: {name: string, absence: string, id: string}[], byGroup: Record<string, {name: string, absence: string, id: string}[]> }> = {};
@@ -578,7 +589,7 @@ export function AnnualVacationQuadrant() {
     
     const QuadrantTable = ({ isFullscreen }: { isFullscreen?: boolean }) => {
         return (
-             <div ref={tableContainerRef} className={cn("overflow-auto", isFullscreen && "h-full flex-grow")} onScroll={(e) => { if(!isFullscreen) {scrollPositionRef.current = e.currentTarget.scrollLeft} }}>
+             <div ref={tableContainerRef} className={cn("overflow-auto", isFullscreen && "h-full flex-grow")}>
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-20 bg-background">
                         <tr>
@@ -705,7 +716,7 @@ export function AnnualVacationQuadrant() {
                         variant="ghost" 
                         size="icon" 
                         onClick={() => setIsFullscreen(false)}
-                        className="absolute top-2 right-2 z-10"
+                        className="absolute top-2 right-2 z-[10000]"
                     >
                         <Minimize className="h-6 w-6" />
                     </Button>
@@ -818,3 +829,4 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
+
