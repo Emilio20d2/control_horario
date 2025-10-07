@@ -8,22 +8,24 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@/components/ui/table';
-import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod } from '@/lib/types';
-import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, startOfWeek, isSameDay } from 'date-fns';
+import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getMonth, getYear } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { DateRange } from 'react-day-picker';
+import { DateRange, DayPicker } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Skeleton } from '../ui/skeleton';
 import { setDocument } from '@/lib/services/firestoreService';
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Badge } from '../ui/badge';
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from '@/lib/utils';
 
 export function VacationPlanner() {
-    const { employees, absenceTypes, holidays, loading, refreshData, weeklyRecords, getWeekId } = useDataProvider();
+    const { employees, absenceTypes, holidays, loading, refreshData, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn } = useDataProvider();
     const { toast } = useToast();
 
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
@@ -252,6 +254,40 @@ export function VacationPlanner() {
             backgroundColor: '#dbeafe', // blue-100
         }
     };
+
+    function CustomCaption(props: any) {
+        const { goToMonth, nextMonth, previousMonth } = props;
+        const turnInfo = selectedEmployeeId ? getTheoreticalHoursAndTurn(selectedEmployeeId, props.displayMonth) : null;
+      
+        return (
+          <div className="flex justify-between items-center px-2 pt-1 pb-2">
+            <h2 className='text-sm font-medium flex items-center gap-2'>
+              {format(props.displayMonth, 'MMMM yyyy', { locale: es })}
+              {turnInfo?.turnId && <Badge variant="outline">{turnInfo.turnId.replace('turn', 'T')}</Badge>}
+            </h2>
+            <div className="flex items-center gap-1">
+              <Button
+                disabled={!previousMonth}
+                variant="outline"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => previousMonth && goToMonth(previousMonth)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                disabled={!nextMonth}
+                variant="outline"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => nextMonth && goToMonth(nextMonth)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        );
+      }
     
     if(loading) return <Skeleton className="h-96 w-full" />;
 
@@ -297,6 +333,9 @@ export function VacationPlanner() {
                             className="rounded-md border"
                             modifiers={modifiers}
                             modifiersStyles={modifiersStyles}
+                            components={{
+                                Caption: CustomCaption,
+                            }}
                         />
                         <Button onClick={handleAddPeriod} disabled={isLoading || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
