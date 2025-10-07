@@ -4,33 +4,33 @@
 
 @layer base {
   :root {
-    --background: 220 20% 98%;
+    --background: 45 83% 96%; /* Floral White */
     --foreground: 224 10% 10%;
 
-    --card: 0 0% 100%;
+    --card: 0 0% 91%; /* Platinum */
     --card-foreground: 224 10% 10%;
  
-    --popover: 0 0% 100%;
+    --popover: 0 0% 91%; /* Platinum */
     --popover-foreground: 224 10% 10%;
  
-    --primary: 195 53% 79%;
+    --primary: 133 8% 78%; /* Jet Stream */
     --primary-foreground: 224 10% 10%;
  
-    --secondary: 210 40% 96.1%;
+    --secondary: 0 0% 91%; /* Platinum */
     --secondary-foreground: 224 10% 10%;
  
-    --muted: 210 40% 96.1%;
+    --muted: 0 0% 91%; /* Platinum */
     --muted-foreground: 215 16% 47%;
  
-    --accent: 200 60% 85%;
+    --accent: 38 41% 86%; /* Almond */
     --accent-foreground: 224 10% 10%;
  
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 195 53% 79%;
+    --border: 15 10% 83%; /* American Silver */
+    --input: 15 10% 83%; /* American Silver */
+    --ring: 133 8% 78%; /* Jet Stream */
  
     --radius: 0.5rem;
   }
@@ -45,24 +45,24 @@
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
  
-    --primary: 195 53% 79%;
+    --primary: 133 8% 78%; /* Jet Stream */
     --primary-foreground: 224 10% 10%;
  
-    --secondary: 217 33% 17%;
+    --secondary: 240 4% 65%; /* Metallic Silver */
     --secondary-foreground: 210 40% 98%;
  
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
  
-    --accent: 200 60% 85%;
+    --accent: 38 41% 86%; /* Almond */
     --accent-foreground: 224 10% 10%;
  
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
  
-    --border: 217.2 32.6% 25%;
-    --input: 217.2 32.6% 25%;
-    --ring: 195 53% 79%;
+    --border: 15 10% 83%; /* American Silver */
+    --input: 15 10% 83%; /* American Silver */
+    --ring: 133 8% 78%; /* Jet Stream */
   }
 }
  
