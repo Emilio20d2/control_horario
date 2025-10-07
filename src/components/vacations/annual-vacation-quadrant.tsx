@@ -62,12 +62,12 @@ export function AnnualVacationQuadrant() {
     }, [editingAbsence]);
     
     useEffect(() => {
-        const handleScroll = (event: Event) => {
+        const handleScroll = () => {
             if (tableContainerRef.current) {
                 scrollPositionRef.current = tableContainerRef.current.scrollLeft;
             }
         };
-
+    
         const container = tableContainerRef.current;
         if (container) {
             container.addEventListener('scroll', handleScroll);
@@ -78,11 +78,14 @@ export function AnnualVacationQuadrant() {
                 container.removeEventListener('scroll', handleScroll);
             }
         };
-    }, [tableContainerRef.current]);
-
+    }, []);
+    
     useEffect(() => {
-        if (tableContainerRef.current) {
-            tableContainerRef.current.scrollLeft = scrollPositionRef.current;
+        const container = tableContainerRef.current;
+        if (container && (isFullscreen || !isFullscreen)) {
+             setTimeout(() => {
+                container.scrollLeft = scrollPositionRef.current;
+            }, 0);
         }
     }, [isFullscreen]);
 
@@ -417,9 +420,9 @@ export function AnnualVacationQuadrant() {
                     const summary = vacationData.weeklySummaries[week.key];
                     return `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}\n${summary?.employeeCount || 0} emp. - ${summary?.hourImpact.toFixed(0) || 0}h`;
                 });
-    
-                 const bodyRows = sortedGroups.map(group => {
-                    return weekChunk.map(week => {
+
+                const bodyRows = sortedGroups.map(group => {
+                    const rowData = weekChunk.map(week => {
                         const employeesInGroup = groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || [];
                         const currentSubstitutes = substitutions[week.key] || {};
                         
@@ -427,14 +430,14 @@ export function AnnualVacationQuadrant() {
                             const substituteName = currentSubstitutes[emp.name];
                             return { name: emp.name, absence: emp.absence, substitute: substituteName };
                         });
-                        
-                        return cellText; // Return array of objects
+                        return cellText;
                     });
+                    return rowData;
                 });
                 
                 autoTable(doc, {
                     head: [headContent],
-                    body: [], // Start with empty body, we'll draw it ourselves
+                    body: bodyRows as any,
                     startY: 30,
                     theme: 'grid',
                     didDrawPage: addHeaderFooter,
@@ -447,22 +450,23 @@ export function AnnualVacationQuadrant() {
                         fontSize: 9,
                     },
                     didParseCell: (data) => {
-                        data.cell.styles.cellPadding = 1.5;
+                        data.cell.styles.cellPadding = 3; // Reduced padding
                         data.cell.styles.valign = 'top';
+                        // Remove background color for body cells
+                        if (data.section === 'body') {
+                           data.cell.styles.fillColor = [255,255,255];
+                        }
                     },
                     didDrawCell: (data) => {
-                        if (data.section === 'body') {
-                             doc.setTextColor(0, 0, 0); // Reset color
-                             doc.setFont('helvetica', 'normal');
-                             
-                             const groupIndex = data.row.index;
-                             const colIndex = data.column.index;
-                             const cellData = bodyRows[groupIndex][colIndex];
-                             
-                             let y = data.cell.y + 4; // Initial padding
-                             const lineHeight = 4.5; // Custom line height
-                             
-                             cellData.forEach(item => {
+                        if (data.section === 'body' && Array.isArray(data.cell.raw)) {
+                            const cellData = data.cell.raw as { name: string, absence: string, substitute?: string }[];
+                            doc.setTextColor(0, 0, 0);
+                            doc.setFont('helvetica', 'normal');
+                            
+                            let y = data.cell.y + 4; 
+                            const lineHeight = 5; // Increased line height
+                            
+                            cellData.forEach(item => {
                                 let isSpecialAbsence = item.absence === 'EXD' || item.absence === 'PE';
                                 if (isSpecialAbsence) {
                                     doc.setTextColor(0, 0, 255); // Blue
@@ -510,8 +514,8 @@ export function AnnualVacationQuadrant() {
             const body = activeEmployees.map(emp => {
                 const vacationAbsenceType = absenceTypes.find(at => at.name === 'Vacaciones');
                 const empVacations = vacationData.absencesByEmployee[emp.id]
-                    .filter(abs => abs.absenceTypeId === vacationAbsenceType?.id)
-                    .map(p => `${format(p.startDate, 'dd/MM', { locale: es })} - ${format(p.endDate, 'dd/MM', { locale: es })}`)
+                    .filter((abs: any) => abs.absenceTypeId === vacationAbsenceType?.id)
+                    .map((p: any) => `${format(p.startDate, 'dd/MM', { locale: es })} - ${format(p.endDate, 'dd/MM', { locale: es })}`)
                     .join('\n');
                 
                 return [emp.name, empVacations, ''];
@@ -619,7 +623,7 @@ export function AnnualVacationQuadrant() {
                                                     );
                                                     const isSpecialAbsence = emp.absence === 'EXD' || emp.absence === 'PE';
                                                     const employeeData = allEmployees.find(e => e.id === emp.id);
-                                                    const absenceData = vacationData.absencesByEmployee[emp.id]?.find(a => isWithinInterval(week.start, {start: a.startDate, end: a.endDate}));
+                                                    const absenceData = vacationData.absencesByEmployee[emp.id]?.find((a: any) => isWithinInterval(week.start, {start: a.startDate, end: a.endDate}));
     
                                                     return (
                                                         <div key={nameIndex} className="py-0 px-1 rounded-sm flex justify-between items-center group">
@@ -797,3 +801,4 @@ export function AnnualVacationQuadrant() {
         </Card>
     );
 }
+
