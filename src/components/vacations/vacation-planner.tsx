@@ -12,7 +12,7 @@ import { PlusCircle, Trash2, Loader2, ChevronLeft, ChevronRight } from 'lucide-r
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod } from '@/lib/types';
-import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getMonth, getYear } from 'date-fns';
+import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getMonth, getYear, getWeeksInMonth, startOfMonth, endOfMonth, eachWeekOfInterval, addWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange, DayPicker } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
@@ -32,7 +32,8 @@ export function VacationPlanner() {
     const [selectedAbsenceTypeId, setSelectedAbsenceTypeId] = useState<string>('');
     const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(undefined);
     const [isLoading, setIsLoading] = useState(false);
-    
+    const [calendarMonth, setCalendarMonth] = useState(new Date());
+
     const activeEmployees = employees.filter(e => e.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
     const selectedEmployee = activeEmployees.find(e => e.id === selectedEmployeeId);
     
@@ -255,32 +256,47 @@ export function VacationPlanner() {
         }
     };
 
+    const weeksForMonth = useMemo(() => {
+        if (!selectedEmployee) return [];
+        const monthStart = startOfMonth(calendarMonth);
+        const monthEnd = endOfMonth(calendarMonth);
+        
+        const weeks = eachWeekOfInterval({
+          start: monthStart,
+          end: monthEnd,
+        }, { weekStartsOn: 1 });
+        
+        return weeks.map(weekStart => {
+            const { turnId } = getTheoreticalHoursAndTurn(selectedEmployee.id, weekStart);
+            return {
+                date: weekStart,
+                turn: turnId ? turnId.replace('turn', 'T') : 'N/A'
+            };
+        });
+    }, [calendarMonth, selectedEmployee, getTheoreticalHoursAndTurn]);
+
     function CustomCaption(props: any) {
-        const { goToMonth, nextMonth, previousMonth } = props;
-        const turnInfo = selectedEmployeeId ? getTheoreticalHoursAndTurn(selectedEmployeeId, props.displayMonth) : null;
-      
         return (
           <div className="flex justify-between items-center px-2 pt-1 pb-2">
-            <h2 className='text-sm font-medium flex items-center gap-2'>
+            <h2 className='text-sm font-medium'>
               {format(props.displayMonth, 'MMMM yyyy', { locale: es })}
-              {turnInfo?.turnId && <Badge variant="outline">{turnInfo.turnId.replace('turn', 'T')}</Badge>}
             </h2>
             <div className="flex items-center gap-1">
               <Button
-                disabled={!previousMonth}
+                disabled={!props.previousMonth}
                 variant="outline"
                 size="icon"
                 className="h-7 w-7"
-                onClick={() => previousMonth && goToMonth(previousMonth)}
+                onClick={() => props.goToMonth(props.previousMonth)}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <Button
-                disabled={!nextMonth}
+                disabled={!props.nextMonth}
                 variant="outline"
                 size="icon"
                 className="h-7 w-7"
-                onClick={() => nextMonth && goToMonth(nextMonth)}
+                onClick={() => props.goToMonth(props.nextMonth)}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -323,24 +339,39 @@ export function VacationPlanner() {
                 </div>
                 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                    <div className="flex flex-col items-center">
-                        <Calendar
-                            mode="range"
-                            selected={selectedDateRange}
-                            onSelect={setSelectedDateRange}
-                            locale={es}
-                            disabled={!selectedEmployeeId || isLoading}
-                            className="rounded-md border"
-                            modifiers={modifiers}
-                            modifiersStyles={modifiersStyles}
-                            components={{
-                                Caption: CustomCaption,
-                            }}
-                        />
-                        <Button onClick={handleAddPeriod} disabled={isLoading || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
-                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                            Guardar Periodo
-                        </Button>
+                    <div className="flex items-start gap-4">
+                        <div className="flex flex-col items-center">
+                            <Calendar
+                                mode="range"
+                                selected={selectedDateRange}
+                                onSelect={setSelectedDateRange}
+                                locale={es}
+                                disabled={!selectedEmployeeId || isLoading}
+                                className="rounded-md border"
+                                modifiers={modifiers}
+                                modifiersStyles={modifiersStyles}
+                                month={calendarMonth}
+                                onMonthChange={setCalendarMonth}
+                                components={{
+                                    Caption: CustomCaption,
+                                }}
+                            />
+                            <Button onClick={handleAddPeriod} disabled={isLoading || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
+                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                                Guardar Periodo
+                            </Button>
+                        </div>
+                         {selectedEmployee && (
+                            <div className="w-24 space-y-2 pt-12">
+                                <p className="text-xs font-semibold text-center text-muted-foreground pb-1">Turnos</p>
+                                {weeksForMonth.map(({date, turn}) => (
+                                    <div key={date.toISOString()} className="flex items-center justify-between text-xs p-1 rounded-sm">
+                                        <span>Sem {format(date, 'w', { locale: es })}</span>
+                                        <Badge variant="outline">{turn}</Badge>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {selectedEmployee && (
