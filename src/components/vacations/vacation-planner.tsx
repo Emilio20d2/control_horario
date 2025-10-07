@@ -275,36 +275,6 @@ export function VacationPlanner() {
         });
     }, [calendarMonth, selectedEmployee, getTheoreticalHoursAndTurn]);
 
-    function CustomCaption(props: any) {
-        return (
-          <div className="flex justify-between items-center px-2 pt-1 pb-2">
-            <h2 className='text-sm font-medium'>
-              {format(props.displayMonth, 'MMMM yyyy', { locale: es })}
-            </h2>
-            <div className="flex items-center gap-1">
-              <Button
-                disabled={!props.previousMonth}
-                variant="outline"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => props.goToMonth(props.previousMonth)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                disabled={!props.nextMonth}
-                variant="outline"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => props.goToMonth(props.nextMonth)}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        );
-      }
-    
     if(loading) return <Skeleton className="h-96 w-full" />;
 
     return (
@@ -352,9 +322,6 @@ export function VacationPlanner() {
                                 modifiersStyles={modifiersStyles}
                                 month={calendarMonth}
                                 onMonthChange={setCalendarMonth}
-                                components={{
-                                    Caption: CustomCaption,
-                                }}
                             />
                             <Button onClick={handleAddPeriod} disabled={isLoading || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
                                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
