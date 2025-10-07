@@ -783,7 +783,7 @@ export default function DashboardPage() {
               Panel de Control
             </h1>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 md:px-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-4 md:px-6">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Informe Resumen Anual</CardTitle>
@@ -950,3 +950,5 @@ export default function DashboardPage() {
         </div>
       );
 }
+
+    
