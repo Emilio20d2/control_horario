@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -8,19 +6,32 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@/components/ui/table';
-import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod } from '@/lib/types';
-import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getMonth, getYear, getWeeksInMonth, startOfMonth, endOfMonth, eachWeekOfInterval, addWeeks } from 'date-fns';
+import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getMonth, getYear, getWeeksInMonth, startOfMonth, endOfMonth, eachWeekOfInterval, addWeeks, subMonths, addMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Skeleton } from '../ui/skeleton';
-import { setDocument } from '@/lib/services/firestoreService';
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Badge } from '../ui/badge';
+
+const CalendarNav = ({ currentMonth, onMonthChange }: { currentMonth: Date, onMonthChange: (date: Date) => void }) => (
+    <div className="flex items-center justify-center gap-2 mb-4">
+        <Button variant="outline" size="icon" onClick={() => onMonthChange(subMonths(currentMonth, 1))}>
+            <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-lg font-semibold w-32 text-center">
+            {format(currentMonth, 'MMMM yyyy', { locale: es })}
+        </span>
+        <Button variant="outline" size="icon" onClick={() => onMonthChange(addMonths(currentMonth, 1))}>
+            <ChevronRight className="h-4 w-4" />
+        </Button>
+    </div>
+);
 
 export function VacationPlanner() {
     const { employees, absenceTypes, holidays, loading, refreshData, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn } = useDataProvider();
@@ -31,12 +42,31 @@ export function VacationPlanner() {
     const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(undefined);
     const [isLoading, setIsLoading] = useState(false);
     const [calendarMonth, setCalendarMonth] = useState(new Date());
+    const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
 
     const activeEmployees = employees.filter(e => e.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
     const selectedEmployee = activeEmployees.find(e => e.id === selectedEmployeeId);
     
+    useEffect(() => {
+        if (getYear(calendarMonth) !== selectedYear) {
+            setSelectedYear(getYear(calendarMonth));
+        }
+    }, [calendarMonth, selectedYear]);
+
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const scrollPositionRef = useRef<number>(0);
+
+    const availableYears = useMemo(() => {
+        const years = new Set<number>();
+        if (weeklyRecords) {
+            Object.keys(weeklyRecords).forEach(id => years.add(parseInt(id.split('-')[0], 10)));
+        }
+        const currentYear = new Date().getFullYear();
+        years.add(currentYear);
+        years.add(currentYear + 1);
+        years.add(currentYear - 1);
+        return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
+    }, [weeklyRecords]);
 
     useEffect(() => {
         if (tableContainerRef.current) {
@@ -49,6 +79,12 @@ export function VacationPlanner() {
             scrollPositionRef.current = tableContainerRef.current.scrollLeft;
         }
         setSelectedEmployeeId(employeeId);
+    };
+
+    const handleYearChange = (year: number) => {
+        const currentMonth = getMonth(calendarMonth);
+        setCalendarMonth(new Date(year, currentMonth, 1));
+        setSelectedYear(year);
     };
 
     const schedulableAbsenceTypes = useMemo(() => {
@@ -239,9 +275,11 @@ export function VacationPlanner() {
 
         periods.push({ id: lastScheduledAbsence?.id || `agg-${currentPeriodStart.toISOString()}`, startDate: currentPeriodStart, endDate: lastPeriodEndDate, isConfirmed: isLastPeriodConfirmed, absenceTypeId: currentAbsenceTypeId });
 
-        return periods.sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
+        return periods
+            .filter(p => getYear(p.startDate) === selectedYear)
+            .sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
 
-    }, [selectedEmployee, schedulableAbsenceTypes, weeklyRecords, getWeekId, absenceTypes]);
+    }, [selectedEmployee, schedulableAbsenceTypes, weeklyRecords, getWeekId, absenceTypes, selectedYear]);
 
     const employeeAbsenceDays = useMemo(() => {
         if (!selectedEmployee) return [];
@@ -307,6 +345,17 @@ export function VacationPlanner() {
                 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                     <div className="space-y-4">
+                        <div className='flex items-center justify-center gap-4'>
+                            <CalendarNav currentMonth={calendarMonth} onMonthChange={setCalendarMonth} />
+                             <Select value={String(selectedYear)} onValueChange={v => handleYearChange(Number(v))}>
+                                <SelectTrigger className='w-32'>
+                                    <SelectValue placeholder="Año..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
                         <div className="flex items-end gap-4">
                              <Calendar
                                 mode="range"
@@ -314,7 +363,7 @@ export function VacationPlanner() {
                                 onSelect={setSelectedDateRange}
                                 locale={es}
                                 disabled={!selectedEmployeeId || isLoading}
-                                className="rounded-md border border-black w-auto"
+                                className="rounded-md border w-auto"
                                 modifiers={modifiers}
                                 modifiersStyles={modifiersStyles}
                                 month={calendarMonth}
@@ -349,7 +398,7 @@ export function VacationPlanner() {
                                     <TableBody>
                                         {absencePeriods.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={4} className="text-center h-24">No hay ausencias programadas.</TableCell>
+                                                <TableCell colSpan={4} className="text-center h-24">No hay ausencias programadas para {selectedYear}.</TableCell>
                                             </TableRow>
                                         ) : (
                                             absencePeriods.map(period => {
@@ -378,4 +427,3 @@ export function VacationPlanner() {
         </Card>
     );
 }
-
