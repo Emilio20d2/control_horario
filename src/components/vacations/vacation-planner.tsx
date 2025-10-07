@@ -72,7 +72,7 @@ export function VacationPlanner() {
 
     const weekTurns = useMemo(() => {
         const employeeForTurns = selectedEmployee || activeEmployees[0];
-        if (!employeeForTurns) return [];
+        if (!employeeForTurns) return monthWeeks.map(() => '-');
 
         return monthWeeks.map(weekStart => {
             const { turnId } = getTheoreticalHoursAndTurn(employeeForTurns.id, weekStart);
@@ -306,9 +306,9 @@ export function VacationPlanner() {
                 </div>
                 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                    <div className="flex items-start gap-4">
-                        <div className="flex flex-col items-start">
-                            <Calendar
+                    <div className="space-y-4">
+                        <div className="flex items-end gap-4">
+                             <Calendar
                                 mode="range"
                                 selected={selectedDateRange}
                                 onSelect={setSelectedDateRange}
@@ -320,18 +320,18 @@ export function VacationPlanner() {
                                 month={calendarMonth}
                                 onMonthChange={setCalendarMonth}
                             />
-                            <Button onClick={handleAddPeriod} disabled={isLoading || !selectedEmployeeId || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
-                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                                Guardar Periodo
-                            </Button>
+                            <div className="flex flex-col space-y-2">
+                                {weekTurns.map((turn, index) => (
+                                    <div key={index} className="flex h-9 w-9 items-center justify-center rounded-md border bg-muted text-muted-foreground text-sm font-bold">
+                                        {turn}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <div className="flex flex-col space-y-2 pt-[72px]">
-                            {weekTurns.map((turn, index) => (
-                                <div key={index} className="flex h-9 w-9 items-center justify-center rounded-md border bg-muted text-muted-foreground text-sm font-bold">
-                                    {turn}
-                                </div>
-                            ))}
-                        </div>
+                        <Button onClick={handleAddPeriod} disabled={isLoading || !selectedEmployeeId || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
+                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                            Guardar Periodo
+                        </Button>
                     </div>
 
                     {selectedEmployee && (
