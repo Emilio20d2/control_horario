@@ -314,7 +314,7 @@ export function VacationPlanner() {
                                 onSelect={setSelectedDateRange}
                                 locale={es}
                                 disabled={!selectedEmployeeId || isLoading}
-                                className="rounded-md border"
+                                className="rounded-md border border-black w-auto"
                                 modifiers={modifiers}
                                 modifiersStyles={modifiersStyles}
                                 month={calendarMonth}
@@ -336,7 +336,6 @@ export function VacationPlanner() {
 
                     {selectedEmployee && (
                         <div className="space-y-4">
-                            <h4 className="font-medium">Periodos de Ausencia de {selectedEmployee.name}</h4>
                             <div ref={tableContainerRef} className="border rounded-md max-h-96 overflow-y-auto">
                                 <Table>
                                     <TableHeader>
@@ -379,3 +378,4 @@ export function VacationPlanner() {
         </Card>
     );
 }
+
