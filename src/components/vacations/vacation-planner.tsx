@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod } from '@/lib/types';
 import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, startOfWeek, isSameDay, getMonth, getYear, getWeeksInMonth, startOfMonth, endOfMonth, eachWeekOfInterval, addWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { DateRange, DayPicker } from 'react-day-picker';
+import { DateRange, DayPicker, Row, RowProps } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Skeleton } from '../ui/skeleton';
 import { setDocument } from '@/lib/services/firestoreService';
@@ -256,24 +256,17 @@ export function VacationPlanner() {
         }
     };
 
-    const weeksForMonth = useMemo(() => {
-        if (!selectedEmployee) return [];
-        const monthStart = startOfMonth(calendarMonth);
-        const monthEnd = endOfMonth(calendarMonth);
-        
-        const weeks = eachWeekOfInterval({
-          start: monthStart,
-          end: monthEnd,
-        }, { weekStartsOn: 1 });
-        
-        return weeks.map(weekStart => {
-            const { turnId } = getTheoreticalHoursAndTurn(selectedEmployee.id, weekStart);
-            return {
-                date: weekStart,
-                turn: turnId ? turnId.replace('turn', 'T') : 'N/A'
-            };
-        });
-    }, [calendarMonth, selectedEmployee, getTheoreticalHoursAndTurn]);
+    const WeekWithTurn = (props: RowProps) => {
+        const { turnId } = getTheoreticalHoursAndTurn(selectedEmployeeId, props.dates[0]);
+        return (
+            <div className="flex items-center relative">
+                <Row {...props} />
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 pr-2">
+                    <Badge variant="outline">{turnId ? turnId.replace('turn', 'T') : 'N/A'}</Badge>
+                </div>
+            </div>
+        );
+    }
 
     if(loading) return <Skeleton className="h-96 w-full" />;
 
@@ -309,36 +302,24 @@ export function VacationPlanner() {
                 </div>
                 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                    <div className="flex items-start gap-4">
-                        <div className="flex flex-col items-center">
-                            <Calendar
-                                mode="range"
-                                selected={selectedDateRange}
-                                onSelect={setSelectedDateRange}
-                                locale={es}
-                                disabled={!selectedEmployeeId || isLoading}
-                                className="rounded-md border"
-                                modifiers={modifiers}
-                                modifiersStyles={modifiersStyles}
-                                month={calendarMonth}
-                                onMonthChange={setCalendarMonth}
-                            />
-                            <Button onClick={handleAddPeriod} disabled={isLoading || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
-                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                                Guardar Periodo
-                            </Button>
-                        </div>
-                         {selectedEmployee && (
-                            <div className="w-24 space-y-2 pt-12">
-                                <p className="text-xs font-semibold text-center text-muted-foreground pb-1">Turnos</p>
-                                {weeksForMonth.map(({date, turn}) => (
-                                    <div key={date.toISOString()} className="flex items-center justify-between text-xs p-1 rounded-sm">
-                                        <span>Sem {format(date, 'w', { locale: es })}</span>
-                                        <Badge variant="outline">{turn}</Badge>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                    <div className="flex flex-col items-center">
+                        <Calendar
+                            mode="range"
+                            selected={selectedDateRange}
+                            onSelect={setSelectedDateRange}
+                            locale={es}
+                            disabled={!selectedEmployeeId || isLoading}
+                            className="rounded-md border"
+                            modifiers={modifiers}
+                            modifiersStyles={modifiersStyles}
+                            month={calendarMonth}
+                            onMonthChange={setCalendarMonth}
+                            components={{ Row: WeekWithTurn }}
+                        />
+                        <Button onClick={handleAddPeriod} disabled={isLoading || !selectedDateRange?.from || !selectedDateRange?.to} className="mt-4 w-full max-w-xs">
+                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                            Guardar Periodo
+                        </Button>
                     </div>
 
                     {selectedEmployee && (
