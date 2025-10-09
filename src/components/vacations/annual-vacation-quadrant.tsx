@@ -718,7 +718,7 @@ export function AnnualVacationQuadrant() {
                 container.removeEventListener('scroll', handleScroll);
             }
         };
-    }, []);
+    }, [tableContainerRef]);
 
 
     return (
@@ -839,5 +839,3 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
-
-    
