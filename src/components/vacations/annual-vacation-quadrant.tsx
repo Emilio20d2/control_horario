@@ -25,6 +25,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../ui/dialog';
 import { cn } from '@/lib/utils';
 import { endOfWeek, endOfDay } from 'date-fns';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 
 const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selectedYear: number, onEditAbsence: (employee: any, absence: any, periodId: string) => void }>(({ isFullscreen, selectedYear, onEditAbsence }, ref) => {
@@ -453,7 +455,7 @@ const FullscreenQuadrant = ({
 
 
 export function AnnualVacationQuadrant() {
-    const { loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn } = useDataProvider();
+    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays } = useDataProvider();
     const { toast } = useToast();
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     
@@ -496,6 +498,10 @@ export function AnnualVacationQuadrant() {
         years.add(currentYear - 1);
         return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
     }, [weeklyRecords]);
+
+    const activeEmployees = useMemo(() => {
+        return employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
+    }, [employees]);
     
     const handleUpdateAbsence = async () => {
         if (!editingAbsence || !editedDateRange?.from) return;
@@ -547,15 +553,111 @@ export function AnnualVacationQuadrant() {
 
     const generateGroupReport = () => {
         setIsGenerating(true);
-        // This function would now need to access data from the context or props
-        // For simplicity, we'll assume it gets the data it needs.
-        // The PDF generation logic remains the same.
+        const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+    
+        const year = selectedYear;
+        const weeksOfYear = useMemo(() => {
+            const firstDayOfYear = new Date(year, 0, 1);
+            let firstMonday = startOfWeek(firstDayOfYear, { weekStartsOn: 1 });
+            if (getYear(firstMonday) < year) firstMonday = addWeeks(firstMonday, 1);
+            const weeks = [];
+            for (let i = 0; i < 53; i++) {
+                const weekStart = addWeeks(firstMonday, i);
+                if (getYear(weekStart) > year) break;
+                weeks.push({
+                    start: weekStart,
+                    end: endOfWeek(weekStart, { weekStartsOn: 1 }),
+                    number: getISOWeek(weekStart),
+                });
+            }
+            return weeks;
+        }, [year])();
+    
+        const head = [['Empleado', ...weeksOfYear.map(w => `${w.number}`)]];
+        const body = activeEmployees.map(emp => {
+            const cells = [emp.name];
+            weeksOfYear.forEach(week => {
+                const absence = absenceTypes.find(at => at.name === 'Vacaciones');
+                const hasVacation = weeklyRecords[getWeekId(week.start)]?.weekData[emp.id]?.days &&
+                    Object.values(weeklyRecords[getWeekId(week.start)].weekData[emp.id].days)
+                        .some(d => d.absence === absence?.abbreviation);
+                cells.push(hasVacation ? 'V' : '');
+            });
+            return cells;
+        });
+    
+        doc.text(`Cuadrante de Vacaciones - ${year}`, 15, 10);
+        autoTable(doc, {
+            head,
+            body,
+            startY: 15,
+            theme: 'grid',
+            styles: { fontSize: 5, cellPadding: 1, halign: 'center' },
+            columnStyles: { 0: { halign: 'left', cellWidth: 30 } },
+            didParseCell: (data) => {
+                if (data.section === 'head' && data.column.index > 0) {
+                    const week = weeksOfYear[data.column.index - 1];
+                    const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                    const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
+                    if (hasHoliday) {
+                        data.cell.styles.fillColor = '#bfdbfe'; // Un azul claro
+                    }
+                }
+            }
+        });
+        doc.save(`cuadrante_vacaciones_${year}.pdf`);
         setIsGenerating(false);
     };
     
     const generateSignatureReport = () => {
         setIsGenerating(true);
-        // PDF generation logic
+        const doc = new jsPDF();
+        doc.text(`Listado de Vacaciones para Firma - ${selectedYear}`, 14, 15);
+    
+        let finalY = 25;
+    
+        activeEmployees.forEach(emp => {
+            const activePeriod = emp.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
+            if (!activePeriod) return;
+    
+            const periods = (activePeriod.scheduledAbsences ?? [])
+                .filter(p => p.endDate && getYear(p.startDate) === selectedYear)
+                .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
+    
+            if (periods.length > 0) {
+                if (finalY > 250) {
+                    doc.addPage();
+                    finalY = 15;
+                }
+    
+                doc.setFontSize(12).setFont('helvetica', 'bold');
+                doc.text(emp.name, 14, finalY);
+                finalY += 2;
+    
+                autoTable(doc, {
+                    startY: finalY,
+                    head: [['Tipo', 'Inicio', 'Fin', 'Días', 'Firma']],
+                    body: periods.map(p => {
+                        const absenceType = absenceTypes.find(at => at.id === p.absenceTypeId);
+                        return [
+                            absenceType?.abbreviation || '??',
+                            format(p.startDate, 'dd/MM/yyyy'),
+                            format(p.endDate!, 'dd/MM/yyyy'),
+                            differenceInDays(p.endDate!, p.startDate) + 1,
+                            ''
+                        ];
+                    }),
+                    theme: 'striped',
+                    headStyles: { fillColor: [200, 200, 200], textColor: 20 },
+                    columnStyles: { 4: { cellWidth: 50 } },
+                    margin: { left: 14, right: 14 }
+                });
+                // @ts-ignore
+                finalY = doc.lastAutoTable.finalY + 15;
+            }
+        });
+    
+        doc.save(`listado_firmas_vacaciones_${selectedYear}.pdf`);
         setIsGenerating(false);
     };
     
