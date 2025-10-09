@@ -556,7 +556,7 @@ export function AnnualVacationQuadrant() {
         const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
     
         const year = selectedYear;
-        const weeksOfYear = useMemo(() => {
+        const weeksOfYear = (() => {
             const firstDayOfYear = new Date(year, 0, 1);
             let firstMonday = startOfWeek(firstDayOfYear, { weekStartsOn: 1 });
             if (getYear(firstMonday) < year) firstMonday = addWeeks(firstMonday, 1);
@@ -571,7 +571,7 @@ export function AnnualVacationQuadrant() {
                 });
             }
             return weeks;
-        }, [year])();
+        })();
     
         const head = [['Empleado', ...weeksOfYear.map(w => `${w.number}`)]];
         const body = activeEmployees.map(emp => {
@@ -665,7 +665,56 @@ export function AnnualVacationQuadrant() {
         return <Skeleton className="h-[600px] w-full" />;
     }
     
-    const vacationPeriods = editingAbsence ? editingAbsence.employee.absencePeriods : [];
+    const vacationPeriods = useMemo(() => {
+        if (!editingAbsence) return [];
+        const { employee } = editingAbsence;
+        const periods: { id: string; startDate: Date; endDate: Date; absenceTypeId: string; }[] = [];
+
+        employee.employmentPeriods.forEach((period: EmploymentPeriod) => {
+            period.scheduledAbsences?.forEach(sa => {
+                if(sa.endDate && getYear(sa.startDate) === selectedYear) {
+                    periods.push({
+                        id: sa.id,
+                        startDate: sa.startDate,
+                        endDate: sa.endDate,
+                        absenceTypeId: sa.absenceTypeId
+                    });
+                }
+            });
+        });
+        return periods;
+    }, [editingAbsence, selectedYear]);
+
+    useLayoutEffect(() => {
+        const container = tableContainerRef.current;
+        if (container) {
+            container.scrollTop = scrollPositionRef.current.top;
+            container.scrollLeft = scrollPositionRef.current.left;
+        }
+    });
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (tableContainerRef.current) {
+                scrollPositionRef.current = {
+                    top: tableContainerRef.current.scrollTop,
+                    left: tableContainerRef.current.scrollLeft
+                };
+            }
+        };
+
+        const container = tableContainerRef.current;
+        if (container) {
+            container.addEventListener('scroll', handleScroll, { passive: true });
+        }
+        
+        return () => {
+            if (container) {
+                container.removeEventListener('scroll', handleScroll);
+            }
+        };
+    }, [tableContainerRef, scrollPositionRef]);
+
 
     return (
         <>
@@ -714,7 +763,7 @@ export function AnnualVacationQuadrant() {
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {(vacationPeriods || []).filter((p: any) => getYear(p.startDate) === selectedYear).map((period: any) => {
+                                                {vacationPeriods.map((period: any) => {
                                                     const absenceType = absenceTypes.find(at => at.id === period.absenceTypeId);
                                                     return (
                                                     <TableRow key={period.id}>
@@ -776,8 +825,8 @@ export function AnnualVacationQuadrant() {
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent>
-                    <QuadrantTable ref={tableContainerRef} selectedYear={selectedYear} onEditAbsence={handleEditAbsence} />
+                <CardContent ref={tableContainerRef}>
+                    <QuadrantTable selectedYear={selectedYear} onEditAbsence={handleEditAbsence} />
                 </CardContent>
             </Card>
         </>
