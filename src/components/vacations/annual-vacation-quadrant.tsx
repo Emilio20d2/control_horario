@@ -455,7 +455,7 @@ const FullscreenQuadrant = ({
 
 
 export function AnnualVacationQuadrant() {
-    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays } = useDataProvider();
+    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays, refreshData } = useDataProvider();
     const { toast } = useToast();
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     
@@ -473,7 +473,6 @@ export function AnnualVacationQuadrant() {
     const [editedDateRange, setEditedDateRange] = useState<DateRange | undefined>(undefined);
     const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
     
-    const { refreshData } = useDataProvider();
 
     useEffect(() => {
         if (editingAbsence) {
@@ -575,14 +574,20 @@ export function AnnualVacationQuadrant() {
     
         const head = [['Empleado', ...weeksOfYear.map(w => `${w.number}`)]];
         const body = activeEmployees.map(emp => {
-            const cells = [emp.name];
-            weeksOfYear.forEach(week => {
-                const absence = absenceTypes.find(at => at.name === 'Vacaciones');
-                const hasVacation = weeklyRecords[getWeekId(week.start)]?.weekData[emp.id]?.days &&
-                    Object.values(weeklyRecords[getWeekId(week.start)].weekData[emp.id].days)
-                        .some(d => d.absence === absence?.abbreviation);
-                cells.push(hasVacation ? 'V' : '');
-            });
+            const cells: string[] = [emp.name];
+            const absenceType = absenceTypes.find(at => at.name === 'Vacaciones');
+            if (absenceType) {
+                weeksOfYear.forEach(week => {
+                    const daysInWeek = eachDayOfInterval({start: week.start, end: week.end});
+                    const hasVacation = daysInWeek.some(day => {
+                        const weekId = getWeekId(day);
+                        const dayKey = format(day, 'yyyy-MM-dd');
+                        const dayData = weeklyRecords[weekId]?.weekData[emp.id]?.days[dayKey];
+                        return dayData?.absence === absenceType.abbreviation;
+                    });
+                     cells.push(hasVacation ? 'V' : '');
+                });
+            }
             return cells;
         });
     
@@ -713,7 +718,7 @@ export function AnnualVacationQuadrant() {
                 container.removeEventListener('scroll', handleScroll);
             }
         };
-    }, [tableContainerRef, scrollPositionRef]);
+    }, []);
 
 
     return (
@@ -825,10 +830,14 @@ export function AnnualVacationQuadrant() {
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent ref={tableContainerRef}>
-                    <QuadrantTable selectedYear={selectedYear} onEditAbsence={handleEditAbsence} />
+                <CardContent>
+                    <div ref={tableContainerRef} className="overflow-auto max-h-[70vh]">
+                        <QuadrantTable selectedYear={selectedYear} onEditAbsence={handleEditAbsence} />
+                    </div>
                 </CardContent>
             </Card>
         </>
     );
 }
+
+    
