@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 import { endOfWeek, endOfDay } from 'date-fns';
 
 
-const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selectedYear: number }>(({ isFullscreen, selectedYear }, ref) => {
+const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selectedYear: number, onEditAbsence: (employee: any, absence: any, periodId: string) => void }>(({ isFullscreen, selectedYear, onEditAbsence }, ref) => {
     const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours, holidays, getWeekId, getTheoreticalHoursAndTurn } = useDataProvider();
     const [substitutions, setSubstitutions] = useState<Record<string, Record<string, string>>>({}); // { [weekKey]: { [originalEmpName]: substituteName } }
     
@@ -339,7 +339,11 @@ const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selec
                                                         <div key={nameIndex} className="py-0 px-1 rounded-sm flex justify-between items-center group">
                                                             <button
                                                                 className={cn('flex flex-row items-center gap-2 text-left text-sm font-semibold', isSpecialAbsence && 'text-blue-600')}
-                                                                
+                                                                onClick={() => {
+                                                                    if (absenceData && employeeData && !employeeData.isExternal) {
+                                                                        onEditAbsence(employeeData, absenceData, absenceData.periodId);
+                                                                    }
+                                                                }}
                                                             >
                                                                 <span className="truncate">{emp.name} ({emp.absence})</span>
                                                                 {substitute && <span className="text-red-600 truncate">({substitute})</span>}
@@ -390,12 +394,14 @@ const FullscreenQuadrant = ({
     tableContainerRef,
     scrollPositionRef,
     selectedYear,
+    onEditAbsence,
 }: {
     isFullscreen: boolean;
     setIsFullscreen: (value: boolean) => void;
     tableContainerRef: React.RefObject<HTMLDivElement>;
     scrollPositionRef: React.MutableRefObject<{ top: number; left: number }>;
     selectedYear: number;
+    onEditAbsence: (employee: any, absence: any, periodId: string) => void;
 }) => {
     
     useLayoutEffect(() => {
@@ -439,7 +445,7 @@ const FullscreenQuadrant = ({
                 >
                     <Minimize className="h-6 w-6" />
                 </Button>
-                <QuadrantTable ref={tableContainerRef} isFullscreen={true} selectedYear={selectedYear} />
+                <QuadrantTable ref={tableContainerRef} isFullscreen={true} selectedYear={selectedYear} onEditAbsence={onEditAbsence} />
             </DialogContent>
         </Dialog>
     );
@@ -535,6 +541,10 @@ export function AnnualVacationQuadrant() {
         }
     };
 
+    const handleEditAbsence = (employee: any, absence: any, periodId: string) => {
+        setEditingAbsence({ employee, absence, periodId });
+    };
+
     const generateGroupReport = () => {
         setIsGenerating(true);
         // This function would now need to access data from the context or props
@@ -563,6 +573,7 @@ export function AnnualVacationQuadrant() {
                 tableContainerRef={tableContainerRef}
                 scrollPositionRef={scrollPositionRef}
                 selectedYear={selectedYear}
+                onEditAbsence={handleEditAbsence}
             />
 
             <Dialog open={!!editingAbsence} onOpenChange={(open) => { if (!open) { setEditingAbsence(null); } }}>
@@ -664,7 +675,7 @@ export function AnnualVacationQuadrant() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <QuadrantTable ref={tableContainerRef} selectedYear={selectedYear} />
+                    <QuadrantTable ref={tableContainerRef} selectedYear={selectedYear} onEditAbsence={handleEditAbsence} />
                 </CardContent>
             </Card>
         </>
