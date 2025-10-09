@@ -397,6 +397,7 @@ const FullscreenQuadrant = ({
     scrollPositionRef,
     selectedYear,
     onEditAbsence,
+    loading,
 }: {
     isFullscreen: boolean;
     setIsFullscreen: (value: boolean) => void;
@@ -404,15 +405,18 @@ const FullscreenQuadrant = ({
     scrollPositionRef: React.MutableRefObject<{ top: number; left: number }>;
     selectedYear: number;
     onEditAbsence: (employee: any, absence: any, periodId: string) => void;
+    loading: boolean;
 }) => {
     
     useLayoutEffect(() => {
-        const container = tableContainerRef.current;
-        if (container) {
-            container.scrollTop = scrollPositionRef.current.top;
-            container.scrollLeft = scrollPositionRef.current.left;
+        if (!loading) {
+            const container = tableContainerRef.current;
+            if (container) {
+                container.scrollTop = scrollPositionRef.current.top;
+                container.scrollLeft = scrollPositionRef.current.left;
+            }
         }
-    });
+    }, [loading, tableContainerRef, scrollPositionRef]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -691,12 +695,14 @@ export function AnnualVacationQuadrant() {
     }, [editingAbsence, selectedYear]);
 
     useLayoutEffect(() => {
-        const container = tableContainerRef.current;
-        if (container) {
-            container.scrollTop = scrollPositionRef.current.top;
-            container.scrollLeft = scrollPositionRef.current.left;
+        if (!loading) {
+            const container = tableContainerRef.current;
+            if (container) {
+                container.scrollTop = scrollPositionRef.current.top;
+                container.scrollLeft = scrollPositionRef.current.left;
+            }
         }
-    });
+    }, [loading]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -709,16 +715,12 @@ export function AnnualVacationQuadrant() {
         };
 
         const container = tableContainerRef.current;
-        if (container) {
-            container.addEventListener('scroll', handleScroll, { passive: true });
-        }
+        container?.addEventListener('scroll', handleScroll, { passive: true });
         
         return () => {
-            if (container) {
-                container.removeEventListener('scroll', handleScroll);
-            }
+            container?.removeEventListener('scroll', handleScroll);
         };
-    }, [tableContainerRef]);
+    }, []);
 
 
     return (
@@ -730,6 +732,7 @@ export function AnnualVacationQuadrant() {
                 scrollPositionRef={scrollPositionRef}
                 selectedYear={selectedYear}
                 onEditAbsence={handleEditAbsence}
+                loading={loading}
             />
 
             <Dialog open={!!editingAbsence} onOpenChange={(open) => { if (!open) { setEditingAbsence(null); } }}>
