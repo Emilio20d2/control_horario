@@ -627,7 +627,7 @@ export function AnnualVacationQuadrant() {
 const generateGroupReport = (localEmployees: Employee[], localHolidayEmployees: HolidayEmployee[]) => {
     setIsGenerating(true);
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-
+    
     const schedulableAbsenceTypesReport = absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
     const schedulableAbsenceTypeAbbrsReport = new Set(schedulableAbsenceTypesReport.map(at => at.abbreviation));
 
@@ -638,7 +638,6 @@ const generateGroupReport = (localEmployees: Employee[], localHolidayEmployees: 
             if ('employmentPeriods' in emp) { // Es un Employee
                 return emp;
             }
-            // Es un HolidayEmployee, lo "convertimos" a una estructura similar a Employee
             return {
                 id: emp.id,
                 name: emp.name,
@@ -675,7 +674,6 @@ const generateGroupReport = (localEmployees: Employee[], localHolidayEmployees: 
             });
         });
 
-
         employeeAbsenceDays.forEach((data, dayStr) => {
             const weekNumber = getISOWeek(parseISO(dayStr));
             const existingEntry = allAbsenceData.find(d => d.empId === emp.id && d.weekNumber === weekNumber);
@@ -692,46 +690,45 @@ const generateGroupReport = (localEmployees: Employee[], localHolidayEmployees: 
     });
     
     const sortedGroups = [...employeeGroups].sort((a, b) => a.order - b.order);
-
     const weeksOfYear = Array.from({ length: 53 }, (_, i) => i + 1);
+
     const weekChunks: number[][] = [];
     for (let i = 0; i < weeksOfYear.length; i += 4) {
         weekChunks.push(weeksOfYear.slice(i, i + 4));
     }
 
-    const addHeader = (doc: jsPDF, pageNumber: number, totalPages: number) => {
+    weekChunks.forEach((chunk, pageIndex) => {
+        if (pageIndex > 0) doc.addPage();
+        
+        const pageNumber = pageIndex + 1;
         doc.setFontSize(14);
         doc.text(`Cuadrante de Ausencias Programadas - ${selectedYear}`, 14, 15);
         doc.setFontSize(10);
-        doc.text(`Página ${pageNumber} de ${totalPages}`, doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 10, { align: 'right' });
-    };
-
-    weekChunks.forEach((chunk, pageIndex) => {
-        if (pageIndex > 0) doc.addPage();
-        addHeader(doc, pageIndex + 1, weekChunks.length);
+        doc.text(`Página ${pageNumber} de ${weekChunks.length}`, doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 10, { align: 'right' });
         
         const body: any[][] = [];
         
-        const allEmployeesInReport = allActiveEmployees
-          .filter(e => sortedGroups.some(g => g.id === e.groupId))
-          .sort((a,b) => {
-            const groupA = sortedGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
-            const groupB = sortedGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
-            if(groupA !== groupB) return groupA - groupB;
-            return a.name.localeCompare(b.name);
-          });
-          
-        allEmployeesInReport.forEach(emp => {
-            const absencesForEmp = allAbsenceData.filter(d => d.empId === emp.id);
-            const row = [
-                { content: '' }, 
-                ...chunk.map(weekNum => {
-                    const absenceInWeek = absencesForEmp.find(abs => abs.weekNumber === weekNum);
-                    return absenceInWeek ? `${emp.name} (V)` : '';
-                })
-            ];
-            body.push(row);
+        sortedGroups.forEach(group => {
+            const employeesInGroup = allActiveEmployees.filter(e => e.groupId === group.id);
+            if(employeesInGroup.length === 0) return;
+
+            const absencesByWeekForGroup = chunk.map(weekNum => {
+                return employeesInGroup
+                    .filter(emp => allAbsenceData.some(d => d.empId === emp.id && d.weekNumber === weekNum))
+                    .map(emp => {
+                        const absence = allAbsenceData.find(d => d.empId === emp.id && d.weekNumber === weekNum)!;
+                        return `${emp.name} (${absence.absenceAbbr})`;
+                    })
+                    .join('\n');
+            });
+
+            if (absencesByWeekForGroup.some(cell => cell !== '')) {
+                body.push([{ content: '', styles: { fillColor: '#f0f0f0' } }, ...absencesByWeekForGroup]);
+            }
         });
+        
+        const tableWidth = doc.internal.pageSize.width - 28;
+        const columnWidth = (tableWidth - 0.02) / chunk.length;
 
         autoTable(doc, {
             head: [[
@@ -754,7 +751,8 @@ const generateGroupReport = (localEmployees: Employee[], localHolidayEmployees: 
                 valign: 'middle',
             },
             columnStyles: {
-                0: { cellWidth: 0.02 }
+                0: { cellWidth: 0.02 },
+                ...chunk.reduce((acc, _, i) => ({ ...acc, [i+1]: { cellWidth: columnWidth } }), {})
             },
         });
     });
