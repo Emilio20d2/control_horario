@@ -695,7 +695,7 @@ export function AnnualVacationQuadrant() {
             weekChunks.push(weeksOfYear.slice(i, i + 4));
         }
 
-        const quadrantWeeks = useMemo(() => {
+        const quadrantWeeks = (() => {
             const year = selectedYear;
             const firstDayOfYear = new Date(year, 0, 1);
             let firstMonday = startOfWeek(firstDayOfYear, { weekStartsOn: 1 });
@@ -719,9 +719,9 @@ export function AnnualVacationQuadrant() {
                 }
             }
             return weeks;
-        }, [selectedYear]);
+        })();
 
-        const vacationDataForReport = useMemo(() => {
+        const vacationDataForReport = (() => {
             if (loading || schedulableAbsenceTypesReport.length === 0) return { weeklySummaries: {} };
     
             const weeklySummaries: Record<string, { employeeCount: number; hourImpact: number }> = {};
@@ -766,7 +766,7 @@ export function AnnualVacationQuadrant() {
                 }
             });
             return { weeklySummaries };
-        }, [loading, allActiveEmployees, schedulableAbsenceTypesReport, quadrantWeeks, weeklyRecords, selectedYear, getEffectiveWeeklyHours, absenceTypes]);
+        })();
         
         weekChunks.forEach((chunk, pageIndex) => {
             if (pageIndex > 0) doc.addPage();
