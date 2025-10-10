@@ -637,10 +637,11 @@ export function AnnualVacationQuadrant() {
         const employeeVacationPeriods: { employeeName: string; periodsText: string }[] = [];
     
         const sortedEmployees = [...activeEmployees].sort((a, b) => a.name.localeCompare(b.name));
-
+    
         sortedEmployees.forEach(emp => {
             const allVacationDays = new Set<string>();
-            
+    
+            // Fuente 1: Ausencias programadas (larga duración)
             emp.employmentPeriods?.forEach(period => {
                 period.scheduledAbsences?.forEach(sa => {
                     if (sa.absenceTypeId === vacationType.id && sa.endDate) {
@@ -653,6 +654,7 @@ export function AnnualVacationQuadrant() {
                 });
             });
     
+            // Fuente 2: Registros diarios en weeklyRecords
             Object.values(weeklyRecords).forEach(record => {
                 const empWeekData = record.weekData[emp.id];
                 if (empWeekData?.days) {
@@ -683,6 +685,8 @@ export function AnnualVacationQuadrant() {
                 periods.push(`${format(currentPeriodStart, 'dd/MM')} - ${format(lastEndDate, 'dd/MM')} (${lastDays} días)`);
     
                 employeeVacationPeriods.push({ employeeName: emp.name, periodsText: periods.join('\n') });
+            } else {
+                 employeeVacationPeriods.push({ employeeName: emp.name, periodsText: 'Sin vacaciones registradas' });
             }
         });
     
@@ -693,13 +697,16 @@ export function AnnualVacationQuadrant() {
             body: body,
             startY: 22,
             theme: 'plain',
-            styles: { valign: 'middle', cellHeight: 20 },
+            styles: { valign: 'middle' },
             headStyles: { fontStyle: 'bold', halign: 'center' },
+            minCellHeight: 20,
             columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 40 } },
             didDrawCell: (data) => {
-                if (data.section === 'body' && data.column.index === 2) {
+                 if (data.section === 'body' && data.column.index === 2) {
                     const cell = data.cell;
-                    doc.rect(cell.x + 2, cell.y + 2, cell.width - 4, cell.height - 4);
+                    const rectHeight = 18;
+                    const rectY = cell.y + (cell.height / 2) - (rectHeight / 2);
+                    doc.rect(cell.x + 2, rectY, cell.width - 4, rectHeight);
                 }
             }
         });
@@ -878,3 +885,4 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
+
