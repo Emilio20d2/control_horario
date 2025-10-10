@@ -457,7 +457,7 @@ const FullscreenQuadrant = ({
 
 
 export function AnnualVacationQuadrant() {
-    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays, refreshData } = useDataProvider();
+    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays, refreshData, employeeGroups } = useDataProvider();
     const { toast } = useToast();
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     
@@ -552,6 +552,145 @@ export function AnnualVacationQuadrant() {
         setEditingAbsence({ employee, absence, periodId });
     };
 
+    const vacationPeriods = useMemo(() => {
+        if (!editingAbsence) return [];
+        const { employee } = editingAbsence;
+        const periods: { id: string; startDate: Date; endDate: Date; absenceTypeId: string; }[] = [];
+
+        employee.employmentPeriods.forEach((period: EmploymentPeriod) => {
+            period.scheduledAbsences?.forEach(sa => {
+                if(sa.endDate && getYear(sa.startDate) === selectedYear) {
+                    periods.push({
+                        id: sa.id,
+                        startDate: sa.startDate,
+                        endDate: sa.endDate,
+                        absenceTypeId: sa.absenceTypeId
+                    });
+                }
+            });
+        });
+        return periods;
+    }, [editingAbsence, selectedYear]);
+
+    useLayoutEffect(() => {
+        if (!loading && isFullscreen) {
+            const container = tableContainerRef.current;
+            if (container && (container.scrollTop !== scrollPositionRef.current.top || container.scrollLeft !== scrollPositionRef.current.left)) {
+                container.scrollTop = scrollPositionRef.current.top;
+                container.scrollLeft = scrollPositionRef.current.left;
+            }
+        }
+    }, [loading, isFullscreen, tableContainerRef, scrollPositionRef]);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (tableContainerRef.current) {
+                scrollPositionRef.current = {
+                    top: tableContainerRef.current.scrollTop,
+                    left: tableContainerRef.current.scrollLeft
+                };
+            }
+        };
+
+        const container = tableContainerRef.current;
+        container?.addEventListener('scroll', handleScroll, { passive: true });
+        
+        return () => {
+            container?.removeEventListener('scroll', handleScroll);
+        };
+    }, [tableContainerRef]);
+    
+    // --- Modifiers for Dialog Calendar ---
+    const openingHolidays = holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date);
+    const otherHolidays = holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date);
+
+    const dialogModifiers = {
+        opening: openingHolidays,
+        other: otherHolidays,
+    };
+
+    const dialogModifiersStyles = {
+        opening: {
+            backgroundColor: '#a7f3d0', // green-200
+            color: '#065f46', // green-800
+        },
+        other: {
+            backgroundColor: '#fecaca', // red-200
+            color: '#991b1b', // red-800
+        },
+    };
+    
+    const generateGroupReport = () => {
+        setIsGenerating(true);
+        const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+        doc.setFontSize(14);
+        doc.text(`Cuadrante de Vacaciones ${selectedYear}`, 14, 15);
+        
+        const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
+        if (!vacationType) {
+            toast({ title: 'Error', description: 'No se encontró el tipo de ausencia "Vacaciones".', variant: 'destructive' });
+            setIsGenerating(false);
+            return;
+        }
+
+        const sortedEmployees = [...activeEmployees].sort((a,b) => a.name.localeCompare(b.name));
+        
+        const head = [['Empleado', ...Array.from({ length: 53 }, (_, i) => `${i + 1}`)]];
+        const body = sortedEmployees.map(emp => {
+            const empRow = [emp.name];
+            for (let i = 1; i <= 53; i++) {
+                let onVacation = false;
+                const weekStartDate = startOfWeek(new Date(selectedYear, 0, (i - 1) * 7 + 1), { weekStartsOn: 1 });
+                const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
+
+                const daysInWeek = eachDayOfInterval({ start: weekStartDate, end: weekEndDate });
+                
+                // Check scheduled absences
+                if (emp.employmentPeriods) {
+                    for (const period of emp.employmentPeriods) {
+                        if (period.scheduledAbsences) {
+                            for (const absence of period.scheduledAbsences) {
+                                if (absence.absenceTypeId === vacationType.id && absence.endDate) {
+                                    if (daysInWeek.some(day => isWithinInterval(day, { start: startOfDay(absence.startDate), end: startOfDay(absence.endDate) }))) {
+                                        onVacation = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (onVacation) break;
+                    }
+                }
+
+                // Check weekly records if not found in scheduled
+                if (!onVacation) {
+                    const weekId = getWeekId(weekStartDate);
+                    const weekRecord = weeklyRecords[weekId];
+                    if (weekRecord?.weekData?.[emp.id]?.days) {
+                         if (Object.values(weekRecord.weekData[emp.id].days).some(d => d.absence === vacationType.abbreviation)) {
+                            onVacation = true;
+                        }
+                    }
+                }
+                empRow.push(onVacation ? 'V' : '');
+            }
+            return empRow;
+        });
+
+        autoTable(doc, {
+            head,
+            body,
+            startY: 22,
+            theme: 'grid',
+            headStyles: { fillColor: [41, 128, 185], halign: 'center' },
+            styles: { fontSize: 8, cellPadding: 1, halign: 'center' },
+            columnStyles: { 0: { cellWidth: 40, halign: 'left' } }
+        });
+
+        doc.save(`cuadrante_vacaciones_${selectedYear}.pdf`);
+        setIsGenerating(false);
+    };
+
     const generateSignatureReport = () => {
         setIsGenerating(true);
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
@@ -636,74 +775,6 @@ export function AnnualVacationQuadrant() {
     
         doc.save(`listado_firmas_vacaciones_${selectedYear}.pdf`);
         setIsGenerating(false);
-    };
-
-    const vacationPeriods = useMemo(() => {
-        if (!editingAbsence) return [];
-        const { employee } = editingAbsence;
-        const periods: { id: string; startDate: Date; endDate: Date; absenceTypeId: string; }[] = [];
-
-        employee.employmentPeriods.forEach((period: EmploymentPeriod) => {
-            period.scheduledAbsences?.forEach(sa => {
-                if(sa.endDate && getYear(sa.startDate) === selectedYear) {
-                    periods.push({
-                        id: sa.id,
-                        startDate: sa.startDate,
-                        endDate: sa.endDate,
-                        absenceTypeId: sa.absenceTypeId
-                    });
-                }
-            });
-        });
-        return periods;
-    }, [editingAbsence, selectedYear]);
-
-    useLayoutEffect(() => {
-        if (!loading && isFullscreen) {
-            const container = tableContainerRef.current;
-            if (container && (container.scrollTop !== scrollPositionRef.current.top || container.scrollLeft !== scrollPositionRef.current.left)) {
-                container.scrollTop = scrollPositionRef.current.top;
-                container.scrollLeft = scrollPositionRef.current.left;
-            }
-        }
-    }, [loading, isFullscreen, tableContainerRef, scrollPositionRef]);
-
-    useEffect(() => {
-        const handleScroll = () => {
-            if (tableContainerRef.current) {
-                scrollPositionRef.current = {
-                    top: tableContainerRef.current.scrollTop,
-                    left: tableContainerRef.current.scrollLeft
-                };
-            }
-        };
-
-        const container = tableContainerRef.current;
-        container?.addEventListener('scroll', handleScroll, { passive: true });
-        
-        return () => {
-            container?.removeEventListener('scroll', handleScroll);
-        };
-    }, [tableContainerRef]);
-    
-    // --- Modifiers for Dialog Calendar ---
-    const openingHolidays = holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date);
-    const otherHolidays = holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date);
-
-    const dialogModifiers = {
-        opening: openingHolidays,
-        other: otherHolidays,
-    };
-
-    const dialogModifiersStyles = {
-        opening: {
-            backgroundColor: '#a7f3d0', // green-200
-            color: '#065f46', // green-800
-        },
-        other: {
-            backgroundColor: '#fecaca', // red-200
-            color: '#991b1b', // red-800
-        },
     };
 
 
@@ -797,6 +868,10 @@ export function AnnualVacationQuadrant() {
                             <CardTitle>Cuadrante Anual de Ausencias</CardTitle>
                         </div>
                         <div className="flex items-center gap-2">
+                             <Button onClick={generateGroupReport} disabled={isGenerating || loading}>
+                                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                Imprimir Cuadrante
+                            </Button>
                             <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
                                 <SelectTrigger className='w-32'>
                                     <SelectValue placeholder="Año..." />
