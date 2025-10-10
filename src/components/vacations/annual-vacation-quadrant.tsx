@@ -627,13 +627,20 @@ export function AnnualVacationQuadrant() {
         doc.text(`Listado de Vacaciones para Firma - ${selectedYear}`, 14, 15);
     
         let finalY = 25;
+        const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
+
+        if (!vacationType) {
+             toast({ title: 'Error', description: 'No se encontró el tipo de ausencia "Vacaciones".', variant: 'destructive' });
+             setIsGenerating(false);
+             return;
+        }
     
         activeEmployees.forEach(emp => {
             const activePeriod = emp.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
             if (!activePeriod) return;
     
             const periods = (activePeriod.scheduledAbsences ?? [])
-                .filter(p => p.endDate && getYear(p.startDate) === selectedYear)
+                .filter(p => p.endDate && getYear(p.startDate) === selectedYear && p.absenceTypeId === vacationType.id)
                 .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
     
             if (periods.length > 0) {
@@ -650,9 +657,8 @@ export function AnnualVacationQuadrant() {
                     startY: finalY,
                     head: [['Tipo', 'Inicio', 'Fin', 'Días', 'Firma']],
                     body: periods.map(p => {
-                        const absenceType = absenceTypes.find(at => at.id === p.absenceTypeId);
                         return [
-                            absenceType?.abbreviation || '??',
+                            vacationType.abbreviation,
                             format(p.startDate, 'dd/MM/yyyy'),
                             format(p.endDate!, 'dd/MM/yyyy'),
                             differenceInDays(p.endDate!, p.startDate) + 1,
@@ -843,3 +849,4 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
+
