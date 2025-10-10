@@ -664,7 +664,7 @@ export function AnnualVacationQuadrant() {
     
             const sortedDays = Array.from(allVacationDays).map(d => parseISO(d)).sort((a, b) => a.getTime() - b.getTime());
     
-            let periodsText = 'Sin vacaciones registradas';
+            let periodsText = '';
             if (sortedDays.length > 0) {
                 const periods: string[] = [];
                 let currentPeriodStart = sortedDays[0];
@@ -692,14 +692,15 @@ export function AnnualVacationQuadrant() {
             theme: 'plain',
             styles: { valign: 'middle' },
             headStyles: { fontStyle: 'bold' },
-            columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 40, minCellHeight: 20 } },
+            columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 40 } },
             didDrawCell: (data) => {
                 if (data.column.index === 2 && data.section === 'body') {
                     const rectHeight = 18;
                     const rectY = data.cell.y + (data.cell.height / 2) - (rectHeight / 2);
                     doc.rect(data.cell.x + 2, rectY, data.cell.width - 4, rectHeight);
                 }
-            }
+            },
+            minCellHeight: 20,
         });
     
         doc.save(`listado_firmas_vacaciones_${selectedYear}.pdf`);
