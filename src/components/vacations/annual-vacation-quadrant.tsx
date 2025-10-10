@@ -682,21 +682,7 @@ export function AnnualVacationQuadrant() {
                 periodsText = periods.join('\n');
             }
             
-            const signatureCell = {
-                content: '',
-                styles: {
-                    cellHeight: 20,
-                    willDrawCell: (data: any) => {
-                        const doc = data.doc;
-                        const cell = data.cell;
-                        const rectHeight = 18;
-                        const rectY = cell.y + (cell.height / 2) - (rectHeight / 2);
-                        doc.rect(cell.x + 2, rectY, cell.width - 4, rectHeight);
-                    }
-                }
-            };
-
-            return [emp.name, periodsText, signatureCell];
+            return [emp.name, periodsText, ''];
         });
     
         autoTable(doc, {
@@ -706,7 +692,14 @@ export function AnnualVacationQuadrant() {
             theme: 'plain',
             styles: { valign: 'middle' },
             headStyles: { fontStyle: 'bold' },
-            columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 40 } },
+            columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 40, minCellHeight: 20 } },
+            didDrawCell: (data) => {
+                if (data.column.index === 2 && data.section === 'body') {
+                    const rectHeight = 18;
+                    const rectY = data.cell.y + (data.cell.height / 2) - (rectHeight / 2);
+                    doc.rect(data.cell.x + 2, rectY, data.cell.width - 4, rectHeight);
+                }
+            }
         });
     
         doc.save(`listado_firmas_vacaciones_${selectedYear}.pdf`);
@@ -760,6 +753,26 @@ export function AnnualVacationQuadrant() {
             container?.removeEventListener('scroll', handleScroll);
         };
     }, [tableContainerRef]);
+    
+    // --- Modifiers for Dialog Calendar ---
+    const openingHolidays = holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date);
+    const otherHolidays = holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date);
+
+    const dialogModifiers = {
+        opening: openingHolidays,
+        other: otherHolidays,
+    };
+
+    const dialogModifiersStyles = {
+        opening: {
+            backgroundColor: '#a7f3d0', // green-200
+            color: '#065f46', // green-800
+        },
+        other: {
+            backgroundColor: '#fecaca', // red-200
+            color: '#991b1b', // red-800
+        },
+    };
 
 
     return (
@@ -795,6 +808,8 @@ export function AnnualVacationQuadrant() {
                                         className="rounded-md border"
                                         month={calendarMonth}
                                         onMonthChange={setCalendarMonth}
+                                        modifiers={dialogModifiers}
+                                        modifiersStyles={dialogModifiersStyles}
                                     />
                                 </div>
                                 <div className="space-y-4">
