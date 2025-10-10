@@ -698,7 +698,7 @@ export function AnnualVacationQuadrant() {
             tableContainerRef.current.scrollTop = scrollPositionRef.current.top;
             tableContainerRef.current.scrollLeft = scrollPositionRef.current.left;
         }
-    });
+    }, [loading]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -840,3 +840,5 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
+
+    
