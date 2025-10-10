@@ -628,44 +628,53 @@ const generateGroupReport = (localEmployees: Employee[], localHolidayEmployees: 
     setIsGenerating(true);
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
-    // --- 1. Data Aggregation ---
-    const allAbsenceData: { empId: string, empName: string, groupId?: string | null, weekNumber: number, absenceAbbr: string }[] = [];
     const schedulableAbsenceTypesReport = absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
-    const schedulableAbsenceTypeIdsReport = new Set(schedulableAbsenceTypesReport.map(at => at.id));
     const schedulableAbsenceTypeAbbrsReport = new Set(schedulableAbsenceTypesReport.map(at => at.abbreviation));
 
-    const allActiveEmployees = [...localEmployees, ...localHolidayEmployees.filter(he => he.active && !localEmployees.find(e => e.name === he.name))]
-        .filter((emp): emp is Employee => 'employmentPeriods' in emp && (emp.employmentPeriods?.some(p => !p.endDate) || localHolidayEmployees.find(he => he.id === emp.id)?.active));
+    const allAbsenceData: { empId: string, empName: string, groupId?: string | null, weekNumber: number, absenceAbbr: string }[] = [];
+
+    const allActiveEmployees = [...localEmployees.filter(e => e.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()))), ...localHolidayEmployees.filter(he => he.active && !localEmployees.find(e => e.name === he.name))]
+        .map(emp => {
+            if ('employmentPeriods' in emp) { // Es un Employee
+                return emp;
+            }
+            // Es un HolidayEmployee, lo "convertimos" a una estructura similar a Employee
+            return {
+                id: emp.id,
+                name: emp.name,
+                groupId: emp.groupId,
+                employmentPeriods: [],
+            } as Employee;
+        });
 
     allActiveEmployees.forEach((emp: Employee) => {
         const employeeAbsenceDays = new Map<string, { absenceAbbr: string }>();
-
-        emp.employmentPeriods?.forEach(period => {
-            period.scheduledAbsences?.forEach(absence => {
-                if (schedulableAbsenceTypeIdsReport.has(absence.absenceTypeId) && absence.endDate) {
-                    const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
-                    if (absenceType) {
-                        eachDayOfInterval({ start: absence.startDate, end: absence.endDate }).forEach(day => {
-                            if (getYear(day) === selectedYear) {
-                                employeeAbsenceDays.set(format(day, 'yyyy-MM-dd'), { absenceAbbr: absenceType.abbreviation });
-                            }
-                        });
-                    }
-                }
-            });
-        });
 
         Object.values(weeklyRecords).forEach(record => {
             if (getYear(parseISO(record.id)) !== selectedYear) return;
             const empWeekData = record.weekData[emp.id];
             if (empWeekData?.days) {
                 Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
-                    if (schedulableAbsenceTypeAbbrsReport.has(dayData.absence) && !employeeAbsenceDays.has(dayStr)) {
+                    if (schedulableAbsenceTypeAbbrsReport.has(dayData.absence)) {
                         employeeAbsenceDays.set(dayStr, { absenceAbbr: dayData.absence });
                     }
                 });
             }
         });
+        
+        emp.employmentPeriods?.forEach(period => {
+            period.scheduledAbsences?.forEach(absence => {
+                const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
+                if (absenceType && schedulableAbsenceTypeAbbrsReport.has(absenceType.abbreviation) && absence.endDate) {
+                    eachDayOfInterval({ start: absence.startDate, end: absence.endDate }).forEach(day => {
+                        if (getYear(day) === selectedYear) {
+                            employeeAbsenceDays.set(format(day, 'yyyy-MM-dd'), { absenceAbbr: absenceType.abbreviation });
+                        }
+                    });
+                }
+            });
+        });
+
 
         employeeAbsenceDays.forEach((data, dayStr) => {
             const weekNumber = getISOWeek(parseISO(dayStr));
@@ -703,30 +712,25 @@ const generateGroupReport = (localEmployees: Employee[], localHolidayEmployees: 
         
         const body: any[][] = [];
         
-        sortedGroups.forEach(group => {
-            const employeesInGroup = allActiveEmployees.filter(e => e.groupId === group.id).sort((a,b) => a.name.localeCompare(b.name));
-            if (employeesInGroup.length === 0) return;
-
-            const rowDataForGroup: Record<number, string[]> = {};
-            chunk.forEach(weekNum => rowDataForGroup[weekNum] = []);
-            
-            employeesInGroup.forEach(emp => {
-                const absencesForEmp = allAbsenceData.filter(d => d.empId === emp.id);
-                absencesForEmp.forEach(abs => {
-                    if (rowDataForGroup[abs.weekNumber]) {
-                        rowDataForGroup[abs.weekNumber].push(`${emp.name} (V)`);
-                    }
-                });
-            });
-            
-            const headerRow = [{ content: group.name, colSpan: chunk.length + 1, styles: { fontStyle: 'bold', fillColor: '#f0f0f0' } }];
-            body.push(headerRow);
-            
-            const contentRow = [
-                { content: '', styles: {cellWidth: 0.02} }, 
-                ...chunk.map(weekNum => rowDataForGroup[weekNum].join('\n'))
+        const allEmployeesInReport = allActiveEmployees
+          .filter(e => sortedGroups.some(g => g.id === e.groupId))
+          .sort((a,b) => {
+            const groupA = sortedGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
+            const groupB = sortedGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
+            if(groupA !== groupB) return groupA - groupB;
+            return a.name.localeCompare(b.name);
+          });
+          
+        allEmployeesInReport.forEach(emp => {
+            const absencesForEmp = allAbsenceData.filter(d => d.empId === emp.id);
+            const row = [
+                { content: '' }, 
+                ...chunk.map(weekNum => {
+                    const absenceInWeek = absencesForEmp.find(abs => abs.weekNumber === weekNum);
+                    return absenceInWeek ? `${emp.name} (V)` : '';
+                })
             ];
-            body.push(contentRow);
+            body.push(row);
         });
 
         autoTable(doc, {
@@ -748,6 +752,9 @@ const generateGroupReport = (localEmployees: Employee[], localHolidayEmployees: 
                 fillColor: '#d3d3d3',
                 textColor: 0,
                 valign: 'middle',
+            },
+            columnStyles: {
+                0: { cellWidth: 0.02 }
             },
         });
     });
