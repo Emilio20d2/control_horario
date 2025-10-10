@@ -634,14 +634,11 @@ export function AnnualVacationQuadrant() {
             return;
         }
     
-        const employeeVacationPeriods: { employeeName: string; periodsText: string }[] = [];
-    
         const sortedEmployees = [...activeEmployees].sort((a, b) => a.name.localeCompare(b.name));
     
-        sortedEmployees.forEach(emp => {
+        const body = sortedEmployees.map(emp => {
             const allVacationDays = new Set<string>();
     
-            // Fuente 1: Ausencias programadas (larga duración)
             emp.employmentPeriods?.forEach(period => {
                 period.scheduledAbsences?.forEach(sa => {
                     if (sa.absenceTypeId === vacationType.id && sa.endDate) {
@@ -654,7 +651,6 @@ export function AnnualVacationQuadrant() {
                 });
             });
     
-            // Fuente 2: Registros diarios en weeklyRecords
             Object.values(weeklyRecords).forEach(record => {
                 const empWeekData = record.weekData[emp.id];
                 if (empWeekData?.days) {
@@ -668,10 +664,10 @@ export function AnnualVacationQuadrant() {
     
             const sortedDays = Array.from(allVacationDays).map(d => parseISO(d)).sort((a, b) => a.getTime() - b.getTime());
     
+            let periodsText = 'Sin vacaciones registradas';
             if (sortedDays.length > 0) {
                 const periods: string[] = [];
                 let currentPeriodStart = sortedDays[0];
-    
                 for (let i = 1; i < sortedDays.length; i++) {
                     if (differenceInDays(sortedDays[i], sortedDays[i - 1]) > 1) {
                         const endDate = sortedDays[i - 1];
@@ -683,32 +679,29 @@ export function AnnualVacationQuadrant() {
                 const lastEndDate = sortedDays[sortedDays.length - 1];
                 const lastDays = differenceInDays(lastEndDate, currentPeriodStart) + 1;
                 periods.push(`${format(currentPeriodStart, 'dd/MM')} - ${format(lastEndDate, 'dd/MM')} (${lastDays} días)`);
-    
-                employeeVacationPeriods.push({ employeeName: emp.name, periodsText: periods.join('\n') });
-            } else {
-                 employeeVacationPeriods.push({ employeeName: emp.name, periodsText: 'Sin vacaciones registradas' });
+                periodsText = periods.join('\n');
             }
+            return [emp.name, periodsText, ''];
         });
-    
-        const body = employeeVacationPeriods.map(data => [data.employeeName, data.periodsText, '']);
     
         autoTable(doc, {
             head: [['Empleado', 'Periodos de Vacaciones', 'Firma']],
             body: body,
             startY: 22,
             theme: 'plain',
+            rowPageBreak: 'avoid',
             styles: { valign: 'middle' },
-            headStyles: { fontStyle: 'bold', halign: 'center' },
+            headStyles: { fontStyle: 'bold' },
             minCellHeight: 20,
             columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 40 } },
             didDrawCell: (data) => {
-                 if (data.section === 'body' && data.column.index === 2) {
+                if (data.section === 'body' && data.column.index === 2) { // Signature column
                     const cell = data.cell;
-                    const rectHeight = 18;
-                    const rectY = cell.y + (cell.height / 2) - (rectHeight / 2);
+                    const rectHeight = 18; // Fixed height for the rectangle
+                    const rectY = cell.y + (cell.height / 2) - (rectHeight / 2); // Center it vertically
                     doc.rect(cell.x + 2, rectY, cell.width - 4, rectHeight);
                 }
-            }
+            },
         });
     
         doc.save(`listado_firmas_vacaciones_${selectedYear}.pdf`);
@@ -885,4 +878,3 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
-
