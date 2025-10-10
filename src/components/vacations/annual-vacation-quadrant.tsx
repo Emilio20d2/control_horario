@@ -11,7 +11,7 @@ import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown, Maximize, Minimize
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod, Ausencia } from '@/lib/types';
-import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, getMonth, subMonths, addMonths, startOfMonth, endOfMonth, eachWeekOfInterval } from 'date-fns';
+import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, getMonth, subMonths, addMonths, startOfMonth, endOfMonth, eachWeekOfInterval, getDaysInMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
@@ -623,8 +623,6 @@ export function AnnualVacationQuadrant() {
     const generateGroupReport = () => {
         setIsGenerating(true);
         const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-        doc.setFontSize(14);
-        doc.text(`Cuadrante de Vacaciones ${selectedYear}`, 14, 15);
         
         const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
         if (!vacationType) {
@@ -633,63 +631,110 @@ export function AnnualVacationQuadrant() {
             return;
         }
 
-        const sortedEmployees = [...activeEmployees].sort((a,b) => a.name.localeCompare(b.name));
-        
-        const head = [['Empleado', ...Array.from({ length: 53 }, (_, i) => `${i + 1}`)]];
-        const body = sortedEmployees.map(emp => {
-            const empRow = [emp.name];
-            for (let i = 1; i <= 53; i++) {
-                let onVacation = false;
-                const weekStartDate = startOfWeek(new Date(selectedYear, 0, (i - 1) * 7 + 1), { weekStartsOn: 1 });
-                const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
-
-                const daysInWeek = eachDayOfInterval({ start: weekStartDate, end: weekEndDate });
-                
-                // Check scheduled absences
-                if (emp.employmentPeriods) {
-                    for (const period of emp.employmentPeriods) {
-                        if (period.scheduledAbsences) {
-                            for (const absence of period.scheduledAbsences) {
-                                if (absence.absenceTypeId === vacationType.id && absence.endDate) {
-                                    if (daysInWeek.some(day => isWithinInterval(day, { start: startOfDay(absence.startDate), end: startOfDay(absence.endDate) }))) {
-                                        onVacation = true;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        if (onVacation) break;
-                    }
-                }
-
-                // Check weekly records if not found in scheduled
-                if (!onVacation) {
-                    const weekId = getWeekId(weekStartDate);
-                    const weekRecord = weeklyRecords[weekId];
-                    if (weekRecord?.weekData?.[emp.id]?.days) {
-                         if (Object.values(weekRecord.weekData[emp.id].days).some(d => d.absence === vacationType.abbreviation)) {
-                            onVacation = true;
-                        }
-                    }
-                }
-                empRow.push(onVacation ? 'V' : '');
-            }
-            return empRow;
+        const sortedEmployees = [...activeEmployees].sort((a, b) => {
+            const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
+            const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
+            if (groupA !== groupB) return groupA - groupB;
+            return a.name.localeCompare(b.name);
         });
 
-        autoTable(doc, {
-            head,
-            body,
-            startY: 22,
-            theme: 'grid',
-            headStyles: { fillColor: [41, 128, 185], halign: 'center' },
-            styles: { fontSize: 8, cellPadding: 1, halign: 'center' },
-            columnStyles: { 0: { cellWidth: 40, halign: 'left' } }
+        const employeeVacationWeeks: Record<string, Set<number>> = {};
+        sortedEmployees.forEach(emp => {
+            const vacationWeeks = new Set<number>();
+            emp.employmentPeriods?.forEach(period => {
+                period.scheduledAbsences?.forEach(absence => {
+                    if (absence.absenceTypeId === vacationType.id && absence.endDate) {
+                        eachDayOfInterval({ start: absence.startDate, end: absence.endDate }).forEach(day => {
+                            if (getYear(day) === selectedYear) {
+                                vacationWeeks.add(getISOWeek(day));
+                            }
+                        });
+                    }
+                });
+            });
+
+            Object.values(weeklyRecords).forEach(record => {
+                const empWeekData = record.weekData[emp.id];
+                if (empWeekData?.days && getYear(parseISO(record.id)) === selectedYear) {
+                    Object.values(empWeekData.days).forEach(dayData => {
+                        if (dayData.absence === vacationType.abbreviation) {
+                            vacationWeeks.add(getISOWeek(parseISO(record.id)));
+                        }
+                    });
+                }
+            });
+            employeeVacationWeeks[emp.id] = vacationWeeks;
+        });
+
+        const addHeader = (doc: jsPDF, pageNumber: number, totalPages: number) => {
+            doc.setFontSize(14);
+            doc.text(`Cuadrante de Vacaciones ${selectedYear}`, 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Página ${pageNumber} de ${totalPages}`, doc.internal.pageSize.width - 14, 15, { align: 'right' });
+        };
+        
+        const monthChunks = [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]];
+        
+        monthChunks.forEach((chunk, pageIndex) => {
+            if (pageIndex > 0) doc.addPage();
+            
+            const head: any[] = [{ content: 'Empleado', styles: { valign: 'middle', halign: 'center' } }];
+            chunk.forEach(monthIndex => {
+                const monthName = format(new Date(selectedYear, monthIndex), 'MMMM', { locale: es });
+                const daysInMonth = getDaysInMonth(new Date(selectedYear, monthIndex));
+                head.push({ content: monthName, colSpan: daysInMonth, styles: { halign: 'center' } });
+            });
+
+            const subhead: any[] = [''];
+            chunk.forEach(monthIndex => {
+                const daysInMonth = getDaysInMonth(new Date(selectedYear, monthIndex));
+                for (let i = 1; i <= daysInMonth; i++) {
+                    subhead.push({ content: String(i), styles: { cellWidth: 5, halign: 'center' } });
+                }
+            });
+
+            const body: any[] = [];
+            let lastGroupId = null;
+
+            sortedEmployees.forEach(emp => {
+                const group = employeeGroups.find(g => g.id === emp.groupId);
+                if (group?.id !== lastGroupId) {
+                    body.push([{ 
+                        content: group?.name || 'Sin Grupo', 
+                        colSpan: 1 + chunk.reduce((acc, mi) => acc + getDaysInMonth(new Date(selectedYear, mi)), 0),
+                        styles: { fillColor: '#e0e0e0', fontStyle: 'bold' }
+                    }]);
+                    lastGroupId = group?.id || null;
+                }
+
+                const empRow: any[] = [emp.name];
+                chunk.forEach(monthIndex => {
+                    const daysInMonth = getDaysInMonth(new Date(selectedYear, monthIndex));
+                    for (let i = 1; i <= daysInMonth; i++) {
+                        const currentDate = new Date(selectedYear, monthIndex, i);
+                        const weekNumber = getISOWeek(currentDate);
+                        const isVacation = employeeVacationWeeks[emp.id]?.has(weekNumber); // Simplified check per week
+                        empRow.push({ content: isVacation ? 'V' : '', styles: { halign: 'center' } });
+                    }
+                });
+                body.push(empRow);
+            });
+
+            autoTable(doc, {
+                head: [head, subhead],
+                body,
+                startY: 22,
+                theme: 'grid',
+                styles: { fontSize: 7, cellPadding: 1 },
+                didDrawPage: (data) => addHeader(doc, data.pageNumber, monthChunks.length),
+                columnStyles: { 0: { cellWidth: 35 } },
+            });
         });
 
         doc.save(`cuadrante_vacaciones_${selectedYear}.pdf`);
         setIsGenerating(false);
     };
+
 
     const generateSignatureReport = () => {
         setIsGenerating(true);
