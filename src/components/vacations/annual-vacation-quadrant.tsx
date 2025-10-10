@@ -560,7 +560,9 @@ export function AnnualVacationQuadrant() {
         const weeksOfYear = (() => {
             const firstDayOfYear = new Date(year, 0, 1);
             let firstMonday = startOfWeek(firstDayOfYear, { weekStartsOn: 1 });
-            if (getYear(firstMonday) < year) firstMonday = addWeeks(firstMonday, 1);
+            if (getYear(firstMonday) < year) {
+                firstMonday = addWeeks(firstMonday, 1);
+            }
             const weeks = [];
             for (let i = 0; i < 53; i++) {
                 const weekStart = addWeeks(firstMonday, i);
@@ -580,7 +582,7 @@ export function AnnualVacationQuadrant() {
     
         const head = [['Empleado', ...weeksOfYear.map(w => `${w.number}`)]];
         const body = activeEmployees.map(emp => {
-            const cells: string[] = [emp.name];
+            const cells: (string | { content: string; styles: { halign: 'center' } })[] = [emp.name];
             const absenceType = absenceTypes.find(at => at.name === 'Vacaciones');
             if (absenceType) {
                 weeksOfYear.forEach(week => {
@@ -591,7 +593,7 @@ export function AnnualVacationQuadrant() {
                         const dayData = weeklyRecords[weekId]?.weekData[emp.id]?.days[dayKey];
                         return dayData?.absence === absenceType.abbreviation;
                     });
-                     cells.push(hasVacation ? 'V' : '');
+                     cells.push(hasVacation ? { content: 'V', styles: { halign: 'center' } } : '');
                 });
             }
             return cells;
@@ -603,15 +605,15 @@ export function AnnualVacationQuadrant() {
             body,
             startY: 15,
             theme: 'grid',
-            styles: { fontSize: 5, cellPadding: 1, halign: 'center' },
-            columnStyles: { 0: { halign: 'left', cellWidth: 30 } },
+            styles: { fontSize: 5, cellPadding: 1 },
+            columnStyles: { 0: { cellWidth: 30 } },
             didParseCell: (data) => {
                 if (data.section === 'head' && data.column.index > 0) {
                     const week = weeksOfYear[data.column.index - 1];
                     const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                     if (hasHoliday) {
-                        data.cell.styles.fillColor = '#bfdbfe';
+                        data.cell.styles.fillColor = '#bfdbfe'; // light-blue
                     }
                 }
             }
