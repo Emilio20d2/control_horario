@@ -408,14 +408,14 @@ const FullscreenQuadrant = ({
 }) => {
     
     useLayoutEffect(() => {
-        if (!loading) {
+        if (!loading && isFullscreen) {
             const container = tableContainerRef.current;
             if (container) {
                 container.scrollTop = scrollPositionRef.current.top;
                 container.scrollLeft = scrollPositionRef.current.left;
             }
         }
-    }, [loading, tableContainerRef, scrollPositionRef, isFullscreen]);
+    }, [loading, isFullscreen, tableContainerRef, scrollPositionRef]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -746,7 +746,7 @@ export function AnnualVacationQuadrant() {
                 
                  // Draw header for signature column
                 const headRow = data.table.head[0];
-                if (headRow) {
+                if (headRow && typeof headRow.y === 'number' && typeof headRow.height === 'number') {
                     doc.setFont('helvetica', 'bold');
                     doc.setFillColor(...([41, 128, 185]));
                     doc.rect(signatureX - 1, headRow.y - 1, signatureWidth + 2, headRow.height + 2, 'F');
@@ -945,3 +945,5 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
+
+    
