@@ -552,76 +552,6 @@ export function AnnualVacationQuadrant() {
         setEditingAbsence({ employee, absence, periodId });
     };
 
-    const generateGroupReport = () => {
-        setIsGenerating(true);
-        const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-    
-        const year = selectedYear;
-        const weeksOfYear = (() => {
-            const firstDayOfYear = new Date(year, 0, 1);
-            let firstMonday = startOfWeek(firstDayOfYear, { weekStartsOn: 1 });
-            if (getYear(firstMonday) < year) {
-                firstMonday = addWeeks(firstMonday, 1);
-            }
-            const weeks = [];
-            for (let i = 0; i < 53; i++) {
-                const weekStart = addWeeks(firstMonday, i);
-                const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-                if (getYear(weekStart) === year || getYear(weekEnd) === year) {
-                     weeks.push({
-                        start: weekStart,
-                        end: weekEnd,
-                        number: getISOWeek(weekStart),
-                    });
-                } else if (getYear(weekStart) > year) {
-                    break;
-                }
-            }
-            return weeks;
-        })();
-    
-        const head = [['Empleado', ...weeksOfYear.map(w => `${w.number}`)]];
-        const body = activeEmployees.map(emp => {
-            const cells: (string | { content: string; styles: { halign: 'center' } })[] = [emp.name];
-            const absenceType = absenceTypes.find(at => at.name === 'Vacaciones');
-            if (absenceType) {
-                weeksOfYear.forEach(week => {
-                    const daysInWeek = eachDayOfInterval({start: week.start, end: week.end});
-                    const hasVacation = daysInWeek.some(day => {
-                        const weekId = getWeekId(day);
-                        const dayKey = format(day, 'yyyy-MM-dd');
-                        const dayData = weeklyRecords[weekId]?.weekData[emp.id]?.days[dayKey];
-                        return dayData?.absence === absenceType.abbreviation;
-                    });
-                     cells.push(hasVacation ? { content: 'V', styles: { halign: 'center' } } : '');
-                });
-            }
-            return cells;
-        });
-    
-        doc.text(`Cuadrante de Vacaciones - ${year}`, 15, 10);
-        autoTable(doc, {
-            head,
-            body,
-            startY: 15,
-            theme: 'grid',
-            styles: { fontSize: 5, cellPadding: 1 },
-            columnStyles: { 0: { cellWidth: 30 } },
-            didParseCell: (data) => {
-                if (data.section === 'head' && data.column.index > 0) {
-                    const week = weeksOfYear[data.column.index - 1];
-                    const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                    const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
-                    if (hasHoliday) {
-                        data.cell.styles.fillColor = '#bfdbfe'; // light-blue
-                    }
-                }
-            }
-        });
-        doc.save(`cuadrante_vacaciones_${year}.pdf`);
-        setIsGenerating(false);
-    };
-    
     const generateSignatureReport = () => {
         setIsGenerating(true);
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
@@ -875,10 +805,6 @@ export function AnnualVacationQuadrant() {
                                     {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Button onClick={generateGroupReport} disabled={isGenerating || loading}>
-                                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                                Imprimir Cuadrante
-                            </Button>
                             <Button onClick={generateSignatureReport} disabled={isGenerating || loading}>
                                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSignature className="mr-2 h-4 w-4" />}
                                 Listado para Firmas
