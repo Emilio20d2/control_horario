@@ -694,14 +694,14 @@ export function AnnualVacationQuadrant() {
     }, [editingAbsence, selectedYear]);
 
     useLayoutEffect(() => {
-        if (!loading) {
+        if (!loading && !isFullscreen) {
             const container = tableContainerRef.current;
             if (container) {
                 container.scrollTop = scrollPositionRef.current.top;
                 container.scrollLeft = scrollPositionRef.current.left;
             }
         }
-    }, [loading]);
+    }, [loading, isFullscreen]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -843,7 +843,3 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
-
-    
-
-    
