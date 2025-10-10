@@ -624,7 +624,7 @@ export function AnnualVacationQuadrant() {
         }
     };
     
-const generateGroupReport = () => {
+const generateGroupReport = (localEmployees: Employee[], localHolidayEmployees: HolidayEmployee[]) => {
     setIsGenerating(true);
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
@@ -634,8 +634,8 @@ const generateGroupReport = () => {
     const schedulableAbsenceTypeIdsReport = new Set(schedulableAbsenceTypesReport.map(at => at.id));
     const schedulableAbsenceTypeAbbrsReport = new Set(schedulableAbsenceTypesReport.map(at => at.abbreviation));
 
-    const allActiveEmployees = [...employees, ...holidayEmployees.filter(he => he.active && !employees.find(e => e.name === he.name))]
-        .filter(emp => emp.employmentPeriods?.some(p => !p.endDate) || holidayEmployees.find(he => he.id === emp.id)?.active);
+    const allActiveEmployees = [...localEmployees, ...localHolidayEmployees.filter(he => he.active && !localEmployees.find(e => e.name === he.name))]
+        .filter((emp): emp is Employee => 'employmentPeriods' in emp && (emp.employmentPeriods?.some(p => !p.endDate) || localHolidayEmployees.find(he => he.id === emp.id)?.active));
 
     allActiveEmployees.forEach((emp: Employee) => {
         const employeeAbsenceDays = new Map<string, { absenceAbbr: string }>();
@@ -681,17 +681,14 @@ const generateGroupReport = () => {
             }
         });
     });
+    
+    const sortedGroups = [...employeeGroups].sort((a, b) => a.order - b.order);
 
-    // --- 2. Paging and Layout Calculation ---
     const weeksOfYear = Array.from({ length: 53 }, (_, i) => i + 1);
     const weekChunks: number[][] = [];
     for (let i = 0; i < weeksOfYear.length; i += 4) {
         weekChunks.push(weeksOfYear.slice(i, i + 4));
     }
-    
-    const sortedGroups = [...employeeGroups].sort((a, b) => a.order - b.order);
-    const ungroupedEmployees = allActiveEmployees.filter(e => !e.groupId).sort((a,b) => a.name.localeCompare(b.name));
-    const allDisplayGroups = [...sortedGroups, {id: 'ungrouped', name: 'Sin Agrupación', order: 999}];
 
     const addHeader = (doc: jsPDF, pageNumber: number, totalPages: number) => {
         doc.setFontSize(14);
@@ -700,16 +697,14 @@ const generateGroupReport = () => {
         doc.text(`Página ${pageNumber} de ${totalPages}`, doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 10, { align: 'right' });
     };
 
-    // --- 3. PDF Generation Loop ---
     weekChunks.forEach((chunk, pageIndex) => {
         if (pageIndex > 0) doc.addPage();
         addHeader(doc, pageIndex + 1, weekChunks.length);
         
         const body: any[][] = [];
-        let maxEmployeesInAnyCellThisPage = 0;
         
-        allDisplayGroups.forEach(group => {
-            const employeesInGroup = group.id === 'ungrouped' ? ungroupedEmployees : allActiveEmployees.filter(e => e.groupId === group.id).sort((a,b) => a.name.localeCompare(b.name));
+        sortedGroups.forEach(group => {
+            const employeesInGroup = allActiveEmployees.filter(e => e.groupId === group.id).sort((a,b) => a.name.localeCompare(b.name));
             if (employeesInGroup.length === 0) return;
 
             const rowDataForGroup: Record<number, string[]> = {};
@@ -719,50 +714,39 @@ const generateGroupReport = () => {
                 const absencesForEmp = allAbsenceData.filter(d => d.empId === emp.id);
                 absencesForEmp.forEach(abs => {
                     if (rowDataForGroup[abs.weekNumber]) {
-                        rowDataForGroup[abs.weekNumber].push(`${emp.name} (${abs.absenceAbbr})`);
+                        rowDataForGroup[abs.weekNumber].push(`${emp.name} (V)`);
                     }
                 });
             });
-
-            // Add the group header row
-            body.push([{ content: group.name, colSpan: chunk.length + 1, styles: { fontStyle: 'bold', fillColor: '#f0f0f0' } }]);
-
-            // This row structure is different now. We need the names inside the cells.
-             const rowContent = chunk.map(weekNum => {
-                const names = rowDataForGroup[weekNum];
-                if (names.length > maxEmployeesInAnyCellThisPage) {
-                    maxEmployeesInAnyCellThisPage = names.length;
-                }
-                return names.join('\n');
-            });
-            body.push([{ content: '', styles: { cellWidth: 0.02 } }, ...rowContent]);
+            
+            const headerRow = [{ content: group.name, colSpan: chunk.length + 1, styles: { fontStyle: 'bold', fillColor: '#f0f0f0' } }];
+            body.push(headerRow);
+            
+            const contentRow = [
+                { content: '', styles: {cellWidth: 0.02} }, 
+                ...chunk.map(weekNum => rowDataForGroup[weekNum].join('\n'))
+            ];
+            body.push(contentRow);
         });
-        
-        const headerHeight = 25;
-        const footerHeight = 15;
-        const usablePageHeight = doc.internal.pageSize.height - headerHeight - footerHeight;
-        const defaultLineHeight = 3; // Approx height for a line of text in mm at this font size
-        const minRowHeight = maxEmployeesInAnyCellThisPage * defaultLineHeight + 4; // + padding
-        
+
         autoTable(doc, {
             head: [[
                 { content: '', styles: { cellWidth: 0.02 } },
-                ...chunk.map(weekNum => ({ content: `Semana ${weekNum}`, halign: 'center' }))
+                ...chunk.map(weekNum => ({ content: `Semana ${weekNum}`, styles: { halign: 'center' } }))
             ]],
             body: body,
-            startY: headerHeight,
+            startY: 25,
             theme: 'grid',
-            rowPageBreak: 'avoid', // Prevent rows from splitting across pages
+            rowPageBreak: 'avoid',
             styles: {
                 fontSize: 7,
                 valign: 'top',
-                cellPadding: 1,
+                cellPadding: 1.5,
             },
             headStyles: {
                 fontStyle: 'bold',
                 fillColor: '#d3d3d3',
                 textColor: 0,
-                halign: 'center',
                 valign: 'middle',
             },
         });
@@ -952,7 +936,7 @@ const generateGroupReport = () => {
                             <CardTitle>Cuadrante Anual de Ausencias</CardTitle>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Button onClick={() => generateGroupReport()} disabled={isGenerating || loading}>
+                             <Button onClick={() => generateGroupReport(employees, holidayEmployees)} disabled={isGenerating || loading}>
                                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                                 Imprimir Cuadrante
                             </Button>
