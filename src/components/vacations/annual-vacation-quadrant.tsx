@@ -415,7 +415,7 @@ const FullscreenQuadrant = ({
                 container.scrollLeft = scrollPositionRef.current.left;
             }
         }
-    }, [loading, tableContainerRef, scrollPositionRef]);
+    }, [loading, tableContainerRef, scrollPositionRef, isFullscreen]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -634,14 +634,50 @@ export function AnnualVacationQuadrant() {
              setIsGenerating(false);
              return;
         }
-    
+
         activeEmployees.forEach(emp => {
             const activePeriod = emp.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
             if (!activePeriod) return;
-    
-            const periods = (activePeriod.scheduledAbsences ?? [])
-                .filter(p => p.endDate && getYear(p.startDate) === selectedYear && p.absenceTypeId === vacationType.id)
-                .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
+
+            const allVacationDays = new Set<string>();
+
+            // Source 1: Scheduled Absences
+            activePeriod.scheduledAbsences?.forEach(sa => {
+                if (sa.absenceTypeId === vacationType.id && sa.endDate) {
+                    const days = eachDayOfInterval({ start: sa.startDate, end: sa.endDate });
+                    days.forEach(day => {
+                        if (getYear(day) === selectedYear) {
+                            allVacationDays.add(format(day, 'yyyy-MM-dd'));
+                        }
+                    });
+                }
+            });
+
+            // Source 2: Weekly Records
+            Object.values(weeklyRecords).forEach(record => {
+                const empWeekData = record.weekData[emp.id];
+                if (empWeekData?.days) {
+                    Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                        if (dayData.absence === vacationType.abbreviation && getYear(parseISO(dayStr)) === selectedYear) {
+                            allVacationDays.add(dayStr);
+                        }
+                    });
+                }
+            });
+
+            const sortedDays = Array.from(allVacationDays).map(d => parseISO(d)).sort((a,b) => a.getTime() - b.getTime());
+
+            if (sortedDays.length === 0) return;
+            
+            const periods = [];
+            let currentPeriodStart = sortedDays[0];
+            for (let i = 1; i < sortedDays.length; i++) {
+                if (differenceInDays(sortedDays[i], sortedDays[i-1]) > 1) {
+                    periods.push({ start: currentPeriodStart, end: sortedDays[i-1] });
+                    currentPeriodStart = sortedDays[i];
+                }
+            }
+            periods.push({ start: currentPeriodStart, end: sortedDays[sortedDays.length - 1] });
     
             if (periods.length > 0) {
                 if (finalY > 250) {
@@ -656,15 +692,13 @@ export function AnnualVacationQuadrant() {
                 autoTable(doc, {
                     startY: finalY,
                     head: [['Tipo', 'Inicio', 'Fin', 'Días', 'Firma']],
-                    body: periods.map(p => {
-                        return [
-                            vacationType.abbreviation,
-                            format(p.startDate, 'dd/MM/yyyy'),
-                            format(p.endDate!, 'dd/MM/yyyy'),
-                            differenceInDays(p.endDate!, p.startDate) + 1,
-                            ''
-                        ];
-                    }),
+                    body: periods.map(p => [
+                        vacationType.abbreviation,
+                        format(p.start, 'dd/MM/yyyy'),
+                        format(p.end, 'dd/MM/yyyy'),
+                        differenceInDays(p.end, p.start) + 1,
+                        ''
+                    ]),
                     theme: 'striped',
                     headStyles: { fillColor: [200, 200, 200], textColor: 20 },
                     columnStyles: { 4: { cellWidth: 50 } },
@@ -707,7 +741,7 @@ export function AnnualVacationQuadrant() {
                 container.scrollLeft = scrollPositionRef.current.left;
             }
         }
-    }, [loading, isFullscreen]);
+    }, [loading, isFullscreen, tableContainerRef, scrollPositionRef]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -725,7 +759,7 @@ export function AnnualVacationQuadrant() {
         return () => {
             container?.removeEventListener('scroll', handleScroll);
         };
-    }, []);
+    }, [tableContainerRef]);
 
 
     return (
