@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@
 import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown, Maximize, Minimize, Calendar as CalendarIcon, FileSignature } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
-import type { Employee, EmploymentPeriod, Ausencia } from '@/lib/types';
+import type { Employee, EmploymentPeriod, Ausencia, HolidayEmployee } from '@/lib/types';
 import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, getMonth, subMonths, addMonths, startOfMonth, endOfMonth, eachWeekOfInterval, getDaysInMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
@@ -457,7 +457,7 @@ const FullscreenQuadrant = ({
 
 
 export function AnnualVacationQuadrant() {
-    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays, refreshData, employeeGroups } = useDataProvider();
+    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays, refreshData, employeeGroups, holidayEmployees } = useDataProvider();
     const { toast } = useToast();
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     
@@ -623,130 +623,130 @@ export function AnnualVacationQuadrant() {
         }
     };
     
-const generateGroupReport = () => {
-    setIsGenerating(true);
-    const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+    const generateGroupReport = (holidayEmployees: HolidayEmployee[]) => {
+        setIsGenerating(true);
+        const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+        
+        const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
+        if (!vacationType) {
+            toast({ title: 'Error', description: 'No se encontró el tipo de ausencia "Vacaciones".', variant: 'destructive' });
+            setIsGenerating(false);
+            return;
+        }
     
-    const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
-    if (!vacationType) {
-        toast({ title: 'Error', description: 'No se encontró el tipo de ausencia "Vacaciones".', variant: 'destructive' });
-        setIsGenerating(false);
-        return;
-    }
-
-    const sortedEmployees = [...employees, ...holidayEmployees.filter(he => he.active && !employees.find(e => e.name === he.name))]
-    .filter(emp => emp.employmentPeriods?.some(p => !p.endDate) || holidayEmployees.find(he => he.id === emp.id)?.active)
-    .sort((a, b) => {
-        const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
-        const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
-        if (groupA !== groupB) return groupA - groupB;
-        return a.name.localeCompare(b.name);
-    });
-
-
-    const employeeVacationWeeks: Record<string, Set<number>> = {};
-    sortedEmployees.forEach(emp => {
-        const vacationWeeks = new Set<number>();
-        emp.employmentPeriods?.forEach(period => {
-            period.scheduledAbsences?.forEach(absence => {
-                if (absence.absenceTypeId === vacationType.id && absence.endDate) {
-                    eachDayOfInterval({ start: absence.startDate, end: absence.endDate }).forEach(day => {
-                        if (getYear(day) === selectedYear) {
-                            vacationWeeks.add(getISOWeek(day));
+        const sortedEmployees = [...employees, ...holidayEmployees.filter(he => he.active && !employees.find(e => e.name === he.name))]
+        .filter(emp => (emp as any).employmentPeriods?.some((p:any) => !p.endDate) || holidayEmployees.find(he => he.id === emp.id)?.active)
+        .sort((a, b) => {
+            const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
+            const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
+            if (groupA !== groupB) return groupA - groupB;
+            return a.name.localeCompare(b.name);
+        });
+    
+    
+        const employeeVacationWeeks: Record<string, Set<number>> = {};
+        sortedEmployees.forEach(emp => {
+            const vacationWeeks = new Set<number>();
+            (emp as any).employmentPeriods?.forEach((period: any) => {
+                period.scheduledAbsences?.forEach((absence: any) => {
+                    if (absence.absenceTypeId === vacationType.id && absence.endDate) {
+                        eachDayOfInterval({ start: absence.startDate, end: absence.endDate }).forEach(day => {
+                            if (getYear(day) === selectedYear) {
+                                vacationWeeks.add(getISOWeek(day));
+                            }
+                        });
+                    }
+                });
+            });
+    
+            Object.values(weeklyRecords).forEach(record => {
+                const empWeekData = record.weekData[emp.id];
+                if (empWeekData?.days && getYear(parseISO(record.id)) === selectedYear) {
+                    Object.values(empWeekData.days).forEach(dayData => {
+                        if (dayData.absence === vacationType.abbreviation) {
+                            vacationWeeks.add(getISOWeek(parseISO(record.id)));
                         }
                     });
                 }
             });
+            employeeVacationWeeks[emp.id] = vacationWeeks;
         });
-
-        Object.values(weeklyRecords).forEach(record => {
-            const empWeekData = record.weekData[emp.id];
-            if (empWeekData?.days && getYear(parseISO(record.id)) === selectedYear) {
-                Object.values(empWeekData.days).forEach(dayData => {
-                    if (dayData.absence === vacationType.abbreviation) {
-                        vacationWeeks.add(getISOWeek(parseISO(record.id)));
-                    }
-                });
-            }
-        });
-        employeeVacationWeeks[emp.id] = vacationWeeks;
-    });
-
-    const addHeader = (doc: jsPDF, pageNumber: number, totalPages: number, weekChunk: any[]) => {
-        const startDate = format(weekChunk[0].start, 'dd/MM');
-        const endDate = format(weekChunk[weekChunk.length - 1].end, 'dd/MM');
-        doc.setFontSize(14);
-        doc.text(`Cuadrante de Vacaciones ${selectedYear}`, 14, 15);
-        doc.setFontSize(10);
-        doc.text(`Página ${pageNumber} de ${totalPages}`, doc.internal.pageSize.width - 14, 15, { align: 'right' });
-    };
     
-    const weeksOfYear = [];
-    let weekStart = startOfWeek(new Date(selectedYear, 0, 4), { weekStartsOn: 1 });
-    for(let i=0; i < 53; i++) {
-        const currentWeekStart = addWeeks(weekStart, i);
-        if(getYear(currentWeekStart) <= selectedYear) {
-            weeksOfYear.push({start: currentWeekStart, end: endOfWeek(currentWeekStart, {weekStartsOn:1})});
+        const addHeader = (doc: jsPDF, pageNumber: number, totalPages: number, weekChunk: any[]) => {
+            const startDate = format(weekChunk[0].start, 'dd/MM');
+            const endDate = format(weekChunk[weekChunk.length - 1].end, 'dd/MM');
+            doc.setFontSize(14);
+            doc.text(`Cuadrante de Vacaciones ${selectedYear}`, 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Página ${pageNumber} de ${totalPages}`, doc.internal.pageSize.width - 14, 15, { align: 'right' });
+        };
+        
+        const weeksOfYear = [];
+        let weekStart = startOfWeek(new Date(selectedYear, 0, 4), { weekStartsOn: 1 });
+        for(let i=0; i < 53; i++) {
+            const currentWeekStart = addWeeks(weekStart, i);
+            if(getYear(currentWeekStart) <= selectedYear) {
+                weeksOfYear.push({start: currentWeekStart, end: endOfWeek(currentWeekStart, {weekStartsOn:1})});
+            }
         }
-    }
+        
+        const weekChunks: any[][] = [];
+        for (let i = 0; i < weeksOfYear.length; i += 4) {
+            weekChunks.push(weeksOfYear.slice(i, i + 4));
+        }
     
-    const weekChunks: any[][] = [];
-    for (let i = 0; i < weeksOfYear.length; i += 4) {
-        weekChunks.push(weeksOfYear.slice(i, i + 4));
-    }
-
-    const totalRows = sortedEmployees.length + employeeGroups.length;
-    const pageHeight = doc.internal.pageSize.height;
-    const margin = 22;
-    const usableHeight = pageHeight - (margin * 2);
-    const rowHeight = totalRows > 0 ? usableHeight / totalRows : 10;
-
-    weekChunks.forEach((chunk, pageIndex) => {
-        if (pageIndex > 0) doc.addPage();
-        
-        const head: any[] = [{ content: '', styles: { cellWidth: 0.02 } }];
-        chunk.forEach(week => {
-            head.push({ content: `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}`, styles: { halign: 'center', valign: 'middle' } });
-        });
-
-        const body: any[] = [];
-        let lastGroupId: string | null | undefined = null;
-        
-        sortedEmployees.forEach(emp => {
-            const group = employeeGroups.find(g => g.id === emp.groupId);
-            if (group?.id !== lastGroupId) {
-                body.push([{ 
-                    content: group?.name || 'Sin Grupo', 
-                    colSpan: chunk.length + 1,
-                    styles: { fillColor: '#e0e0e0', fontStyle: 'bold', minCellHeight: rowHeight, valign: 'middle' }
-                }]);
-                lastGroupId = group?.id;
-            }
-
-            const empRow: any[] = [{ content: '' }]; // Empty cell for the invisible group column
+        const totalRows = sortedEmployees.length + employeeGroups.length;
+        const pageHeight = doc.internal.pageSize.height;
+        const margin = 22;
+        const usableHeight = pageHeight - (margin * 2);
+        const rowHeight = totalRows > 0 ? usableHeight / totalRows : 10;
+    
+        weekChunks.forEach((chunk, pageIndex) => {
+            if (pageIndex > 0) doc.addPage();
+            
+            const head: any[] = [{ content: '', styles: { cellWidth: 0.02 } }];
             chunk.forEach(week => {
-                const weekNumber = getISOWeek(week.start);
-                const isVacation = employeeVacationWeeks[emp.id]?.has(weekNumber);
-                const content = isVacation ? `${emp.name} (V)` : emp.name;
-                empRow.push({ content: content, styles: { halign: 'center', valign: 'middle' } });
+                head.push({ content: `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}`, styles: { halign: 'center', valign: 'middle' } });
             });
-            body.push(empRow);
+    
+            const body: any[] = [];
+            let lastGroupId: string | null | undefined = null;
+            
+            sortedEmployees.forEach(emp => {
+                const group = employeeGroups.find(g => g.id === emp.groupId);
+                if (group?.id !== lastGroupId) {
+                    body.push([{ 
+                        content: group?.name || 'Sin Grupo', 
+                        colSpan: chunk.length + 1,
+                        styles: { fillColor: '#e0e0e0', fontStyle: 'bold', minCellHeight: rowHeight, valign: 'middle' }
+                    }]);
+                    lastGroupId = group?.id;
+                }
+    
+                const empRow: any[] = [{ content: '' }]; // Empty cell for the invisible group column
+                chunk.forEach(week => {
+                    const weekNumber = getISOWeek(week.start);
+                    const isVacation = employeeVacationWeeks[emp.id]?.has(weekNumber);
+                    const content = isVacation ? `${emp.name} (V)` : emp.name;
+                    empRow.push({ content: content, styles: { halign: 'center', valign: 'middle' } });
+                });
+                body.push(empRow);
+            });
+    
+            autoTable(doc, {
+                head: [head],
+                body,
+                startY: margin,
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 1, minCellHeight: rowHeight, valign: 'middle' },
+                headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, minCellHeight: rowHeight, valign: 'middle' },
+                didDrawPage: (data) => addHeader(doc, data.pageNumber, weekChunks.length, chunk),
+            });
         });
-
-        autoTable(doc, {
-            head: [head],
-            body,
-            startY: margin,
-            theme: 'grid',
-            styles: { fontSize: 8, cellPadding: 1, minCellHeight: rowHeight, valign: 'middle' },
-            headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, minCellHeight: rowHeight, valign: 'middle' },
-            didDrawPage: (data) => addHeader(doc, data.pageNumber, weekChunks.length, chunk),
-        });
-    });
-
-    doc.save(`cuadrante_vacaciones_${selectedYear}.pdf`);
-    setIsGenerating(false);
-};
+    
+        doc.save(`cuadrante_vacaciones_${selectedYear}.pdf`);
+        setIsGenerating(false);
+    };
 
     const generateSignatureReport = () => {
         setIsGenerating(true);
@@ -925,7 +925,7 @@ const generateGroupReport = () => {
                             <CardTitle>Cuadrante Anual de Ausencias</CardTitle>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Button onClick={generateGroupReport} disabled={isGenerating || loading}>
+                             <Button onClick={() => generateGroupReport(holidayEmployees)} disabled={isGenerating || loading}>
                                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                                 Imprimir Cuadrante
                             </Button>
