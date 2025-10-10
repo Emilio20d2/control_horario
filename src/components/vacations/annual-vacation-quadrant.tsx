@@ -680,19 +680,19 @@ export function AnnualVacationQuadrant() {
         });
         
         let body: (string | number)[][] = [];
-        let employeeRowTrack: { name: string, startY: number, endY: number }[] = [];
-        let currentEmployeeName = '';
-        
         reportData.sort((a,b) => a.employeeName.localeCompare(b.employeeName) || a.startDate.getTime() - b.startDate.getTime());
 
+        let currentEmployeeName = '';
         reportData.forEach(period => {
+            if (period.employeeName !== currentEmployeeName) {
+                currentEmployeeName = period.employeeName;
+            }
             body.push([
-                period.employeeName === currentEmployeeName ? '' : period.employeeName,
+                period.employeeName,
                 format(period.startDate, 'dd/MM/yyyy'),
                 format(period.endDate, 'dd/MM/yyyy'),
                 differenceInDays(period.endDate, period.startDate) + 1,
             ]);
-            currentEmployeeName = period.employeeName;
         });
 
         autoTable(doc, {
@@ -703,36 +703,45 @@ export function AnnualVacationQuadrant() {
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },
             columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 30 }, 2: { cellWidth: 30 }, 3: { cellWidth: 20, halign: 'center' } },
             didDrawPage: (data) => {
-                // Find rows for each employee on the current page
                 let employeeBlocks: { name: string, yStart: number, yEnd: number }[] = [];
                 let currentEmp = '';
                 let yStart = 0;
                 
                 data.table.body.forEach((row, index) => {
-                    const empName = reportData[row.index].employeeName;
-                    if (empName !== currentEmp) {
-                        if (currentEmp !== '') {
-                            employeeBlocks[employeeBlocks.length - 1].yEnd = data.table.body[index - 1].y + data.table.body[index - 1].height;
+                    const empName = (row.cells[0].raw as string);
+                    if (empName && empName !== currentEmp) {
+                        if (currentEmp !== '' && employeeBlocks.length > 0) {
+                            const lastBlock = employeeBlocks[employeeBlocks.length - 1];
+                            const prevRow = data.table.body[index - 1];
+                            lastBlock.yEnd = prevRow.y + prevRow.height;
                         }
                         currentEmp = empName;
                         yStart = row.y;
                         employeeBlocks.push({ name: empName, yStart: yStart, yEnd: 0 });
                     }
-                    if (index === data.table.body.length - 1) {
-                         employeeBlocks[employeeBlocks.length - 1].yEnd = row.y + row.height;
-                    }
                 });
 
-                // Draw rectangles
+                if (employeeBlocks.length > 0) {
+                     const lastBlock = employeeBlocks[employeeBlocks.length - 1];
+                     const lastRow = data.table.body[data.table.body.length - 1];
+                     if(lastRow) {
+                        lastBlock.yEnd = lastRow.y + lastRow.height;
+                     }
+                }
+                
                 const signatureX = data.settings.margin.left + data.table.width + 5;
                 const signatureWidth = 40;
                 doc.setFontSize(10);
-
+                
                 employeeBlocks.forEach(block => {
-                    const blockHeight = block.yEnd - block.yStart;
-                    const rectHeight = Math.max(10, blockHeight - 2);
-                    const rectY = block.yStart + (blockHeight / 2) - (rectHeight / 2);
-                    doc.rect(signatureX, rectY, signatureWidth, rectHeight);
+                   if (block.yStart > 0 && block.yEnd > 0) {
+                        const blockHeight = block.yEnd - block.yStart;
+                        const rectHeight = Math.max(10, blockHeight - 2);
+                        const rectY = block.yStart + (blockHeight / 2) - (rectHeight / 2);
+                        if (!isNaN(rectY) && !isNaN(rectHeight)) {
+                           doc.rect(signatureX, rectY, signatureWidth, rectHeight);
+                        }
+                    }
                 });
                 
                  // Draw header for signature column
@@ -743,6 +752,21 @@ export function AnnualVacationQuadrant() {
                     doc.rect(signatureX - 1, headRow.y - 1, signatureWidth + 2, headRow.height + 2, 'F');
                     doc.setTextColor(255);
                     doc.text("Firma", signatureX + signatureWidth / 2, headRow.y + headRow.height / 2, { align: 'center', baseline: 'middle' });
+                }
+            },
+             bodyStyles: {
+                // This will make the employee name only appear on the first row of their block.
+                didParseCell: (data) => {
+                    const rowIndex = data.row.index;
+                    const colIndex = data.column.index;
+                    
+                    if (colIndex === 0 && rowIndex > 0) {
+                        const currentEmpName = data.table.body[rowIndex].cells[0].raw;
+                        const prevEmpName = data.table.body[rowIndex-1].cells[0].raw;
+                        if (currentEmpName === prevEmpName) {
+                            data.cell.text = [''];
+                        }
+                    }
                 }
             }
         });
@@ -772,7 +796,7 @@ export function AnnualVacationQuadrant() {
     }, [editingAbsence, selectedYear]);
 
     useLayoutEffect(() => {
-        if (!loading) {
+        if (!loading && isFullscreen) {
             const container = tableContainerRef.current;
             if (container && (container.scrollTop !== scrollPositionRef.current.top || container.scrollLeft !== scrollPositionRef.current.left)) {
                 container.scrollTop = scrollPositionRef.current.top;
