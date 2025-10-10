@@ -12,12 +12,11 @@ import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown, Maximize, Minimize
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod, Ausencia } from '@/lib/types';
-import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay } from 'date-fns';
+import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, getMonth, subMonths, addMonths, startOfMonth, endOfMonth, eachWeekOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Skeleton } from '../ui/skeleton';
-import { setDocument } from '@/lib/services/firestoreService';
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Badge } from '../ui/badge';
@@ -566,12 +565,16 @@ export function AnnualVacationQuadrant() {
             const weeks = [];
             for (let i = 0; i < 53; i++) {
                 const weekStart = addWeeks(firstMonday, i);
-                if (getYear(weekStart) > year) break;
-                weeks.push({
-                    start: weekStart,
-                    end: endOfWeek(weekStart, { weekStartsOn: 1 }),
-                    number: getISOWeek(weekStart),
-                });
+                const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+                if (getYear(weekStart) === year || getYear(weekEnd) === year) {
+                     weeks.push({
+                        start: weekStart,
+                        end: weekEnd,
+                        number: getISOWeek(weekStart),
+                    });
+                } else if (getYear(weekStart) > year) {
+                    break;
+                }
             }
             return weeks;
         })();
@@ -609,7 +612,7 @@ export function AnnualVacationQuadrant() {
                     const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                     const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
                     if (hasHoliday) {
-                        data.cell.styles.fillColor = '#bfdbfe'; // Un azul claro
+                        data.cell.styles.fillColor = '#bfdbfe';
                     }
                 }
             }
@@ -670,10 +673,6 @@ export function AnnualVacationQuadrant() {
         setIsGenerating(false);
     };
     
-    if (loading) {
-        return <Skeleton className="h-[600px] w-full" />;
-    }
-    
     const vacationPeriods = useMemo(() => {
         if (!editingAbsence) return [];
         const { employee } = editingAbsence;
@@ -695,14 +694,11 @@ export function AnnualVacationQuadrant() {
     }, [editingAbsence, selectedYear]);
 
     useLayoutEffect(() => {
-        if (!loading) {
-            const container = tableContainerRef.current;
-            if (container) {
-                container.scrollTop = scrollPositionRef.current.top;
-                container.scrollLeft = scrollPositionRef.current.left;
-            }
+        if (!loading && tableContainerRef.current) {
+            tableContainerRef.current.scrollTop = scrollPositionRef.current.top;
+            tableContainerRef.current.scrollLeft = scrollPositionRef.current.left;
         }
-    }, [loading]);
+    });
 
     useEffect(() => {
         const handleScroll = () => {
@@ -834,9 +830,11 @@ export function AnnualVacationQuadrant() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div ref={tableContainerRef} className="overflow-auto max-h-[70vh]">
-                        <QuadrantTable selectedYear={selectedYear} onEditAbsence={handleEditAbsence} />
-                    </div>
+                     {loading ? <Skeleton className="h-[600px] w-full" /> : (
+                        <div ref={tableContainerRef} className="overflow-auto max-h-[70vh]">
+                            <QuadrantTable selectedYear={selectedYear} onEditAbsence={handleEditAbsence} />
+                        </div>
+                     )}
                 </CardContent>
             </Card>
         </>
