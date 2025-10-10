@@ -634,9 +634,11 @@ export function AnnualVacationQuadrant() {
             return;
         }
     
-        const employeeVacationPeriods: Record<string, { employeeName: string; periods: string[] }> = {};
+        const employeeVacationPeriods: { employeeName: string; periodsText: string }[] = [];
     
-        activeEmployees.forEach(emp => {
+        const sortedEmployees = [...activeEmployees].sort((a, b) => a.name.localeCompare(b.name));
+
+        sortedEmployees.forEach(emp => {
             const allVacationDays = new Set<string>();
             
             emp.employmentPeriods?.forEach(period => {
@@ -665,39 +667,34 @@ export function AnnualVacationQuadrant() {
             const sortedDays = Array.from(allVacationDays).map(d => parseISO(d)).sort((a, b) => a.getTime() - b.getTime());
     
             if (sortedDays.length > 0) {
-                if (!employeeVacationPeriods[emp.id]) {
-                    employeeVacationPeriods[emp.id] = { employeeName: emp.name, periods: [] };
-                }
-    
+                const periods: string[] = [];
                 let currentPeriodStart = sortedDays[0];
+    
                 for (let i = 1; i < sortedDays.length; i++) {
                     if (differenceInDays(sortedDays[i], sortedDays[i - 1]) > 1) {
                         const endDate = sortedDays[i - 1];
                         const days = differenceInDays(endDate, currentPeriodStart) + 1;
-                        employeeVacationPeriods[emp.id].periods.push(`${format(currentPeriodStart, 'dd/MM')} - ${format(endDate, 'dd/MM')} (${days} días)`);
+                        periods.push(`${format(currentPeriodStart, 'dd/MM')} - ${format(endDate, 'dd/MM')} (${days} días)`);
                         currentPeriodStart = sortedDays[i];
                     }
                 }
                 const lastEndDate = sortedDays[sortedDays.length - 1];
                 const lastDays = differenceInDays(lastEndDate, currentPeriodStart) + 1;
-                employeeVacationPeriods[emp.id].periods.push(`${format(currentPeriodStart, 'dd/MM')} - ${format(lastEndDate, 'dd/MM')} (${lastDays} días)`);
+                periods.push(`${format(currentPeriodStart, 'dd/MM')} - ${format(lastEndDate, 'dd/MM')} (${lastDays} días)`);
+    
+                employeeVacationPeriods.push({ employeeName: emp.name, periodsText: periods.join('\n') });
             }
         });
     
-        const body = Object.values(employeeVacationPeriods)
-            .sort((a, b) => a.employeeName.localeCompare(b.employeeName))
-            .map(data => {
-                const periodsString = data.periods.join('\n');
-                return [data.employeeName, periodsString, ''];
-            });
+        const body = employeeVacationPeriods.map(data => [data.employeeName, data.periodsText, '']);
     
         autoTable(doc, {
             head: [['Empleado', 'Periodos de Vacaciones', 'Firma']],
             body: body,
             startY: 22,
-            theme: 'grid',
-            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-            styles: { valign: 'middle', minCellHeight: 15 },
+            theme: 'plain',
+            styles: { valign: 'middle', cellHeight: 20 },
+            headStyles: { fontStyle: 'bold', halign: 'center' },
             columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 40 } },
             didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index === 2) {
@@ -881,7 +878,3 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
-
-    
-
-    
