@@ -681,7 +681,22 @@ export function AnnualVacationQuadrant() {
                 periods.push(`${format(currentPeriodStart, 'dd/MM')} - ${format(lastEndDate, 'dd/MM')} (${lastDays} días)`);
                 periodsText = periods.join('\n');
             }
-            return [emp.name, periodsText, ''];
+            
+            const signatureCell = {
+                content: '',
+                styles: {
+                    cellHeight: 20,
+                    willDrawCell: (data: any) => {
+                        const doc = data.doc;
+                        const cell = data.cell;
+                        const rectHeight = 18;
+                        const rectY = cell.y + (cell.height / 2) - (rectHeight / 2);
+                        doc.rect(cell.x + 2, rectY, cell.width - 4, rectHeight);
+                    }
+                }
+            };
+
+            return [emp.name, periodsText, signatureCell];
         });
     
         autoTable(doc, {
@@ -689,19 +704,9 @@ export function AnnualVacationQuadrant() {
             body: body,
             startY: 22,
             theme: 'plain',
-            rowPageBreak: 'avoid',
             styles: { valign: 'middle' },
             headStyles: { fontStyle: 'bold' },
-            minCellHeight: 20,
             columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 40 } },
-            didDrawCell: (data) => {
-                if (data.section === 'body' && data.column.index === 2) { // Signature column
-                    const cell = data.cell;
-                    const rectHeight = 18; // Fixed height for the rectangle
-                    const rectY = cell.y + (cell.height / 2) - (rectHeight / 2); // Center it vertically
-                    doc.rect(cell.x + 2, rectY, cell.width - 4, rectHeight);
-                }
-            },
         });
     
         doc.save(`listado_firmas_vacaciones_${selectedYear}.pdf`);
