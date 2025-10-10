@@ -666,75 +666,80 @@ export function AnnualVacationQuadrant() {
             employeeVacationWeeks[emp.id] = vacationWeeks;
         });
 
-        const addHeader = (doc: jsPDF, pageNumber: number, totalPages: number) => {
+        const addHeader = (doc: jsPDF, pageNumber: number, totalPages: number, weekChunk: any[]) => {
+            const startDate = format(weekChunk[0].start, 'dd/MM');
+            const endDate = format(weekChunk[weekChunk.length - 1].end, 'dd/MM');
             doc.setFontSize(14);
-            doc.text(`Cuadrante de Vacaciones ${selectedYear}`, 14, 15);
+            doc.text(`Cuadrante de Vacaciones ${selectedYear} (Semanas ${startDate} a ${endDate})`, 14, 15);
             doc.setFontSize(10);
             doc.text(`Página ${pageNumber} de ${totalPages}`, doc.internal.pageSize.width - 14, 15, { align: 'right' });
         };
         
-        const monthChunks = [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]];
+        const weeksOfYear = [];
+        let weekStart = startOfWeek(new Date(selectedYear, 0, 4), { weekStartsOn: 1 });
+        for(let i=0; i < 53; i++) {
+            const currentWeekStart = addWeeks(weekStart, i);
+            if(getYear(currentWeekStart) <= selectedYear) {
+                weeksOfYear.push({start: currentWeekStart, end: endOfWeek(currentWeekStart, {weekStartsOn:1})});
+            }
+        }
         
-        monthChunks.forEach((chunk, pageIndex) => {
+        const weekChunks: any[][] = [];
+        for (let i = 0; i < weeksOfYear.length; i += 4) {
+            weekChunks.push(weeksOfYear.slice(i, i + 4));
+        }
+
+        const totalRows = sortedEmployees.length + employeeGroups.length;
+        const pageHeight = doc.internal.pageSize.height;
+        const margin = 22;
+        const usableHeight = pageHeight - (margin * 2);
+        const rowHeight = Math.max(10, usableHeight / totalRows);
+
+        weekChunks.forEach((chunk, pageIndex) => {
             if (pageIndex > 0) doc.addPage();
             
             const head: any[] = [{ content: 'Empleado', styles: { valign: 'middle', halign: 'center' } }];
-            chunk.forEach(monthIndex => {
-                const monthName = format(new Date(selectedYear, monthIndex), 'MMMM', { locale: es });
-                const daysInMonth = getDaysInMonth(new Date(selectedYear, monthIndex));
-                head.push({ content: monthName, colSpan: daysInMonth, styles: { halign: 'center' } });
-            });
-
-            const subhead: any[] = [''];
-            chunk.forEach(monthIndex => {
-                const daysInMonth = getDaysInMonth(new Date(selectedYear, monthIndex));
-                for (let i = 1; i <= daysInMonth; i++) {
-                    subhead.push({ content: String(i), styles: { cellWidth: 5, halign: 'center' } });
-                }
+            chunk.forEach(week => {
+                head.push({ content: `${format(week.start, 'dd/MM')} - ${format(week.end, 'dd/MM')}`, styles: { halign: 'center', valign: 'middle' } });
             });
 
             const body: any[] = [];
-            let lastGroupId = null;
-
+            let lastGroupId: string | null = null;
+            
             sortedEmployees.forEach(emp => {
                 const group = employeeGroups.find(g => g.id === emp.groupId);
                 if (group?.id !== lastGroupId) {
                     body.push([{ 
                         content: group?.name || 'Sin Grupo', 
-                        colSpan: 1 + chunk.reduce((acc, mi) => acc + getDaysInMonth(new Date(selectedYear, mi)), 0),
-                        styles: { fillColor: '#e0e0e0', fontStyle: 'bold' }
+                        colSpan: chunk.length + 1,
+                        styles: { fillColor: '#e0e0e0', fontStyle: 'bold', minCellHeight: rowHeight, valign: 'middle' }
                     }]);
                     lastGroupId = group?.id || null;
                 }
 
                 const empRow: any[] = [emp.name];
-                chunk.forEach(monthIndex => {
-                    const daysInMonth = getDaysInMonth(new Date(selectedYear, monthIndex));
-                    for (let i = 1; i <= daysInMonth; i++) {
-                        const currentDate = new Date(selectedYear, monthIndex, i);
-                        const weekNumber = getISOWeek(currentDate);
-                        const isVacation = employeeVacationWeeks[emp.id]?.has(weekNumber); // Simplified check per week
-                        empRow.push({ content: isVacation ? 'V' : '', styles: { halign: 'center' } });
-                    }
+                chunk.forEach(week => {
+                    const weekNumber = getISOWeek(week.start);
+                    const isVacation = employeeVacationWeeks[emp.id]?.has(weekNumber);
+                    empRow.push({ content: isVacation ? 'V' : '', styles: { halign: 'center', valign: 'middle' } });
                 });
                 body.push(empRow);
             });
 
             autoTable(doc, {
-                head: [head, subhead],
+                head: [head],
                 body,
-                startY: 22,
+                startY: margin,
                 theme: 'grid',
-                styles: { fontSize: 7, cellPadding: 1 },
-                didDrawPage: (data) => addHeader(doc, data.pageNumber, monthChunks.length),
-                columnStyles: { 0: { cellWidth: 35 } },
+                styles: { fontSize: 8, cellPadding: 1, minCellHeight: rowHeight, valign: 'middle' },
+                headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, minCellHeight: rowHeight, valign: 'middle' },
+                didDrawPage: (data) => addHeader(doc, data.pageNumber, weekChunks.length, chunk),
             });
         });
 
         doc.save(`cuadrante_vacaciones_${selectedYear}.pdf`);
         setIsGenerating(false);
     };
-
 
     const generateSignatureReport = () => {
         setIsGenerating(true);
@@ -946,3 +951,5 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
+
+    
