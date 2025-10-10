@@ -638,17 +638,21 @@ export function AnnualVacationQuadrant() {
     
         activeEmployees.forEach(emp => {
             const allVacationDays = new Set<string>();
-            const activePeriod = emp.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
-            if (!activePeriod) return;
-    
-            activePeriod.scheduledAbsences?.forEach(sa => {
-                if (sa.absenceTypeId === vacationType.id && sa.endDate) {
-                    eachDayOfInterval({ start: sa.startDate, end: sa.endDate }).forEach(day => {
-                        if (getYear(day) === selectedYear) allVacationDays.add(format(day, 'yyyy-MM-dd'));
-                    });
-                }
+            
+            // Source 1: Scheduled Absences
+            emp.employmentPeriods?.forEach(period => {
+                period.scheduledAbsences?.forEach(sa => {
+                    if (sa.absenceTypeId === vacationType.id && sa.endDate) {
+                        eachDayOfInterval({ start: sa.startDate, end: sa.endDate }).forEach(day => {
+                            if (getYear(day) === selectedYear) {
+                                allVacationDays.add(format(day, 'yyyy-MM-dd'));
+                            }
+                        });
+                    }
+                });
             });
     
+            // Source 2: Weekly Records
             Object.values(weeklyRecords).forEach(record => {
                 const empWeekData = record.weekData[emp.id];
                 if (empWeekData?.days) {
@@ -694,7 +698,7 @@ export function AnnualVacationQuadrant() {
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },
             columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' } },
             didDrawPage: (data) => {
-                const tableWidth = data.table.getDrawWidth();
+                const tableWidth = data.table.width;
                 const signatureX = data.settings.margin.left + tableWidth + 5;
                 const signatureWidth = 40;
                 doc.setFontSize(10);
@@ -703,14 +707,16 @@ export function AnnualVacationQuadrant() {
                     if (row.y > 0 && row.height > 0) {
                         const rectHeight = Math.max(10, row.height - 2);
                         const rectY = row.y + (row.height / 2) - (rectHeight / 2);
-                        doc.rect(signatureX, rectY, signatureWidth, rectHeight);
+                        if (!isNaN(rectY) && !isNaN(rectHeight)) {
+                           doc.rect(signatureX, rectY, signatureWidth, rectHeight);
+                        }
                     }
                 });
     
                 const headRow = data.table.head[0];
                 if (headRow && typeof headRow.y === 'number' && typeof headRow.height === 'number') {
                     doc.setFont('helvetica', 'bold');
-                    doc.setFillColor(41, 128, 185);
+                    doc.setFillColor(...([41, 128, 185] as const));
                     doc.rect(signatureX - 1, headRow.y - 1, signatureWidth + 2, headRow.height + 2, 'F');
                     doc.setTextColor(255);
                     doc.text("Firma", signatureX + signatureWidth / 2, headRow.y + headRow.height / 2, { align: 'center', baseline: 'middle' });
