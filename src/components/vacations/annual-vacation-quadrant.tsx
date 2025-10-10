@@ -639,7 +639,6 @@ export function AnnualVacationQuadrant() {
         activeEmployees.forEach(emp => {
             const allVacationDays = new Set<string>();
             
-            // Source 1: Scheduled Absences (only for 'Vacaciones')
             emp.employmentPeriods?.forEach(period => {
                 period.scheduledAbsences?.forEach(sa => {
                     if (sa.absenceTypeId === vacationType.id && sa.endDate) {
@@ -652,7 +651,6 @@ export function AnnualVacationQuadrant() {
                 });
             });
     
-            // Source 2: Weekly Records (only for 'Vacaciones')
             Object.values(weeklyRecords).forEach(record => {
                 const empWeekData = record.weekData[emp.id];
                 if (empWeekData?.days) {
@@ -687,8 +685,11 @@ export function AnnualVacationQuadrant() {
         });
     
         const body = Object.values(employeeVacationPeriods)
-            .sort((a,b) => a.employeeName.localeCompare(b.name))
-            .map(data => [data.employeeName, data.periods.join('\n'), '']);
+            .sort((a, b) => a.employeeName.localeCompare(b.employeeName))
+            .map(data => {
+                const periodsString = data.periods.join('\n');
+                return [data.employeeName, periodsString, ''];
+            });
     
         autoTable(doc, {
             head: [['Empleado', 'Periodos de Vacaciones', 'Firma']],
@@ -701,9 +702,7 @@ export function AnnualVacationQuadrant() {
             didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index === 2) {
                     const cell = data.cell;
-                    if (cell.raw) {
-                       doc.rect(cell.x + 2, cell.y + 2, cell.width - 4, cell.height - 4);
-                    }
+                    doc.rect(cell.x + 2, cell.y + 2, cell.width - 4, cell.height - 4);
                 }
             }
         });
