@@ -639,7 +639,7 @@ export function AnnualVacationQuadrant() {
         activeEmployees.forEach(emp => {
             const allVacationDays = new Set<string>();
             
-            // Source 1: Scheduled Absences
+            // Source 1: Scheduled Absences (only for 'Vacaciones')
             emp.employmentPeriods?.forEach(period => {
                 period.scheduledAbsences?.forEach(sa => {
                     if (sa.absenceTypeId === vacationType.id && sa.endDate) {
@@ -652,7 +652,7 @@ export function AnnualVacationQuadrant() {
                 });
             });
     
-            // Source 2: Weekly Records
+            // Source 2: Weekly Records (only for 'Vacaciones')
             Object.values(weeklyRecords).forEach(record => {
                 const empWeekData = record.weekData[emp.id];
                 if (empWeekData?.days) {
@@ -676,50 +676,34 @@ export function AnnualVacationQuadrant() {
                     if (differenceInDays(sortedDays[i], sortedDays[i - 1]) > 1) {
                         const endDate = sortedDays[i - 1];
                         const days = differenceInDays(endDate, currentPeriodStart) + 1;
-                        employeeVacationPeriods[emp.id].periods.push(`${format(currentPeriodStart, 'dd/MM')}-${format(endDate, 'dd/MM')} (${days} días)`);
+                        employeeVacationPeriods[emp.id].periods.push(`${format(currentPeriodStart, 'dd/MM')} - ${format(endDate, 'dd/MM')} (${days} días)`);
                         currentPeriodStart = sortedDays[i];
                     }
                 }
                 const lastEndDate = sortedDays[sortedDays.length - 1];
                 const lastDays = differenceInDays(lastEndDate, currentPeriodStart) + 1;
-                employeeVacationPeriods[emp.id].periods.push(`${format(currentPeriodStart, 'dd/MM')}-${format(lastEndDate, 'dd/MM')} (${lastDays} días)`);
+                employeeVacationPeriods[emp.id].periods.push(`${format(currentPeriodStart, 'dd/MM')} - ${format(lastEndDate, 'dd/MM')} (${lastDays} días)`);
             }
         });
     
         const body = Object.values(employeeVacationPeriods)
-            .sort((a,b) => a.employeeName.localeCompare(b.employeeName))
-            .map(data => [data.employeeName, data.periods.join(', ')]);
+            .sort((a,b) => a.employeeName.localeCompare(b.name))
+            .map(data => [data.employeeName, data.periods.join('\n'), '']);
     
         autoTable(doc, {
-            head: [['Empleado', 'Periodos de Vacaciones']],
+            head: [['Empleado', 'Periodos de Vacaciones', 'Firma']],
             body: body,
             startY: 22,
             theme: 'grid',
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-            columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' } },
-            didDrawPage: (data) => {
-                const tableWidth = data.table.width;
-                const signatureX = data.settings.margin.left + tableWidth + 5;
-                const signatureWidth = 40;
-                doc.setFontSize(10);
-    
-                data.table.body.forEach((row, index) => {
-                    if (row.y > 0 && row.height > 0) {
-                        const rectHeight = Math.max(10, row.height - 2);
-                        const rectY = row.y + (row.height / 2) - (rectHeight / 2);
-                        if (!isNaN(rectY) && !isNaN(rectHeight)) {
-                           doc.rect(signatureX, rectY, signatureWidth, rectHeight);
-                        }
+            styles: { valign: 'middle', minCellHeight: 15 },
+            columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 40 } },
+            didDrawCell: (data) => {
+                if (data.section === 'body' && data.column.index === 2) {
+                    const cell = data.cell;
+                    if (cell.raw) {
+                       doc.rect(cell.x + 2, cell.y + 2, cell.width - 4, cell.height - 4);
                     }
-                });
-    
-                const headRow = data.table.head[0];
-                if (headRow && typeof headRow.y === 'number' && typeof headRow.height === 'number') {
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFillColor(...([41, 128, 185] as const));
-                    doc.rect(signatureX - 1, headRow.y - 1, signatureWidth + 2, headRow.height + 2, 'F');
-                    doc.setTextColor(255);
-                    doc.text("Firma", signatureX + signatureWidth / 2, headRow.y + headRow.height / 2, { align: 'center', baseline: 'middle' });
                 }
             }
         });
@@ -898,5 +882,7 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
+
+    
 
     
