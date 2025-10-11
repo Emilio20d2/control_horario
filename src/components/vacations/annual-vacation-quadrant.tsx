@@ -676,7 +676,6 @@ export function AnnualVacationQuadrant() {
                 body: bodyRows,
                 startY: 25,
                 theme: 'grid',
-                rowPageBreak: 'avoid',
                 styles: { fontSize: 7, valign: 'top', cellPadding: 1.5, },
                 headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', minCellHeight: 20 },
                 columnStyles: { ...chunk.reduce((acc, _, i) => ({ ...acc, [i]: { cellWidth: dynamicColumnWidths[i] } }), {})},
@@ -691,18 +690,25 @@ export function AnnualVacationQuadrant() {
                         const turnInfo = allEmployees.length > 0 ? getTheoreticalHoursAndTurn(allEmployees[0].id, weekInfo.start) : { turnId: null };
                         const summary = vacationDataForReport.weeklySummaries[weekInfo.key] || { employeeCount: 0, hourImpact: 0 };
                         
-                        data.cell.text = [];
+                        data.cell.text = []; // Clear original text to draw manually
                         
                         let currentY = data.cell.y + 7;
                         doc.setFontSize(10).setFont(undefined, 'bold');
-                        doc.text(`${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}`, data.cell.x + data.cell.width / 2, currentY, { align: 'center' });
-    
-                        currentY += 6;
+                        const dateText = `${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}`;
+                        
                         if (turnInfo.turnId) {
-                            doc.setFontSize(8).setFont(undefined, 'bold');
-                            doc.text(turnInfo.turnId.replace('turn','T'), data.cell.x + data.cell.width / 2, currentY, { align: 'center' });
-                            currentY += 6;
+                            const dateWidth = doc.getStringUnitWidth(dateText) * doc.getFontSize() / doc.internal.scaleFactor;
+                            const turnWidth = doc.getStringUnitWidth(turnInfo.turnId.replace('turn', 'T')) * 8 / doc.internal.scaleFactor;
+                            const totalWidth = dateWidth + turnWidth + 2;
+                            const startX = data.cell.x + (data.cell.width - totalWidth) / 2;
+                            doc.text(dateText, startX, currentY);
+                            doc.setFontSize(8);
+                            doc.text(turnInfo.turnId.replace('turn', 'T'), startX + dateWidth + 2, currentY);
+                        } else {
+                            doc.text(dateText, data.cell.x + data.cell.width / 2, currentY, { align: 'center' });
                         }
+
+                        currentY += 6; // Increased spacing
                         
                         doc.setFontSize(8).setFont(undefined, 'normal');
                         const summaryText = `${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
@@ -777,10 +783,7 @@ export function AnnualVacationQuadrant() {
                 periodsText = periods.join('\n');
             }
             
-             const cellContent = periodsText;
-            const cell = { content: cellContent };
-            const textHeight = doc.getTextDimensions(cellContent).h;
-            return [emp.name, cell, ''];
+            return [emp.name, periodsText, ''];
         });
     
         autoTable(doc, {
@@ -789,16 +792,17 @@ export function AnnualVacationQuadrant() {
             startY: 22,
             theme: 'plain',
             rowPageBreak: 'avoid',
-            styles: { valign: 'middle', minCellHeight: 22 },
+            styles: { valign: 'middle' },
             headStyles: { fontStyle: 'bold' },
             columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 40 } },
             didDrawCell: (data) => {
                 if (data.column.index === 2 && data.section === 'body') {
                     const rectHeight = 18;
-                    const rectY = data.cell.y + (data.row.height - rectHeight) / 2;
+                    const rectY = data.cell.y + 2; // Start a little lower
                     doc.rect(data.cell.x + 2, rectY, data.cell.width - 4, rectHeight);
                 }
             },
+            minCellHeight: 22,
         });
     
         doc.save(`listado_firmas_vacaciones_${selectedYear}.pdf`);
