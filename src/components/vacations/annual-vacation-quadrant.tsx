@@ -27,9 +27,297 @@ import jsPDF, { Cell } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 
-const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selectedYear: number, onEditAbsence: (employee: any, absence: any, periodId: string) => void }>(({ isFullscreen, selectedYear, onEditAbsence }, ref) => {
-    const { employees, employeeGroups, loading, absenceTypes, weeklyRecords, holidayEmployees, getEffectiveWeeklyHours, holidays, getWeekId, getTheoreticalHoursAndTurn } = useDataProvider();
+const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selectedYear: number, onEditAbsence: (employee: any, absence: any, periodId: string) => void, employeeGroups: EmployeeGroup[], weeksOfYear: any[], vacationData: any, allEmployees: any[] }>(({ isFullscreen, selectedYear, onEditAbsence, employeeGroups, weeksOfYear, vacationData, allEmployees }, ref) => {
+    const { getTheoreticalHoursAndTurn, holidays } = useDataProvider();
     const [substitutions, setSubstitutions] = useState<Record<string, Record<string, string>>>({}); // { [weekKey]: { [originalEmpName]: substituteName } }
+    
+    const substituteEmployees = useMemo(() => {
+        const mainEmployeeNames = new Set(allEmployees.filter(e => !e.isExternal).map(e => e.name.trim().toLowerCase()));
+        return allEmployees.filter(e => e.isEventual && !mainEmployeeNames.has(e.name.trim().toLowerCase()));
+    }, [allEmployees]);
+
+    const handleSetSubstitute = (weekKey: string, originalEmployee: string, substituteName: string) => {
+        setSubstitutions(prev => {
+            const newWeekSubstitutions = { ...(prev[weekKey] || {}) };
+            if (substituteName === 'ninguno') {
+                delete newWeekSubstitutions[originalEmployee];
+            } else {
+                newWeekSubstitutions[originalEmployee] = substituteName;
+            }
+            return {
+                ...prev,
+                [weekKey]: newWeekSubstitutions,
+            };
+        });
+    };
+    
+    const groupedEmployeesByWeek = useMemo(() => {
+        const result: Record<string, { all: {name: string, absence: string, id: string}[], byGroup: Record<string, {name: string, absence: string, id: string}[]> }> = {};
+        
+        for (const weekKey in vacationData.employeesByWeek) {
+            result[weekKey] = { all: [], byGroup: {} };
+            const weekEmployees = vacationData.employeesByWeek[weekKey];
+            
+            weekEmployees.forEach((emp: any) => {
+                const groupId = emp.groupId;
+                const empData = { name: emp.employeeName, absence: emp.absenceAbbreviation, id: emp.employeeId };
+                 result[weekKey].all.push(empData);
+                if (groupId) {
+                    if (!result[weekKey].byGroup[groupId]) {
+                        result[weekKey].byGroup[groupId] = [];
+                    }
+                    result[weekKey].byGroup[groupId].push(empData);
+                }
+            });
+        }
+        return result;
+    }, [vacationData.employeesByWeek]);
+
+    const sortedGroups = [...employeeGroups].sort((a,b) => a.order - b.order);
+    const groupColors = ['#dbeafe', '#dcfce7', '#fef9c3', '#f3e8ff', '#fce7f3', '#e0e7ff', '#ccfbf1', '#ffedd5'];
+    
+     return (
+        <div ref={ref} className="overflow-auto h-full flex-grow">
+            <table className="w-full border-collapse">
+                <thead className="sticky top-0 z-20 bg-background">
+                    <tr>
+                         <th className="sticky left-0 z-30 bg-background p-0" style={{ width: '1px' }}>
+                            <div className="w-px h-full" />
+                        </th>
+                        {weeksOfYear.map(week => {
+                            const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                            const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
+                            const firstEmployee = allEmployees[0];
+                            const turnInfo = firstEmployee ? getTheoreticalHoursAndTurn(firstEmployee.id, week.start) : { turnId: null };
+                            
+                            return (
+                                <th key={week.key} className={cn("p-1 text-center font-normal border min-w-[20rem]", hasHoliday ? "bg-blue-100" : "bg-gray-50", "w-80")}>
+                                    <div className='flex flex-col items-center justify-center h-full'>
+                                        <div className='flex items-center gap-2'>
+                                            <span className='font-semibold text-lg'>
+                                                {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
+                                            </span>
+                                            {turnInfo.turnId && <Badge variant="secondary">{turnInfo.turnId.replace('turn','T')}</Badge>}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">{week.key}</div>
+                                        <div className="flex gap-3 mt-1.5 text-sm items-center">
+                                            <div className='flex items-center gap-1'><Users className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.employeeCount ?? 0}</div>
+                                            <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
+                                        </div>
+                                    </div>
+                                </th>
+                            )
+                        })}
+                    </tr>
+                </thead>
+                <tbody>
+                    {sortedGroups.map((group, groupIndex) => (
+                        <tr key={group.id}>
+                            <td style={{ backgroundColor: groupColors[groupIndex % groupColors.length], width: '1px' }} className="sticky left-0 z-10 p-0"></td>
+                            {weeksOfYear.map(week => {
+                                const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                                const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
+                                const employeesInGroupThisWeek = (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || []).sort((a, b) => a.name.localeCompare(b.name));
+                                const currentSubstitutes = substitutions[week.key] || {};
+
+                                const cellStyle: React.CSSProperties = {};
+                                if (employeesInGroupThisWeek.length > 0) {
+                                    cellStyle.backgroundColor = groupColors[groupIndex % groupColors.length];
+                                }
+
+                                return (
+                                    <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border min-w-[20rem] align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50", "w-80")}>
+                                        <div className="flex flex-col gap-0">
+                                            {employeesInGroupThisWeek.map((emp, nameIndex) => {
+                                                const substitute = currentSubstitutes[emp.name];
+                                                const availableSubstitutes = substituteEmployees.filter(
+                                                    sub => !Object.values(currentSubstitutes).includes(sub.name) || sub.name === substitute
+                                                );
+                                                const isSpecialAbsence = emp.absence === 'EXD' || emp.absence === 'PE';
+                                                const employeeData = allEmployees.find(e => e.id === emp.id);
+                                                const absenceData = vacationData.absencesByEmployee[emp.id]?.find((a: any) => isWithinInterval(week.start, {start: a.startDate, end: a.endDate}));
+
+                                                return (
+                                                    <div key={nameIndex} className="py-0 px-1 rounded-sm flex justify-between items-center group">
+                                                        <button
+                                                            className={cn('flex flex-row items-center gap-2 text-left text-sm font-semibold', isSpecialAbsence && 'text-blue-600')}
+                                                            onClick={() => {
+                                                                if (absenceData && employeeData && !employeeData.isExternal) {
+                                                                    onEditAbsence(employeeData, absenceData, absenceData.periodId);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <span className="truncate">{emp.name} ({emp.absence})</span>
+                                                            {substitute && <span className="text-red-600 truncate">({substitute})</span>}
+                                                        </button>
+                                                         <Popover>
+                                                            <PopoverTrigger asChild>
+                                                                <button className="opacity-100 transition-opacity">
+                                                                    <PlusCircle className="h-4 w-4 text-gray-500 hover:text-black" />
+                                                                </button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-56 p-2">
+                                                                <p className="text-sm font-medium p-2">Asignar sustituto</p>
+                                                                <Select
+                                                                    onValueChange={(value) => handleSetSubstitute(week.key, emp.name, value)}
+                                                                    defaultValue={substitute}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Seleccionar..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="ninguno">Ninguno</SelectItem>
+                                                                        {availableSubstitutes.map(sub => (
+                                                                            <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </td>
+                                )
+                            })}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+});
+QuadrantTable.displayName = 'QuadrantTable';
+
+const FullscreenQuadrant = ({
+    isFullscreen,
+    setIsFullscreen,
+    tableContainerRef,
+    scrollPositionRef,
+    selectedYear,
+    onEditAbsence,
+    loading,
+    weeksOfYear,
+    vacationData,
+    allEmployees,
+    employeeGroups
+}: {
+    isFullscreen: boolean;
+    setIsFullscreen: (value: boolean) => void;
+    tableContainerRef: React.RefObject<HTMLDivElement>;
+    scrollPositionRef: React.MutableRefObject<{ top: number; left: number }>;
+    selectedYear: number;
+    onEditAbsence: (employee: any, absence: any, periodId: string) => void;
+    loading: boolean;
+    weeksOfYear: any[];
+    vacationData: any;
+    allEmployees: any[];
+    employeeGroups: EmployeeGroup[];
+}) => {
+    
+    useLayoutEffect(() => {
+        if (!loading && isFullscreen) {
+            const container = tableContainerRef.current;
+            if (container) {
+                container.scrollTop = scrollPositionRef.current.top;
+                container.scrollLeft = scrollPositionRef.current.left;
+            }
+        }
+    }, [loading, isFullscreen, tableContainerRef, scrollPositionRef]);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (tableContainerRef.current) {
+                scrollPositionRef.current = {
+                    top: tableContainerRef.current.scrollTop,
+                    left: tableContainerRef.current.scrollLeft
+                };
+            }
+        };
+
+        const container = tableContainerRef.current;
+        if (container) {
+            container.addEventListener('scroll', handleScroll, { passive: true });
+        }
+        
+        return () => {
+            if (container) {
+                container.removeEventListener('scroll', handleScroll);
+            }
+        };
+    }, [tableContainerRef, scrollPositionRef]);
+    
+    return (
+        <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
+            <DialogContent className="max-w-full h-full p-2 bg-background flex flex-col border-0 shadow-none gap-0">
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setIsFullscreen(false)}
+                    className="absolute top-2 right-2 z-[9999]"
+                >
+                    <Minimize className="h-6 w-6" />
+                </Button>
+                <QuadrantTable 
+                    ref={tableContainerRef} 
+                    isFullscreen={true} 
+                    selectedYear={selectedYear} 
+                    onEditAbsence={onEditAbsence}
+                    employeeGroups={employeeGroups}
+                    weeksOfYear={weeksOfYear}
+                    vacationData={vacationData}
+                    allEmployees={allEmployees}
+                />
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
+export function AnnualVacationQuadrant() {
+    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays, refreshData, employeeGroups, holidayEmployees, getEffectiveWeeklyHours } = useDataProvider();
+    const { toast } = useToast();
+    const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+    
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const tableContainerRef = useRef<HTMLDivElement>(null);
+    const scrollPositionRef = useRef({ top: 0, left: 0 });
+
+    const [editingAbsence, setEditingAbsence] = useState<{
+        employee: any;
+        absence: any;
+        periodId: string;
+    } | null>(null);
+
+    const [editedDateRange, setEditedDateRange] = useState<DateRange | undefined>(undefined);
+    const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
+    
+
+    useEffect(() => {
+        if (editingAbsence) {
+            setEditedDateRange({
+                from: editingAbsence.absence.startDate,
+                to: editingAbsence.absence.endDate,
+            });
+            setCalendarMonth(editingAbsence.absence.startDate);
+        } else {
+            setEditedDateRange(undefined);
+        }
+    }, [editingAbsence]);
+
+    const availableYears = useMemo(() => {
+        const years = new Set<number>();
+        if (weeklyRecords) {
+            Object.keys(weeklyRecords).forEach(id => years.add(parseInt(id.split('-')[0], 10)));
+        }
+        const currentYear = new Date().getFullYear();
+        years.add(currentYear);
+        years.add(currentYear + 1);
+        years.add(currentYear - 1);
+        return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
+    }, [weeklyRecords]);
     
     const allEmployees = useMemo(() => {
         if (loading) return [];
@@ -68,15 +356,9 @@ const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selec
         return allEmps.sort((a, b) => a.name.localeCompare(b.name));
     }, [employees, holidayEmployees, loading, getEffectiveWeeklyHours]);
 
-    const substituteEmployees = useMemo(() => {
-        const mainEmployeeNames = new Set(employees.map(e => e.name.trim().toLowerCase()));
-        return holidayEmployees.filter(he => he.active && !mainEmployeeNames.has(he.name.trim().toLowerCase()));
-    }, [employees, holidayEmployees]);
-
-    const schedulableAbsenceTypes = useMemo(() => {
-        return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
-    }, [absenceTypes]);
-
+    const activeEmployees = useMemo(() => {
+        return employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
+    }, [employees]);
 
     const weeksOfYear = useMemo(() => {
         const year = selectedYear;
@@ -107,6 +389,10 @@ const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selec
         return weeks;
     }, [selectedYear]);
 
+    const schedulableAbsenceTypes = useMemo(() => {
+        return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
+    }, [absenceTypes]);
+    
     const vacationData = useMemo(() => {
         if (loading || schedulableAbsenceTypes.length === 0) return { weeklySummaries: {}, employeesByWeek: {}, absencesByEmployee: {} };
 
@@ -231,308 +517,6 @@ const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selec
         return { weeklySummaries, employeesByWeek, absencesByEmployee };
 
     }, [loading, allEmployees, schedulableAbsenceTypes, weeksOfYear, weeklyRecords, selectedYear, getEffectiveWeeklyHours, absenceTypes]);
-
-    const groupedEmployeesByWeek = useMemo(() => {
-        const result: Record<string, { all: {name: string, absence: string, id: string}[], byGroup: Record<string, {name: string, absence: string, id: string}[]> }> = {};
-        
-        for (const weekKey in vacationData.employeesByWeek) {
-            result[weekKey] = { all: [], byGroup: {} };
-            const weekEmployees = vacationData.employeesByWeek[weekKey];
-            
-            weekEmployees.forEach(emp => {
-                const groupId = emp.groupId;
-                const empData = { name: emp.employeeName, absence: emp.absenceAbbreviation, id: emp.employeeId };
-                 result[weekKey].all.push(empData);
-                if (groupId) {
-                    if (!result[weekKey].byGroup[groupId]) {
-                        result[weekKey].byGroup[groupId] = [];
-                    }
-                    result[weekKey].byGroup[groupId].push(empData);
-                }
-            });
-        }
-        return result;
-    }, [vacationData.employeesByWeek]);
-    
-    const sortedGroups = useMemo(() => {
-        return [...employeeGroups].sort((a,b) => a.order - b.order);
-    }, [employeeGroups]);
-
-    const handleSetSubstitute = (weekKey: string, originalEmployee: string, substituteName: string) => {
-        setSubstitutions(prev => {
-            const newWeekSubstitutions = { ...(prev[weekKey] || {}) };
-            if (substituteName === 'ninguno') {
-                delete newWeekSubstitutions[originalEmployee];
-            } else {
-                newWeekSubstitutions[originalEmployee] = substituteName;
-            }
-            return {
-                ...prev,
-                [weekKey]: newWeekSubstitutions,
-            };
-        });
-    };
-
-    const groupColors = ['#dbeafe', '#dcfce7', '#fef9c3', '#f3e8ff', '#fce7f3', '#e0e7ff', '#ccfbf1', '#ffedd5'];
-    
-     return (
-        <div ref={ref} className="overflow-auto h-full flex-grow">
-            <table className="w-full border-collapse">
-                <thead className="sticky top-0 z-20 bg-background">
-                    <tr>
-                        <th className="sticky left-0 z-30 bg-background p-0" style={{ width: '1px' }}>
-                            <div className="w-px h-full" />
-                        </th>
-                        {weeksOfYear.map(week => {
-                            const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                            const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
-                            const firstEmployee = allEmployees[0];
-                            const turnInfo = firstEmployee ? getTheoreticalHoursAndTurn(firstEmployee.id, week.start) : { turnId: null };
-                            
-                            return (
-                                <th key={week.key} className={cn("p-1 text-center font-normal border min-w-[20rem]", hasHoliday ? "bg-blue-100" : "bg-gray-50", "w-80")}>
-                                    <div className='flex flex-col items-center justify-center h-full'>
-                                        <div className='flex items-center gap-2'>
-                                            <span className='font-semibold text-lg'>
-                                                {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
-                                            </span>
-                                            {turnInfo.turnId && <Badge variant="secondary">{turnInfo.turnId.replace('turn','T')}</Badge>}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">{week.key}</div>
-                                        <div className="flex gap-3 mt-1.5 text-sm items-center">
-                                            <div className='flex items-center gap-1'><Users className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.employeeCount ?? 0}</div>
-                                            <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
-                                        </div>
-                                    </div>
-                                </th>
-                            )
-                        })}
-                    </tr>
-                </thead>
-                <tbody>
-                    {sortedGroups.map((group, groupIndex) => (
-                        <tr key={group.id}>
-                            <td style={{ backgroundColor: groupColors[groupIndex % groupColors.length], width: '1px' }} className="sticky left-0 z-10 p-0"></td>
-                            {weeksOfYear.map(week => {
-                                const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                                const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
-                                const employeesInGroupThisWeek = (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || []).sort((a, b) => a.name.localeCompare(b.name));
-                                const currentSubstitutes = substitutions[week.key] || {};
-
-                                const cellStyle: React.CSSProperties = {};
-                                if (employeesInGroupThisWeek.length > 0) {
-                                    cellStyle.backgroundColor = groupColors[groupIndex % groupColors.length];
-                                }
-
-                                return (
-                                    <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border min-w-[20rem] align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50", "w-80")}>
-                                        <div className="flex flex-col gap-0">
-                                            {employeesInGroupThisWeek.map((emp, nameIndex) => {
-                                                const substitute = currentSubstitutes[emp.name];
-                                                const availableSubstitutes = substituteEmployees.filter(
-                                                    sub => !Object.values(currentSubstitutes).includes(sub.name) || sub.name === substitute
-                                                );
-                                                const isSpecialAbsence = emp.absence === 'EXD' || emp.absence === 'PE';
-                                                const employeeData = allEmployees.find(e => e.id === emp.id);
-                                                const absenceData = vacationData.absencesByEmployee[emp.id]?.find((a: any) => isWithinInterval(week.start, {start: a.startDate, end: a.endDate}));
-
-                                                return (
-                                                    <div key={nameIndex} className="py-0 px-1 rounded-sm flex justify-between items-center group">
-                                                        <button
-                                                            className={cn('flex flex-row items-center gap-2 text-left text-sm font-semibold', isSpecialAbsence && 'text-blue-600')}
-                                                            onClick={() => {
-                                                                if (absenceData && employeeData && !employeeData.isExternal) {
-                                                                    onEditAbsence(employeeData, absenceData, absenceData.periodId);
-                                                                }
-                                                            }}
-                                                        >
-                                                            <span className="truncate">{emp.name} ({emp.absence})</span>
-                                                            {substitute && <span className="text-red-600 truncate">({substitute})</span>}
-                                                        </button>
-                                                         <Popover>
-                                                            <PopoverTrigger asChild>
-                                                                <button className="opacity-100 transition-opacity">
-                                                                    <PlusCircle className="h-4 w-4 text-gray-500 hover:text-black" />
-                                                                </button>
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="w-56 p-2">
-                                                                <p className="text-sm font-medium p-2">Asignar sustituto</p>
-                                                                <Select
-                                                                    onValueChange={(value) => handleSetSubstitute(week.key, emp.name, value)}
-                                                                    defaultValue={substitute}
-                                                                >
-                                                                    <SelectTrigger>
-                                                                        <SelectValue placeholder="Seleccionar..." />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="ninguno">Ninguno</SelectItem>
-                                                                        {availableSubstitutes.map(sub => (
-                                                                            <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            </PopoverContent>
-                                                        </Popover>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </td>
-                                )
-                            })}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
-});
-QuadrantTable.displayName = 'QuadrantTable';
-
-const FullscreenQuadrant = ({
-    isFullscreen,
-    setIsFullscreen,
-    tableContainerRef,
-    scrollPositionRef,
-    selectedYear,
-    onEditAbsence,
-    loading,
-}: {
-    isFullscreen: boolean;
-    setIsFullscreen: (value: boolean) => void;
-    tableContainerRef: React.RefObject<HTMLDivElement>;
-    scrollPositionRef: React.MutableRefObject<{ top: number; left: number }>;
-    selectedYear: number;
-    onEditAbsence: (employee: any, absence: any, periodId: string) => void;
-    loading: boolean;
-}) => {
-    
-    useLayoutEffect(() => {
-        if (!loading && isFullscreen) {
-            const container = tableContainerRef.current;
-            if (container) {
-                container.scrollTop = scrollPositionRef.current.top;
-                container.scrollLeft = scrollPositionRef.current.left;
-            }
-        }
-    }, [loading, isFullscreen, tableContainerRef, scrollPositionRef]);
-
-    useEffect(() => {
-        const handleScroll = () => {
-            if (tableContainerRef.current) {
-                scrollPositionRef.current = {
-                    top: tableContainerRef.current.scrollTop,
-                    left: tableContainerRef.current.scrollLeft
-                };
-            }
-        };
-
-        const container = tableContainerRef.current;
-        if (container) {
-            container.addEventListener('scroll', handleScroll, { passive: true });
-        }
-        
-        return () => {
-            if (container) {
-                container.removeEventListener('scroll', handleScroll);
-            }
-        };
-    }, [tableContainerRef, scrollPositionRef]);
-    
-    return (
-        <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-            <DialogContent className="max-w-full h-full p-2 bg-background flex flex-col border-0 shadow-none gap-0">
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => setIsFullscreen(false)}
-                    className="absolute top-2 right-2 z-[9999]"
-                >
-                    <Minimize className="h-6 w-6" />
-                </Button>
-                <QuadrantTable ref={tableContainerRef} isFullscreen={true} selectedYear={selectedYear} onEditAbsence={onEditAbsence} />
-            </DialogContent>
-        </Dialog>
-    );
-};
-
-
-export function AnnualVacationQuadrant() {
-    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays, refreshData, employeeGroups, holidayEmployees, getEffectiveWeeklyHours } = useDataProvider();
-    const { toast } = useToast();
-    const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
-    
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const tableContainerRef = useRef<HTMLDivElement>(null);
-    const scrollPositionRef = useRef({ top: 0, left: 0 });
-
-    const [editingAbsence, setEditingAbsence] = useState<{
-        employee: any;
-        absence: any;
-        periodId: string;
-    } | null>(null);
-
-    const [editedDateRange, setEditedDateRange] = useState<DateRange | undefined>(undefined);
-    const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
-    
-
-    useEffect(() => {
-        if (editingAbsence) {
-            setEditedDateRange({
-                from: editingAbsence.absence.startDate,
-                to: editingAbsence.absence.endDate,
-            });
-            setCalendarMonth(editingAbsence.absence.startDate);
-        } else {
-            setEditedDateRange(undefined);
-        }
-    }, [editingAbsence]);
-
-    const availableYears = useMemo(() => {
-        const years = new Set<number>();
-        if (weeklyRecords) {
-            Object.keys(weeklyRecords).forEach(id => years.add(parseInt(id.split('-')[0], 10)));
-        }
-        const currentYear = new Date().getFullYear();
-        years.add(currentYear);
-        years.add(currentYear + 1);
-        years.add(currentYear - 1);
-        return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
-    }, [weeklyRecords]);
-
-    const activeEmployees = useMemo(() => {
-        return employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
-    }, [employees]);
-
-    const weeksOfYear = useMemo(() => {
-        const year = selectedYear;
-        const firstDayOfYear = new Date(year, 0, 1);
-        let firstMonday = startOfWeek(firstDayOfYear, { weekStartsOn: 1 });
-    
-        if (getYear(firstMonday) < year) {
-            firstMonday = addWeeks(firstMonday, 1);
-        }
-
-        const weeks = [];
-        for (let i = 0; i < 53; i++) {
-            const weekStart = addWeeks(firstMonday, i);
-            const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-
-            if (getYear(weekStart) === year || getYear(weekEnd) === year) {
-                 weeks.push({
-                    start: weekStart,
-                    end: weekEnd,
-                    number: getISOWeek(weekStart),
-                    year: getYear(weekStart),
-                    key: `${getYear(weekStart)}-W${String(getISOWeek(weekStart)).padStart(2, '0')}`
-                });
-            } else if (getYear(weekStart) > year) {
-                break;
-            }
-        }
-        return weeks;
-    }, [selectedYear]);
     
     const handleUpdateAbsence = async () => {
         if (!editingAbsence || !editedDateRange?.from) return;
@@ -657,186 +641,72 @@ export function AnnualVacationQuadrant() {
         setIsGenerating(true);
         const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     
-        const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
-        if (!vacationType) {
-            toast({ title: 'Error', description: 'No se encontró el tipo de ausencia "Vacaciones".', variant: 'destructive' });
-            setIsGenerating(false);
-            return;
-        }
-    
         const schedulableAbsenceTypesReport = absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
-        const schedulableAbsenceTypeAbbrsReport = new Set(schedulableAbsenceTypesReport.map(at => at.abbreviation));
-
-        const allAbsenceData: { empId: string; empName: string; groupId?: string | null; weekNumber: number; absenceAbbr: string }[] = [];
     
-        const allActiveEmployees = [...employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()))), ...holidayEmployees.filter(he => he.active && !employees.find(e => e.name === he.name))]
-            .map(emp => {
-                if ('employmentPeriods' in emp) { 
-                    return emp;
-                }
-                return {
-                    id: emp.id, name: emp.name, groupId: emp.groupId, employmentPeriods: [],
-                } as Employee;
-            });
-    
-        allActiveEmployees.forEach((emp: Employee) => {
-            const employeeAbsenceDays = new Map<string, { absenceAbbr: string }>();
-    
-            Object.values(weeklyRecords).forEach(record => {
-                if (getYear(parseISO(record.id)) !== selectedYear) return;
-                const empWeekData = record.weekData[emp.id];
-                if (empWeekData?.days) {
-                    Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
-                        if (schedulableAbsenceTypeAbbrsReport.has(dayData.absence)) {
-                            employeeAbsenceDays.set(dayStr, { absenceAbbr: dayData.absence });
-                        }
-                    });
-                }
-            });
-    
-            emp.employmentPeriods?.forEach(period => {
-                period.scheduledAbsences?.forEach(absence => {
-                    const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
-                    if (absenceType && schedulableAbsenceTypeAbbrsReport.has(absenceType.abbreviation) && absence.endDate) {
-                        eachDayOfInterval({ start: absence.startDate, end: absence.endDate }).forEach(day => {
-                            if (getYear(day) === selectedYear) {
-                                employeeAbsenceDays.set(format(day, 'yyyy-MM-dd'), { absenceAbbr: absenceType.abbreviation });
-                            }
-                        });
-                    }
-                });
-            });
-    
-            employeeAbsenceDays.forEach((data, dayStr) => {
-                const weekNumber = getISOWeek(parseISO(dayStr));
-                const existingEntry = allAbsenceData.find(d => d.empId === emp.id && d.weekNumber === weekNumber);
-                if (!existingEntry) {
-                    allAbsenceData.push({ empId: emp.id, empName: emp.name, groupId: emp.groupId, weekNumber, absenceAbbr: data.absenceAbbr });
-                }
-            });
-        });
-    
-        const sortedGroups = [...employeeGroups].sort((a, b) => a.order - b.order);
-        
-        const vacationDataForReport = (() => {
-            if (loading || schedulableAbsenceTypesReport.length === 0) return { weeklySummaries: {} };
-    
-            const weeklySummaries: Record<string, { employeeCount: number; hourImpact: number }> = {};
-    
-            weeksOfYear.forEach(week => {
-                weeklySummaries[week.key] = { employeeCount: 0, hourImpact: 0 };
-            });
-    
-            allActiveEmployees.forEach(emp => {
-                const allAbsenceDays = new Map<string, { typeId: string, typeAbbr: string, isScheduled: boolean }>();
-    
-                Object.values(weeklyRecords).forEach(record => {
-                    const empWeekData = record.weekData[emp.id];
-                    if (empWeekData?.days) {
-                        Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
-                            const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
-                            if (absenceType && schedulableAbsenceTypeAbbrsReport.has(absenceType.abbreviation) && getYear(new Date(dayStr)) === selectedYear) {
-                                allAbsenceDays.set(dayStr, { typeId: absenceType.id, typeAbbr: absenceType.abbreviation, isScheduled: false });
-                            }
-                        });
-                    }
-                });
-    
-                if (allAbsenceDays.size > 0) {
-                    weeksOfYear.forEach(week => {
-                        let absenceThisWeek = false;
-                        for (const dayStr of Array.from(allAbsenceDays.keys())) {
-                            const day = parseISO(dayStr);
-                            if (day >= week.start && day <= week.end) {
-                               absenceThisWeek = true;
-                               break;
-                            }
-                        }
-                        if (absenceThisWeek) {
-                            weeklySummaries[week.key].employeeCount++;
-                            let weeklyHours = 0;
-                            const activePeriod = emp.employmentPeriods.find(p => isWithinInterval(week.start, { start: parseISO(p.startDate as string), end: p.endDate ? parseISO(p.endDate as string) : new Date('9999-12-31')}));
-                            weeklyHours = getEffectiveWeeklyHours(activePeriod || null, week.start);
-                            weeklySummaries[week.key].hourImpact += weeklyHours;
-                        }
-                    });
-                }
-            });
-            return { weeklySummaries };
-        })();
-        
         const weekChunks: (typeof weeksOfYear)[] = [];
         for (let i = 0; i < weeksOfYear.length; i += 4) {
             weekChunks.push(weeksOfYear.slice(i, i + 4));
         }
-
+    
+        const vacationDataForReport = vacationData; 
+    
         weekChunks.forEach((chunk, pageIndex) => {
             if (pageIndex > 0) doc.addPage();
             doc.setFontSize(14);
             doc.text(`Cuadrante de Ausencias Programadas - ${selectedYear}`, 14, 15);
             doc.setFontSize(10);
             doc.text(`Página ${pageIndex + 1} de ${weekChunks.length}`, doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 10, { align: 'right' });
-    
-            const employeesByGroupAndWeek: Record<string, Record<number, string[]>> = {};
-
-            sortedGroups.forEach(group => {
-                employeesByGroupAndWeek[group.id] = {};
-                chunk.forEach(week => {
-                    employeesByGroupAndWeek[group.id][week.number] = allAbsenceData
-                        .filter(d => d.groupId === group.id && d.weekNumber === week.number)
-                        .map(d => `${d.empName} (${d.absenceAbbr})`);
-                });
-            });
-
+            
+            const sortedGroups = [...employeeGroups].sort((a, b) => a.order - b.order);
             const bodyRows = sortedGroups.map(group => {
                 const rowContent = chunk.map(week => {
-                    return (employeesByGroupAndWeek[group.id][week.number] || []).join('\n');
+                    const employeesInGroupThisWeek = (vacationData.employeesByWeek[week.key] || [])
+                        .filter((emp: any) => emp.groupId === group.id)
+                        .sort((a: any, b: any) => a.employeeName.localeCompare(b.employeeName));
+                    return employeesInGroupThisWeek.map((e: any) => `${e.employeeName} (${e.absenceAbbreviation})`).join('\n');
                 });
                 return rowContent;
             });
     
-            const tableWidth = doc.internal.pageSize.width - 28 - 0.02; // Account for invisible column
+            const tableWidth = doc.internal.pageSize.width - 28;
             const dynamicColumnWidths = chunk.map(() => tableWidth / chunk.length);
-
+    
             autoTable(doc, {
-                head: [
-                    ['', ...chunk.map(w => w.key)]
-                ],
+                head: [chunk.map(w => w.key)],
                 body: bodyRows,
                 startY: 25,
                 theme: 'grid',
                 rowPageBreak: 'avoid',
                 styles: { fontSize: 7, valign: 'top', cellPadding: 1.5, },
-                headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', minCellHeight: 15 },
-                columnStyles: {
-                    0: { cellWidth: 0.02 },
-                    ...chunk.reduce((acc, _, i) => ({ ...acc, [i+1]: { cellWidth: dynamicColumnWidths[i] } }), {})
-                },
+                headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', minCellHeight: 20 },
+                columnStyles: { ...chunk.reduce((acc, _, i) => ({ ...acc, [i]: { cellWidth: dynamicColumnWidths[i] } }), {})},
                 didDrawCell: (data) => {
-                    if (data.section === 'head' && data.column.index > 0) {
-                        const weekKey = data.cell.raw as string;
+                    if (data.section === 'head' && data.column.index >= 0) {
+                        const weekKey = chunk[data.column.index]?.key;
+                        if (!weekKey) return;
+    
                         const weekInfo = weeksOfYear.find(w => w.key === weekKey);
-
                         if (!weekInfo) return;
-
-                        const turnInfo = getTheoreticalHoursAndTurn(allActiveEmployees[0].id, weekInfo.start);
+    
+                        const turnInfo = allEmployees.length > 0 ? getTheoreticalHoursAndTurn(allEmployees[0].id, weekInfo.start) : { turnId: null };
                         const summary = vacationDataForReport.weeklySummaries[weekInfo.key] || { employeeCount: 0, hourImpact: 0 };
                         
-                        data.cell.text = []; // Clear original text
+                        data.cell.text = [];
                         
-                        let currentY = data.cell.y + 5;
+                        let currentY = data.cell.y + 7;
                         doc.setFontSize(10).setFont(undefined, 'bold');
                         doc.text(`${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}`, data.cell.x + data.cell.width / 2, currentY, { align: 'center' });
-
-                        currentY += 5;
+    
+                        currentY += 6;
+                        if (turnInfo.turnId) {
+                            doc.setFontSize(8).setFont(undefined, 'bold');
+                            doc.text(turnInfo.turnId.replace('turn','T'), data.cell.x + data.cell.width / 2, currentY, { align: 'center' });
+                            currentY += 6;
+                        }
+                        
                         doc.setFontSize(8).setFont(undefined, 'normal');
                         const summaryText = `${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
                         doc.text(summaryText, data.cell.x + data.cell.width / 2, currentY, { align: 'center' });
-
-                        if (turnInfo.turnId) {
-                            doc.setFontSize(8).setFont(undefined, 'bold');
-                            doc.text(turnInfo.turnId.replace('turn','T'), data.cell.x + data.cell.width - 4, data.cell.y + 5, { align: 'right' });
-                        }
                     }
                 }
             });
@@ -910,7 +780,6 @@ export function AnnualVacationQuadrant() {
              const cellContent = periodsText;
             const cell = { content: cellContent };
             const textHeight = doc.getTextDimensions(cellContent).h;
-            const cellHeight = Math.max(20, textHeight + 10);
             return [emp.name, cell, ''];
         });
     
@@ -919,14 +788,14 @@ export function AnnualVacationQuadrant() {
             body: body,
             startY: 22,
             theme: 'plain',
-            styles: { valign: 'middle', minCellHeight: 22 },
             rowPageBreak: 'avoid',
+            styles: { valign: 'middle', minCellHeight: 22 },
             headStyles: { fontStyle: 'bold' },
             columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 40 } },
             didDrawCell: (data) => {
                 if (data.column.index === 2 && data.section === 'body') {
                     const rectHeight = 18;
-                    const rectY = data.cell.y + 2;
+                    const rectY = data.cell.y + (data.row.height - rectHeight) / 2;
                     doc.rect(data.cell.x + 2, rectY, data.cell.width - 4, rectHeight);
                 }
             },
@@ -947,6 +816,10 @@ export function AnnualVacationQuadrant() {
                 selectedYear={selectedYear}
                 onEditAbsence={handleEditAbsence}
                 loading={loading}
+                employeeGroups={employeeGroups}
+                weeksOfYear={weeksOfYear}
+                vacationData={vacationData}
+                allEmployees={allEmployees}
             />
 
             <Dialog open={!!editingAbsence} onOpenChange={(open) => { if (!open) { setEditingAbsence(null); } }}>
@@ -1051,13 +924,18 @@ export function AnnualVacationQuadrant() {
                 </CardHeader>
                 <CardContent>
                      {loading ? <Skeleton className="h-[600px] w-full" /> : (
-                        <div ref={tableContainerRef} className="overflow-auto max-h-[70vh]">
-                            <QuadrantTable selectedYear={selectedYear} onEditAbsence={handleEditAbsence} />
-                        </div>
+                        <QuadrantTable 
+                            ref={tableContainerRef}
+                            selectedYear={selectedYear} 
+                            onEditAbsence={handleEditAbsence}
+                            employeeGroups={employeeGroups}
+                            weeksOfYear={weeksOfYear}
+                            vacationData={vacationData}
+                            allEmployees={allEmployees}
+                         />
                      )}
                 </CardContent>
             </Card>
         </>
     );
 }
-
