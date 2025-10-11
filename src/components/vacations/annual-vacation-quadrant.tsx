@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@
 import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown, Maximize, Minimize, Calendar as CalendarIcon, FileSignature } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
-import type { Employee, EmploymentPeriod, Ausencia, HolidayEmployee } from '@/lib/types';
+import type { Employee, EmploymentPeriod, Ausencia, HolidayEmployee, EmployeeGroup } from '@/lib/types';
 import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, getMonth, subMonths, addMonths, startOfMonth, endOfMonth, eachWeekOfInterval, getDaysInMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
@@ -503,6 +503,35 @@ export function AnnualVacationQuadrant() {
     const activeEmployees = useMemo(() => {
         return employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
     }, [employees]);
+
+    const weeksOfYear = useMemo(() => {
+        const year = selectedYear;
+        const firstDayOfYear = new Date(year, 0, 1);
+        let firstMonday = startOfWeek(firstDayOfYear, { weekStartsOn: 1 });
+    
+        if (getYear(firstMonday) < year) {
+            firstMonday = addWeeks(firstMonday, 1);
+        }
+
+        const weeks = [];
+        for (let i = 0; i < 53; i++) {
+            const weekStart = addWeeks(firstMonday, i);
+            const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+
+            if (getYear(weekStart) === year || getYear(weekEnd) === year) {
+                 weeks.push({
+                    start: weekStart,
+                    end: weekEnd,
+                    number: getISOWeek(weekStart),
+                    year: getYear(weekStart),
+                    key: `${getYear(weekStart)}-W${String(getISOWeek(weekStart)).padStart(2, '0')}`
+                });
+            } else if (getYear(weekStart) > year) {
+                break;
+            }
+        }
+        return weeks;
+    }, [selectedYear]);
     
     const handleUpdateAbsence = async () => {
         if (!editingAbsence || !editedDateRange?.from) return;
@@ -623,7 +652,7 @@ export function AnnualVacationQuadrant() {
         }
     };
     
-    const generateGroupReport = (localEmployees: Employee[], localHolidayEmployees: HolidayEmployee[]) => {
+    const generateGroupReport = (localEmployees: Employee[], localHolidayEmployees: HolidayEmployee[], getEffectiveHoursFn: typeof getEffectiveWeeklyHours, employeeGroupsParam: EmployeeGroup[], weeksOfYearParam: typeof weeksOfYear) => {
         setIsGenerating(true);
         const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     
@@ -686,43 +715,14 @@ export function AnnualVacationQuadrant() {
             });
         });
     
-        const sortedGroups = [...employeeGroups].sort((a, b) => a.order - b.order);
+        const sortedGroups = [...employeeGroupsParam].sort((a, b) => a.order - b.order);
         
-        const weeksOfYear = useMemo(() => {
-            const year = selectedYear;
-            const firstDayOfYear = new Date(year, 0, 1);
-            let firstMonday = startOfWeek(firstDayOfYear, { weekStartsOn: 1 });
-        
-            if (getYear(firstMonday) < year) {
-                firstMonday = addWeeks(firstMonday, 1);
-            }
-    
-            const weeks = [];
-            for (let i = 0; i < 53; i++) {
-                const weekStart = addWeeks(firstMonday, i);
-                const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-    
-                if (getYear(weekStart) === year || getYear(weekEnd) === year) {
-                     weeks.push({
-                        start: weekStart,
-                        end: weekEnd,
-                        number: getISOWeek(weekStart),
-                        year: getYear(weekStart),
-                        key: `${getYear(weekStart)}-W${String(getISOWeek(weekStart)).padStart(2, '0')}`
-                    });
-                } else if (getYear(weekStart) > year) {
-                    break;
-                }
-            }
-            return weeks;
-        }, [selectedYear]);
-
-        const vacationDataForReport = useMemo(() => {
+        const vacationDataForReport = (() => {
             if (loading || schedulableAbsenceTypesReport.length === 0) return { weeklySummaries: {} };
     
             const weeklySummaries: Record<string, { employeeCount: number; hourImpact: number }> = {};
     
-            weeksOfYear.forEach(week => {
+            weeksOfYearParam.forEach(week => {
                 weeklySummaries[week.key] = { employeeCount: 0, hourImpact: 0 };
             });
     
@@ -742,7 +742,7 @@ export function AnnualVacationQuadrant() {
                 });
     
                 if (allAbsenceDays.size > 0) {
-                    weeksOfYear.forEach(week => {
+                    weeksOfYearParam.forEach(week => {
                         let absenceThisWeek = false;
                         for (const dayStr of Array.from(allAbsenceDays.keys())) {
                             const day = parseISO(dayStr);
@@ -755,18 +755,18 @@ export function AnnualVacationQuadrant() {
                             weeklySummaries[week.key].employeeCount++;
                             let weeklyHours = 0;
                             const activePeriod = emp.employmentPeriods.find(p => isWithinInterval(week.start, { start: parseISO(p.startDate as string), end: p.endDate ? parseISO(p.endDate as string) : new Date('9999-12-31')}));
-                            weeklyHours = getEffectiveWeeklyHours(activePeriod || null, week.start);
+                            weeklyHours = getEffectiveHoursFn(activePeriod || null, week.start);
                             weeklySummaries[week.key].hourImpact += weeklyHours;
                         }
                     });
                 }
             });
             return { weeklySummaries };
-        }, [loading, schedulableAbsenceTypesReport, allActiveEmployees, weeksOfYear, weeklyRecords, selectedYear, getEffectiveWeeklyHours, absenceTypes]);
+        })();
         
-        const weekChunks: number[][] = [];
-        for (let i = 0; i < weeksOfYear.length; i += 4) {
-            weekChunks.push(weeksOfYear.slice(i, i + 4).map(w => w.number));
+        const weekChunks: (typeof weeksOfYearParam)[] = [];
+        for (let i = 0; i < weeksOfYearParam.length; i += 4) {
+            weekChunks.push(weeksOfYearParam.slice(i, i + 4));
         }
 
         weekChunks.forEach((chunk, pageIndex) => {
@@ -776,43 +776,43 @@ export function AnnualVacationQuadrant() {
             doc.setFontSize(10);
             doc.text(`Página ${pageIndex + 1} de ${weekChunks.length}`, doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 10, { align: 'right' });
     
-            const body: any[][] = [];
-            
+            const employeesByGroupAndWeek: Record<string, Record<number, string[]>> = {};
+
             sortedGroups.forEach(group => {
-                const employeesInGroup = allActiveEmployees.filter(e => e.groupId === group.id);
-                if (employeesInGroup.length === 0) return;
-    
-                const rowContent = chunk.map(weekNum => {
-                    const empsInAbsence = allAbsenceData
-                        .filter(d => d.groupId === group.id && d.weekNumber === weekNum)
-                        .map(d => `${d.empName} (${d.absenceAbbr})`)
-                        .join('\n');
-                    return empsInAbsence;
+                employeesByGroupAndWeek[group.id] = {};
+                chunk.forEach(week => {
+                    employeesByGroupAndWeek[group.id][week.number] = allAbsenceData
+                        .filter(d => d.groupId === group.id && d.weekNumber === week.number)
+                        .map(d => `${d.empName} (${d.absenceAbbr})`);
                 });
-                body.push(rowContent);
+            });
+
+            const bodyRows = sortedGroups.map(group => {
+                const rowContent = chunk.map(week => {
+                    return (employeesByGroupAndWeek[group.id][week.number] || []).join('\n');
+                });
+                return rowContent;
             });
     
-            const tableWidth = doc.internal.pageSize.width - 28;
-            const dynamicColumnWidths = chunk.map(() => (tableWidth) / chunk.length);
+            const tableWidth = doc.internal.pageSize.width - 28 - 0.02; // Account for invisible column
+            const dynamicColumnWidths = chunk.map(() => tableWidth / chunk.length);
 
             autoTable(doc, {
                 head: [
-                    chunk.map(weekNum => {
-                        const weekInfo = weeksOfYear.find(w => w.number === weekNum);
-                        return weekInfo ? weekInfo : { key: '', start: new Date(), end: new Date()};
-                    })
+                    ['', ...chunk]
                 ],
-                body: body,
+                body: bodyRows,
                 startY: 25,
                 theme: 'grid',
                 rowPageBreak: 'avoid',
                 styles: { fontSize: 7, valign: 'top', cellPadding: 1.5, },
                 headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', minCellHeight: 15 },
                 columnStyles: {
-                    ...chunk.reduce((acc, _, i) => ({ ...acc, [i]: { cellWidth: dynamicColumnWidths[i] } }), {})
+                    0: { cellWidth: 0.02 },
+                    ...chunk.reduce((acc, _, i) => ({ ...acc, [i+1]: { cellWidth: dynamicColumnWidths[i] } }), {})
                 },
                 didDrawCell: (data) => {
-                    if (data.section === 'head' && data.column.index >= 0) {
+                    if (data.section === 'head' && data.column.index > 0) {
                         const weekInfo = data.cell.raw as { key: string, start: Date, end: Date };
                         if (!weekInfo || !weekInfo.start) return;
                         const turnInfo = getTheoreticalHoursAndTurn(allActiveEmployees[0].id, weekInfo.start);
@@ -1020,7 +1020,7 @@ export function AnnualVacationQuadrant() {
                             <CardTitle>Cuadrante Anual de Ausencias</CardTitle>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Button onClick={() => generateGroupReport(employees, holidayEmployees)} disabled={isGenerating || loading}>
+                             <Button onClick={() => generateGroupReport(employees, holidayEmployees, getEffectiveWeeklyHours, employeeGroups, weeksOfYear)} disabled={isGenerating || loading}>
                                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                                 Imprimir Cuadrante
                             </Button>
