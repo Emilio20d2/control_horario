@@ -276,115 +276,116 @@ const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selec
     const groupColors = ['#dbeafe', '#dcfce7', '#fef9c3', '#f3e8ff', '#fce7f3', '#e0e7ff', '#ccfbf1', '#ffedd5'];
     
      return (
-             <div ref={ref} className="overflow-auto h-full flex-grow">
-                <table className="w-full border-collapse">
-                    <thead className="sticky top-0 z-20 bg-background">
-                        <tr>
-                            <th className="sticky left-0 z-30 bg-background p-0" style={{ width: '1px' }}>
-                                <div className="w-px h-full" />
-                            </th>
+        <div ref={ref} className="overflow-auto h-full flex-grow">
+            <table className="w-full border-collapse">
+                <thead className="sticky top-0 z-20 bg-background">
+                    <tr>
+                        <th className="sticky left-0 z-30 bg-background p-0" style={{ width: '1px' }}>
+                            <div className="w-px h-full" />
+                        </th>
+                        {weeksOfYear.map(week => {
+                            const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
+                            const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
+                            const firstEmployee = allEmployees[0];
+                            const turnInfo = firstEmployee ? getTheoreticalHoursAndTurn(firstEmployee.id, week.start) : { turnId: null };
+                            
+                            return (
+                                <th key={week.key} className={cn("p-1 text-center font-normal border min-w-[20rem]", hasHoliday ? "bg-blue-100" : "bg-gray-50", "w-80")}>
+                                    <div className='flex flex-col items-center justify-center h-full'>
+                                        <div className='flex items-center gap-2'>
+                                            <span className='font-semibold text-lg'>
+                                                {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
+                                            </span>
+                                            {turnInfo.turnId && <Badge variant="secondary">{turnInfo.turnId.replace('turn','T')}</Badge>}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">{week.key}</div>
+                                        <div className="flex gap-3 mt-1.5 text-sm items-center">
+                                            <div className='flex items-center gap-1'><Users className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.employeeCount ?? 0}</div>
+                                            <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
+                                        </div>
+                                    </div>
+                                </th>
+                            )
+                        })}
+                    </tr>
+                </thead>
+                <tbody>
+                    {sortedGroups.map((group, groupIndex) => (
+                        <tr key={group.id}>
+                            <td style={{ backgroundColor: groupColors[groupIndex % groupColors.length], width: '1px' }} className="sticky left-0 z-10 p-0"></td>
                             {weeksOfYear.map(week => {
                                 const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
                                 const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
-                                const firstEmployee = allEmployees[0];
-                                const turnInfo = firstEmployee ? getTheoreticalHoursAndTurn(firstEmployee.id, week.start) : { turnId: null };
-                                
+                                const employeesInGroupThisWeek = (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || []).sort((a, b) => a.name.localeCompare(b.name));
+                                const currentSubstitutes = substitutions[week.key] || {};
+
+                                const cellStyle: React.CSSProperties = {};
+                                if (employeesInGroupThisWeek.length > 0) {
+                                    cellStyle.backgroundColor = groupColors[groupIndex % groupColors.length];
+                                }
+
                                 return (
-                                    <th key={week.key} className={cn("p-1 text-center font-normal border min-w-[20rem]", hasHoliday ? "bg-blue-100" : "bg-gray-50", "w-80")}>
-                                        <div className='flex flex-col items-center justify-center h-full'>
-                                            <div className='flex items-center gap-2'>
-                                                <span className='font-semibold text-lg'>
-                                                    {format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}
-                                                </span>
-                                                {turnInfo.turnId && <Badge variant="secondary">{turnInfo.turnId.replace('turn','T')}</Badge>}
-                                            </div>
-                                            <div className="flex gap-3 mt-1.5 text-sm items-center">
-                                                <div className='flex items-center gap-1'><Users className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.employeeCount ?? 0}</div>
-                                                <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
-                                            </div>
+                                    <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border min-w-[20rem] align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50", "w-80")}>
+                                        <div className="flex flex-col gap-0">
+                                            {employeesInGroupThisWeek.map((emp, nameIndex) => {
+                                                const substitute = currentSubstitutes[emp.name];
+                                                const availableSubstitutes = substituteEmployees.filter(
+                                                    sub => !Object.values(currentSubstitutes).includes(sub.name) || sub.name === substitute
+                                                );
+                                                const isSpecialAbsence = emp.absence === 'EXD' || emp.absence === 'PE';
+                                                const employeeData = allEmployees.find(e => e.id === emp.id);
+                                                const absenceData = vacationData.absencesByEmployee[emp.id]?.find((a: any) => isWithinInterval(week.start, {start: a.startDate, end: a.endDate}));
+
+                                                return (
+                                                    <div key={nameIndex} className="py-0 px-1 rounded-sm flex justify-between items-center group">
+                                                        <button
+                                                            className={cn('flex flex-row items-center gap-2 text-left text-sm font-semibold', isSpecialAbsence && 'text-blue-600')}
+                                                            onClick={() => {
+                                                                if (absenceData && employeeData && !employeeData.isExternal) {
+                                                                    onEditAbsence(employeeData, absenceData, absenceData.periodId);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <span className="truncate">{emp.name} ({emp.absence})</span>
+                                                            {substitute && <span className="text-red-600 truncate">({substitute})</span>}
+                                                        </button>
+                                                         <Popover>
+                                                            <PopoverTrigger asChild>
+                                                                <button className="opacity-100 transition-opacity">
+                                                                    <PlusCircle className="h-4 w-4 text-gray-500 hover:text-black" />
+                                                                </button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-56 p-2">
+                                                                <p className="text-sm font-medium p-2">Asignar sustituto</p>
+                                                                <Select
+                                                                    onValueChange={(value) => handleSetSubstitute(week.key, emp.name, value)}
+                                                                    defaultValue={substitute}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Seleccionar..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="ninguno">Ninguno</SelectItem>
+                                                                        {availableSubstitutes.map(sub => (
+                                                                            <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-                                    </th>
+                                    </td>
                                 )
                             })}
                         </tr>
-                    </thead>
-                    <tbody>
-                        {sortedGroups.map((group, groupIndex) => (
-                            <tr key={group.id}>
-                                <td style={{ backgroundColor: groupColors[groupIndex % groupColors.length], width: '1px' }} className="sticky left-0 z-10 p-0"></td>
-                                {weeksOfYear.map(week => {
-                                    const weekDays = eachDayOfInterval({ start: week.start, end: week.end });
-                                    const hasHoliday = weekDays.some(day => holidays.some(h => isSameDay(h.date, day) && getISODay(day) !== 7));
-                                    const employeesInGroupThisWeek = (groupedEmployeesByWeek[week.key]?.byGroup?.[group.id] || []).sort((a, b) => a.name.localeCompare(b.name));
-                                    const currentSubstitutes = substitutions[week.key] || {};
-    
-                                    const cellStyle: React.CSSProperties = {};
-                                    if (employeesInGroupThisWeek.length > 0) {
-                                        cellStyle.backgroundColor = groupColors[groupIndex % groupColors.length];
-                                    }
-    
-                                    return (
-                                        <td key={`${group.id}-${week.key}`} style={cellStyle} className={cn("border min-w-[20rem] align-top p-1", hasHoliday && !employeesInGroupThisWeek.length && "bg-blue-50/50", "w-80")}>
-                                            <div className="flex flex-col gap-0">
-                                                {employeesInGroupThisWeek.map((emp, nameIndex) => {
-                                                    const substitute = currentSubstitutes[emp.name];
-                                                    const availableSubstitutes = substituteEmployees.filter(
-                                                        sub => !Object.values(currentSubstitutes).includes(sub.name) || sub.name === substitute
-                                                    );
-                                                    const isSpecialAbsence = emp.absence === 'EXD' || emp.absence === 'PE';
-                                                    const employeeData = allEmployees.find(e => e.id === emp.id);
-                                                    const absenceData = vacationData.absencesByEmployee[emp.id]?.find((a: any) => isWithinInterval(week.start, {start: a.startDate, end: a.endDate}));
-    
-                                                    return (
-                                                        <div key={nameIndex} className="py-0 px-1 rounded-sm flex justify-between items-center group">
-                                                            <button
-                                                                className={cn('flex flex-row items-center gap-2 text-left text-sm font-semibold', isSpecialAbsence && 'text-blue-600')}
-                                                                onClick={() => {
-                                                                    if (absenceData && employeeData && !employeeData.isExternal) {
-                                                                        onEditAbsence(employeeData, absenceData, absenceData.periodId);
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <span className="truncate">{emp.name} ({emp.absence})</span>
-                                                                {substitute && <span className="text-red-600 truncate">({substitute})</span>}
-                                                            </button>
-                                                             <Popover>
-                                                                <PopoverTrigger asChild>
-                                                                    <button className="opacity-100 transition-opacity">
-                                                                        <PlusCircle className="h-4 w-4 text-gray-500 hover:text-black" />
-                                                                    </button>
-                                                                </PopoverTrigger>
-                                                                <PopoverContent className="w-56 p-2">
-                                                                    <p className="text-sm font-medium p-2">Asignar sustituto</p>
-                                                                    <Select
-                                                                        onValueChange={(value) => handleSetSubstitute(week.key, emp.name, value)}
-                                                                        defaultValue={substitute}
-                                                                    >
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Seleccionar..." />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="ninguno">Ninguno</SelectItem>
-                                                                            {availableSubstitutes.map(sub => (
-                                                                                <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>
-                                                                            ))}
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                </PopoverContent>
-                                                            </Popover>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </td>
-                                    )
-                                })}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        );
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
 });
 QuadrantTable.displayName = 'QuadrantTable';
 
@@ -652,7 +653,7 @@ export function AnnualVacationQuadrant() {
         }
     };
     
-    const generateGroupReport = (localEmployees: Employee[], localHolidayEmployees: HolidayEmployee[], getEffectiveHoursFn: typeof getEffectiveWeeklyHours, employeeGroupsParam: EmployeeGroup[], weeksOfYearParam: typeof weeksOfYear) => {
+    const generateGroupReport = () => {
         setIsGenerating(true);
         const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     
@@ -668,7 +669,7 @@ export function AnnualVacationQuadrant() {
 
         const allAbsenceData: { empId: string; empName: string; groupId?: string | null; weekNumber: number; absenceAbbr: string }[] = [];
     
-        const allActiveEmployees = [...localEmployees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()))), ...localHolidayEmployees.filter(he => he.active && !localEmployees.find(e => e.name === he.name))]
+        const allActiveEmployees = [...employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()))), ...holidayEmployees.filter(he => he.active && !employees.find(e => e.name === he.name))]
             .map(emp => {
                 if ('employmentPeriods' in emp) { 
                     return emp;
@@ -715,14 +716,14 @@ export function AnnualVacationQuadrant() {
             });
         });
     
-        const sortedGroups = [...employeeGroupsParam].sort((a, b) => a.order - b.order);
+        const sortedGroups = [...employeeGroups].sort((a, b) => a.order - b.order);
         
         const vacationDataForReport = (() => {
             if (loading || schedulableAbsenceTypesReport.length === 0) return { weeklySummaries: {} };
     
             const weeklySummaries: Record<string, { employeeCount: number; hourImpact: number }> = {};
     
-            weeksOfYearParam.forEach(week => {
+            weeksOfYear.forEach(week => {
                 weeklySummaries[week.key] = { employeeCount: 0, hourImpact: 0 };
             });
     
@@ -742,7 +743,7 @@ export function AnnualVacationQuadrant() {
                 });
     
                 if (allAbsenceDays.size > 0) {
-                    weeksOfYearParam.forEach(week => {
+                    weeksOfYear.forEach(week => {
                         let absenceThisWeek = false;
                         for (const dayStr of Array.from(allAbsenceDays.keys())) {
                             const day = parseISO(dayStr);
@@ -755,7 +756,7 @@ export function AnnualVacationQuadrant() {
                             weeklySummaries[week.key].employeeCount++;
                             let weeklyHours = 0;
                             const activePeriod = emp.employmentPeriods.find(p => isWithinInterval(week.start, { start: parseISO(p.startDate as string), end: p.endDate ? parseISO(p.endDate as string) : new Date('9999-12-31')}));
-                            weeklyHours = getEffectiveHoursFn(activePeriod || null, week.start);
+                            weeklyHours = getEffectiveWeeklyHours(activePeriod || null, week.start);
                             weeklySummaries[week.key].hourImpact += weeklyHours;
                         }
                     });
@@ -764,9 +765,9 @@ export function AnnualVacationQuadrant() {
             return { weeklySummaries };
         })();
         
-        const weekChunks: (typeof weeksOfYearParam)[] = [];
-        for (let i = 0; i < weeksOfYearParam.length; i += 4) {
-            weekChunks.push(weeksOfYearParam.slice(i, i + 4));
+        const weekChunks: (typeof weeksOfYear)[] = [];
+        for (let i = 0; i < weeksOfYear.length; i += 4) {
+            weekChunks.push(weeksOfYear.slice(i, i + 4));
         }
 
         weekChunks.forEach((chunk, pageIndex) => {
@@ -799,7 +800,7 @@ export function AnnualVacationQuadrant() {
 
             autoTable(doc, {
                 head: [
-                    ['', ...chunk]
+                    ['', ...chunk.map(w => w.key)]
                 ],
                 body: bodyRows,
                 startY: 25,
@@ -813,24 +814,29 @@ export function AnnualVacationQuadrant() {
                 },
                 didDrawCell: (data) => {
                     if (data.section === 'head' && data.column.index > 0) {
-                        const weekInfo = data.cell.raw as { key: string, start: Date, end: Date };
-                        if (!weekInfo || !weekInfo.start) return;
+                        const weekKey = data.cell.raw as string;
+                        const weekInfo = weeksOfYear.find(w => w.key === weekKey);
+
+                        if (!weekInfo) return;
+
                         const turnInfo = getTheoreticalHoursAndTurn(allActiveEmployees[0].id, weekInfo.start);
                         const summary = vacationDataForReport.weeklySummaries[weekInfo.key] || { employeeCount: 0, hourImpact: 0 };
                         
-                        data.cell.text = [];
-
-                        doc.setFontSize(10).setFont(undefined, 'bold');
-                        doc.text(`${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}`, data.cell.x + data.cell.width / 2, data.cell.y + 5, { align: 'center' });
+                        data.cell.text = []; // Clear original text
                         
-                        if (turnInfo.turnId) {
-                            doc.setFontSize(8).setFont(undefined, 'normal');
-                            doc.text(turnInfo.turnId.replace('turn','T'), data.cell.x + data.cell.width - 4, data.cell.y + 5, { align: 'right' });
-                        }
+                        let currentY = data.cell.y + 5;
+                        doc.setFontSize(10).setFont(undefined, 'bold');
+                        doc.text(`${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}`, data.cell.x + data.cell.width / 2, currentY, { align: 'center' });
 
+                        currentY += 5;
                         doc.setFontSize(8).setFont(undefined, 'normal');
                         const summaryText = `${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
-                        doc.text(summaryText, data.cell.x + data.cell.width / 2, data.cell.y + 10, { align: 'center' });
+                        doc.text(summaryText, data.cell.x + data.cell.width / 2, currentY, { align: 'center' });
+
+                        if (turnInfo.turnId) {
+                            doc.setFontSize(8).setFont(undefined, 'bold');
+                            doc.text(turnInfo.turnId.replace('turn','T'), data.cell.x + data.cell.width - 4, data.cell.y + 5, { align: 'right' });
+                        }
                     }
                 }
             });
@@ -913,13 +919,14 @@ export function AnnualVacationQuadrant() {
             body: body,
             startY: 22,
             theme: 'plain',
-            styles: { valign: 'middle' },
+            styles: { valign: 'middle', minCellHeight: 22 },
+            rowPageBreak: 'avoid',
             headStyles: { fontStyle: 'bold' },
             columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 40 } },
             didDrawCell: (data) => {
                 if (data.column.index === 2 && data.section === 'body') {
                     const rectHeight = 18;
-                    const rectY = data.cell.y + (data.cell.height / 2) - (rectHeight / 2);
+                    const rectY = data.cell.y + 2;
                     doc.rect(data.cell.x + 2, rectY, data.cell.width - 4, rectHeight);
                 }
             },
@@ -1020,7 +1027,7 @@ export function AnnualVacationQuadrant() {
                             <CardTitle>Cuadrante Anual de Ausencias</CardTitle>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Button onClick={() => generateGroupReport(employees, holidayEmployees, getEffectiveWeeklyHours, employeeGroups, weeksOfYear)} disabled={isGenerating || loading}>
+                             <Button onClick={() => generateGroupReport()} disabled={isGenerating || loading}>
                                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                                 Imprimir Cuadrante
                             </Button>
@@ -1053,3 +1060,4 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
+
