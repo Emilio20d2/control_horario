@@ -774,15 +774,21 @@ export function AnnualVacationQuadrant() {
                 1: { cellWidth: 'wrap' }, 
                 2: { cellWidth: 40 } 
             },
+            didParseCell: (data) => {
+                if (data.column.index === 2 && data.section === 'body') {
+                    // Set a minimum height for the entire row to ensure the box fits.
+                    data.cell.styles.minCellHeight = 22;
+                }
+            },
             didDrawCell: (data) => {
                 if (data.column.index === 2 && data.section === 'body') {
                     const rectHeight = 18;
+                    // Calculate the vertical center of the cell and draw the rectangle.
                     const centerY = data.cell.y + data.cell.height / 2;
                     const rectY = centerY - rectHeight / 2;
                     doc.rect(data.cell.x + 2, rectY, data.cell.width - 4, rectHeight);
                 }
             },
-            minCellHeight: 22,
         });
     
         doc.save(`listado_firmas_vacaciones_${selectedYear}.pdf`);
