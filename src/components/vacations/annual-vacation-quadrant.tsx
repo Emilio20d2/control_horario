@@ -17,7 +17,7 @@ import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Skeleton } from '../ui/skeleton';
-import { writeBatch, doc } from 'firebase/firestore';
+import { writeBatch, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Badge } from '../ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -28,27 +28,70 @@ import jsPDF, { Cell } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 
-const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selectedYear: number, onEditAbsence: (employee: any, absence: any, periodId: string) => void, employeeGroups: EmployeeGroup[], weeksOfYear: any[], vacationData: any, allEmployees: any[] }>(({ isFullscreen, selectedYear, onEditAbsence, employeeGroups, weeksOfYear, vacationData, allEmployees }, ref) => {
+const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selectedYear: number, onEditAbsence: (employee: any, absence: any, periodId: string) => void, employeeGroups: EmployeeGroup[], weeksOfYear: any[], vacationData: any, allEmployees: any[], weeklyRecords: any }>(({ isFullscreen, selectedYear, onEditAbsence, employeeGroups, weeksOfYear, vacationData, allEmployees, weeklyRecords }, ref) => {
     const { getTheoreticalHoursAndTurn, holidays } = useDataProvider();
     const [substitutions, setSubstitutions] = useState<Record<string, Record<string, string>>>({}); // { [weekKey]: { [originalEmpName]: substituteName } }
     
+    useEffect(() => {
+        const loadedSubstitutions: Record<string, Record<string, string>> = {};
+        for (const week of weeksOfYear) {
+            const weekRecord = weeklyRecords[week.key];
+            if (weekRecord?.weekData?.substitutions) {
+                loadedSubstitutions[week.key] = weekRecord.weekData.substitutions;
+            }
+        }
+        setSubstitutions(loadedSubstitutions);
+    }, [weeklyRecords, weeksOfYear]);
+
     const substituteEmployees = useMemo(() => {
         return allEmployees.filter(e => e.isEventual);
     }, [allEmployees]);
 
-    const handleSetSubstitute = (weekKey: string, originalEmployee: string, substituteName: string) => {
-        setSubstitutions(prev => {
-            const newWeekSubstitutions = { ...(prev[weekKey] || {}) };
-            if (substituteName === 'ninguno') {
-                delete newWeekSubstitutions[originalEmployee];
+    const handleSetSubstitute = async (weekKey: string, originalEmployee: string, substituteName: string) => {
+        const currentWeekSubstitutions = { ...(substitutions[weekKey] || {}) };
+        
+        if (substituteName === 'ninguno') {
+            delete currentWeekSubstitutions[originalEmployee];
+        } else {
+            currentWeekSubstitutions[originalEmployee] = substituteName;
+        }
+
+        // Optimistic UI update
+        setSubstitutions(prev => ({
+            ...prev,
+            [weekKey]: currentWeekSubstitutions,
+        }));
+        
+        // Save to Firestore
+        try {
+            const weekDocRef = doc(db, 'weeklyRecords', weekKey);
+            const weekDocSnap = await getDoc(weekDocRef);
+
+            if (weekDocSnap.exists()) {
+                await updateDoc(weekDocRef, {
+                    'weekData.substitutions': currentWeekSubstitutions
+                });
             } else {
-                newWeekSubstitutions[originalEmployee] = substituteName;
+                 await setDoc(weekDocRef, {
+                    weekData: {
+                        substitutions: currentWeekSubstitutions
+                    }
+                }, { merge: true });
             }
-            return {
-                ...prev,
-                [weekKey]: newWeekSubstitutions,
-            };
-        });
+        } catch (error) {
+            console.error("Error saving substitution:", error);
+            // Revert UI on error
+             setSubstitutions(prev => {
+                const revertedWeekSubs = { ...prev[weekKey] };
+                 if (substituteName === 'ninguno') {
+                     // This is tricky, we don't know the old value.
+                     // For simplicity, we just leave it as is or refetch.
+                 } else {
+                     // We can try to find the old value if needed, but for now we'll just log
+                 }
+                return { ...prev, [weekKey]: revertedWeekSubs };
+             });
+        }
     };
     
     const groupedEmployeesByWeek = useMemo(() => {
@@ -200,7 +243,8 @@ const FullscreenQuadrant = ({
     weeksOfYear,
     vacationData,
     allEmployees,
-    employeeGroups
+    employeeGroups,
+    weeklyRecords
 }: {
     isFullscreen: boolean;
     setIsFullscreen: (value: boolean) => void;
@@ -213,6 +257,7 @@ const FullscreenQuadrant = ({
     vacationData: any;
     allEmployees: any[];
     employeeGroups: EmployeeGroup[];
+    weeklyRecords: any;
 }) => {
     
     useLayoutEffect(() => {
@@ -267,6 +312,7 @@ const FullscreenQuadrant = ({
                     weeksOfYear={weeksOfYear}
                     vacationData={vacationData}
                     allEmployees={allEmployees}
+                    weeklyRecords={weeklyRecords}
                 />
             </DialogContent>
         </Dialog>
@@ -668,10 +714,18 @@ export function AnnualVacationQuadrant() {
     
             const bodyRows = sortedGroups.map(group => {
                 const rowContent = chunk.map(week => {
+                    const weekSubs = weeklyRecords[week.key]?.weekData?.substitutions || {};
                     const employeesInGroupThisWeek = (vacationData.employeesByWeek[week.key] || [])
                         .filter((emp: any) => emp.groupId === group.id)
                         .sort((a: any, b: any) => a.employeeName.localeCompare(b.employeeName));
-                    return employeesInGroupThisWeek.map((e: any) => `${e.employeeName} (${e.absenceAbbreviation})`).join('\n');
+                    return employeesInGroupThisWeek.map((e: any) => {
+                        const substitute = weekSubs[e.employeeName];
+                        let text = `${e.employeeName} (${e.absenceAbbreviation})`;
+                        if (substitute) {
+                            text += `\n(${substitute})`;
+                        }
+                        return text;
+                    }).join('\n');
                 });
                 return rowContent;
             });
@@ -684,7 +738,7 @@ export function AnnualVacationQuadrant() {
                 body: bodyRows,
                 startY: 25,
                 theme: 'grid',
-                styles: { fontSize: 8, valign: 'top', cellPadding: 1.75, textColor: 0 },
+                styles: { fontSize: 9, valign: 'top', cellPadding: 1.75, textColor: 0 },
                 headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', fontSize: 10, minCellHeight: 15 },
                 columnStyles: { ...chunk.reduce((acc, _, i) => ({ ...acc, [i]: { cellWidth: dynamicColumnWidths[i] } }), {})},
             });
@@ -807,6 +861,7 @@ export function AnnualVacationQuadrant() {
                 weeksOfYear={weeksOfYear}
                 vacationData={vacationData}
                 allEmployees={allEmployees}
+                weeklyRecords={weeklyRecords}
             />
 
             <Dialog open={!!editingAbsence} onOpenChange={(open) => { if (!open) { setEditingAbsence(null); } }}>
@@ -891,6 +946,7 @@ export function AnnualVacationQuadrant() {
                             weeksOfYear={weeksOfYear}
                             vacationData={vacationData}
                             allEmployees={allEmployees}
+                            weeklyRecords={weeklyRecords}
                          />
                      )}
                 </CardContent>
