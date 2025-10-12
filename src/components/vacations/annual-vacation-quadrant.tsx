@@ -33,8 +33,7 @@ const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selec
     const [substitutions, setSubstitutions] = useState<Record<string, Record<string, string>>>({}); // { [weekKey]: { [originalEmpName]: substituteName } }
     
     const substituteEmployees = useMemo(() => {
-        const mainEmployeeNames = new Set(allEmployees.filter(e => !e.isExternal).map(e => e.name.trim().toLowerCase()));
-        return allEmployees.filter(e => e.isEventual && !mainEmployeeNames.has(e.name.trim().toLowerCase()));
+        return allEmployees.filter(e => e.isEventual);
     }, [allEmployees]);
 
     const handleSetSubstitute = (weekKey: string, originalEmployee: string, substituteName: string) => {
@@ -330,6 +329,7 @@ export function AnnualVacationQuadrant() {
             return {
                 ...e, 
                 isExternal: false,
+                isEventual: false,
                 workShift: `${weeklyHours.toFixed(2)}h`
             };
         });
@@ -342,13 +342,14 @@ export function AnnualVacationQuadrant() {
                 id: e.id,
                 name: e.name,
                 groupId: e.groupId,
-                isExternal: true,
+                isExternal: true, // Legacy property, may be useful
+                isEventual: true, // Clearer property name
                 workShift: e.workShift,
                 employmentPeriods: [],
             }));
 
         const allEmps = [...mainEmployees, ...externalEmployees].filter(e => {
-            if (e.isExternal) return true;
+            if (e.isEventual) return true;
             const holidayEmp = holidayEmployees.find(he => he.id === e.id);
             return holidayEmp ? holidayEmp.active : true;
         });
@@ -496,7 +497,7 @@ export function AnnualVacationQuadrant() {
                         weeklySummaries[week.key].employeeCount++;
                         
                         let weeklyHours = 0;
-                        if(emp.isExternal) {
+                        if(emp.isEventual) {
                             const match = emp.workShift?.match(/(\d+(\.\d+)?)/);
                             if(match) weeklyHours = parseFloat(match[0]);
                         } else {
