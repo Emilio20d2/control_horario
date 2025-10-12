@@ -24,8 +24,18 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../ui/dialog';
 import { cn } from '@/lib/utils';
 import { endOfWeek, endOfDay } from 'date-fns';
-import jsPDF, { Cell } from 'jspdf';
+import jsPDF, { Cell, UserOptions } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+interface AutoTableWithUserOptions extends UserOptions {
+    didDrawCell?: (data: {
+        table: any;
+        column: any;
+        row: any;
+        cell: Cell;
+        doc: jsPDF;
+    }) => void;
+}
 
 
 const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selectedYear: number, onEditAbsence: (employee: any, absence: any, periodId: string) => void, employeeGroups: EmployeeGroup[], weeksOfYear: any[], vacationData: any, allEmployees: any[], weeklyRecords: any }>(({ isFullscreen, selectedYear, onEditAbsence, employeeGroups, weeksOfYear, vacationData, allEmployees, weeklyRecords }, ref) => {
@@ -709,19 +719,59 @@ export function AnnualVacationQuadrant() {
                 });
                 return rowContent;
             });
-    
-            const tableWidth = doc.internal.pageSize.width - 28;
-            const dynamicColumnWidths = chunk.map(() => tableWidth / chunk.length);
             
-            autoTable(doc, {
+            const autoTableOptions: AutoTableWithUserOptions = {
                 head: [headContent],
                 body: bodyRows,
                 startY: 25,
                 theme: 'grid',
-                styles: { fontSize: 9, valign: 'top', cellPadding: 1.5 },
+                styles: { fontSize: 9, valign: 'top', cellPadding: 1.5, lineColor: [128,128,128], lineWidth: 0.1 },
                 headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', fontSize: 10, minCellHeight: 15 },
-                columnStyles: { ...chunk.reduce((acc, _, i) => ({ ...acc, [i]: { cellWidth: dynamicColumnWidths[i] } }), {})},
-            });
+                didDrawCell: (data) => {
+                    if (data.section === 'body') {
+                        const group = sortedGroups[data.row.index];
+                        const groupColor = groupColors[group.order % groupColors.length] || '#ffffff';
+                        const week = chunk[data.column.index];
+                        if (!week) return;
+
+                        const weekSubs = weeklyRecords[week.key]?.weekData?.substitutions || {};
+                        const employeesInGroupThisWeek = (vacationData.employeesByWeek[week.key] || [])
+                        .filter((emp: any) => emp.groupId === group.id)
+                        .sort((a: any, b: any) => a.employeeName.localeCompare(b.employeeName));
+
+                        if(employeesInGroupThisWeek.length > 0) {
+                            doc.setFillColor(groupColor);
+                            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+                        }
+
+                        doc.setFontSize(9);
+                        let y = data.cell.y + 3;
+
+                        employeesInGroupThisWeek.forEach((e: any) => {
+                            const substitute = weekSubs[e.employeeName];
+                            const isSpecialAbsence = e.absenceAbbreviation === 'EXD' || e.absenceAbbreviation === 'PE';
+                            const mainText = `${e.employeeName} (${e.absenceAbbreviation})`;
+                            
+                            if (isSpecialAbsence) {
+                                doc.setTextColor(0, 0, 255); // Blue
+                            } else {
+                                doc.setTextColor(0, 0, 0); // Black
+                            }
+                            doc.text(mainText, data.cell.x + 2, y);
+
+                            if (substitute) {
+                                const substituteText = ` (${substitute})`;
+                                const mainTextWidth = doc.getStringUnitWidth(mainText) * doc.getFontSize() / doc.internal.scaleFactor;
+                                doc.setTextColor(255, 0, 0); // Red
+                                doc.text(substituteText, data.cell.x + 2 + mainTextWidth, y);
+                            }
+                            y += 4;
+                        });
+                    }
+                }
+            };
+            
+            autoTable(doc, autoTableOptions);
         });
     
         doc.save(`cuadrante_ausencias_${selectedYear}.pdf`);
@@ -792,7 +842,7 @@ export function AnnualVacationQuadrant() {
             return [emp.name, periodsText, ''];
         });
     
-        autoTable(doc, {
+        const autoTableOptions: AutoTableWithUserOptions = {
             head: [['Empleado', 'Periodos de Vacaciones', 'Firma']],
             body: body,
             startY: 22,
@@ -820,11 +870,15 @@ export function AnnualVacationQuadrant() {
                     doc.rect(data.cell.x + 2, rectY, data.cell.width - 4, rectHeight);
                 }
             },
-        });
+        };
+    
+        autoTable(doc, autoTableOptions);
     
         doc.save(`listado_firmas_vacaciones_${selectedYear}.pdf`);
         setIsGenerating(false);
     };
+
+    const groupColors = ['#dbeafe', '#dcfce7', '#fef9c3', '#f3e8ff', '#fce7f3', '#e0e7ff', '#ccfbf1', '#ffedd5'];
 
 
     return (
