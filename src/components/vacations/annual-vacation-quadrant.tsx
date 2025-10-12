@@ -712,7 +712,7 @@ export function AnnualVacationQuadrant() {
                         const substitute = weekSubs[e.employeeName];
                         let text = `${e.employeeName} (${e.absenceAbbreviation})`;
                         if (substitute) {
-                            text += ` (${substitute})`;
+                            text += `\n(${substitute})`;
                         }
                         return text;
                     }).join('\n');
@@ -729,8 +729,10 @@ export function AnnualVacationQuadrant() {
                 headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', fontSize: 10, minCellHeight: 15 },
                 didDrawCell: (data) => {
                     if (data.section === 'body') {
+                        doc.setFillColor(255, 255, 255); // Set fill to white
+                        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+                        
                         const group = sortedGroups[data.row.index];
-                        const groupColor = groupColors[group.order % groupColors.length] || '#ffffff';
                         const week = chunk[data.column.index];
                         if (!week) return;
 
@@ -738,11 +740,6 @@ export function AnnualVacationQuadrant() {
                         const employeesInGroupThisWeek = (vacationData.employeesByWeek[week.key] || [])
                         .filter((emp: any) => emp.groupId === group.id)
                         .sort((a: any, b: any) => a.employeeName.localeCompare(b.employeeName));
-
-                        if(employeesInGroupThisWeek.length > 0) {
-                            doc.setFillColor(groupColor);
-                            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-                        }
 
                         doc.setFontSize(9);
                         let y = data.cell.y + 3;
