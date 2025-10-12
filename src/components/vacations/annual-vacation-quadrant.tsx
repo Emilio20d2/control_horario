@@ -655,6 +655,18 @@ export function AnnualVacationQuadrant() {
             doc.text(`Página ${pageIndex + 1} de ${weekChunks.length}`, doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 10, { align: 'right' });
             
             const sortedGroups = [...employeeGroups].sort((a, b) => a.order - b.order);
+            
+            const headContent = chunk.map(week => {
+                const weekInfo = weeksOfYear.find(w => w.key === week.key);
+                if (!weekInfo) return '';
+                const turnInfo = allEmployees.length > 0 ? getTheoreticalHoursAndTurn(allEmployees[0].id, weekInfo.start) : { turnId: null };
+                const summary = vacationDataForReport.weeklySummaries[weekInfo.key] || { employeeCount: 0, hourImpact: 0 };
+                const turnText = turnInfo.turnId ? ` ${turnInfo.turnId.replace('turn', 'T')}` : '';
+                const range = `${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}${turnText}`;
+                const stats = `${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
+                return `${range}\n\n${stats}`;
+            });
+    
             const bodyRows = sortedGroups.map(group => {
                 const rowContent = chunk.map(week => {
                     const employeesInGroupThisWeek = (vacationData.employeesByWeek[week.key] || [])
@@ -668,27 +680,12 @@ export function AnnualVacationQuadrant() {
             const tableWidth = doc.internal.pageSize.width - 28;
             const dynamicColumnWidths = chunk.map(() => tableWidth / chunk.length);
             
-            const headContent = chunk.map(week => {
-                const weekInfo = weeksOfYear.find(w => w.key === week.key);
-                if (!weekInfo) return '';
-                const turnInfo = allEmployees.length > 0 ? getTheoreticalHoursAndTurn(allEmployees[0].id, weekInfo.start) : { turnId: null };
-                const summary = vacationDataForReport.weeklySummaries[weekInfo.key] || { employeeCount: 0, hourImpact: 0 };
-                const turnText = turnInfo.turnId ? ` ${turnInfo.turnId.replace('turn', 'T')}` : '';
-                
-                const range = `${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}${turnText}`;
-                let currentY = 0;
-                
-                const stats = `${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
-
-                return `${range}\n \n${stats}`;
-            });
-    
             autoTable(doc, {
                 head: [headContent],
                 body: bodyRows,
                 startY: 25,
                 theme: 'grid',
-                styles: { fontSize: 8, valign: 'top', cellPadding: 1.5 },
+                styles: { fontSize: 8, valign: 'top', cellPadding: 1.75 },
                 headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', fontSize: 10, minCellHeight: 15 },
                 columnStyles: { ...chunk.reduce((acc, _, i) => ({ ...acc, [i]: { cellWidth: dynamicColumnWidths[i] } }), {})},
             });
