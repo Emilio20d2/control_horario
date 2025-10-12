@@ -690,23 +690,21 @@ export function AnnualVacationQuadrant() {
     
         const sortedGroups = [...employeeGroups].sort((a, b) => a.order - b.order);
         const groupColors = ['#dbeafe', '#dcfce7', '#fef9c3', '#f3e8ff', '#fce7f3', '#e0e7ff', '#ccfbf1', '#ffedd5'];
-
+    
         weekChunks.forEach((chunk, pageIndex) => {
             if (pageIndex > 0) doc.addPage();
             doc.setFontSize(14);
             doc.text(`Cuadrante de Ausencias Programadas - ${selectedYear}`, 14, 15);
             doc.setFontSize(10);
             doc.text(`Página ${pageIndex + 1} de ${weekChunks.length}`, doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 10, { align: 'right' });
-            
+    
             const headContent = chunk.map(week => {
                 const weekInfo = weeksOfYear.find(w => w.key === week.key);
                 if (!weekInfo) return '';
                 const turnInfo = allEmployees.length > 0 ? getTheoreticalHoursAndTurn(allEmployees[0].id, weekInfo.start) : { turnId: null };
                 const summary = vacationDataForReport.weeklySummaries[weekInfo.key] || { employeeCount: 0, hourImpact: 0 };
                 const turnText = turnInfo.turnId ? ` ${turnInfo.turnId.replace('turn', 'T')}` : '';
-                const range = `${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}${turnText}`;
-                const stats = `${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
-                return `${range}\n\n${stats}`;
+                return `${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}${turnText}\n\n${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
             });
     
             autoTable(doc, {
@@ -714,50 +712,51 @@ export function AnnualVacationQuadrant() {
                 body: [],
                 startY: 25,
                 theme: 'grid',
-                styles: { fontSize: 9, valign: 'top', cellPadding: 1.5, lineColor: [128,128,128], lineWidth: 0.1 },
-                headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', fontSize: 10, minCellHeight: 15 },
+                styles: { fontSize: 8, valign: 'middle', cellPadding: 1, lineColor: 128, lineWidth: 0.1 },
+                headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, halign: 'center', minCellHeight: 15 },
                 didDrawPage: (data) => {
                     const tableHeader = data.table.head[0];
-                    const maxRowHeight = 120 / sortedGroups.length; 
+                    if (!tableHeader) return;
+    
+                    const maxRowHeight = 120 / sortedGroups.length;
                     let currentY = tableHeader.height + 25;
-                    
+    
                     sortedGroups.forEach((group, groupIndex) => {
-                        const groupColor = groupColors[groupIndex % groupColors.length];
-                        
                         for (let colIndex = 0; colIndex < chunk.length; colIndex++) {
                             const week = chunk[colIndex];
                             if (!week) continue;
-
-                            const cell = data.table.columns[colIndex];
-                            doc.setFillColor(255, 255, 255);
+    
+                            const cell = data.table.body[0]?.cells?.[colIndex] || data.table.columns[colIndex];
+                             if (!cell || typeof cell.x !== 'number' || typeof cell.width !== 'number') continue;
+    
+                            doc.setFillColor(255, 255, 255); // Fondo blanco
                             doc.rect(cell.x, currentY, cell.width, maxRowHeight, 'F');
-                            doc.setDrawColor(128); // Grey for borders
+                            doc.setDrawColor(128); // Borde gris
                             doc.rect(cell.x, currentY, cell.width, maxRowHeight);
-
+    
                             const weekSubs = weeklyRecords[week.key]?.weekData?.substitutions || {};
-                            const employeesInGroupThisWeek = (vacationData.employeesByWeek[week.key] || [])
+                            const employeesInGroupThisWeek = (vacationDataForReport.employeesByWeek[week.key] || [])
                                 .filter((emp: any) => emp.groupId === group.id)
                                 .sort((a: any, b: any) => a.employeeName.localeCompare(b.employeeName));
-
-                            doc.setFontSize(9);
+    
                             let textY = currentY + 3;
-
+                            
                             employeesInGroupThisWeek.forEach((e: any) => {
                                 const substitute = weekSubs[e.employeeName];
                                 const isSpecialAbsence = e.absenceAbbreviation === 'EXD' || e.absenceAbbreviation === 'PE';
-                                const mainText = `${e.employeeName} (${e.absenceAbbreviation})`;
                                 
-                                if (isSpecialAbsence) {
-                                    doc.setTextColor(0, 0, 255); // Blue
-                                } else {
-                                    doc.setTextColor(0, 0, 0); // Black
-                                }
-                                doc.text(mainText, cell.x + 2, textY);
+                                doc.setFontSize(8);
+                                const mainText = `${e.employeeName} (${e.absenceAbbreviation})`;
+                                const substituteText = substitute ? ` (${substitute})` : '';
 
+                                if (isSpecialAbsence) doc.setTextColor(0, 0, 255); // Azul
+                                else doc.setTextColor(0, 0, 0); // Negro
+                                
+                                doc.text(mainText, cell.x + 2, textY, { maxWidth: cell.width - 4 });
+                                const mainTextWidth = doc.getStringUnitWidth(mainText) * doc.getFontSize() / doc.internal.scaleFactor;
+                                
                                 if (substitute) {
-                                    const substituteText = ` (${substitute})`;
-                                    const mainTextWidth = doc.getStringUnitWidth(mainText) * doc.getFontSize() / doc.internal.scaleFactor;
-                                    doc.setTextColor(255, 0, 0); // Red
+                                    doc.setTextColor(255, 0, 0); // Rojo
                                     doc.text(substituteText, cell.x + 2 + mainTextWidth, textY);
                                 }
                                 textY += 4;
