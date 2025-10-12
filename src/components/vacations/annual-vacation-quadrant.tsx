@@ -35,6 +35,13 @@ interface AutoTableWithUserOptions extends UserOptions {
         cell: Cell;
         doc: jsPDF;
     }) => void;
+    didDrawPage?: (data: {
+        table: any;
+        pageNumber: number;
+        settings: any;
+        doc: jsPDF;
+        cursor: { x: number, y: number };
+    }) => void;
 }
 
 
@@ -681,14 +688,15 @@ export function AnnualVacationQuadrant() {
             weekChunks.push(weeksOfYear.slice(i, i + 4));
         }
     
+        const sortedGroups = [...employeeGroups].sort((a, b) => a.order - b.order);
+        const groupColors = ['#dbeafe', '#dcfce7', '#fef9c3', '#f3e8ff', '#fce7f3', '#e0e7ff', '#ccfbf1', '#ffedd5'];
+
         weekChunks.forEach((chunk, pageIndex) => {
             if (pageIndex > 0) doc.addPage();
             doc.setFontSize(14);
             doc.text(`Cuadrante de Ausencias Programadas - ${selectedYear}`, 14, 15);
             doc.setFontSize(10);
             doc.text(`Página ${pageIndex + 1} de ${weekChunks.length}`, doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 10, { align: 'right' });
-            
-            const sortedGroups = [...employeeGroups].sort((a, b) => a.order - b.order);
             
             const headContent = chunk.map(week => {
                 const weekInfo = weeksOfYear.find(w => w.key === week.key);
@@ -697,78 +705,68 @@ export function AnnualVacationQuadrant() {
                 const summary = vacationDataForReport.weeklySummaries[weekInfo.key] || { employeeCount: 0, hourImpact: 0 };
                 const turnText = turnInfo.turnId ? ` ${turnInfo.turnId.replace('turn', 'T')}` : '';
                 const range = `${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}${turnText}`;
-                
                 const stats = `${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
                 return `${range}\n\n${stats}`;
             });
     
-            const bodyRows = sortedGroups.map(group => {
-                const rowContent = chunk.map(week => {
-                    const weekSubs = weeklyRecords[week.key]?.weekData?.substitutions || {};
-                    const employeesInGroupThisWeek = (vacationData.employeesByWeek[week.key] || [])
-                        .filter((emp: any) => emp.groupId === group.id)
-                        .sort((a: any, b: any) => a.employeeName.localeCompare(b.employeeName));
-                    return employeesInGroupThisWeek.map((e: any) => {
-                        const substitute = weekSubs[e.employeeName];
-                        let text = `${e.employeeName} (${e.absenceAbbreviation})`;
-                        if (substitute) {
-                            text += `\n(${substitute})`;
-                        }
-                        return text;
-                    }).join('\n');
-                });
-                return rowContent;
-            });
-            
-            const autoTableOptions: AutoTableWithUserOptions = {
+            autoTable(doc, {
                 head: [headContent],
-                body: bodyRows,
+                body: [],
                 startY: 25,
                 theme: 'grid',
                 styles: { fontSize: 9, valign: 'top', cellPadding: 1.5, lineColor: [128,128,128], lineWidth: 0.1 },
                 headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', fontSize: 10, minCellHeight: 15 },
-                didDrawCell: (data) => {
-                    if (data.section === 'body') {
-                        doc.setFillColor(255, 255, 255); // Set fill to white
-                        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+                didDrawPage: (data) => {
+                    const tableHeader = data.table.head[0];
+                    const maxRowHeight = 120 / sortedGroups.length; 
+                    let currentY = tableHeader.height + 25;
+                    
+                    sortedGroups.forEach((group, groupIndex) => {
+                        const groupColor = groupColors[groupIndex % groupColors.length];
                         
-                        const group = sortedGroups[data.row.index];
-                        const week = chunk[data.column.index];
-                        if (!week) return;
+                        for (let colIndex = 0; colIndex < chunk.length; colIndex++) {
+                            const week = chunk[colIndex];
+                            if (!week) continue;
 
-                        const weekSubs = weeklyRecords[week.key]?.weekData?.substitutions || {};
-                        const employeesInGroupThisWeek = (vacationData.employeesByWeek[week.key] || [])
-                        .filter((emp: any) => emp.groupId === group.id)
-                        .sort((a: any, b: any) => a.employeeName.localeCompare(b.employeeName));
+                            const cell = data.table.columns[colIndex];
+                            doc.setFillColor(255, 255, 255);
+                            doc.rect(cell.x, currentY, cell.width, maxRowHeight, 'F');
+                            doc.setDrawColor(128); // Grey for borders
+                            doc.rect(cell.x, currentY, cell.width, maxRowHeight);
 
-                        doc.setFontSize(9);
-                        let y = data.cell.y + 3;
+                            const weekSubs = weeklyRecords[week.key]?.weekData?.substitutions || {};
+                            const employeesInGroupThisWeek = (vacationData.employeesByWeek[week.key] || [])
+                                .filter((emp: any) => emp.groupId === group.id)
+                                .sort((a: any, b: any) => a.employeeName.localeCompare(b.employeeName));
 
-                        employeesInGroupThisWeek.forEach((e: any) => {
-                            const substitute = weekSubs[e.employeeName];
-                            const isSpecialAbsence = e.absenceAbbreviation === 'EXD' || e.absenceAbbreviation === 'PE';
-                            const mainText = `${e.employeeName} (${e.absenceAbbreviation})`;
-                            
-                            if (isSpecialAbsence) {
-                                doc.setTextColor(0, 0, 255); // Blue
-                            } else {
-                                doc.setTextColor(0, 0, 0); // Black
-                            }
-                            doc.text(mainText, data.cell.x + 2, y);
+                            doc.setFontSize(9);
+                            let textY = currentY + 3;
 
-                            if (substitute) {
-                                const substituteText = ` (${substitute})`;
-                                const mainTextWidth = doc.getStringUnitWidth(mainText) * doc.getFontSize() / doc.internal.scaleFactor;
-                                doc.setTextColor(255, 0, 0); // Red
-                                doc.text(substituteText, data.cell.x + 2 + mainTextWidth, y);
-                            }
-                            y += 4;
-                        });
-                    }
+                            employeesInGroupThisWeek.forEach((e: any) => {
+                                const substitute = weekSubs[e.employeeName];
+                                const isSpecialAbsence = e.absenceAbbreviation === 'EXD' || e.absenceAbbreviation === 'PE';
+                                const mainText = `${e.employeeName} (${e.absenceAbbreviation})`;
+                                
+                                if (isSpecialAbsence) {
+                                    doc.setTextColor(0, 0, 255); // Blue
+                                } else {
+                                    doc.setTextColor(0, 0, 0); // Black
+                                }
+                                doc.text(mainText, cell.x + 2, textY);
+
+                                if (substitute) {
+                                    const substituteText = ` (${substitute})`;
+                                    const mainTextWidth = doc.getStringUnitWidth(mainText) * doc.getFontSize() / doc.internal.scaleFactor;
+                                    doc.setTextColor(255, 0, 0); // Red
+                                    doc.text(substituteText, cell.x + 2 + mainTextWidth, textY);
+                                }
+                                textY += 4;
+                            });
+                        }
+                        currentY += maxRowHeight;
+                    });
                 }
-            };
-            
-            autoTable(doc, autoTableOptions);
+            });
         });
     
         doc.save(`cuadrante_ausencias_${selectedYear}.pdf`);
