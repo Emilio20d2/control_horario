@@ -621,7 +621,6 @@ export function AnnualVacationQuadrant() {
     const dialogModifiers = {
         opening: openingHolidays,
         other: otherHolidays,
-        employeeAbsence: vacationPeriods.flatMap(p => eachDayOfInterval({start: p.startDate, end: p.endDate})),
     };
 
     const dialogModifiersStyles = {
@@ -633,9 +632,6 @@ export function AnnualVacationQuadrant() {
             backgroundColor: '#fecaca',
             color: '#991b1b',
         },
-        employeeAbsence: {
-            backgroundColor: '#dbeafe',
-        }
     };
     
     const generateGroupReport = () => {
@@ -837,34 +833,6 @@ export function AnnualVacationQuadrant() {
                                         modifiers={dialogModifiers}
                                         modifiersStyles={dialogModifiersStyles}
                                     />
-                                </div>
-                                <div className="space-y-4">
-                                    <h4 className="font-medium text-sm text-muted-foreground">Periodos de Ausencia ({selectedYear})</h4>
-                                    <div className="border rounded-md max-h-40 overflow-y-auto">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Tipo</TableHead>
-                                                    <TableHead>Inicio</TableHead>
-                                                    <TableHead>Fin</TableHead>
-                                                    <TableHead>Días</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {vacationPeriods.map((period: any) => {
-                                                    const absenceType = absenceTypes.find(at => at.id === period.absenceTypeId);
-                                                    return (
-                                                    <TableRow key={period.id}>
-                                                        <TableCell><Badge variant="outline">{absenceType?.abbreviation || '??'}</Badge></TableCell>
-                                                        <TableCell>{format(period.startDate, 'dd/MM/yy')}</TableCell>
-                                                        <TableCell>{format(period.endDate, 'dd/MM/yy')}</TableCell>
-                                                        <TableCell>{differenceInDays(period.endDate, period.startDate) + 1}</TableCell>
-                                                    </TableRow>
-                                                    )
-                                                })}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
                                 </div>
                             </div>
                             <DialogFooter>
