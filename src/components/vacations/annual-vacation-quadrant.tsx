@@ -99,7 +99,6 @@ const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selec
                                             </span>
                                             {turnInfo.turnId && <Badge variant="secondary">{turnInfo.turnId.replace('turn','T')}</Badge>}
                                         </div>
-                                        <div className="text-xs text-muted-foreground">{week.key}</div>
                                         <div className="flex gap-3 mt-1.5 text-sm items-center">
                                             <div className='flex items-center gap-1'><Users className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.employeeCount ?? 0}</div>
                                             <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{vacationData.weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
@@ -414,7 +413,7 @@ export function AnnualVacationQuadrant() {
             const allAbsenceDays = new Map<string, { typeId: string, typeAbbr: string, periodId?: string, absenceId?: string, isScheduled: boolean }>();
 
             if (!emp.isExternal) {
-                 emp.employmentPeriods.forEach(period => {
+                 emp.employmentPeriods.forEach((period: EmploymentPeriod) => {
                     (period.scheduledAbsences ?? [])
                         .filter(a => schedulableAbsenceTypeIds.has(a.absenceTypeId))
                         .forEach(absence => {
@@ -500,7 +499,7 @@ export function AnnualVacationQuadrant() {
                             const match = emp.workShift?.match(/(\d+(\.\d+)?)/);
                             if(match) weeklyHours = parseFloat(match[0]);
                         } else {
-                            const activePeriod = emp.employmentPeriods.find(p => {
+                            const activePeriod = emp.employmentPeriods.find((p: EmploymentPeriod) => {
                                 const periodStart = startOfDay(parseISO(p.startDate as string));
                                 const periodEnd = p.endDate ? endOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
                                 return isAfter(periodEnd, week.start) && isBefore(periodStart, week.end);
@@ -668,54 +667,24 @@ export function AnnualVacationQuadrant() {
     
             const tableWidth = doc.internal.pageSize.width - 28;
             const dynamicColumnWidths = chunk.map(() => tableWidth / chunk.length);
+            
+            const headContent = chunk.map(week => {
+                const weekInfo = weeksOfYear.find(w => w.key === week.key);
+                if (!weekInfo) return '';
+                const turnInfo = allEmployees.length > 0 ? getTheoreticalHoursAndTurn(allEmployees[0].id, weekInfo.start) : { turnId: null };
+                const summary = vacationDataForReport.weeklySummaries[weekInfo.key] || { employeeCount: 0, hourImpact: 0 };
+                const turnText = turnInfo.turnId ? ` ${turnInfo.turnId.replace('turn', 'T')}` : '';
+                return `${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}${turnText}\n\n${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
+            });
     
             autoTable(doc, {
-                head: [[]], // Empty head
+                head: [headContent],
                 body: bodyRows,
                 startY: 25,
                 theme: 'grid',
                 styles: { fontSize: 7, valign: 'top', cellPadding: 1.5, },
                 headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', minCellHeight: 20 },
                 columnStyles: { ...chunk.reduce((acc, _, i) => ({ ...acc, [i]: { cellWidth: dynamicColumnWidths[i] } }), {})},
-                didDrawCell: (data) => {
-                    if (data.section === 'head' && data.column.index >= 0) {
-                        const weekKey = chunk[data.column.index]?.key;
-                        if (!weekKey) return;
-    
-                        const weekInfo = weeksOfYear.find(w => w.key === weekKey);
-                        if (!weekInfo) return;
-    
-                        const turnInfo = allEmployees.length > 0 ? getTheoreticalHoursAndTurn(allEmployees[0].id, weekInfo.start) : { turnId: null };
-                        const summary = vacationDataForReport.weeklySummaries[weekInfo.key] || { employeeCount: 0, hourImpact: 0 };
-                        
-                        data.cell.text = []; // Clear original text to draw manually
-                        
-                        let currentY = data.cell.y + 7;
-                        doc.setFontSize(10).setFont(undefined, 'bold');
-                        const dateText = `${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}`;
-                        
-                        if (turnInfo.turnId) {
-                            const dateWidth = doc.getStringUnitWidth(dateText) * doc.getFontSize() / doc.internal.scaleFactor;
-                            const turnWidth = doc.getStringUnitWidth(turnInfo.turnId.replace('turn', 'T')) * 8 / doc.internal.scaleFactor;
-                            const totalWidth = dateWidth + turnWidth + 2;
-                            const startX = data.cell.x + (data.cell.width - totalWidth) / 2;
-                            doc.text(dateText, startX, currentY);
-                            doc.setFontSize(8);
-                            doc.text(turnInfo.turnId.replace('turn', 'T'), startX + dateWidth + 2, currentY);
-                        } else {
-                            doc.text(dateText, data.cell.x + data.cell.width / 2, currentY, { align: 'center' });
-                        }
-
-                        currentY += 6; 
-                        
-                        // Add an empty line
-                        currentY += 4;
-                        
-                        doc.setFontSize(8).setFont(undefined, 'normal');
-                        const summaryText = `${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
-                        doc.text(summaryText, data.cell.x + data.cell.width / 2, currentY, { align: 'center' });
-                    }
-                }
             });
         });
     
@@ -799,7 +768,7 @@ export function AnnualVacationQuadrant() {
             didDrawCell: (data) => {
                 if (data.column.index === 2 && data.section === 'body') {
                     const rectHeight = 18;
-                    const rectY = data.cell.y + 2; // Start a little lower
+                    const rectY = data.cell.y + 2;
                     doc.rect(data.cell.x + 2, rectY, data.cell.width - 4, rectHeight);
                 }
             },
@@ -944,3 +913,5 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
+
+    
