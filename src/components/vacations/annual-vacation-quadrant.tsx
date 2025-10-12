@@ -17,7 +17,7 @@ import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Skeleton } from '../ui/skeleton';
-import { writeBatch, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { writeBatch, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Badge } from '../ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -613,26 +613,6 @@ export function AnnualVacationQuadrant() {
         setEditingAbsence({ employee, absence, periodId });
     };
 
-    const vacationPeriods = useMemo(() => {
-        if (!editingAbsence) return [];
-        const { employee } = editingAbsence;
-        const periods: { id: string; startDate: Date; endDate: Date; absenceTypeId: string; }[] = [];
-
-        employee.employmentPeriods.forEach((period: EmploymentPeriod) => {
-            period.scheduledAbsences?.forEach(sa => {
-                if(sa.endDate && getYear(sa.startDate) === selectedYear) {
-                    periods.push({
-                        id: sa.id,
-                        startDate: sa.startDate,
-                        endDate: sa.endDate,
-                        absenceTypeId: sa.absenceTypeId
-                    });
-                }
-            });
-        });
-        return periods;
-    }, [editingAbsence, selectedYear]);
-
     useLayoutEffect(() => {
         if (!loading && isFullscreen) {
             const container = tableContainerRef.current;
@@ -722,7 +702,7 @@ export function AnnualVacationQuadrant() {
                         const substitute = weekSubs[e.employeeName];
                         let text = `${e.employeeName} (${e.absenceAbbreviation})`;
                         if (substitute) {
-                            text += `\n(${substitute})`;
+                            text += ` (${substitute})`;
                         }
                         return text;
                     }).join('\n');
@@ -738,7 +718,7 @@ export function AnnualVacationQuadrant() {
                 body: bodyRows,
                 startY: 25,
                 theme: 'grid',
-                styles: { fontSize: 9, valign: 'top', cellPadding: 1.75, textColor: 0 },
+                styles: { fontSize: 9, valign: 'top', cellPadding: 1.5 },
                 headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', fontSize: 10, minCellHeight: 15 },
                 columnStyles: { ...chunk.reduce((acc, _, i) => ({ ...acc, [i]: { cellWidth: dynamicColumnWidths[i] } }), {})},
             });
