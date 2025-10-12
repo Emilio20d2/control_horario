@@ -139,14 +139,14 @@ const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selec
                                                 return (
                                                     <div key={nameIndex} className="py-0 px-1 rounded-sm flex justify-between items-center group">
                                                         <button
-                                                            className={cn('flex flex-row items-center gap-2 text-left text-sm font-semibold', isSpecialAbsence && 'text-blue-600')}
+                                                            className='flex flex-row items-center gap-2 text-left text-sm font-semibold'
                                                             onClick={() => {
                                                                 if (absenceData && employeeData && !employeeData.isExternal) {
                                                                     onEditAbsence(employeeData, absenceData, absenceData.periodId);
                                                                 }
                                                             }}
                                                         >
-                                                            <span className="truncate">{emp.name} ({emp.absence})</span>
+                                                            <span className={cn('truncate', isSpecialAbsence && 'text-blue-600')}>{emp.name} ({emp.absence})</span>
                                                             {substitute && <span className="text-red-600 truncate">({substitute})</span>}
                                                         </button>
                                                          <Popover>
