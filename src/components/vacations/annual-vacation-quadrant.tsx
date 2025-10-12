@@ -688,7 +688,7 @@ export function AnnualVacationQuadrant() {
                 body: bodyRows,
                 startY: 25,
                 theme: 'grid',
-                styles: { fontSize: 9, valign: 'top', cellPadding: 1.5 },
+                styles: { fontSize: 9, valign: 'top', cellPadding: 1.75 },
                 headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', fontSize: 10, minCellHeight: 15 },
                 columnStyles: { ...chunk.reduce((acc, _, i) => ({ ...acc, [i]: { cellWidth: dynamicColumnWidths[i] } }), {})},
             });
@@ -770,7 +770,7 @@ export function AnnualVacationQuadrant() {
             rowPageBreak: 'avoid',
             styles: { valign: 'middle' },
             headStyles: { fontStyle: 'bold' },
-            columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 40 } },
+            columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'wrap' }, 2: { cellWidth: 40 } },
             didDrawCell: (data) => {
                 if (data.column.index === 2 && data.section === 'body') {
                     const rectHeight = 18;
