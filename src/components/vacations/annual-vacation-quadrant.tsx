@@ -641,14 +641,12 @@ export function AnnualVacationQuadrant() {
         setIsGenerating(true);
         const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     
-        const schedulableAbsenceTypesReport = absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
-    
+        const vacationDataForReport = vacationData;
+        
         const weekChunks: (typeof weeksOfYear)[] = [];
         for (let i = 0; i < weeksOfYear.length; i += 4) {
             weekChunks.push(weeksOfYear.slice(i, i + 4));
         }
-    
-        const vacationDataForReport = vacationData; 
     
         weekChunks.forEach((chunk, pageIndex) => {
             if (pageIndex > 0) doc.addPage();
@@ -672,7 +670,7 @@ export function AnnualVacationQuadrant() {
             const dynamicColumnWidths = chunk.map(() => tableWidth / chunk.length);
     
             autoTable(doc, {
-                head: [chunk.map(w => w.key)],
+                head: [[]], // Empty head
                 body: bodyRows,
                 startY: 25,
                 theme: 'grid',
@@ -708,7 +706,10 @@ export function AnnualVacationQuadrant() {
                             doc.text(dateText, data.cell.x + data.cell.width / 2, currentY, { align: 'center' });
                         }
 
-                        currentY += 6; // Increased spacing
+                        currentY += 6; 
+                        
+                        // Add an empty line
+                        currentY += 4;
                         
                         doc.setFontSize(8).setFont(undefined, 'normal');
                         const summaryText = `${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
