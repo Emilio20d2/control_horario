@@ -472,7 +472,7 @@ export function AnnualVacationQuadrant() {
                  absencesByEmployee[emp.id].push({
                     id: currentAbsenceInfo.absenceId || `agg-${currentPeriodStart.toISOString()}`,
                     startDate: currentPeriodStart,
-                    endDate: uniqueSortedDays[uniqueSortedDays.length-1],
+                    endDate: uniqueSortedDays[uniqueSortedDays.length - 1],
                     absenceTypeId: currentAbsenceInfo.typeId,
                     absenceAbbreviation: currentAbsenceInfo.typeAbbr,
                     periodId: currentAbsenceInfo.periodId
