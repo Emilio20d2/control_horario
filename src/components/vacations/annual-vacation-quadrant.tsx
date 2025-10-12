@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useLayoutEffect, forwardRef } from 'react';
@@ -722,18 +721,19 @@ export function AnnualVacationQuadrant() {
                     let currentY = tableHeader.height + 25;
     
                     sortedGroups.forEach((group, groupIndex) => {
+                        const groupColor = groupColors[groupIndex % groupColors.length];
                         for (let colIndex = 0; colIndex < chunk.length; colIndex++) {
                             const week = chunk[colIndex];
                             if (!week) continue;
     
-                            const cell = data.table.body[0]?.cells?.[colIndex] || data.table.columns[colIndex];
-                             if (!cell || typeof cell.x !== 'number' || typeof cell.width !== 'number') continue;
-    
-                            doc.setFillColor(255, 255, 255); // Fondo blanco
+                            const cell = data.table.body[0]?.cells?.[colIndex] ?? data.table.columns[colIndex];
+                            if (!cell || typeof cell.x !== 'number' || typeof cell.y !== 'number' || typeof cell.width !== 'number' || typeof cell.height !== 'number') continue;
+                            
+                            doc.setFillColor(255, 255, 255);
                             doc.rect(cell.x, currentY, cell.width, maxRowHeight, 'F');
-                            doc.setDrawColor(128); // Borde gris
+                            doc.setDrawColor(128);
                             doc.rect(cell.x, currentY, cell.width, maxRowHeight);
-    
+
                             const weekSubs = weeklyRecords[week.key]?.weekData?.substitutions || {};
                             const employeesInGroupThisWeek = (vacationDataForReport.employeesByWeek[week.key] || [])
                                 .filter((emp: any) => emp.groupId === group.id)
@@ -741,24 +741,24 @@ export function AnnualVacationQuadrant() {
     
                             let textY = currentY + 3;
                             
+                            doc.setFontSize(8);
                             employeesInGroupThisWeek.forEach((e: any) => {
                                 const substitute = weekSubs[e.employeeName];
                                 const isSpecialAbsence = e.absenceAbbreviation === 'EXD' || e.absenceAbbreviation === 'PE';
                                 
-                                doc.setFontSize(8);
                                 const mainText = `${e.employeeName} (${e.absenceAbbreviation})`;
                                 const substituteText = substitute ? ` (${substitute})` : '';
-
-                                if (isSpecialAbsence) doc.setTextColor(0, 0, 255); // Azul
-                                else doc.setTextColor(0, 0, 0); // Negro
                                 
-                                doc.text(mainText, cell.x + 2, textY, { maxWidth: cell.width - 4 });
-                                const mainTextWidth = doc.getStringUnitWidth(mainText) * doc.getFontSize() / doc.internal.scaleFactor;
+                                doc.setTextColor(0, 0, 0);
+                                if (isSpecialAbsence) doc.setTextColor(0, 0, 255);
+                                doc.text(mainText, cell.x + 2, textY, { maxWidth: cell.width - 4 - (substitute ? 15 : 0) });
                                 
                                 if (substitute) {
-                                    doc.setTextColor(255, 0, 0); // Rojo
+                                    const mainTextWidth = doc.getStringUnitWidth(mainText) * doc.getFontSize() / doc.internal.scaleFactor;
+                                    doc.setTextColor(255, 0, 0);
                                     doc.text(substituteText, cell.x + 2 + mainTextWidth, textY);
                                 }
+
                                 textY += 4;
                             });
                         }
@@ -982,3 +982,5 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
+
+    
