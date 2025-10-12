@@ -676,9 +676,11 @@ export function AnnualVacationQuadrant() {
                 const turnText = turnInfo.turnId ? ` ${turnInfo.turnId.replace('turn', 'T')}` : '';
                 
                 const range = `${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}${turnText}`;
+                let currentY = 0;
+                
                 const stats = `${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
 
-                return `${range}\n\n${stats}`;
+                return `${range}\n \n${stats}`;
             });
     
             autoTable(doc, {
@@ -686,7 +688,7 @@ export function AnnualVacationQuadrant() {
                 body: bodyRows,
                 startY: 25,
                 theme: 'grid',
-                styles: { fontSize: 8, valign: 'top', cellPadding: 1.25 },
+                styles: { fontSize: 8, valign: 'top', cellPadding: 1.5 },
                 headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', fontSize: 10, minCellHeight: 15 },
                 columnStyles: { ...chunk.reduce((acc, _, i) => ({ ...acc, [i]: { cellWidth: dynamicColumnWidths[i] } }), {})},
             });
