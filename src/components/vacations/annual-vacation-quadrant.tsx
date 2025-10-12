@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useLayoutEffect, forwardRef } from 'react';
@@ -663,8 +664,10 @@ export function AnnualVacationQuadrant() {
                 const summary = vacationDataForReport.weeklySummaries[weekInfo.key] || { employeeCount: 0, hourImpact: 0 };
                 const turnText = turnInfo.turnId ? ` ${turnInfo.turnId.replace('turn', 'T')}` : '';
                 const range = `${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}${turnText}`;
-                const stats = `${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
-                return `${range}\n\n${stats}`;
+                
+                // Add an empty line here
+                const stats = `\n${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
+                return `${range}\n${stats}`;
             });
     
             const bodyRows = sortedGroups.map(group => {
@@ -685,7 +688,7 @@ export function AnnualVacationQuadrant() {
                 body: bodyRows,
                 startY: 25,
                 theme: 'grid',
-                styles: { fontSize: 8, valign: 'top', cellPadding: 1.75 },
+                styles: { fontSize: 9, valign: 'top', cellPadding: 1.5 },
                 headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, valign: 'middle', halign: 'center', fontSize: 10, minCellHeight: 15 },
                 columnStyles: { ...chunk.reduce((acc, _, i) => ({ ...acc, [i]: { cellWidth: dynamicColumnWidths[i] } }), {})},
             });
@@ -771,7 +774,8 @@ export function AnnualVacationQuadrant() {
             didDrawCell: (data) => {
                 if (data.column.index === 2 && data.section === 'body') {
                     const rectHeight = 18;
-                    const rectY = data.cell.y + 2;
+                    const centerY = data.cell.y + data.cell.height / 2;
+                    const rectY = centerY - rectHeight / 2;
                     doc.rect(data.cell.x + 2, rectY, data.cell.width - 4, rectHeight);
                 }
             },
