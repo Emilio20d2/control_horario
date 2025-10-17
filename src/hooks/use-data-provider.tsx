@@ -374,7 +374,7 @@ const loadData = useCallback(() => {
     return employees.filter(emp => 
         emp.employmentPeriods.some(p => {
             const periodStart = startOfDay(parseISO(p.startDate as string));
-            const periodEnd = p.endDate ? startOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
+            const periodEnd = p.endDate ? endOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
             return periodStart <= weekEnd && periodEnd >= weekStart;
         })
     );
@@ -388,20 +388,12 @@ useEffect(() => {
     const today = new Date();
     const startOfCurrentWeek = startOfDay(startOfWeek(today, { weekStartsOn: 1 }));
     
-    // Patch: Lista de semanas a ignorar
-    const excludedWeeks = new Set(['2024-12-16', '2024-12-23', '2025-01-13', '2025-01-20']);
-
     // Recorrer todos los registros semanales
     for (const weekId in weeklyRecords) {
         const weekStartDate = parseISO(weekId);
         
         // 1. Considerar solo semanas pasadas
         if (isBefore(startOfDay(weekStartDate), startOfCurrentWeek)) {
-            // 2. Saltar semanas excluidas
-            if (excludedWeeks.has(weekId)) {
-                continue;
-            }
-
             const activeEmployeesThisWeek = getActiveEmployeesForDate(weekStartDate);
 
             if (activeEmployeesThisWeek.length === 0) {
