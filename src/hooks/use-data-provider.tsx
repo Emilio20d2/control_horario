@@ -1,4 +1,5 @@
 
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type {
@@ -402,7 +403,7 @@ useEffect(() => {
         const weekDate = parseISO(weekId);
         
         // Check if the week is strictly before the current week AND on or after the audit start date.
-        if (isBefore(weekDate, startOfCurrentWeek) && (isAfter(weekDate, auditStartDate) || isSameDay(weekDate, auditStartDate))) {
+        if (isBefore(startOfDay(weekDate), startOfCurrentWeek) && (isAfter(weekDate, auditStartDate) || isSameDay(weekDate, auditStartDate))) {
             const activeEmployeesThisWeek = getActiveEmployeesForDate(weekDate);
             if (activeEmployeesThisWeek.length === 0) {
                 continue;
@@ -995,6 +996,7 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
     const findNextUnconfirmedWeek = (startDate: Date): string | null => {
         const sortedWeekIds = Object.keys(weeklyRecords).sort();
         const startWeekId = getWeekId(startDate);
+        const auditStartDate = startOfDay(new Date('2025-01-27'));
 
         let searchStarted = false;
         for (const weekId of sortedWeekIds) {
@@ -1004,6 +1006,12 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
 
             if (searchStarted) {
                 const weekDate = parseISO(weekId);
+                
+                // Ignorar semanas anteriores a la fecha de auditoría
+                if (isBefore(weekDate, auditStartDate)) {
+                    continue;
+                }
+
                 const activeEmployeesThisWeek = getActiveEmployeesForDate(weekDate);
 
                 if (activeEmployeesThisWeek.length > 0) {
