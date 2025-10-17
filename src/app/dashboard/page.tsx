@@ -569,6 +569,9 @@ export default function DashboardPage() {
         setIsGeneratingBalanceReport(true);
     
         const weekDate = parseISO(selectedBalanceReportWeek);
+        const nextWeekDate = addDays(weekDate, 7);
+        const nextWeekId = getWeekId(nextWeekDate);
+
         const activeEmps = employees.filter(emp => emp.employmentPeriods?.some(p => {
             const startDate = parseISO(p.startDate as string);
             const endDate = p.endDate ? parseISO(p.endDate as string) : new Date('9999-12-31');
@@ -582,7 +585,7 @@ export default function DashboardPage() {
         }
     
         const reportData = activeEmps.map(emp => {
-            const balances = getEmployeeBalancesForWeek(emp.id, selectedBalanceReportWeek);
+            const balances = getEmployeeBalancesForWeek(emp.id, nextWeekId);
             return {
                 name: emp.name,
                 ordinary: balances.ordinary.toFixed(2),
@@ -598,7 +601,7 @@ export default function DashboardPage() {
         const pageMargin = 14;
         const addHeader = () => {
              doc.setFontSize(16).setFont('helvetica', 'bold');
-             doc.text(`Informe de Balances - Semana del ${weekLabel}`, pageMargin, 20);
+             doc.text(`Informe de Balances (Final Semana ${weekLabel})`, pageMargin, 20);
         };
         const addFooter = () => {
             const pageCount = doc.internal.getNumberOfPages();
