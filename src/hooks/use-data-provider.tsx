@@ -1,5 +1,4 @@
 
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type {
@@ -374,7 +373,7 @@ const loadData = useCallback(() => {
     return employees.filter(emp => 
         emp.employmentPeriods.some(p => {
             const periodStart = startOfDay(parseISO(p.startDate as string));
-            const periodEnd = p.endDate ? endOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
+            const periodEnd = p.endDate ? startOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
             return periodStart <= weekEnd && periodEnd >= weekStart;
         })
     );
@@ -384,15 +383,18 @@ const loadData = useCallback(() => {
 useEffect(() => {
     if (loading || !employees.length) return;
 
-    // Hardcoded list of weeks to ignore
-    const excludedWeeks = new Set(['2024-12-16', '2024-12-23', '2025-01-13', '2025-01-20']);
-
     const details: { weekId: string; employeeNames: string[] }[] = [];
     const startOfCurrentWeek = startOfDay(startOfWeek(new Date(), { weekStartsOn: 1 }));
+    
+    // The alert will only be effective from January 27, 2025 onwards.
+    const auditStartDate = startOfDay(new Date('2025-01-27'));
 
     for (const weekId in weeklyRecords) {
-        if (isBefore(parseISO(weekId), startOfCurrentWeek)) {
-            const activeEmployeesThisWeek = getActiveEmployeesForDate(parseISO(weekId));
+        const weekDate = parseISO(weekId);
+        
+        // Check if the week is before the current week AND on or after the audit start date.
+        if (isBefore(weekDate, startOfCurrentWeek) && (isAfter(weekDate, auditStartDate) || isSameDay(weekDate, auditStartDate))) {
+            const activeEmployeesThisWeek = getActiveEmployeesForDate(weekDate);
             if (activeEmployeesThisWeek.length === 0) {
                 continue;
             }
@@ -403,10 +405,6 @@ useEffect(() => {
                 .map(emp => emp.name);
 
             if (unconfirmedEmployeeNames.length > 0) {
-                if (excludedWeeks.has(weekId)) {
-                    console.log(`DIAGNÓSTICO: La semana problemática ${weekId} fue detectada como no confirmada para [${unconfirmedEmployeeNames.join(', ')}] pero será ignorada por la notificación.`);
-                    continue; // Skip adding this week to the details
-                }
                 details.push({ weekId: weekId, employeeNames: unconfirmedEmployeeNames });
             }
         }
@@ -1048,5 +1046,3 @@ createAnnualConfig: createAnnualConfigService,
 };
 
 export const useDataProvider = () => useContext(DataContext);
-
-    
