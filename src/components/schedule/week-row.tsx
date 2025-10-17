@@ -30,9 +30,10 @@ interface WeekRowProps {
     weekId: string;
     weekDays: Date[];
     initialWeekData: DailyEmployeeData | null;
+    onWeekCompleted: (weekId: string) => void;
 }
 
-export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, initialWeekData }) => {
+export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, initialWeekData, onWeekCompleted }) => {
     const { toast } = useToast();
     const { 
         holidays, 
@@ -44,6 +45,8 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         getEmployeeBalancesForWeek,
         getTheoreticalHoursAndTurn,
         getEffectiveWeeklyHours,
+        getActiveEmployeesForDate,
+        weeklyRecords,
     } = useDataProvider();
     
     const [localWeekData, setLocalWeekData] = useState<DailyEmployeeData | null>(initialWeekData);
@@ -219,6 +222,19 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
 
             await setDoc(doc(db, 'weeklyRecords', weekId), { weekData: { [employee.id]: dataToSave } }, { merge: true });
             toast({ title: `Semana Confirmada para ${employee.name}` });
+
+            // Check if all employees for this week are now confirmed
+            const activeEmployeesForWeek = getActiveEmployeesForDate(weekDays[0]);
+            const updatedWeekRecord = await getDoc(doc(db, 'weeklyRecords', weekId));
+            const updatedWeekData = updatedWeekRecord.data()?.weekData;
+
+            const allConfirmed = activeEmployeesForWeek.every(emp => 
+                updatedWeekData?.[emp.id]?.confirmed
+            );
+
+            if (allConfirmed) {
+                onWeekCompleted(weekId);
+            }
     
         } catch (error) {
             console.error(error);

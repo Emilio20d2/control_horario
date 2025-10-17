@@ -13,6 +13,7 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 import { WeekNavigator } from '@/components/schedule/week-navigator';
 import { WeekRow } from '@/components/schedule/week-row';
 import type { Employee, DailyEmployeeData, DailyData } from '@/lib/types';
+import { CompletionDialog } from '@/components/schedule/completion-dialog';
 
 export default function SchedulePage() {
     const { 
@@ -22,6 +23,8 @@ export default function SchedulePage() {
         weeklyRecords,
         holidays,
         processEmployeeWeekData,
+        getActiveEmployeesForDate,
+        findNextUnconfirmedWeek,
     } = useDataProvider();
     
     const [currentDate, setCurrentDate] = useState(new Date('2024-12-30'));
@@ -29,6 +32,8 @@ export default function SchedulePage() {
     const [selectedYear, setSelectedYear] = useState(2025);
     const [processedWeeklyViewData, setProcessedWeeklyViewData] = useState<Record<string, DailyEmployeeData | null>>({});
     const [processedAnnualViewData, setProcessedAnnualViewData] = useState<Record<string, DailyEmployeeData | null>>({});
+    const [completionInfo, setCompletionInfo] = useState<{ weekId: string; nextWeekId: string | null } | null>(null);
+
     
     const isEmployeeActiveForWeek = useCallback((employee: Employee, weekStartDate: Date): boolean => {
         const weekStart = startOfDay(weekStartDate);
@@ -60,19 +65,29 @@ export default function SchedulePage() {
         const currentWeekId = getWeekId(date);
         const weekRecord = weeklyRecords[currentWeekId]?.weekData;
         
-        const activeEmpsForWeek = employees.filter(emp => isEmployeeActiveForWeek(emp, date));
+        const activeEmpsForWeek = getActiveEmployeesForDate(date);
 
         if (activeEmpsForWeek.length === 0 && getYear(date) > getYear(new Date())) return true;
         if (!weekRecord || activeEmpsForWeek.length === 0) return false;
         
         return activeEmpsForWeek.every(emp => weekRecord[emp.id]?.confirmed);
-    }, [employees, getWeekId, weeklyRecords, isEmployeeActiveForWeek]);
+    }, [getActiveEmployeesForDate, getWeekId, weeklyRecords]);
+
+    const onWeekCompleted = (completedWeekId: string) => {
+        const nextWeekId = findNextUnconfirmedWeek(parseISO(completedWeekId));
+        setCompletionInfo({ weekId: completedWeekId, nextWeekId });
+    };
 
     // Effect to find the first unconfirmed week
     useEffect(() => {
         if (loading || selectedEmployeeId !== 'all' || Object.keys(weeklyRecords).length === 0) return;
     
+        const auditStartDate = startOfDay(new Date('2025-01-27'));
         let dateToCheck = startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
+        if (isBefore(dateToCheck, auditStartDate)) {
+            dateToCheck = auditStartDate;
+        }
+
         const limit = addWeeks(new Date(), 104); // Limit to 2 years of search from today
         
         let foundDate = dateToCheck;
@@ -222,7 +237,7 @@ export default function SchedulePage() {
                                             </TableHead>
                                             {currentWeekDays.map(d => <TableHead key={d.toISOString()} className={cn("text-left p-2 text-xs min-w-[140px]", holidays.some(h => isSameDay(h.date, d)) && "bg-primary/10")}><span className="sm:hidden">{format(d, 'E', {locale:es})}</span><span className="hidden sm:inline">{format(d, 'E dd/MM', {locale:es})}</span></TableHead>)}
                                         </TableRow>
-                                        <WeekRow employee={employee} weekId={currentWeekId} weekDays={currentWeekDays} initialWeekData={initialWeekData} />
+                                        <WeekRow employee={employee} weekId={currentWeekId} weekDays={currentWeekDays} initialWeekData={initialWeekData} onWeekCompleted={onWeekCompleted} />
                                     </React.Fragment>
                                 );
                             })}
@@ -252,7 +267,7 @@ export default function SchedulePage() {
                                     return <TableRow key={`${employee.id}-${weekId}`}><TableCell colSpan={8} className="p-0"><Skeleton className="h-48 w-full rounded-none" /></TableCell></TableRow>;
                                 }
                                 return (
-                                    <WeekRow key={`${employee.id}-${weekId}`} employee={employee} weekId={weekId} weekDays={weekDays} initialWeekData={employeeWeekData} />
+                                    <WeekRow key={`${employee.id}-${weekId}`} employee={employee} weekId={weekId} weekDays={weekDays} initialWeekData={employeeWeekData} onWeekCompleted={onWeekCompleted} />
                                 )
                             }) : <TableRow><TableCell colSpan={8} className="text-center h-48">No hay empleados activos esta semana.</TableCell></TableRow>}
                         </TableBody>
@@ -263,6 +278,16 @@ export default function SchedulePage() {
     );
 
  return (
+    <>
+    <CompletionDialog
+        isOpen={!!completionInfo}
+        onClose={() => setCompletionInfo(null)}
+        nextWeekId={completionInfo?.nextWeekId}
+        onNavigate={(weekId) => {
+            setCurrentDate(parseISO(weekId));
+            setCompletionInfo(null);
+        }}
+    />
     <div className="flex flex-col gap-0">
         <div className="flex flex-col sm:flex-row justify-between items-center px-4 md:px-6 py-4 gap-4">
             <h1 className="text-2xl font-bold tracking-tight font-headline">Registro Horario</h1>
@@ -279,5 +304,6 @@ export default function SchedulePage() {
         </div>
         {selectedEmployeeId === 'all' ? renderWeeklyView() : renderAnnualView()}
     </div>
+    </>
   );
 }

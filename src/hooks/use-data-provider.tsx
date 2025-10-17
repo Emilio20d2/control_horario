@@ -104,6 +104,7 @@ interface DataContextType {
   updateEmployeeGroup: (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => Promise<void>;
   deleteEmployeeGroup: (id: string) => Promise<void>;
   updateEmployeeGroupOrder: (groups: EmployeeGroup[]) => Promise<void>;
+  findNextUnconfirmedWeek: (startDate: Date) => string | null;
 }
 
 const DataContext = createContext<DataContextType>({
@@ -159,6 +160,7 @@ deleteContractType: async () => {},
   updateEmployeeGroup: async (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => {},
   deleteEmployeeGroup: async (id: string) => {},
   updateEmployeeGroupOrder: async (groups: EmployeeGroup[]) => {},
+  findNextUnconfirmedWeek: () => null,
 });
 
 const roundToNearestQuarter = (num: number) => {
@@ -373,7 +375,7 @@ const loadData = useCallback(() => {
     return employees.filter(emp => 
         emp.employmentPeriods.some(p => {
             const periodStart = startOfDay(parseISO(p.startDate as string));
-            const periodEnd = p.endDate ? startOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
+            const periodEnd = p.endDate ? endOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
             return periodStart <= weekEnd && periodEnd >= weekStart;
         })
     );
@@ -389,10 +391,17 @@ useEffect(() => {
     // The alert will only be effective from January 27, 2025 onwards.
     const auditStartDate = startOfDay(new Date('2025-01-27'));
 
+    const excludedWeeks = new Set(['2024-12-16', '2024-12-23', '2025-01-13', '2025-01-20']);
+
     for (const weekId in weeklyRecords) {
+        if (excludedWeeks.has(weekId)) {
+            console.log(`Skipping excluded week: ${weekId}`);
+            continue;
+        }
+
         const weekDate = parseISO(weekId);
         
-        // Check if the week is before the current week AND on or after the audit start date.
+        // Check if the week is strictly before the current week AND on or after the audit start date.
         if (isBefore(weekDate, startOfCurrentWeek) && (isAfter(weekDate, auditStartDate) || isSameDay(weekDate, auditStartDate))) {
             const activeEmployeesThisWeek = getActiveEmployeesForDate(weekDate);
             if (activeEmployeesThisWeek.length === 0) {
@@ -983,6 +992,34 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
         await setDocument('holidayReports', reportId, data, { merge: true });
     }
 
+    const findNextUnconfirmedWeek = (startDate: Date): string | null => {
+        const sortedWeekIds = Object.keys(weeklyRecords).sort();
+        const startWeekId = getWeekId(startDate);
+
+        let searchStarted = false;
+        for (const weekId of sortedWeekIds) {
+            if (weekId > startWeekId) {
+                searchStarted = true;
+            }
+
+            if (searchStarted) {
+                const weekDate = parseISO(weekId);
+                const activeEmployeesThisWeek = getActiveEmployeesForDate(weekDate);
+
+                if (activeEmployeesThisWeek.length > 0) {
+                    const isUnconfirmed = activeEmployeesThisWeek.some(emp => {
+                        return !(weeklyRecords[weekId]?.weekData?.[emp.id]?.confirmed ?? false);
+                    });
+
+                    if (isUnconfirmed) {
+                        return weekId;
+                    }
+                }
+            }
+        }
+        return null; // No subsequent unconfirmed week found
+    };
+
   const value = {
     employees,
     holidays,
@@ -1036,6 +1073,7 @@ createAnnualConfig: createAnnualConfigService,
     updateEmployeeGroup,
     deleteEmployeeGroup,
     updateEmployeeGroupOrder,
+    findNextUnconfirmedWeek,
   };
 
   return (
