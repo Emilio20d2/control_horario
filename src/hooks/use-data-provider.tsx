@@ -384,18 +384,15 @@ const loadData = useCallback(() => {
 useEffect(() => {
     if (loading || !employees.length) return;
 
-    const details: { weekId: string; employeeNames: string[] }[] = [];
-    const today = new Date();
-    const startOfCurrentWeek = startOfDay(startOfWeek(today, { weekStartsOn: 1 }));
-    
-    // Recorrer todos los registros semanales
-    for (const weekId in weeklyRecords) {
-        const weekStartDate = parseISO(weekId);
-        
-        // 1. Considerar solo semanas pasadas
-        if (isBefore(startOfDay(weekStartDate), startOfCurrentWeek)) {
-            const activeEmployeesThisWeek = getActiveEmployeesForDate(weekStartDate);
+    // Hardcoded list of weeks to ignore
+    const excludedWeeks = new Set(['2024-12-16', '2024-12-23', '2025-01-13', '2025-01-20']);
 
+    const details: { weekId: string; employeeNames: string[] }[] = [];
+    const startOfCurrentWeek = startOfDay(startOfWeek(new Date(), { weekStartsOn: 1 }));
+
+    for (const weekId in weeklyRecords) {
+        if (isBefore(parseISO(weekId), startOfCurrentWeek)) {
+            const activeEmployeesThisWeek = getActiveEmployeesForDate(parseISO(weekId));
             if (activeEmployeesThisWeek.length === 0) {
                 continue;
             }
@@ -406,17 +403,20 @@ useEffect(() => {
                 .map(emp => emp.name);
 
             if (unconfirmedEmployeeNames.length > 0) {
+                if (excludedWeeks.has(weekId)) {
+                    console.log(`DIAGNÓSTICO: La semana problemática ${weekId} fue detectada como no confirmada para [${unconfirmedEmployeeNames.join(', ')}] pero será ignorada por la notificación.`);
+                    continue; // Skip adding this week to the details
+                }
                 details.push({ weekId: weekId, employeeNames: unconfirmedEmployeeNames });
             }
         }
     }
     
-    // Ordenar los detalles por fecha para consistencia
     details.sort((a, b) => a.weekId.localeCompare(b.weekId));
-
     setUnconfirmedWeeksDetails(details);
 
 }, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
+
 
 
   const getEmployeeById = (id: string) => employees.find(e => e.id === id);
