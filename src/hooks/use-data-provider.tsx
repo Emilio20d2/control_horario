@@ -1,5 +1,4 @@
 
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type {
@@ -368,14 +367,15 @@ const loadData = useCallback(() => {
 }, [loaded]);
 
   const getActiveEmployeesForDate = (date: Date) => {
-    const weekStart = startOfWeek(date, { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
+    const weekStart = startOfDay(startOfWeek(date, { weekStartsOn: 1 }));
+    const weekEnd = endOfDay(endOfWeek(date, { weekStartsOn: 1 }));
 
     return employees.filter(emp => 
         emp.employmentPeriods.some(p => {
-            const pStart = parseISO(p.startDate as string);
-            const pEnd = p.endDate ? parseISO(p.endDate as string) : new Date('9999-12-31');
-            return isWithinInterval(weekStart, {start: pStart, end: pEnd}) || isWithinInterval(weekEnd, {start: pStart, end: pEnd}) || (isBefore(pStart, weekStart) && isAfter(pEnd, weekEnd));
+            const periodStart = startOfDay(parseISO(p.startDate as string));
+            const periodEnd = p.endDate ? endOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
+            // Check if the period overlaps with the week
+            return periodStart <= weekEnd && periodEnd >= weekStart;
         })
     );
 };
@@ -1058,22 +1058,3 @@ createAnnualConfig: createAnnualConfigService,
 };
 
 export const useDataProvider = () => useContext(DataContext);
-
-    
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
