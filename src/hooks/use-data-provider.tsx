@@ -374,7 +374,7 @@ const loadData = useCallback(() => {
     return employees.filter(emp => 
         emp.employmentPeriods.some(p => {
             const periodStart = startOfDay(parseISO(p.startDate as string));
-            const periodEnd = p.endDate ? endOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
+            const periodEnd = p.endDate ? startOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
             return periodStart <= weekEnd && periodEnd >= weekStart;
         })
     );
@@ -383,40 +383,37 @@ const loadData = useCallback(() => {
 useEffect(() => {
     if (loading) return;
 
-    const startOfCurrentWeek = startOfDay(startOfWeek(new Date(), { weekStartsOn: 1 }));
     let unconfirmedFound = false;
+    const today = new Date();
+    const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 });
 
-    const pastWeekIds = Object.keys(weeklyRecords)
-        .filter(weekId => {
-            const weekDate = startOfDay(parseISO(weekId));
-            return isBefore(weekDate, startOfCurrentWeek);
-        })
-        .sort((a, b) => a.localeCompare(b));
-
-    for (const weekId of pastWeekIds) {
+    for (const weekId in weeklyRecords) {
         const weekStartDate = parseISO(weekId);
-        const activeEmpsThisWeek = getActiveEmployeesForDate(weekStartDate);
-        
-        if (activeEmpsThisWeek.length === 0) {
-            continue;
-        }
 
-        const weekRecord = weeklyRecords[weekId];
-        for (const emp of activeEmpsThisWeek) {
-            const isConfirmed = weekRecord?.weekData?.[emp.id]?.confirmed ?? false;
-            
-            if (!isConfirmed) {
+        // Only check weeks that are strictly in the past
+        if (isBefore(weekStartDate, startOfCurrentWeek)) {
+            const activeEmployeesThisWeek = getActiveEmployeesForDate(weekStartDate);
+
+            // If there were no employees active that week, skip it.
+            if (activeEmployeesThisWeek.length === 0) {
+                continue;
+            }
+
+            const weekRecord = weeklyRecords[weekId];
+            const anEmployeeIsUnconfirmed = activeEmployeesThisWeek.some(emp => {
+                const isConfirmed = weekRecord?.weekData?.[emp.id]?.confirmed ?? false;
+                return !isConfirmed;
+            });
+
+            if (anEmployeeIsUnconfirmed) {
                 unconfirmedFound = true;
-                break;
+                break; // Found an unconfirmed week, no need to check further
             }
         }
-        
-        if (unconfirmedFound) {
-            break;
-        }
     }
-    
+
     setHasUnconfirmedInPrevWeek(unconfirmedFound);
+
 }, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
 
 
@@ -575,13 +572,12 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
     if (!schedule) return defaultReturn;
     
     const ANCHOR_DATE = startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
-    const ANCHOR_TURN_INDEX = 2; // Turno 3 (0-indexed: 0,1,2,3)
     const currentWeekStartDate = startOfWeek(dateInWeek, { weekStartsOn: 1 });
+    const daysSinceAnchor = differenceInDays(currentWeekStartDate, ANCHOR_DATE);
+    const weeksSinceAnchor = Math.floor(daysSinceAnchor / 7);
 
-    const weeksSinceAnchor = differenceInWeeks(currentWeekStartDate, ANCHOR_DATE, { roundingMethod: 'floor' });
-    
-    const turnIndex = (ANCHOR_TURN_INDEX + weeksSinceAnchor) % 4;
-    const finalTurnIndex = (turnIndex < 0) ? turnIndex + 4 : turnIndex; // Ensure positive index
+    const turnIndex = (2 + weeksSinceAnchor) % 4; // Turno 3 (índice 2) es el ancla
+    const finalTurnIndex = (turnIndex < 0) ? turnIndex + 4 : turnIndex; // Asegurar índice positivo
     const turnId = `turn${finalTurnIndex + 1}` as keyof typeof schedule.shifts;
 
     const turnSchedule = schedule.shifts[turnId];
@@ -1050,3 +1046,5 @@ createAnnualConfig: createAnnualConfigService,
 };
 
 export const useDataProvider = () => useContext(DataContext);
+
+    
