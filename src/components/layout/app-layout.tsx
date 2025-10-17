@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -31,17 +32,30 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
 import { useAuth } from '@/hooks/useAuth';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const { hasUnconfirmedInPrevWeek } = useDataProvider();
+  const { unconfirmedWeeksDetails } = useDataProvider();
 
   const getInitials = (email: string | null | undefined): string => {
     if (!email) return 'U';
@@ -91,16 +105,47 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <MainNav className="hidden md:flex items-center gap-4 mx-auto" />
 
         <div className="flex items-center gap-4 ml-auto">
-            <Button variant="ghost" size="icon" className="rounded-full relative">
-                <Bell className="h-5 w-5" />
-                 {hasUnconfirmedInPrevWeek && (
-                    <span className="absolute top-1.5 right-1.5 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
-                    </span>
-                )}
-                <span className="sr-only">Alternar notificaciones</span>
-            </Button>
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="rounded-full relative">
+                        <Bell className="h-5 w-5" />
+                        {unconfirmedWeeksDetails.length > 0 && (
+                            <span className="absolute top-1.5 right-1.5 flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
+                            </span>
+                        )}
+                        <span className="sr-only">Alternar notificaciones</span>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80">
+                     <DropdownMenuLabel>Semanas Anteriores Sin Confirmar</DropdownMenuLabel>
+                     <DropdownMenuSeparator />
+                     {unconfirmedWeeksDetails.length > 0 ? (
+                        unconfirmedWeeksDetails.map(detail => (
+                             <TooltipProvider key={detail.weekId}>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Link href={`/schedule?week=${detail.weekId}`} passHref>
+                                            <DropdownMenuItem>
+                                                Semana del {format(parseISO(detail.weekId), 'd MMM, yyyy', { locale: es })}
+                                            </DropdownMenuItem>
+                                        </Link>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left">
+                                        <p className='font-medium'>Empleados pendientes:</p>
+                                        <ul className="list-disc pl-4 text-muted-foreground">
+                                            {detail.employeeNames.map(name => <li key={name}>{name}</li>)}
+                                        </ul>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        ))
+                     ) : (
+                        <DropdownMenuItem disabled>No hay semanas pendientes.</DropdownMenuItem>
+                     )}
+                </DropdownMenuContent>
+            </DropdownMenu>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">

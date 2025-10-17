@@ -64,7 +64,7 @@ interface DataContextType {
   holidayReports: HolidayReport[];
   employeeGroups: EmployeeGroup[];
   loading: boolean;
-  hasUnconfirmedInPrevWeek: boolean;
+  unconfirmedWeeksDetails: { weekId: string; employeeNames: string[] }[];
   loadData: () => void;
   refreshData: () => void;
   refreshUsers: () => void;
@@ -119,7 +119,7 @@ const DataContext = createContext<DataContextType>({
   holidayReports: [],
   employeeGroups: [],
   loading: true,
-  hasUnconfirmedInPrevWeek: false,
+  unconfirmedWeeksDetails: [],
   loadData: () => {},
   refreshData: () => {},
   refreshUsers: () => {},
@@ -180,7 +180,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [employeeGroups, setEmployeeGroups] = useState<EmployeeGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
-  const [hasUnconfirmedInPrevWeek, setHasUnconfirmedInPrevWeek] = useState(false);
+  const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
 
   const getWeekId = (d: Date): string => {
     const monday = startOfWeek(d, { weekStartsOn: 1 });
@@ -367,7 +367,7 @@ const loadData = useCallback(() => {
     };
 }, [loaded]);
 
-  const getActiveEmployeesForDate = useCallback((date: Date) => {
+  const getActiveEmployeesForDate = useCallback((date: Date): Employee[] => {
     const weekStart = startOfDay(startOfWeek(date, { weekStartsOn: 1 }));
     const weekEnd = endOfDay(endOfWeek(date, { weekStartsOn: 1 }));
 
@@ -380,39 +380,40 @@ const loadData = useCallback(() => {
     );
 }, [employees]);
 
+
 useEffect(() => {
-    if (loading) return;
+    if (loading || !employees.length) return;
 
-    let unconfirmedFound = false;
+    const details: { weekId: string; employeeNames: string[] }[] = [];
     const today = new Date();
-    const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 });
+    const startOfCurrentWeek = startOfDay(startOfWeek(today, { weekStartsOn: 1 }));
+    
+    // Sort records to process them chronologically
+    const sortedWeekIds = Object.keys(weeklyRecords).sort();
 
-    for (const weekId in weeklyRecords) {
+    for (const weekId of sortedWeekIds) {
         const weekStartDate = parseISO(weekId);
-
-        // Only check weeks that are strictly in the past
-        if (isBefore(weekStartDate, startOfCurrentWeek)) {
+        
+        // Only check weeks strictly before the current week
+        if (isBefore(startOfDay(weekStartDate), startOfCurrentWeek)) {
             const activeEmployeesThisWeek = getActiveEmployeesForDate(weekStartDate);
 
-            // If there were no employees active that week, skip it.
             if (activeEmployeesThisWeek.length === 0) {
                 continue;
             }
 
             const weekRecord = weeklyRecords[weekId];
-            const anEmployeeIsUnconfirmed = activeEmployeesThisWeek.some(emp => {
-                const isConfirmed = weekRecord?.weekData?.[emp.id]?.confirmed ?? false;
-                return !isConfirmed;
-            });
+            const unconfirmedEmployeeNames = activeEmployeesThisWeek
+                .filter(emp => !(weekRecord?.weekData?.[emp.id]?.confirmed ?? false))
+                .map(emp => emp.name);
 
-            if (anEmployeeIsUnconfirmed) {
-                unconfirmedFound = true;
-                break; // Found an unconfirmed week, no need to check further
+            if (unconfirmedEmployeeNames.length > 0) {
+                details.push({ weekId: weekId, employeeNames: unconfirmedEmployeeNames });
             }
         }
     }
-
-    setHasUnconfirmedInPrevWeek(unconfirmedFound);
+    
+    setUnconfirmedWeeksDetails(details);
 
 }, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
 
@@ -995,7 +996,7 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
     holidayReports,
     employeeGroups,
     loading,
-    hasUnconfirmedInPrevWeek,
+    unconfirmedWeeksDetails,
     loadData,
     refreshData,
     refreshUsers,
