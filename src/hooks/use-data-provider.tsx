@@ -388,14 +388,20 @@ useEffect(() => {
     const today = new Date();
     const startOfCurrentWeek = startOfDay(startOfWeek(today, { weekStartsOn: 1 }));
     
-    // Sort records to process them chronologically
-    const sortedWeekIds = Object.keys(weeklyRecords).sort();
+    // Patch: Lista de semanas a ignorar
+    const excludedWeeks = new Set(['2024-12-16', '2024-12-23', '2025-01-13', '2025-01-20']);
 
-    for (const weekId of sortedWeekIds) {
+    // Recorrer todos los registros semanales
+    for (const weekId in weeklyRecords) {
         const weekStartDate = parseISO(weekId);
         
-        // Only check weeks strictly before the current week
+        // 1. Considerar solo semanas pasadas
         if (isBefore(startOfDay(weekStartDate), startOfCurrentWeek)) {
+            // 2. Saltar semanas excluidas
+            if (excludedWeeks.has(weekId)) {
+                continue;
+            }
+
             const activeEmployeesThisWeek = getActiveEmployeesForDate(weekStartDate);
 
             if (activeEmployeesThisWeek.length === 0) {
@@ -413,6 +419,9 @@ useEffect(() => {
         }
     }
     
+    // Ordenar los detalles por fecha para consistencia
+    details.sort((a, b) => a.weekId.localeCompare(b.weekId));
+
     setUnconfirmedWeeksDetails(details);
 
 }, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
