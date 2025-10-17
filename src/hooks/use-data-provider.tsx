@@ -1,4 +1,5 @@
 
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type {
@@ -366,7 +367,7 @@ const loadData = useCallback(() => {
     };
 }, [loaded]);
 
-  const getActiveEmployeesForDate = (date: Date) => {
+  const getActiveEmployeesForDate = useCallback((date: Date) => {
     const weekStart = startOfDay(startOfWeek(date, { weekStartsOn: 1 }));
     const weekEnd = endOfDay(endOfWeek(date, { weekStartsOn: 1 }));
 
@@ -374,36 +375,27 @@ const loadData = useCallback(() => {
         emp.employmentPeriods.some(p => {
             const periodStart = startOfDay(parseISO(p.startDate as string));
             const periodEnd = p.endDate ? endOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
-            // Check if the period overlaps with the week
             return periodStart <= weekEnd && periodEnd >= weekStart;
         })
     );
-};
+}, [employees]);
 
 useEffect(() => {
     if (loading) return;
 
-    const startOfCurrentWeek = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const startOfCurrentWeek = startOfDay(startOfWeek(new Date(), { weekStartsOn: 1 }));
     let unconfirmedFound = false;
 
     const pastWeekIds = Object.keys(weeklyRecords)
         .filter(weekId => {
-            const weekDate = parseISO(weekId);
-            return isBefore(weekDate, startOfCurrentWeek) && getYear(weekDate) > 2024;
+            const weekDate = startOfDay(parseISO(weekId));
+            return isBefore(weekDate, startOfCurrentWeek);
         })
         .sort((a, b) => a.localeCompare(b));
 
     for (const weekId of pastWeekIds) {
         const weekStartDate = parseISO(weekId);
-        const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
-        
-        const activeEmpsThisWeek = employees.filter(emp => 
-            emp.employmentPeriods.some(p => {
-                const pStart = parseISO(p.startDate as string);
-                const pEnd = p.endDate ? parseISO(p.endDate as string) : new Date('9999-12-31');
-                return pStart <= weekEndDate && pEnd >= weekStartDate;
-            })
-        );
+        const activeEmpsThisWeek = getActiveEmployeesForDate(weekStartDate);
         
         if (activeEmpsThisWeek.length === 0) {
             continue;
@@ -425,7 +417,7 @@ useEffect(() => {
     }
     
     setHasUnconfirmedInPrevWeek(unconfirmedFound);
-}, [loading, weeklyRecords, employees]);
+}, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
 
 
   const getEmployeeById = (id: string) => employees.find(e => e.id === id);
