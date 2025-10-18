@@ -47,8 +47,7 @@ export function EmployeeCard({ employee, balances, vacationInfo, lastPeriod, sho
                                 <Plane className="h-4 w-4" />
                                 <span className={cn(
                                     "font-mono font-medium",
-                                    vacationInfo.vacationDaysTaken > vacationInfo.vacationDaysAvailable ? "text-destructive" :
-                                    vacationInfo.vacationDaysTaken === Math.floor(vacationInfo.vacationDaysAvailable) ? "text-green-600" : ""
+                                    vacationInfo.vacationDaysTaken > vacationInfo.vacationDaysAvailable ? "text-destructive" : ""
                                 )}>
                                     {vacationInfo.vacationDaysTaken} / {vacationInfo.vacationDaysAvailable.toFixed(1)} días
                                 </span>
