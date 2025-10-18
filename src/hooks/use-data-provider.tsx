@@ -199,16 +199,18 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const calculateEmployeeVacations = useCallback((emp: Employee): { vacationDaysTaken: number, suspensionDays: number, vacationDaysAvailable: number } => {
     const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
     const suspensionTypeIds = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.id));
+    const suspensionAbsenceAbbrs = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.abbreviation));
 
     if (!vacationType) {
         return { vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31 };
     }
 
     const currentYear = new Date().getFullYear();
-    const yearDayMap = new Map<string, 'V' | 'S'>(); // 'V' for Vacation, 'S' for Suspension
+    const yearDayMap = new Map<string, 'V' | 'S'>();
 
-    // 1. Process scheduled absences (long-term) first. Suspensions have priority.
+    // 1. Process all employment periods for the employee
     emp.employmentPeriods?.forEach(period => {
+        // Process long-term scheduled absences
         period.scheduledAbsences?.forEach(absence => {
             if (!absence.endDate) return;
 
@@ -220,42 +222,32 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             }
             if (!absenceCode) return;
 
-            let currentDay = startOfDay(absence.startDate);
-            const lastDay = endOfDay(absence.endDate);
-
-            while (currentDay <= lastDay) {
-                if (getYear(currentDay) === currentYear) {
-                    const dayKey = format(currentDay, 'yyyy-MM-dd');
-                    // Suspension overrides vacation if there's an overlap
+            eachDayOfInterval({ start: startOfDay(absence.startDate), end: endOfDay(absence.endDate) }).forEach(day => {
+                if (getYear(day) === currentYear) {
+                    const dayKey = format(day, 'yyyy-MM-dd');
                     if (!yearDayMap.has(dayKey) || absenceCode === 'S') {
                         yearDayMap.set(dayKey, absenceCode);
                     }
                 }
-                currentDay = addDays(currentDay, 1);
-            }
+            });
         });
     });
 
-    // 2. Process weekly records, filling in days not already covered by a scheduled absence.
+    // 2. Process weekly records, checking against all suspension abbreviations
     Object.values(weeklyRecords).forEach(record => {
         const empWeekData = record.weekData[emp.id];
         if (!empWeekData?.days) return;
 
         Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
-            const dayDate = parseISO(dayStr);
-            if (getYear(dayDate) !== currentYear) return;
-
-            const dayKey = format(dayDate, 'yyyy-MM-dd');
-            if (yearDayMap.has(dayKey)) return; // Already processed by a long-term scheduled absence
+            if (getYear(parseISO(dayStr)) !== currentYear) return;
+            const dayKey = format(parseISO(dayStr), 'yyyy-MM-dd');
+            if (yearDayMap.has(dayKey)) return;
 
             if (dayData.absence && dayData.absence !== 'ninguna') {
-                const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
-                if (absenceType) {
-                    if (suspensionTypeIds.has(absenceType.id)) {
-                        yearDayMap.set(dayKey, 'S');
-                    } else if (absenceType.id === vacationType.id) {
-                        yearDayMap.set(dayKey, 'V');
-                    }
+                if (suspensionAbsenceAbbrs.has(dayData.absence)) {
+                    yearDayMap.set(dayKey, 'S');
+                } else if (dayData.absence === vacationType.abbreviation) {
+                    yearDayMap.set(dayKey, 'V');
                 }
             }
         });
@@ -265,11 +257,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     let suspensionDaysCount = 0;
 
     yearDayMap.forEach((value) => {
-        if (value === 'S') {
-            suspensionDaysCount++;
-        } else if (value === 'V') {
-            vacationDaysCount++;
-        }
+        if (value === 'S') suspensionDaysCount++;
+        else if (value === 'V') vacationDaysCount++;
     });
     
     const vacationDeduction = Math.floor(suspensionDaysCount / 30) * 2.5;
