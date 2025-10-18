@@ -200,16 +200,21 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
     const suspensionTypeIds = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.id));
     const suspensionAbsenceAbbrs = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.abbreviation));
+    
+    const currentYear = new Date().getFullYear();
 
     if (!vacationType) {
         return { vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31 };
     }
 
-    const currentYear = new Date().getFullYear();
     const yearDayMap = new Map<string, 'V' | 'S'>();
 
-    // 1. Process all employment periods for the employee
+    // 1. Process all employment periods for the employee for the current year
     emp.employmentPeriods?.forEach(period => {
+        if (getYear(parseISO(period.startDate as string)) > currentYear || (period.endDate && getYear(parseISO(period.endDate as string)) < currentYear)) {
+            return;
+        }
+
         // Process long-term scheduled absences
         period.scheduledAbsences?.forEach(absence => {
             if (!absence.endDate) return;
@@ -261,10 +266,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         else if (value === 'V') vacationDaysCount++;
     });
     
-    const vacationDeduction = Math.floor(suspensionDaysCount / 30) * 2.5;
+    const vacationDeduction = (suspensionDaysCount / 30) * 2.5;
     const vacationDaysAvailable = Math.max(0, 31 - vacationDeduction);
 
-    return { vacationDaysTaken: vacationDaysCount, suspensionDays: suspensionDaysCount, vacationDaysAvailable };
+    return { 
+        vacationDaysTaken: vacationDaysCount, 
+        suspensionDays: suspensionDaysCount, 
+        vacationDaysAvailable: Math.ceil(vacationDaysAvailable) 
+    };
 }, [absenceTypes, weeklyRecords]);
 
 
