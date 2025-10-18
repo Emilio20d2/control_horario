@@ -90,7 +90,7 @@ interface DataContextType {
   deleteAnnualConfig: (id: string) => Promise<void>;
   createContractType: (data: Omit<ContractType, 'id'>) => Promise<string>;
   updateContractType: (id: string, data: Partial<ContractType>) => Promise<void>;
-  deleteContractType: (id: string) => Promise<void>;
+deleteContractType: (id: string) => Promise<void>;
   updateEmployeeWorkHours: (employeeId: string, weeklyHours: number, effectiveDate: string) => Promise<void>;
   getWeekId: (d: Date) => string;
   processEmployeeWeekData: (emp: Employee, weekDays: Date[], weekId: string) => DailyEmployeeData | null;
@@ -206,6 +206,28 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     if (!vacationType) {
         return { vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31 };
     }
+    
+    const yearStart = startOfYear(new Date(currentYear, 0, 1));
+    const yearEnd = endOfYear(new Date(currentYear, 0, 1));
+    
+    const activePeriodsThisYear = emp.employmentPeriods.filter(p => {
+        const pStart = parseISO(p.startDate as string);
+        const pEnd = p.endDate ? parseISO(p.endDate as string) : yearEnd;
+        return getYear(pStart) <= currentYear && getYear(pEnd) >= currentYear;
+    });
+
+    if (activePeriodsThisYear.length === 0) {
+        return { vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 0 };
+    }
+
+    let contractDaysInYear = 0;
+    activePeriodsThisYear.forEach(p => {
+        const pStart = parseISO(p.startDate as string);
+        const pEnd = p.endDate ? parseISO(p.endDate as string) : yearEnd;
+        const intervalStart = isBefore(pStart, yearStart) ? yearStart : pStart;
+        const intervalEnd = isAfter(pEnd, yearEnd) ? yearEnd : pEnd;
+        contractDaysInYear += differenceInDays(intervalEnd, intervalStart) + 1;
+    });
 
     const yearDayMap = new Map<string, 'V' | 'S'>();
 
@@ -266,13 +288,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         else if (value === 'V') vacationDaysCount++;
     });
     
+    const proratedVacationDays = (31 / 365) * contractDaysInYear;
     const vacationDeduction = (suspensionDaysCount / 30) * 2.5;
-    const vacationDaysAvailable = Math.max(0, 31 - vacationDeduction);
+    const vacationDaysAvailable = proratedVacationDays - vacationDeduction;
 
     return { 
         vacationDaysTaken: vacationDaysCount, 
         suspensionDays: suspensionDaysCount, 
-        vacationDaysAvailable: Math.ceil(vacationDaysAvailable) 
+        vacationDaysAvailable: Math.ceil(Math.max(0, vacationDaysAvailable))
     };
 }, [absenceTypes, weeklyRecords]);
 
