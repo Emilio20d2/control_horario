@@ -42,6 +42,7 @@ export const calculateBalancePreview = (
     const firstDate = parseISO(firstDayKey);
 
     const activePeriod = getActivePeriodForCalc(employmentPeriods, firstDate);
+    // Security Guard: If there's no active contract for this week, no impact can be calculated.
     if (!activePeriod) {
          return { ordinary: 0, holiday: 0, leave: 0, resultingOrdinary: initialBalances.ordinary, resultingHoliday: initialBalances.holiday, resultingLeave: initialBalances.leave };
     }
