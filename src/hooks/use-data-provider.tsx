@@ -204,7 +204,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         return { vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31 };
     }
 
-    const currentYear = getYear(new Date());
+    const currentYear = new Date().getFullYear();
     const yearDayMap = new Map<string, 'V' | 'S'>(); // 'V' for Vacation, 'S' for Suspension
 
     // 1. Process scheduled absences (long-term) first. Suspensions have priority.
