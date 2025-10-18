@@ -107,7 +107,7 @@ export default function EmployeesPage() {
             ))
             ) : employees.map((employee) => {
             const employeeBalances = showBalances && !balancesLoading ? balances[employee.id] : undefined;
-            const { vacationDaysTaken, suspensionDays } = showBalances ? calculateEmployeeVacations(employee) : { vacationDaysTaken: 0, suspensionDays: 0 };
+            const { vacationDaysTaken, vacationDaysAvailable } = showBalances ? calculateEmployeeVacations(employee) : { vacationDaysTaken: 0, vacationDaysAvailable: 31 };
             const lastPeriod = [...employee.employmentPeriods].sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
             return (
             <TableRow key={employee.id}>
@@ -141,11 +141,10 @@ export default function EmployeesPage() {
                                 <Plane className="h-4 w-4 text-muted-foreground" />
                                 <span className={cn(
                                     "font-medium",
-                                     suspensionDays > 0 ? "text-destructive" :
-                                     vacationDaysTaken > 31 ? "text-destructive" :
-                                     vacationDaysTaken === 31 ? "text-green-600" : ""
+                                    vacationDaysTaken > vacationDaysAvailable ? "text-destructive" :
+                                    vacationDaysTaken === Math.floor(vacationDaysAvailable) ? "text-green-600" : ""
                                 )}>
-                                    {vacationDaysTaken} días
+                                    {vacationDaysTaken} / {vacationDaysAvailable.toFixed(1)} días
                                 </span>
                             </div>
                         </TableCell>

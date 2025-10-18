@@ -15,7 +15,7 @@ import { es } from 'date-fns/locale';
 interface EmployeeCardProps {
     employee: Employee;
     balances?: { ordinary: number; holiday: number; leave: number; total: number; };
-    vacationInfo?: { vacationDaysTaken: number; suspensionDays: number; };
+    vacationInfo?: { vacationDaysTaken: number; suspensionDays: number; vacationDaysAvailable: number; };
     lastPeriod?: EmploymentPeriod;
     showBalances: boolean;
 }
@@ -47,11 +47,10 @@ export function EmployeeCard({ employee, balances, vacationInfo, lastPeriod, sho
                                 <Plane className="h-4 w-4" />
                                 <span className={cn(
                                     "font-mono font-medium",
-                                    vacationInfo.suspensionDays > 0 ? "text-destructive" :
-                                    vacationInfo.vacationDaysTaken > 31 ? "text-destructive" :
-                                    vacationInfo.vacationDaysTaken === 31 ? "text-green-600" : ""
+                                    vacationInfo.vacationDaysTaken > vacationInfo.vacationDaysAvailable ? "text-destructive" :
+                                    vacationInfo.vacationDaysTaken === Math.floor(vacationInfo.vacationDaysAvailable) ? "text-green-600" : ""
                                 )}>
-                                    {vacationInfo.vacationDaysTaken} días
+                                    {vacationInfo.vacationDaysTaken} / {vacationInfo.vacationDaysAvailable.toFixed(1)} días
                                 </span>
                             </div>
                         )}
