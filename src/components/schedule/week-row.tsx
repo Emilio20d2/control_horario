@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,18 +13,15 @@ import { db } from '@/lib/firebase';
 import { InputStepper } from '@/components/ui/input-stepper';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import type { DailyEmployeeData, Employee, DailyData } from '@/lib/types';
-import { CheckCircle, Undo2, NotebookPen } from 'lucide-react';
+import { CheckCircle, Undo2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from "@/components/ui/checkbox"
-import { getAIWeeklySummary } from '@/lib/actions/genkitActions';
 import { es } from 'date-fns/locale';
 
 
 import { AbsenceEditor } from './absence-editor';
 import { HolidayEditor } from './holiday-editor';
 import { BalancePreviewDisplay } from './balance-preview';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
 
 interface WeekRowProps {
     employee: Employee;
@@ -48,16 +44,13 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         getTheoreticalHoursAndTurn,
         getEffectiveWeeklyHours,
         getActiveEmployeesForDate,
-        weeklyRecords,
     } = useDataProvider();
     
     const [localWeekData, setLocalWeekData] = useState<DailyEmployeeData | null>(initialWeekData);
     const [preview, setPreview] = useState<any | null>(null);
     const [initialBalances, setInitialBalances] = useState<ReturnType<typeof getEmployeeBalancesForWeek> | null>(null);
     const [isSaving, setIsSaving] = useState(false);
-    const [isGeneratingComment, setIsGeneratingComment] = useState(false);
     const [weekTurn, setWeekTurn] = useState<string | null>(null);
-    const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 
     useEffect(() => {
@@ -69,67 +62,6 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             setInitialBalances(balances);
         }
     }, [initialWeekData, employee.id, weekId, weekDays, getTheoreticalHoursAndTurn, getEmployeeBalancesForWeek]);
-
-    // Effect to auto-generate AI summary
-    useEffect(() => {
-        // Clear any existing timeout
-        if (debounceTimeoutRef.current) {
-            clearTimeout(debounceTimeoutRef.current);
-        }
-
-        // Only run if the week is not confirmed and there is data
-        if (localWeekData && !localWeekData.confirmed) {
-            debounceTimeoutRef.current = setTimeout(async () => {
-                // Check if a manual comment already exists
-                if (localWeekData.generalComment) {
-                    return;
-                }
-
-                setIsGeneratingComment(true);
-                const weekDataForAI = {
-                    days: weekDays.map(day => {
-                        const dayKey = format(day, 'yyyy-MM-dd');
-                        const dayData = localWeekData.days[dayKey] || { workedHours: 0, absence: 'ninguna', absenceHours: 0};
-                        const absenceName = absenceTypes.find(at => at.abbreviation === dayData.absence)?.name || dayData.absence;
-                        return {
-                            dayName: format(day, 'EEEE', { locale: es }),
-                            workedHours: dayData.workedHours,
-                            absence: absenceName,
-                            absenceHours: dayData.absenceHours,
-                        };
-                    }),
-                    totalComplementaryHours: localWeekData.totalComplementaryHours || 0,
-                    totalWorkedHours: Object.values(localWeekData.days).reduce((acc, day) => acc + day.workedHours, 0),
-                    totalTheoreticalHours: Object.values(localWeekData.days).reduce((acc, day) => acc + day.theoreticalHours, 0),
-                };
-
-                try {
-                    const summary = await getAIWeeklySummary(weekDataForAI);
-                    // Only update if there's still no manual comment
-                    setLocalWeekData(prevData => {
-                        if (prevData && !prevData.generalComment) {
-                            return { ...prevData, generalComment: summary };
-                        }
-                        return prevData;
-                    });
-                } catch (error) {
-                    // Fail silently, don't interrupt the user
-                    console.error("Failed to generate AI comment:", error);
-                } finally {
-                    setIsGeneratingComment(false);
-                }
-            }, 1500); // 1.5 second debounce
-        }
-
-        // Cleanup function
-        return () => {
-            if (debounceTimeoutRef.current) {
-                clearTimeout(debounceTimeoutRef.current);
-            }
-        };
-
-    }, [localWeekData, weekDays, absenceTypes, es]);
-
 
     useEffect(() => {
         const updatePreview = async () => {
@@ -386,11 +318,11 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                             </div>
                          )}
                          <Textarea
-                            placeholder={isGeneratingComment ? "Generando resumen..." : "Añadir comentario..."}
+                            placeholder="Añadir comentario..."
                             className="h-8 text-xs mt-2 resize-none"
                             value={localWeekData.generalComment || ''}
                             onChange={(e) => handleWeekLevelDataChange('generalComment', e.target.value)}
-                            disabled={isConfirmed || isGeneratingComment}
+                            disabled={isConfirmed}
                         />
                     </div>
                     
