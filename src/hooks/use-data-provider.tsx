@@ -48,7 +48,6 @@ import { addDocument, setDocument } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
-import { calcularJornadaAnualTeorica, SegmentoJornada, Suspension } from '@/lib/jornadaCalc';
 import { calculateBalancePreview as calculateBalancePreviewIsolated } from '@/lib/calculators/balance-calculator';
 
 
@@ -657,117 +656,65 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
     const calculateTheoreticalAnnualWorkHours = (employeeId: string, year: number): { theoreticalHours: number, baseTheoreticalHours: number, suspensionDetails: any[], workHoursChangeDetails: any[] } => {
         const employee = getEmployeeById(employeeId);
         const annualConfig = annualConfigs.find(c => c.year === year);
-    
+
         if (!employee || !annualConfig) {
             return { theoreticalHours: 0, baseTheoreticalHours: 0, suspensionDetails: [], workHoursChangeDetails: [] };
         }
-    
-        const yearStartDate = startOfYear(new Date(year, 0, 1));
-        const yearEndDate = endOfYear(new Date(year, 11, 31));
-    
-        // 1. Build list of timeline points
-        const datePoints = new Set<string>([format(yearStartDate, 'yyyy-MM-dd'), format(addDays(yearEndDate, 1), 'yyyy-MM-dd')]);
-        
-        employee.employmentPeriods?.forEach(p => {
-            const periodStart = parseISO(p.startDate as string);
-            const periodEnd = p.endDate ? parseISO(p.endDate as string) : yearEndDate;
-    
-            if (isAfter(periodEnd, yearStartDate) && isBefore(periodStart, yearEndDate)) {
-                datePoints.add(format(max([periodStart, yearStartDate]), 'yyyy-MM-dd'));
-                datePoints.add(format(addDays(min([periodEnd, yearEndDate]), 1), 'yyyy-MM-dd'));
-    
-                p.workHoursHistory?.forEach(wh => {
-                    if (isWithinInterval(parseISO(wh.effectiveDate), { start: yearStartDate, end: yearEndDate })) {
-                        datePoints.add(wh.effectiveDate);
-                    }
-                });
-            }
-        });
-    
-        const sortedUniquePoints = Array.from(datePoints).map(d => parseISO(d)).sort((a, b) => a.getTime() - b.getTime());
-    
-        // 2. Create segments from timeline points
-        const segmentos: SegmentoJornada[] = [];
-        for (let i = 0; i < sortedUniquePoints.length - 1; i++) {
-            const segmentStart = sortedUniquePoints[i];
-            const segmentEnd = subDays(sortedUniquePoints[i+1], 1);
-    
-            if (isBefore(segmentStart, yearStartDate) || isAfter(segmentStart, yearEndDate) || isBefore(segmentEnd, segmentStart)) continue;
-    
-            const activePeriod = getActivePeriod(employeeId, segmentStart);
-            if (activePeriod) {
-                const weeklyHours = getEffectiveWeeklyHours(activePeriod, segmentStart);
-                segmentos.push({
-                    desde: format(segmentStart, 'yyyy-MM-dd'),
-                    hasta: format(segmentEnd, 'yyyy-MM-dd'),
-                    horasSemanales: weeklyHours,
-                });
-            }
-        }
-        
-        const uniqueSegmentos = segmentos.filter((seg, index, self) => 
-            index === self.findIndex((s) => s.desde === seg.desde && s.hasta === seg.hasta && s.horasSemanales === seg.horasSemanales)
-        );
-    
-        // 3. Collect suspension periods
+
         const suspensionTypeIds = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.id));
-        const suspensiones: Suspension[] = [];
+        const suspensionAbsenceAbbrs = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.abbreviation));
 
-        // Source 1: Scheduled Absences
-        employee.employmentPeriods?.forEach(p => {
-            p.scheduledAbsences?.forEach(sa => {
-                // IMPORTANT: Only consider absences with a defined end date
-                if (suspensionTypeIds.has(sa.absenceTypeId) && sa.endDate) {
-                    const susStart = max([startOfDay(sa.startDate), yearStartDate]);
-                    const susEnd = min([endOfDay(sa.endDate), yearEndDate]);
-                    
-                    if (isAfter(susEnd, susStart) || isSameDay(susEnd, susStart)) {
-                        suspensiones.push({
-                            desde: format(susStart, 'yyyy-MM-dd'),
-                            hasta: format(susEnd, 'yyyy-MM-dd'),
-                        });
-                    }
+        const yearStart = startOfYear(new Date(year, 0, 1));
+        const yearEnd = endOfYear(new Date(year, 11, 31));
+
+        let totalProratedHours = 0;
+        let totalSuspensionDays = 0;
+
+        const allSuspensionIntervals = [];
+
+        // 1. Collect all suspensions from scheduled absences
+        for (const period of (employee.employmentPeriods || [])) {
+            for (const absence of (period.scheduledAbsences || [])) {
+                if (suspensionTypeIds.has(absence.absenceTypeId) && absence.endDate) {
+                    allSuspensionIntervals.push({ start: startOfDay(absence.startDate), end: endOfDay(absence.endDate) });
                 }
-            });
-        });
-
-        // Source 2: Daily records from weekly data
+            }
+        }
+        
+        // 2. Collect all suspensions from weekly records
         for (const weekId in weeklyRecords) {
-            const weekDate = parseISO(weekId);
-            if (getYear(weekDate) !== year && getYear(endOfWeek(weekDate, { weekStartsOn: 1 })) !== year) continue;
-
-            const empWeekData = weeklyRecords[weekId].weekData[employeeId];
-            if (empWeekData?.confirmed && empWeekData.days) {
-                for (const dayKey in empWeekData.days) {
-                     if (getYear(parseISO(dayKey)) !== year) continue;
-
-                    const dayData = empWeekData.days[dayKey];
-                    const dayAbsenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
-                    if (dayAbsenceType && suspensionTypeIds.has(dayAbsenceType.id)) {
-                        // To avoid duplicates, we can add individual days and merge later, but for simplicity
-                        // we'll assume long-term suspensions are handled by scheduledAbsences.
-                        // This part ensures daily entries are also caught if needed.
-                        const existing = suspensiones.find(s => s.desde === dayKey && s.hasta === dayKey);
-                        if (!existing) {
-                             suspensiones.push({ desde: dayKey, hasta: dayKey });
-                        }
+            const record = weeklyRecords[weekId];
+            const empData = record?.weekData?.[employeeId];
+            if (empData && getYear(parseISO(weekId)) === year) {
+                for (const dayStr in empData.days) {
+                    if (suspensionAbsenceAbbrs.has(empData.days[dayStr].absence)) {
+                        const day = parseISO(dayStr);
+                        allSuspensionIntervals.push({ start: day, end: day });
                     }
                 }
             }
         }
 
-        // 4. Call the calculator
-        const resultadoCalculo = calcularJornadaAnualTeorica({
-            year,
-            segmentos: uniqueSegmentos,
-            suspensiones,
-            baseAnual: annualConfig.maxAnnualHours,
-            baseSemanal: annualConfig.referenceWeeklyHours,
-        });
-    
+        for (let day = new Date(yearStart); day <= yearEnd; day = addDays(day, 1)) {
+            const activePeriod = getActivePeriod(employee.id, day);
+            if (!activePeriod) continue;
+
+            const isSuspended = allSuspensionIntervals.some(interval => isWithinInterval(day, interval));
+            if (isSuspended) {
+                totalSuspensionDays++;
+                continue;
+            }
+
+            const dailyProratedHours = getEffectiveWeeklyHours(activePeriod, day) / 7;
+            totalProratedHours += dailyProratedHours;
+        }
+
+        const daysInYear = differenceInDays(yearEnd, yearStart) + 1;
+        const theoreticalHours = totalProratedHours;
+
         return {
-            theoreticalHours: resultadoCalculo.totalHoras,
-            baseTheoreticalHours: 0,
+            theoreticalHours: roundToNearestQuarter(theoreticalHours),
+            baseTheoreticalHours: annualConfig.maxAnnualHours,
             suspensionDetails: [],
             workHoursChangeDetails: []
         };
