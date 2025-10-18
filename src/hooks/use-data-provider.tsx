@@ -228,6 +228,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             return { vacationDaysTaken: 0, suspensionDays: 0, contractDays: 0, isTransfer: false };
         }
         
+        // @ts-ignore - isTransfer is a new field that might not exist on old data
         isTransfer = !!activePeriodsThisYear[0].isTransfer;
 
         activePeriodsThisYear.forEach(p => {
@@ -290,7 +291,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const prevYearData = getYearData(previousYear);
     let carryOverDays = 0;
     if (prevYearData.contractDays > 0) {
-        const prevYearProratedVacations = prevYearData.isTransfer ? 31 : (31 / 365) * prevYearData.contractDays;
+        const monthsWorked = prevYearData.isTransfer ? 12 : prevYearData.contractDays / 30.44;
+        const prevYearProratedVacations = monthsWorked * 2.5;
         const prevYearDeduction = (prevYearData.suspensionDays / 30) * 2.5;
         const prevYearAvailable = prevYearProratedVacations - prevYearDeduction;
         carryOverDays = prevYearAvailable - prevYearData.vacationDaysTaken;
@@ -300,7 +302,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     
     let currentYearAvailable;
     if (currentYearData.contractDays > 0) {
-        const currentYearProratedVacations = currentYearData.isTransfer ? 31 : (31 / 365) * currentYearData.contractDays;
+        const monthsWorked = currentYearData.isTransfer ? 12 : currentYearData.contractDays / 30.44;
+        const currentYearProratedVacations = monthsWorked * 2.5;
         const currentYearDeduction = (currentYearData.suspensionDays / 30) * 2.5;
         currentYearAvailable = currentYearProratedVacations - currentYearDeduction;
     } else {
