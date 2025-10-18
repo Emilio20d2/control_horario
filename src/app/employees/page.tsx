@@ -141,9 +141,10 @@ export default function EmployeesPage() {
                                 <Plane className="h-4 w-4 text-muted-foreground" />
                                 <span className={cn(
                                     "font-medium",
-                                    vacationDaysTaken > vacationDaysAvailable ? "text-destructive" : ""
+                                    vacationDaysTaken > vacationDaysAvailable ? "text-destructive" : "",
+                                    vacationDaysTaken === vacationDaysAvailable && "text-green-600"
                                 )}>
-                                    {vacationDaysTaken} / {vacationDaysAvailable.toFixed(1)} días
+                                    {vacationDaysTaken} / {vacationDaysAvailable} días
                                 </span>
                             </div>
                         </TableCell>
