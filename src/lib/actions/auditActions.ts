@@ -111,10 +111,10 @@ export async function runRetroactiveAudit() {
                 if (Math.abs(leaveDiff) > 0.01) diffs.push(`Libranza (Dif: ${(leaveDiff).toFixed(2)}h)`);
                 
                 const currentComment = String(record.generalComment || '');
-                const cleanedComment = currentComment.split('\n').filter(line => !line.trim().startsWith('DIFERENCIA CON EXCEL:')).join('\n').trim();
+                const cleanedComment = currentComment.split('\n').filter(line => !line.trim().startsWith('DIFERENCIA CON EXCEL:') && !line.trim().startsWith('AUDITORÍA:')).join('\n').trim();
                 
                 if (diffs.length > 0) {
-                    const diffMessage = `DIFERENCIA CON EXCEL: ${diffs.join(', ')}.`;
+                    const diffMessage = `AUDITORÍA: ${diffs.join(', ')}.`;
                     const newComment = cleanedComment ? `${cleanedComment}\n${diffMessage}` : diffMessage;
                     if (newComment !== currentComment || !record.isDifference) {
                         updates.push({ weekId, employeeId, newComment, isDifference: true });
