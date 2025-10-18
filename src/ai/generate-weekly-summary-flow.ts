@@ -4,7 +4,7 @@
  * @fileOverview A Genkit flow to automatically generate a concise weekly summary comment.
  */
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'genkit/zod';
 
 // Define the schema for the input data for a single day
 const DayDataSchema = z.object({
