@@ -288,14 +288,17 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         };
     };
 
-    const prevYearData = getYearData(previousYear);
     let carryOverDays = 0;
-    if (prevYearData.contractDays > 0) {
-        const monthsWorked = prevYearData.isTransfer ? 12 : prevYearData.contractDays / 30.44;
-        const prevYearProratedVacations = monthsWorked * 2.5;
-        const prevYearDeduction = (prevYearData.suspensionDays / 30) * 2.5;
-        const prevYearAvailable = prevYearProratedVacations - prevYearDeduction;
-        carryOverDays = prevYearAvailable - prevYearData.vacationDaysTaken;
+    // Only calculate carry-over for years after 2025
+    if (currentYear > 2025) {
+        const prevYearData = getYearData(previousYear);
+        if (prevYearData.contractDays > 0) {
+            const monthsWorked = prevYearData.isTransfer ? 12 : prevYearData.contractDays / 30.44;
+            const prevYearProratedVacations = monthsWorked * 2.5;
+            const prevYearDeduction = (prevYearData.suspensionDays / 30) * 2.5;
+            const prevYearAvailable = prevYearProratedVacations - prevYearDeduction;
+            carryOverDays = prevYearAvailable - prevYearData.vacationDaysTaken;
+        }
     }
     
     const currentYearData = getYearData(currentYear);
