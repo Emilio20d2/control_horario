@@ -40,6 +40,7 @@ export interface EmploymentPeriod {
     startDate: string | Date; // YYYY-MM-DD from form, Date in state
     endDate: string | Date | null; // YYYY-MM-DD from form, Date in state
     isTransfer?: boolean;
+    vacationDaysUsedInAnotherCenter?: number;
     annualComputedHours: number;
     initialOrdinaryHours: number;
     initialHolidayHours: number;
@@ -178,6 +179,7 @@ export interface EmployeeFormData {
     startDate: string;
     endDate?: string | null;
     isTransfer?: boolean;
+    vacationDaysUsedInAnotherCenter?: number;
     contractType: string;
     newContractType?: string;
     newContractTypeDate?: string;

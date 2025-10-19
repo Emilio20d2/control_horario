@@ -73,6 +73,7 @@ const formSchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'La fecha debe estar en formato AAAA-MM-DD.' }),
   endDate: z.string().nullable().optional(),
   isTransfer: z.boolean().default(false),
+  vacationDaysUsedInAnotherCenter: z.coerce.number().optional(),
   contractType: z.string().min(1, { message: 'Debe seleccionar un tipo de contrato.' }),
   
   newContractType: z.string().optional(),
@@ -147,6 +148,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             startDate: period.startDate as string,
             endDate: period.endDate as string | null,
             isTransfer: period.isTransfer || false,
+            vacationDaysUsedInAnotherCenter: period.vacationDaysUsedInAnotherCenter,
             contractType: period.contractType,
             initialWeeklyWorkHours: period.workHoursHistory?.[0]?.weeklyHours || 0,
             annualComputedHours: period.annualComputedHours,
@@ -168,6 +170,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         startDate: new Date().toISOString().split('T')[0],
         endDate: null,
         isTransfer: false,
+        vacationDaysUsedInAnotherCenter: undefined,
         contractType: '',
         initialWeeklyWorkHours: 40,
         annualComputedHours: 0,
@@ -199,6 +202,8 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     defaultValues,
   });
 
+  const isTransfer = form.watch('isTransfer');
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
         const dataToSave: EmployeeFormData = {
@@ -207,6 +212,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             initialHolidayHours: values.initialHolidayHours ?? 0,
             initialLeaveHours: values.initialLeaveHours ?? 0,
             vacationDays2024: values.vacationDays2024 ?? 0,
+            vacationDaysUsedInAnotherCenter: values.vacationDaysUsedInAnotherCenter ?? 0,
         };
 
         if (employee) {
@@ -430,12 +436,12 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         )}
                     />
                  </div>
-                 <div className="pt-4">
+                 <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                      <FormField
                         control={form.control}
                         name="isTransfer"
                         render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm max-w-sm">
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                             <div className="space-y-0.5">
                                 <FormLabel>Viene de otro centro (traslado)</FormLabel>
                                 <FormDescription>
@@ -452,6 +458,22 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             </FormItem>
                         )}
                         />
+                    {isTransfer && (
+                         <FormField
+                            control={form.control}
+                            name="vacationDaysUsedInAnotherCenter"
+                            render={({ field }) => (
+                                <FormItem className="rounded-lg border p-3 shadow-sm">
+                                    <FormLabel>Vacaciones Disfrutadas (Otro Centro)</FormLabel>
+                                    <FormControl>
+                                        <InputStepper {...field} value={field.value} step={1} disabled={!isFirstPeriod && !!employee} />
+                                    </FormControl>
+                                    <FormDescription>Días ya consumidos en el centro de origen.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
                  </div>
                 {!!employee && <FormDescription className="pt-2">Los saldos iniciales y el estado de traslado solo se pueden establecer al crear el primer contrato.</FormDescription>}
             </div>

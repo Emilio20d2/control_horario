@@ -215,6 +215,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         let contractDaysInYear = 0;
         let isTransfer = false;
         let vacationDays2024 = 0;
+        let vacationDaysUsedInAnotherCenter = 0;
 
         const yearStart = startOfYear(new Date(year, 0, 1));
         const yearEnd = endOfYear(new Date(year, 11, 31));
@@ -226,13 +227,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         });
 
         if (activePeriodsThisYear.length === 0) {
-            return { vacationDaysTaken: 0, suspensionDays: 0, contractDays: 0, isTransfer: false, vacationDays2024: 0 };
+            return { vacationDaysTaken: 0, suspensionDays: 0, contractDays: 0, isTransfer: false, vacationDays2024: 0, vacationDaysUsedInAnotherCenter: 0 };
         }
         
         const firstPeriod = activePeriodsThisYear[0];
         isTransfer = firstPeriod.isTransfer || false;
         if (year === 2025) {
             vacationDays2024 = firstPeriod.vacationDays2024 || 0;
+            vacationDaysUsedInAnotherCenter = firstPeriod.vacationDaysUsedInAnotherCenter || 0;
         }
 
         activePeriodsThisYear.forEach(p => {
@@ -289,11 +291,12 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         });
 
         return { 
-            vacationDaysTaken: vacationDaysCount, 
+            vacationDaysTaken: vacationDaysCount + vacationDaysUsedInAnotherCenter,
             suspensionDays: suspensionDaysCount,
             contractDays: contractDaysInYear,
             isTransfer,
             vacationDays2024,
+            vacationDaysUsedInAnotherCenter,
         };
     };
 
