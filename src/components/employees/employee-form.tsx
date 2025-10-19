@@ -49,6 +49,7 @@ import { parseISO } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 import { Label } from '../ui/label';
+import { Switch } from '../ui/switch';
 
 
 const dayScheduleSchema = z.object({
@@ -71,6 +72,7 @@ const formSchema = z.object({
   
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'La fecha debe estar en formato AAAA-MM-DD.' }),
   endDate: z.string().nullable().optional(),
+  isTransfer: z.boolean().default(false),
   contractType: z.string().min(1, { message: 'Debe seleccionar un tipo de contrato.' }),
   
   newContractType: z.string().optional(),
@@ -86,6 +88,7 @@ const formSchema = z.object({
   initialOrdinaryHours: z.coerce.number().optional(),
   initialHolidayHours: z.coerce.number().optional(),
   initialLeaveHours: z.coerce.number().optional(),
+  vacationDays2024: z.coerce.number().optional(),
 
   weeklySchedules: z.array(weeklyScheduleSchema).min(1, 'Debe haber al menos un calendario.'),
   
@@ -143,12 +146,14 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             groupId: employee.groupId,
             startDate: period.startDate as string,
             endDate: period.endDate as string | null,
+            isTransfer: period.isTransfer || false,
             contractType: period.contractType,
             initialWeeklyWorkHours: period.workHoursHistory?.[0]?.weeklyHours || 0,
             annualComputedHours: period.annualComputedHours,
             initialOrdinaryHours: period.initialOrdinaryHours,
             initialHolidayHours: period.initialHolidayHours,
             initialLeaveHours: period.initialLeaveHours,
+            vacationDays2024: period.vacationDays2024,
             weeklySchedules: period.weeklySchedulesHistory ? [...period.weeklySchedulesHistory].sort((a, b) => parseISO(b.effectiveDate).getTime() - parseISO(a.effectiveDate).getTime()) : [],
             newWeeklyWorkHours: undefined,
             newWeeklyWorkHoursDate: undefined,
@@ -162,12 +167,14 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         groupId: '',
         startDate: new Date().toISOString().split('T')[0],
         endDate: null,
+        isTransfer: false,
         contractType: '',
         initialWeeklyWorkHours: 40,
         annualComputedHours: 0,
         initialOrdinaryHours: undefined,
         initialHolidayHours: undefined,
         initialLeaveHours: undefined,
+        vacationDays2024: undefined,
         weeklySchedules: [{
             effectiveDate: new Date().toISOString().split('T')[0],
             shifts: {
@@ -199,6 +206,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             initialOrdinaryHours: values.initialOrdinaryHours ?? 0,
             initialHolidayHours: values.initialHolidayHours ?? 0,
             initialLeaveHours: values.initialLeaveHours ?? 0,
+            vacationDays2024: values.vacationDays2024 ?? 0,
         };
 
         if (employee) {
@@ -263,6 +271,8 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         setPassword('');
     }
   }
+  
+  const isFirstPeriod = !employee || employee.employmentPeriods.length <= 1;
 
   return (
     <Card>
@@ -371,7 +381,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         name="initialOrdinaryHours"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Horas Ordinarias Iniciales</FormLabel>
+                                <FormLabel>Bolsa Ordinaria Inicial</FormLabel>
                                 <FormControl>
                                     <InputStepper {...field} value={field.value} step={0.25} disabled={!!employee} />
                                 </FormControl>
@@ -384,7 +394,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         name="initialHolidayHours"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Horas Festivos Iniciales</FormLabel>
+                                <FormLabel>Bolsa Festivos Inicial</FormLabel>
                                 <FormControl>
                                     <InputStepper {...field} value={field.value} step={0.25} disabled={!!employee} />
                                 </FormControl>
@@ -397,7 +407,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         name="initialLeaveHours"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Horas Libranza Iniciales</FormLabel>
+                                <FormLabel>Bolsa Libranza Inicial</FormLabel>
                                 <FormControl>
                                     <InputStepper {...field} value={field.value} step={0.25} disabled={!!employee} />
                                 </FormControl>
@@ -405,8 +415,45 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             </FormItem>
                         )}
                     />
-                </div>
-                {!!employee && <FormDescription className="pt-2">Los saldos iniciales solo se pueden establecer al crear el primer contrato.</FormDescription>}
+                    <FormField
+                        control={form.control}
+                        name="vacationDays2024"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Vacaciones Pendientes 2024</FormLabel>
+                                <FormControl>
+                                    <InputStepper {...field} value={field.value} step={1} disabled={!isFirstPeriod && !!employee} />
+                                </FormControl>
+                                <FormDescription>Días de 2024 que se suman a 2025.</FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                 </div>
+                 <div className="pt-4">
+                     <FormField
+                        control={form.control}
+                        name="isTransfer"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm max-w-sm">
+                            <div className="space-y-0.5">
+                                <FormLabel>Viene de otro centro (traslado)</FormLabel>
+                                <FormDescription>
+                                    Si se marca, no se prorratean las vacaciones por fecha de inicio.
+                                </FormDescription>
+                            </div>
+                            <FormControl>
+                                <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                disabled={!isFirstPeriod && !!employee}
+                                />
+                            </FormControl>
+                            </FormItem>
+                        )}
+                        />
+                 </div>
+                {!!employee && <FormDescription className="pt-2">Los saldos iniciales y el estado de traslado solo se pueden establecer al crear el primer contrato.</FormDescription>}
             </div>
 
             <Accordion type="single" collapsible className="w-full">

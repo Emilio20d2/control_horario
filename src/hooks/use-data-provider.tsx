@@ -27,7 +27,7 @@ import {
     updateAbsenceType as updateAbsenceTypeService, 
     deleteAbsenceType as deleteAbsenceTypeService,
     createHoliday as createHolidayService,
-    updateHoliday as updateHolidayService,
+    updateHoliday as updateHolidayService, 
     deleteHoliday as deleteHolidayService,
     createAnnualConfig as createAnnualConfigService,
     updateAnnualConfig as updateAnnualConfigService,
@@ -214,6 +214,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         let suspensionDaysCount = 0;
         let contractDaysInYear = 0;
         let isTransfer = false;
+        let vacationDays2024 = 0;
 
         const yearStart = startOfYear(new Date(year, 0, 1));
         const yearEnd = endOfYear(new Date(year, 11, 31));
@@ -225,11 +226,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         });
 
         if (activePeriodsThisYear.length === 0) {
-            return { vacationDaysTaken: 0, suspensionDays: 0, contractDays: 0, isTransfer: false };
+            return { vacationDaysTaken: 0, suspensionDays: 0, contractDays: 0, isTransfer: false, vacationDays2024: 0 };
         }
         
-        // @ts-ignore - isTransfer is a new field that might not exist on old data
-        isTransfer = !!activePeriodsThisYear[0].isTransfer;
+        const firstPeriod = activePeriodsThisYear[0];
+        isTransfer = firstPeriod.isTransfer || false;
+        if (year === 2025) {
+            vacationDays2024 = firstPeriod.vacationDays2024 || 0;
+        }
 
         activePeriodsThisYear.forEach(p => {
             const pStart = parseISO(p.startDate as string);
@@ -284,12 +288,12 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             vacationDaysTaken: vacationDaysCount, 
             suspensionDays: suspensionDaysCount,
             contractDays: contractDaysInYear,
-            isTransfer
+            isTransfer,
+            vacationDays2024,
         };
     };
 
     let carryOverDays = 0;
-    // Only calculate carry-over for years after 2025
     if (currentYear > 2025) {
         const prevYearData = getYearData(previousYear);
         if (prevYearData.contractDays > 0) {
@@ -303,17 +307,18 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     
     const currentYearData = getYearData(currentYear);
     
-    let currentYearAvailable;
+    let currentYearProratedVacations;
     if (currentYearData.contractDays > 0) {
         const daysInCurrentYear = differenceInDays(endOfYear(new Date(currentYear, 0, 1)), startOfYear(new Date(currentYear, 0, 1))) + 1;
-        const currentYearProratedVacations = currentYearData.isTransfer ? 31 : (31 / daysInCurrentYear) * currentYearData.contractDays;
-        const currentYearDeduction = (currentYearData.suspensionDays / 30) * 2.5;
-        currentYearAvailable = currentYearProratedVacations - currentYearDeduction;
+        currentYearProratedVacations = currentYearData.isTransfer ? 31 : (31 / daysInCurrentYear) * currentYearData.contractDays;
     } else {
-        currentYearAvailable = 0;
+        currentYearProratedVacations = 0;
     }
     
-    const totalAvailable = currentYearAvailable + carryOverDays;
+    const currentYearDeduction = (currentYearData.suspensionDays / 30) * 2.5;
+    const currentYearAvailable = currentYearProratedVacations - currentYearDeduction;
+
+    const totalAvailable = currentYearAvailable + carryOverDays + (currentYearData.vacationDays2024 || 0);
 
     return {
         vacationDaysTaken: currentYearData.vacationDaysTaken,

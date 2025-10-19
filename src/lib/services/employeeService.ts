@@ -7,7 +7,7 @@ import type { Employee, EmployeeFormData, WorkHoursRecord, ScheduledAbsence, Emp
 import { isAfter, parseISO, startOfDay, addDays, subDays, format } from 'date-fns';
 
 export const createEmployee = async (formData: EmployeeFormData): Promise<string> => {
-    const { name, groupId, startDate, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours } = formData;
+    const { name, groupId, startDate, isTransfer, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours, vacationDays2024 } = formData;
     
     const newEmployee = {
         name,
@@ -18,10 +18,12 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
                 contractType,
                 startDate,
                 endDate: null,
+                isTransfer: isTransfer || false,
                 annualComputedHours,
                 initialOrdinaryHours: initialOrdinaryHours ?? 0,
                 initialHolidayHours: initialHolidayHours ?? 0,
                 initialLeaveHours: initialLeaveHours ?? 0,
+                vacationDays2024: vacationDays2024 ?? 0,
                 workHoursHistory: [
                     {
                         effectiveDate: startDate,
@@ -39,7 +41,7 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
 };
 
 export const updateEmployee = async (id: string, currentEmployee: Employee, formData: EmployeeFormData, finalBalances: { ordinary: number; holiday: number; leave: number; total: number; }): Promise<void> => {
-    const { name, groupId, newWeeklyWorkHours, newWeeklyWorkHoursDate, endDate, newContractType, newContractTypeDate, newWeeklySchedule, weeklySchedules } = formData;
+    const { name, groupId, newWeeklyWorkHours, newWeeklyWorkHoursDate, endDate, newContractType, newContractTypeDate, newWeeklySchedule, weeklySchedules, isTransfer, vacationDays2024 } = formData;
 
     const updatedPeriods = [...(currentEmployee.employmentPeriods || [])];
     const periodToUpdate = updatedPeriods.sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
@@ -49,6 +51,10 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
     }
     
     periodToUpdate.endDate = endDate || null;
+    if (updatedPeriods.length === 1) { // Only update these for the very first period
+        periodToUpdate.isTransfer = isTransfer;
+        periodToUpdate.vacationDays2024 = vacationDays2024 ?? periodToUpdate.vacationDays2024 ?? 0;
+    }
 
     // Handle contract type change
     if (newContractType && newContractTypeDate) {
@@ -64,6 +70,7 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
             initialOrdinaryHours: finalBalances.ordinary,
             initialHolidayHours: finalBalances.holiday,
             initialLeaveHours: finalBalances.leave,
+            vacationDays2024: 0, // Reset for new periods
             workHoursHistory: periodToUpdate.workHoursHistory ? [periodToUpdate.workHoursHistory[periodToUpdate.workHoursHistory.length - 1]] : [],
             weeklySchedulesHistory: periodToUpdate.weeklySchedulesHistory,
             scheduledAbsences: [],

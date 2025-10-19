@@ -39,10 +39,12 @@ export interface EmploymentPeriod {
     contractType: string;
     startDate: string | Date; // YYYY-MM-DD from form, Date in state
     endDate: string | Date | null; // YYYY-MM-DD from form, Date in state
+    isTransfer?: boolean;
     annualComputedHours: number;
     initialOrdinaryHours: number;
     initialHolidayHours: number;
     initialLeaveHours: number;
+    vacationDays2024?: number;
     workHoursHistory?: WorkHoursRecord[];
     /**
      * Historical log of an employee's work calendars. This array allows for multiple
@@ -175,6 +177,7 @@ export interface EmployeeFormData {
     groupId?: string;
     startDate: string;
     endDate?: string | null;
+    isTransfer?: boolean;
     contractType: string;
     newContractType?: string;
     newContractTypeDate?: string;
@@ -185,6 +188,7 @@ export interface EmployeeFormData {
     initialOrdinaryHours?: number;
     initialHolidayHours?: number;
     initialLeaveHours?: number;
+    vacationDays2024?: number;
     weeklySchedules: WeeklyScheduleData[];
     newWeeklySchedule?: WeeklyScheduleData;
 };
