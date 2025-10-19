@@ -293,8 +293,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     if (currentYear > 2025) {
         const prevYearData = getYearData(previousYear);
         if (prevYearData.contractDays > 0) {
-            const monthsWorked = prevYearData.isTransfer ? 12 : prevYearData.contractDays / 30.44;
-            const prevYearProratedVacations = monthsWorked * 2.5;
+            const daysInPrevYear = differenceInDays(endOfYear(new Date(previousYear, 0, 1)), startOfYear(new Date(previousYear, 0, 1))) + 1;
+            const prevYearProratedVacations = prevYearData.isTransfer ? 31 : (31 / daysInPrevYear) * prevYearData.contractDays;
             const prevYearDeduction = (prevYearData.suspensionDays / 30) * 2.5;
             const prevYearAvailable = prevYearProratedVacations - prevYearDeduction;
             carryOverDays = prevYearAvailable - prevYearData.vacationDaysTaken;
@@ -305,8 +305,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     
     let currentYearAvailable;
     if (currentYearData.contractDays > 0) {
-        const monthsWorked = currentYearData.isTransfer ? 12 : currentYearData.contractDays / 30.44;
-        const currentYearProratedVacations = monthsWorked * 2.5;
+        const daysInCurrentYear = differenceInDays(endOfYear(new Date(currentYear, 0, 1)), startOfYear(new Date(currentYear, 0, 1))) + 1;
+        const currentYearProratedVacations = currentYearData.isTransfer ? 31 : (31 / daysInCurrentYear) * currentYearData.contractDays;
         const currentYearDeduction = (currentYearData.suspensionDays / 30) * 2.5;
         currentYearAvailable = currentYearProratedVacations - currentYearDeduction;
     } else {
