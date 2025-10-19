@@ -323,7 +323,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     return {
         vacationDaysTaken: currentYearData.vacationDaysTaken,
         suspensionDays: currentYearData.suspensionDays,
-        vacationDaysAvailable: Math.ceil(Math.max(0, totalAvailable))
+        vacationDaysAvailable: Math.ceil(totalAvailable)
     };
 }, [absenceTypes, weeklyRecords, employees]);
 
