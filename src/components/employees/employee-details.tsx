@@ -120,12 +120,36 @@ export function EmployeeDetails({ period, employeeId, allPeriods }: EmployeeDeta
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Datos del Periodo Laboral Actual</CardTitle>
+                <CardTitle>Datos del Contrato y Personales</CardTitle>
                 <CardDescription>
-                    Información detallada del contrato y calendario vigentes.
+                    Información detallada del contrato, calendario vigente y datos personales.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
+                <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Datos Personales</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Nº Empleado</p>
+                            <p>{employee?.employeeNumber || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">DNI</p>
+                            <p>{employee?.dni || 'N/A'}</p>
+                        </div>
+                         <div>
+                            <p className="text-sm font-medium text-muted-foreground">Teléfono</p>
+                            <p>{employee?.phone || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Email</p>
+                            <p>{employee?.email || 'N/A'}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <Separator />
+
                 <div className="space-y-4">
                     <h3 className="text-lg font-medium">Datos del Contrato</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

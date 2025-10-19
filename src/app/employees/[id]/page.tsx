@@ -115,6 +115,7 @@ export default function EmployeeDetailPage() {
                         ) : (
                             <Badge variant="destructive">Inactivo</Badge>
                         )}
+                        {employee.dni && <Badge variant="secondary">{employee.dni}</Badge>}
                         {employeeGroup ? (
                             <Badge variant="secondary" className="hidden items-center gap-1">
                                 <Users className="h-3 w-3" />

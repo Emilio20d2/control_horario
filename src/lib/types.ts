@@ -1,5 +1,4 @@
 
-
 import type { Timestamp } from 'firebase/firestore';
 
 export interface WorkHoursRecord {
@@ -60,6 +59,10 @@ export interface EmploymentPeriod {
 export interface Employee {
     id: string;
     name: string;
+    employeeNumber?: string;
+    dni?: string;
+    phone?: string;
+    email?: string;
     authId?: string;
     groupId?: string;
     employmentPeriods: EmploymentPeriod[];
@@ -175,6 +178,10 @@ export interface DailyData {
 
 export interface EmployeeFormData {
     name: string;
+    employeeNumber?: string;
+    dni?: string;
+    phone?: string;
+    email?: string;
     groupId?: string;
     startDate: string;
     endDate?: string | null;

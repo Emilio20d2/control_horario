@@ -69,6 +69,10 @@ const weeklyScheduleSchema = z.object({
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'El nombre debe tener al menos 2 caracteres.' }),
+  employeeNumber: z.string().optional(),
+  dni: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email({ message: "Correo electrónico no válido." }).optional().or(z.literal('')),
   
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'La fecha debe estar en formato AAAA-MM-DD.' }),
   endDate: z.string().nullable().optional(),
@@ -144,6 +148,10 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         
         return {
             name: employee.name,
+            employeeNumber: employee.employeeNumber,
+            dni: employee.dni,
+            phone: employee.phone,
+            email: employee.email,
             groupId: employee.groupId,
             startDate: period.startDate as string,
             endDate: period.endDate as string | null,
@@ -166,6 +174,10 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     }
     return {
         name: '',
+        employeeNumber: '',
+        dni: '',
+        phone: '',
+        email: '',
         groupId: '',
         startDate: new Date().toISOString().split('T')[0],
         endDate: null,
@@ -294,7 +306,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             
             <div className="space-y-4">
                 <h3 className="text-lg font-medium">Datos del Empleado</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <FormField
                         control={form.control}
                         name="name"
@@ -303,6 +315,58 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             <FormLabel>Nombre Completo</FormLabel>
                             <FormControl>
                             <Input placeholder="Juan Pérez" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="employeeNumber"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Nº Empleado</FormLabel>
+                            <FormControl>
+                            <Input placeholder="12345" {...field} value={field.value ?? ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="dni"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>DNI</FormLabel>
+                            <FormControl>
+                            <Input placeholder="12345678A" {...field} value={field.value ?? ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="phone"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Teléfono</FormLabel>
+                            <FormControl>
+                            <Input placeholder="600123456" {...field} value={field.value ?? ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Correo Electrónico</FormLabel>
+                            <FormControl>
+                            <Input placeholder="juan.perez@email.com" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
