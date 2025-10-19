@@ -238,9 +238,13 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         activePeriodsThisYear.forEach(p => {
             const pStart = parseISO(p.startDate as string);
             const pEnd = p.endDate ? parseISO(p.endDate as string) : yearEnd;
-            const intervalStart = isBefore(pStart, yearStart) ? yearStart : pStart;
-            const intervalEnd = isAfter(pEnd, yearEnd) ? yearEnd : pEnd;
-            contractDaysInYear += differenceInDays(intervalEnd, intervalStart) + 1;
+            
+            const effectiveStart = isAfter(pStart, yearStart) ? pStart : yearStart;
+            const effectiveEnd = isBefore(pEnd, yearEnd) ? pEnd : yearEnd;
+
+            if(isAfter(effectiveStart, effectiveEnd)) return;
+
+            contractDaysInYear += differenceInDays(effectiveEnd, effectiveStart) + 1;
         });
 
         const yearDayMap = new Map<string, 'V' | 'S'>();
