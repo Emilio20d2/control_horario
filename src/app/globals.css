@@ -28,8 +28,8 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 212 8% 51%; /* Gris acero suave */
-    --input: 212 8% 51%;
+    --border: 210 20% 88%; /* Gris claro */
+    --input: 210 20% 88%;
     --ring: 212 43% 52%;
  
     --radius: 0.5rem;
