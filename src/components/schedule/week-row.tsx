@@ -293,7 +293,10 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             <TableCell className="font-medium sticky left-0 z-10 p-2 text-xs w-[170px] sm:w-[200px] min-w-[170px] sm:min-w-[200px] bg-card">
                 <div className="flex flex-col gap-2 h-full">
                     <div className="flex justify-between items-baseline">
-                        <p className="font-bold text-sm">{employee.name}</p>
+                        <p className="font-bold text-sm flex items-center gap-1.5">
+                            {isConfirmed && <CheckCircle className="h-4 w-4 text-green-600" />}
+                            {employee.name}
+                        </p>
                         <Badge variant="outline">{weekTurn ? `T.${weekTurn.replace('turn', '')}` : 'N/A'}</Badge>
                     </div>
                     <p className="text-muted-foreground">{contractType?.name ?? 'N/A'}</p>
