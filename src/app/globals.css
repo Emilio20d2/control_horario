@@ -14,7 +14,7 @@
     --popover-foreground: 206 11% 28%;
  
     --primary: 212 43% 52% / 0.5; /* Azul solicitado con 50% de transparencia */
-    --primary-foreground: 212 43% 52%;
+    --primary-foreground: 0 0% 100%;
  
     --secondary: 210 27% 93.5%;
     --secondary-foreground: 206 11% 28%;
