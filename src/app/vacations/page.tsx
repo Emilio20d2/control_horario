@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AnnualVacationQuadrant } from '@/components/vacations/annual-vacation-quadrant';
