@@ -11,6 +11,7 @@ export const ai = genkit({
       apiVersion: 'v1beta',
     }),
   ],
-  logLevel: 'debug',
+  // The `logLevel` option is deprecated in Genkit v1.x.
+  // Logging can be configured in your environment.
   enableTracingAndMetrics: true,
 });
