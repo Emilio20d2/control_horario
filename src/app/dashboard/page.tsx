@@ -22,10 +22,6 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Loader2 } from 'lucide-react';
 import { HolidayReportGenerator } from '@/components/dashboard/holiday-report-generator';
-import { useDropzone } from 'react-dropzone';
-import { Textarea } from '@/components/ui/textarea';
-import { extractTextFromImage } from '@/ai/ocr-flow';
-import { useToast } from '@/hooks/use-toast';
 
 const chartConfig = {
     balance: {
@@ -33,83 +29,6 @@ const chartConfig = {
       color: "hsl(var(--primary))",
     },
 } satisfies ChartConfig;
-
-const OCRCard = () => {
-    const [extractedText, setExtractedText] = useState('');
-    const [isProcessing, setIsProcessing] = useState(false);
-    const { toast } = useToast();
-
-    const onDrop = useCallback(async (acceptedFiles: File[]) => {
-        const file = acceptedFiles[0];
-        if (!file) return;
-
-        setIsProcessing(true);
-        setExtractedText('');
-
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            if (event.target?.result) {
-                const dataUri = event.target.result as string;
-                try {
-                    const result = await extractTextFromImage({ photoDataUri: dataUri });
-                    setExtractedText(result.text);
-                } catch (error) {
-                    console.error("Error extracting text:", error);
-                    toast({
-                        title: "Error de OCR",
-                        description: "No se pudo extraer el texto de la imagen.",
-                        variant: "destructive",
-                    });
-                } finally {
-                    setIsProcessing(false);
-                }
-            }
-        };
-        reader.readAsDataURL(file);
-    }, [toast]);
-
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
-        onDrop,
-        accept: { 'image/*': [] },
-        multiple: false,
-    });
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <ScanText className="h-5 w-5" />
-                    <span>Extractor de Texto (OCR)</span>
-                </CardTitle>
-                <CardDescription>Sube una imagen para extraer el texto contenido en ella.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div
-                    {...getRootProps()}
-                    className={`p-6 border-2 border-dashed rounded-md text-center cursor-pointer transition-colors ${
-                        isDragActive ? 'border-primary bg-primary/10' : 'border-border'
-                    }`}
-                >
-                    <input {...getInputProps()} />
-                    {isProcessing ? (
-                        <div className="flex flex-col items-center gap-2">
-                            <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
-                            <p>Procesando imagen...</p>
-                        </div>
-                    ) : (
-                        <p>Arrastra una imagen aquí o haz clic para seleccionarla</p>
-                    )}
-                </div>
-                {extractedText && (
-                    <div className="space-y-2">
-                        <h4 className="font-semibold">Texto Extraído:</h4>
-                        <Textarea value={extractedText} readOnly rows={8} />
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
-};
 
 
 export default function DashboardPage() {
@@ -1000,10 +919,6 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
-    
-           <div className="px-4 md:px-6">
-                <OCRCard />
-           </div>
 
            <div className="px-4 md:px-6 pb-4">
             <Card>
@@ -1038,3 +953,5 @@ export default function DashboardPage() {
         </div>
       );
 }
+
+    
