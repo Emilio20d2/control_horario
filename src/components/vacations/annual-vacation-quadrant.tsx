@@ -892,8 +892,8 @@ export function AnnualVacationQuadrant() {
     
         const body = reportData.map(data => [
             data.employeeName,
-            data.winterDaysTaken >= 10 ? '✔' : '',
-            data.summerDaysTaken >= 21 ? '✔' : '',
+            data.winterDaysTaken >= 10, // Pass boolean
+            data.summerDaysTaken >= 21, // Pass boolean
             `${data.totalTaken} / ${data.totalAvailable}`
         ]);
     
@@ -909,22 +909,36 @@ export function AnnualVacationQuadrant() {
                 3: { halign: 'center' },
             },
             didDrawCell: (data) => {
+                // Draw checkmark
                 if (data.section === 'body' && (data.column.index === 1 || data.column.index === 2)) {
-                    if (data.cell.text[0] === '✔') {
-                        data.cell.styles.textColor = [0, 128, 0]; // Verde
-                        data.cell.styles.fontStyle = 'bold';
+                    if (data.cell.raw === true) {
+                        data.cell.text = []; // Clear the raw boolean value
+                        doc.setFontSize(12);
+                        doc.setTextColor(34, 139, 34); // ForestGreen
+                        doc.text('✔', data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
+                            align: 'center',
+                            baseline: 'middle'
+                        });
+                        doc.setTextColor(0, 0, 0); // Reset color
+                    } else {
+                        data.cell.text = []; // Clear false value
                     }
                 }
+                 // Color balance column
                  if (data.section === 'body' && data.column.index === 3) {
-                    const balanceText = data.cell.text[0];
-                    const [taken, available] = balanceText.split(' / ').map(Number);
-                    if (!isNaN(taken) && !isNaN(available)) {
-                        if (taken > available) {
-                             data.cell.styles.textColor = [255, 0, 0]; // Rojo
-                        } else if (taken === available) {
-                             data.cell.styles.textColor = [0, 128, 0]; // Verde
-                        } else {
-                             data.cell.styles.textColor = [0, 0, 0]; // Negro
+                    const balanceText = Array.isArray(data.cell.raw) ? data.cell.raw[0] : data.cell.raw as string;
+                    if(typeof balanceText === 'string') {
+                        const [takenStr, availableStr] = balanceText.split(' / ');
+                        const taken = Number(takenStr);
+                        const available = Number(availableStr);
+                        if (!isNaN(taken) && !isNaN(available)) {
+                            if (taken > available) {
+                                data.cell.styles.textColor = [255, 0, 0]; // Red
+                            } else if (taken === available) {
+                                data.cell.styles.textColor = [34, 139, 34]; // Green
+                            } else {
+                                data.cell.styles.textColor = [0, 0, 0]; // Black
+                            }
                         }
                     }
                 }
