@@ -238,6 +238,7 @@ export interface HolidayEmployee {
     active: boolean;
     groupId?: string;
     workShift?: string;
+    employeeNumber?: string;
 }
 
 export type HolidayReportAssignment = 'doublePay' | 'dayOff' | 'ninguna';
