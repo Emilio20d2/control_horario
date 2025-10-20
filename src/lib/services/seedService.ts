@@ -149,10 +149,14 @@ export async function seedDatabase(dataToImport: any) {
     if (dataToImport.employees) {
         Object.entries(dataToImport.employees).forEach(([docId, docData]) => {
             const employeeData = docData as { name: string; employeeNumber?: string };
-            const normalizedName = employeeData.name.toUpperCase();
+            const dbEmployeeNameUpper = employeeData.name.toUpperCase();
             
-            if (employeeNumberMapping[normalizedName]) {
-                employeeData.employeeNumber = employeeNumberMapping[normalizedName];
+            const mappingEntry = Object.entries(employeeNumberMapping).find(([fullName, number]) => 
+                fullName.includes(dbEmployeeNameUpper)
+            );
+
+            if (mappingEntry) {
+                employeeData.employeeNumber = mappingEntry[1];
             }
 
             const docRef = dbAdmin.collection('employees').doc(docId);
@@ -177,8 +181,10 @@ export async function seedDatabase(dataToImport: any) {
     const existingHolidayEmployeeNames = new Set(existingHolidayEmployeesSnapshot.docs.map(doc => doc.data().name.toUpperCase()));
 
     Object.entries(employeeNumberMapping).forEach(([name, number]) => {
-        const dataEmployee = dataToImport.employees[Object.keys(dataToImport.employees).find((key: string) => (dataToImport.employees[key] as any).name.toUpperCase() === name)];
-        if (!dataEmployee && !existingHolidayEmployeeNames.has(name)) {
+        const nameUpper = name.toUpperCase();
+        const dataEmployee = Object.values(dataToImport.employees).find(emp => nameUpper.includes((emp as any).name.toUpperCase()));
+        
+        if (!dataEmployee && !existingHolidayEmployeeNames.has(nameUpper)) {
              const docRef = dbAdmin.collection('holidayEmployees').doc();
              batch.set(docRef, { 
                 name: name.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' '), // Title Case
