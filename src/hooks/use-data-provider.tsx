@@ -151,7 +151,7 @@ deleteContractType: async () => {},
   getWeekId: () => '',
   processEmployeeWeekData: () => null,
   calculateEmployeeVacations: () => ({ vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31 }),
-  calculateSeasonalVacationStatus: () => ({ employeeName: '', winterDaysTaken: 0, summerDaysTaken: 0, winterDaysRemaining: 0, summerDaysRemaining: 0 }),
+  calculateSeasonalVacationStatus: () => ({ employeeName: '', winterDaysTaken: 0, summerDaysTaken: 0, winterDaysRemaining: 10, summerDaysRemaining: 21 }),
   addHolidayEmployee: async (data) => '',
   updateHolidayEmployee: async (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>) => {},
   deleteHolidayEmployee: async (id: string) => {},
@@ -892,10 +892,10 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
       return { employeeName: employee.name, winterDaysTaken: 0, summerDaysTaken: 0, winterDaysRemaining: 10, summerDaysRemaining: 21 };
     }
   
-    const yearStart = startOfYear(new Date(year, 0, 1));
-    const mayFirst = new Date(year, 4, 1); // May 1st
-    const mayThirtyFirst = endOfMonth(mayFirst);
-    const yearEnd = endOfYear(new Date(year, 11, 31));
+    const winterStart = startOfYear(new Date(year, 0, 1));
+    const winterEnd = endOfMonth(new Date(year, 4, 1)); // End of May
+    const summerStart = startOfMonth(new Date(year, 4, 1)); // Start of May
+    const summerEnd = endOfYear(new Date(year, 11, 31));
   
     let winterDays = 0;
     let summerDays = 0;
@@ -926,10 +926,10 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
   
     allAbsenceDays.forEach(dayStr => {
       const day = parseISO(dayStr);
-      if (isWithinInterval(day, { start: yearStart, end: mayThirtyFirst })) {
+      if (isWithinInterval(day, { start: winterStart, end: winterEnd })) {
         winterDays++;
       }
-      if (isWithinInterval(day, { start: mayFirst, end: yearEnd })) {
+      if (isWithinInterval(day, { start: summerStart, end: summerEnd })) {
         summerDays++;
       }
     });

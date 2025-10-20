@@ -337,7 +337,7 @@ const FullscreenQuadrant = ({
 
 
 export function AnnualVacationQuadrant() {
-    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays, refreshData, employeeGroups, holidayEmployees, getEffectiveWeeklyHours, calculateEmployeeVacations } = useDataProvider();
+    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays, refreshData, employeeGroups, holidayEmployees, getEffectiveWeeklyHours, calculateSeasonalVacationStatus } = useDataProvider();
     const { toast } = useToast();
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     
@@ -876,26 +876,24 @@ export function AnnualVacationQuadrant() {
         setIsGenerating(true);
     
         const reportData = activeEmployees.map(emp => {
-            const vacationInfo = calculateEmployeeVacations(emp);
-            return {
-                employeeName: emp.name,
-                ...vacationInfo
-            };
+            const seasonalStatus = calculateSeasonalVacationStatus(emp.id, selectedYear);
+            return seasonalStatus;
         });
     
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         doc.setFontSize(16);
-        doc.text(`Informe Anual de Vacaciones - ${selectedYear}`, 14, 15);
+        doc.text(`Informe de Vacaciones Estacionales - ${selectedYear}`, 14, 15);
     
         const body = reportData.map(data => [
             data.employeeName,
-            data.vacationDaysTaken,
-            data.vacationDaysAvailable,
-            (data.vacationDaysAvailable - data.vacationDaysTaken),
+            data.winterDaysTaken,
+            data.winterDaysRemaining < 0 ? 0 : data.winterDaysRemaining,
+            data.summerDaysTaken,
+            data.summerDaysRemaining < 0 ? 0 : data.summerDaysRemaining,
         ]);
     
         autoTable(doc, {
-            head: [['Empleado', 'Días Disfrutados', 'Días Disponibles', 'Balance Anual']],
+            head: [['Empleado', 'Disfrutado Invierno', 'Balance Invierno', 'Disfrutado Verano', 'Balance Verano']],
             body: body,
             startY: 22,
             theme: 'grid',
@@ -904,10 +902,11 @@ export function AnnualVacationQuadrant() {
                 1: { halign: 'center' },
                 2: { halign: 'center' },
                 3: { halign: 'center' },
+                4: { halign: 'center' },
             }
         });
     
-        doc.save(`informe_balance_vacaciones_${selectedYear}.pdf`);
+        doc.save(`informe_balance_vacaciones_estacional_${selectedYear}.pdf`);
         setIsGenerating(false);
     };
 
@@ -1000,7 +999,7 @@ export function AnnualVacationQuadrant() {
                                 </Button>
                                 <Button onClick={generateSeasonalReport} disabled={isGenerating || loading} size="sm" variant="ghost">
                                     {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SunSnow className="mr-2 h-4 w-4" />}
-                                    Balance
+                                    Balance Estacional
                                 </Button>
                             </div>
                             <Button variant="outline" size="icon" onClick={() => setIsFullscreen(true)}>
