@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useLayoutEffect, forwardRef } from 'react';
@@ -337,7 +338,7 @@ const FullscreenQuadrant = ({
 
 
 export function AnnualVacationQuadrant() {
-    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays, refreshData, employeeGroups, holidayEmployees, getEffectiveWeeklyHours, calculateSeasonalVacationStatus } = useDataProvider();
+    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays, refreshData, employeeGroups, holidayEmployees, getEffectiveWeeklyHours, calculateSeasonalVacationStatus, calculateEmployeeVacations } = useDataProvider();
     const { toast } = useToast();
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     
@@ -877,23 +878,27 @@ export function AnnualVacationQuadrant() {
     
         const reportData = activeEmployees.map(emp => {
             const seasonalStatus = calculateSeasonalVacationStatus(emp.id, selectedYear);
-            return seasonalStatus;
+            const totalVacations = calculateEmployeeVacations(emp);
+            return {
+                ...seasonalStatus,
+                totalTaken: totalVacations.vacationDaysTaken,
+                totalAvailable: totalVacations.vacationDaysAvailable
+            };
         });
     
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         doc.setFontSize(16);
-        doc.text(`Informe de Vacaciones Estacionales - ${selectedYear}`, 14, 15);
+        doc.text(`Informe de Cumplimiento de Vacaciones - ${selectedYear}`, 14, 15);
     
         const body = reportData.map(data => [
             data.employeeName,
-            data.winterDaysTaken,
-            data.winterDaysRemaining < 0 ? 0 : data.winterDaysRemaining,
-            data.summerDaysTaken,
-            data.summerDaysRemaining < 0 ? 0 : data.summerDaysRemaining,
+            data.winterDaysTaken >= 10 ? '✔' : '',
+            data.summerDaysTaken >= 21 ? '✔' : '',
+            `${data.totalTaken} / ${data.totalAvailable}`
         ]);
     
         autoTable(doc, {
-            head: [['Empleado', 'Disfrutado Invierno', 'Balance Invierno', 'Disfrutado Verano', 'Balance Verano']],
+            head: [['Empleado', 'Invierno (10)', 'Verano (21)', 'Balance Anual']],
             body: body,
             startY: 22,
             theme: 'grid',
@@ -902,11 +907,18 @@ export function AnnualVacationQuadrant() {
                 1: { halign: 'center' },
                 2: { halign: 'center' },
                 3: { halign: 'center' },
-                4: { halign: 'center' },
+            },
+            didDrawCell: (data) => {
+                if (data.section === 'body' && (data.column.index === 1 || data.column.index === 2)) {
+                    if (data.cell.text[0] === '✔') {
+                        data.cell.styles.textColor = [0, 128, 0];
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                }
             }
         });
     
-        doc.save(`informe_balance_vacaciones_estacional_${selectedYear}.pdf`);
+        doc.save(`informe_cumplimiento_vacaciones_${selectedYear}.pdf`);
         setIsGenerating(false);
     };
 

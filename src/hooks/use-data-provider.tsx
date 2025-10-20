@@ -1,4 +1,5 @@
 
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type {
@@ -894,7 +895,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
   
     const winterStart = startOfYear(new Date(year, 0, 1));
     const winterEnd = endOfMonth(new Date(year, 4, 1)); // End of May
-    const summerStart = startOfMonth(new Date(year, 4, 1)); // Start of May
+    const summerStart = startOfMonth(new Date(year, 5, 1)); // Start of June
     const summerEnd = endOfYear(new Date(year, 11, 31));
   
     let winterDays = 0;
