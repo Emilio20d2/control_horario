@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
     Card,
     CardContent,
@@ -10,7 +10,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, FileDown, CalendarX2, Library, BookUser, AlertTriangle, FileSignature } from 'lucide-react';
+import { Users, FileDown, CalendarX2, Library, BookUser, AlertTriangle, FileSignature, ScanText, Loader2 as Loader2Icon } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Bar, CartesianGrid, XAxis, BarChart as RechartsBarChart } from 'recharts';
@@ -22,7 +22,10 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Loader2 } from 'lucide-react';
 import { HolidayReportGenerator } from '@/components/dashboard/holiday-report-generator';
-
+import { useDropzone } from 'react-dropzone';
+import { Textarea } from '@/components/ui/textarea';
+import { extractTextFromImage } from '@/ai/ocr-flow';
+import { useToast } from '@/hooks/use-toast';
 
 const chartConfig = {
     balance: {
@@ -30,6 +33,84 @@ const chartConfig = {
       color: "hsl(var(--primary))",
     },
 } satisfies ChartConfig;
+
+const OCRCard = () => {
+    const [extractedText, setExtractedText] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const { toast } = useToast();
+
+    const onDrop = useCallback(async (acceptedFiles: File[]) => {
+        const file = acceptedFiles[0];
+        if (!file) return;
+
+        setIsProcessing(true);
+        setExtractedText('');
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            if (event.target?.result) {
+                const dataUri = event.target.result as string;
+                try {
+                    const result = await extractTextFromImage({ photoDataUri: dataUri });
+                    setExtractedText(result.text);
+                } catch (error) {
+                    console.error("Error extracting text:", error);
+                    toast({
+                        title: "Error de OCR",
+                        description: "No se pudo extraer el texto de la imagen.",
+                        variant: "destructive",
+                    });
+                } finally {
+                    setIsProcessing(false);
+                }
+            }
+        };
+        reader.readAsDataURL(file);
+    }, [toast]);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: { 'image/*': [] },
+        multiple: false,
+    });
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <ScanText className="h-5 w-5" />
+                    <span>Extractor de Texto (OCR)</span>
+                </CardTitle>
+                <CardDescription>Sube una imagen para extraer el texto contenido en ella.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div
+                    {...getRootProps()}
+                    className={`p-6 border-2 border-dashed rounded-md text-center cursor-pointer transition-colors ${
+                        isDragActive ? 'border-primary bg-primary/10' : 'border-border'
+                    }`}
+                >
+                    <input {...getInputProps()} />
+                    {isProcessing ? (
+                        <div className="flex flex-col items-center gap-2">
+                            <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
+                            <p>Procesando imagen...</p>
+                        </div>
+                    ) : (
+                        <p>Arrastra una imagen aquí o haz clic para seleccionarla</p>
+                    )}
+                </div>
+                {extractedText && (
+                    <div className="space-y-2">
+                        <h4 className="font-semibold">Texto Extraído:</h4>
+                        <Textarea value={extractedText} readOnly rows={8} />
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
 
 export default function DashboardPage() {
     const { employees, weeklyRecords, loading, absenceTypes, holidays, getProcessedAnnualDataForEmployee, getEmployeeFinalBalances, calculateTheoreticalAnnualWorkHours, getEmployeeBalancesForWeek, getWeekId, calculateCurrentAnnualComputedHours, getEffectiveWeeklyHours, getTheoreticalHoursAndTurn, getActivePeriod, processEmployeeWeekData, calculateBalancePreview, vacationData } = useDataProvider();
@@ -786,7 +867,7 @@ export default function DashboardPage() {
               Panel de Control
             </h1>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-4 md:px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 md:px-6">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Informe Resumen Anual</CardTitle>
@@ -920,6 +1001,10 @@ export default function DashboardPage() {
                 </Card>
             </div>
     
+           <div className="px-4 md:px-6">
+                <OCRCard />
+           </div>
+
            <div className="px-4 md:px-6 pb-4">
             <Card>
                 <CardHeader>
@@ -953,5 +1038,3 @@ export default function DashboardPage() {
         </div>
       );
 }
-
-    
