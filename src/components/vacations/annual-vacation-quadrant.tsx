@@ -898,7 +898,7 @@ export function AnnualVacationQuadrant() {
         ]);
     
         autoTable(doc, {
-            head: [['Empleado', 'Invierno (10)', 'Verano (21)', 'Balance Anual']],
+            head: [['Empleado', 'Invierno', 'Verano', 'Balance']],
             body: body,
             startY: 22,
             theme: 'grid',
@@ -909,22 +909,20 @@ export function AnnualVacationQuadrant() {
                 3: { halign: 'center' },
             },
             didDrawCell: (data) => {
-                // Draw checkmark
                 if (data.section === 'body' && (data.column.index === 1 || data.column.index === 2)) {
                     if (data.cell.raw === true) {
                         data.cell.text = []; // Clear the raw boolean value
                         doc.setFontSize(12);
                         doc.setTextColor(34, 139, 34); // ForestGreen
-                        doc.text('✔', data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
+                        doc.text('OK', data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
                             align: 'center',
                             baseline: 'middle'
                         });
-                        doc.setTextColor(0, 0, 0); // Reset color
+                        doc.setTextColor(0, 0, 0);
                     } else {
-                        data.cell.text = []; // Clear false value
+                        data.cell.text = [];
                     }
                 }
-                 // Color balance column
                  if (data.section === 'body' && data.column.index === 3) {
                     const balanceText = Array.isArray(data.cell.raw) ? data.cell.raw[0] : data.cell.raw as string;
                     if(typeof balanceText === 'string') {
@@ -1038,7 +1036,7 @@ export function AnnualVacationQuadrant() {
                                 </Button>
                                 <Button onClick={generateSeasonalReport} disabled={isGenerating || loading} size="sm" variant="ghost">
                                     {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SunSnow className="mr-2 h-4 w-4" />}
-                                    Balance Estacional
+                                    Check Vacaciones
                                 </Button>
                             </div>
                             <Button variant="outline" size="icon" onClick={() => setIsFullscreen(true)}>
