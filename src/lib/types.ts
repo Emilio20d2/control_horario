@@ -1,4 +1,5 @@
 
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface WorkHoursRecord {
@@ -255,3 +256,12 @@ export interface EmployeeGroup {
     name: string;
     order: number;
 }
+
+export interface Ausencia {
+    id: string;
+    startDate: Date;
+    endDate: Date;
+    absenceTypeId: string;
+    absenceAbbreviation: string;
+    periodId?: string;
+  }

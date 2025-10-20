@@ -43,7 +43,7 @@ import {
     deleteEmployeeGroup,
     updateEmployeeGroupOrder,
 } from '../lib/services/settingsService';
-import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks } from 'date-fns';
+import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth } from 'date-fns';
 import { addDocument, setDocument } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp } from 'firebase/firestore';
@@ -95,6 +95,7 @@ deleteContractType: (id: string) => Promise<void>;
   getWeekId: (d: Date) => string;
   processEmployeeWeekData: (emp: Employee, weekDays: Date[], weekId: string) => DailyEmployeeData | null;
   calculateEmployeeVacations: (emp: Employee) => { vacationDaysTaken: number, suspensionDays: number, vacationDaysAvailable: number };
+  calculateSeasonalVacationStatus: (employeeId: string, year: number) => { employeeName: string; winterDaysTaken: number; summerDaysTaken: number; winterDaysRemaining: number; summerDaysRemaining: number; };
   addHolidayEmployee: (data: Partial<Omit<HolidayEmployee, 'id'>>) => Promise<string>;
   updateHolidayEmployee: (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>) => Promise<void>;
   deleteHolidayEmployee: (id: string) => Promise<void>;
@@ -151,6 +152,7 @@ deleteContractType: async () => {},
   getWeekId: () => '',
   processEmployeeWeekData: () => null,
   calculateEmployeeVacations: () => ({ vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31 }),
+  calculateSeasonalVacationStatus: () => ({ employeeName: '', winterDaysTaken: 0, summerDaysTaken: 0, winterDaysRemaining: 0, summerDaysRemaining: 0 }),
   addHolidayEmployee: async (data) => '',
   updateHolidayEmployee: async (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>) => {},
   deleteHolidayEmployee: async (id: string) => {},
@@ -880,6 +882,67 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
     return allYearsData;
 };
 
+const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
+    const employee = getEmployeeById(employeeId);
+    if (!employee) {
+      return { employeeName: 'Desconocido', winterDaysTaken: 0, summerDaysTaken: 0, winterDaysRemaining: 10, summerDaysRemaining: 21 };
+    }
+  
+    const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
+    if (!vacationType) {
+      return { employeeName: employee.name, winterDaysTaken: 0, summerDaysTaken: 0, winterDaysRemaining: 10, summerDaysRemaining: 21 };
+    }
+  
+    const yearStart = startOfYear(new Date(year, 0, 1));
+    const mayFirst = new Date(year, 4, 1); // May 1st
+    const mayThirtyFirst = endOfMonth(mayFirst);
+    const yearEnd = endOfYear(new Date(year, 11, 31));
+  
+    let winterDays = 0;
+    let summerDays = 0;
+  
+    const allAbsenceDays = new Set<string>();
+  
+    employee.employmentPeriods?.forEach(period => {
+      period.scheduledAbsences?.forEach(absence => {
+        if (absence.absenceTypeId === vacationType.id && absence.endDate) {
+          eachDayOfInterval({ start: startOfDay(absence.startDate), end: startOfDay(absence.endDate) }).forEach(day => {
+            if (getYear(day) === year) {
+              allAbsenceDays.add(format(day, 'yyyy-MM-dd'));
+            }
+          });
+        }
+      });
+    });
+  
+    Object.values(weeklyRecords).forEach(record => {
+      const empWeekData = record.weekData[employee.id];
+      if (!empWeekData?.days) return;
+      Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+        if (getYear(parseISO(dayStr)) === year && dayData.absence === vacationType.abbreviation) {
+          allAbsenceDays.add(dayStr);
+        }
+      });
+    });
+  
+    allAbsenceDays.forEach(dayStr => {
+      const day = parseISO(dayStr);
+      if (isWithinInterval(day, { start: yearStart, end: mayThirtyFirst })) {
+        winterDays++;
+      }
+      if (isWithinInterval(day, { start: mayFirst, end: yearEnd })) {
+        summerDays++;
+      }
+    });
+  
+    return {
+      employeeName: employee.name,
+      winterDaysTaken: winterDays,
+      summerDaysTaken: summerDays,
+      winterDaysRemaining: Math.max(0, 10 - winterDays),
+      summerDaysRemaining: Math.max(0, 21 - summerDays),
+    };
+  };
 
 
   const updateEmployeeWorkHours = async (employeeId: string, weeklyHours: number, effectiveDate: string) => {
@@ -1059,6 +1122,7 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
     calculateTheoreticalAnnualWorkHours,
     getProcessedAnnualDataForEmployee,
     getProcessedAnnualDataForAllYears,
+    calculateSeasonalVacationStatus,
     createAbsenceType: createAbsenceTypeService,
     updateAbsenceType: updateAbsenceTypeService,
     deleteAbsenceType: deleteAbsenceTypeService,

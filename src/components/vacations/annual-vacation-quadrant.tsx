@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useLayoutEffect, forwardRef } from 'react';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@/components/ui/table';
-import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown, Maximize, Minimize, Calendar as CalendarIcon, FileSignature } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown, Maximize, Minimize, Calendar as CalendarIcon, FileSignature, SunSnow } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod, Ausencia, HolidayEmployee, EmployeeGroup } from '@/lib/types';
@@ -337,7 +338,7 @@ const FullscreenQuadrant = ({
 
 
 export function AnnualVacationQuadrant() {
-    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays, refreshData, employeeGroups, holidayEmployees, getEffectiveWeeklyHours } = useDataProvider();
+    const { employees, loading, absenceTypes, weeklyRecords, getWeekId, getTheoreticalHoursAndTurn, holidays, refreshData, employeeGroups, holidayEmployees, getEffectiveWeeklyHours, calculateSeasonalVacationStatus } = useDataProvider();
     const { toast } = useToast();
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     
@@ -872,6 +873,39 @@ export function AnnualVacationQuadrant() {
         setIsGenerating(false);
     };
 
+    const generateSeasonalReport = () => {
+        setIsGenerating(true);
+    
+        const reportData = allEmployees.map(emp => calculateSeasonalVacationStatus(emp.id, selectedYear));
+    
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        doc.setFontSize(16);
+        doc.text(`Informe Vacaciones Invierno/Verano - ${selectedYear}`, 14, 15);
+    
+        const body = reportData.map(data => [
+            data.employeeName,
+            `${data.winterDaysTaken} / 10`,
+            data.winterDaysRemaining > 0 ? `${data.winterDaysRemaining} días` : 'OK',
+            `${data.summerDaysTaken} / 21`,
+            data.summerDaysRemaining > 0 ? `${data.summerDaysRemaining} días` : 'OK',
+        ]);
+    
+        autoTable(doc, {
+            head: [['Empleado', 'Invierno (Disp)', 'Invierno (Pend)', 'Verano (Disp)', 'Verano (Pend)']],
+            body: body,
+            startY: 22,
+            theme: 'grid',
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            columnStyles: {
+                2: { cellWidth: 30, halign: 'center' },
+                4: { cellWidth: 30, halign: 'center' },
+            }
+        });
+    
+        doc.save(`informe_vacaciones_temporada_${selectedYear}.pdf`);
+        setIsGenerating(false);
+    };
+
     const groupColors = ['#dbeafe', '#dcfce7', '#fef9c3', '#f3e8ff', '#fce7f3', '#e0e7ff', '#ccfbf1', '#ffedd5'];
 
 
@@ -942,11 +976,11 @@ export function AnnualVacationQuadrant() {
                             <CardTitle>Cuadrante Anual de Ausencias</CardTitle>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Button onClick={() => generateGroupReport()} disabled={isGenerating || loading}>
+                             <Button onClick={generateGroupReport} disabled={isGenerating || loading}>
                                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                                 Imprimir Cuadrante
                             </Button>
-                            <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+                             <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
                                 <SelectTrigger className='w-32'>
                                     <SelectValue placeholder="Año..." />
                                 </SelectTrigger>
@@ -954,9 +988,13 @@ export function AnnualVacationQuadrant() {
                                     {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Button onClick={generateSignatureReport} disabled={isGenerating || loading}>
+                             <Button onClick={generateSignatureReport} disabled={isGenerating || loading}>
                                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSignature className="mr-2 h-4 w-4" />}
                                 Listado para Firmas
+                            </Button>
+                             <Button onClick={generateSeasonalReport} disabled={isGenerating || loading}>
+                                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SunSnow className="mr-2 h-4 w-4" />}
+                                Informe Invierno/Verano
                             </Button>
                             <Button variant="outline" size="icon" onClick={() => setIsFullscreen(true)}>
                                 <Maximize className="h-4 w-4" />
