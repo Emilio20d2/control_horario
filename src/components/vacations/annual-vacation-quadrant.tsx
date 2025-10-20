@@ -892,8 +892,8 @@ export function AnnualVacationQuadrant() {
     
         const body = reportData.map(data => [
             data.employeeName,
-            data.winterDaysTaken >= 10,
-            data.summerDaysTaken >= 21,
+            data.winterDaysTaken >= 10 ? 'OK' : '',
+            data.summerDaysTaken >= 21 ? 'OK' : '',
             `${data.totalTaken} / ${data.totalAvailable}`
         ]);
     
@@ -910,15 +910,8 @@ export function AnnualVacationQuadrant() {
             },
             didDrawCell: (data) => {
                 if (data.section === 'body' && (data.column.index === 1 || data.column.index === 2)) {
-                    data.cell.text = ''; // Clear the raw boolean value "true" or "false"
-                    if (data.cell.raw === true) {
-                        doc.setFontSize(10);
-                        doc.setTextColor(34, 139, 34); // ForestGreen
-                        doc.text('OK', data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
-                            align: 'center',
-                            baseline: 'middle'
-                        });
-                        doc.setTextColor(0, 0, 0); // Reset text color
+                    if (data.cell.text[0] === 'OK') {
+                        data.cell.styles.textColor = [34, 139, 34]; // ForestGreen
                     }
                 }
                  if (data.section === 'body' && data.column.index === 3) {
@@ -1061,5 +1054,3 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
-
-    
