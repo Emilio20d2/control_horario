@@ -8,7 +8,7 @@ import { getFunctions } from 'firebase/functions';
 const firebaseConfig = {
   "projectId": "shiftmaster-9iefy",
   "appId": "1:904324719398:web:448d7c2c842fd59778d7e7",
-  "storageBucket": "shiftmaster-9iefy.firebasestorage.app",
+  "storageBucket": "shiftmaster-9iefy.appspot.com",
   "apiKey": "AIzaSyBoZTFnt7kh_moxTzuS5zR1LNe86nvuOs4",
   "authDomain": "shiftmaster-9iefy.firebaseapp.com",
   "measurementId": "",
@@ -26,6 +26,7 @@ const functions = getFunctions(app);
 
 
 export { app, db, auth, functions };
+
 
 
 
