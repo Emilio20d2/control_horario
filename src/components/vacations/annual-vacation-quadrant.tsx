@@ -911,8 +911,21 @@ export function AnnualVacationQuadrant() {
             didDrawCell: (data) => {
                 if (data.section === 'body' && (data.column.index === 1 || data.column.index === 2)) {
                     if (data.cell.text[0] === '✔') {
-                        data.cell.styles.textColor = [0, 128, 0];
+                        data.cell.styles.textColor = [0, 128, 0]; // Verde
                         data.cell.styles.fontStyle = 'bold';
+                    }
+                }
+                 if (data.section === 'body' && data.column.index === 3) {
+                    const balanceText = data.cell.text[0];
+                    const [taken, available] = balanceText.split(' / ').map(Number);
+                    if (!isNaN(taken) && !isNaN(available)) {
+                        if (taken > available) {
+                             data.cell.styles.textColor = [255, 0, 0]; // Rojo
+                        } else if (taken === available) {
+                             data.cell.styles.textColor = [0, 128, 0]; // Verde
+                        } else {
+                             data.cell.styles.textColor = [0, 0, 0]; // Negro
+                        }
                     }
                 }
             }
@@ -1038,3 +1051,5 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
+
+    
