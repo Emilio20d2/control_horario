@@ -148,7 +148,7 @@ export async function seedDatabase(dataToImport: any) {
     // Staging employees
     if (dataToImport.employees) {
         Object.entries(dataToImport.employees).forEach(([docId, docData]) => {
-            const employeeData = docData as { name: string, employeeNumber?: string };
+            const employeeData = docData as { name: string; employeeNumber?: string };
             const normalizedName = employeeData.name.toUpperCase();
             
             if (employeeNumberMapping[normalizedName]) {
@@ -177,7 +177,7 @@ export async function seedDatabase(dataToImport: any) {
     const existingHolidayEmployeeNames = new Set(existingHolidayEmployeesSnapshot.docs.map(doc => doc.data().name.toUpperCase()));
 
     Object.entries(employeeNumberMapping).forEach(([name, number]) => {
-        const dataEmployee = dataToImport.employees[Object.keys(dataToImport.employees).find(key => dataToImport.employees[key].name.toUpperCase() === name)];
+        const dataEmployee = dataToImport.employees[Object.keys(dataToImport.employees).find((key: string) => (dataToImport.employees[key] as any).name.toUpperCase() === name)];
         if (!dataEmployee && !existingHolidayEmployeeNames.has(name)) {
              const docRef = dbAdmin.collection('holidayEmployees').doc();
              batch.set(docRef, { 
@@ -200,3 +200,4 @@ export async function seedDatabase(dataToImport: any) {
     
     return stats;
 }
+
