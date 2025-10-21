@@ -21,6 +21,7 @@ import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HolidayEmployeeManager } from '@/components/settings/holiday-employee-manager';
 import { Textarea } from '@/components/ui/textarea';
+import { PersonalDataReportGenerator } from '@/components/listings/personal-data-report-generator';
 
 const columnSchema = z.object({
   name: z.string().min(1, 'El nombre de la columna es obligatorio.'),
@@ -195,17 +196,18 @@ export default function ListingsPage() {
         <h1 className="text-2xl font-bold tracking-tight font-headline">Listados Personalizados</h1>
       </div>
       <div className="px-4 md:px-6 pb-4">
-        <Tabs defaultValue="generator">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="generator">Generador de Listados</TabsTrigger>
-            <TabsTrigger value="employees">Empleados para Informes</TabsTrigger>
+        <Tabs defaultValue="custom-forms">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="custom-forms">Formularios</TabsTrigger>
+            <TabsTrigger value="personal-data">Datos Personales</TabsTrigger>
+            <TabsTrigger value="external-employees">Empleados Externos</TabsTrigger>
           </TabsList>
-          <TabsContent value="generator">
+          <TabsContent value="custom-forms">
             <Card>
               <CardHeader>
-                <CardTitle>Crea un Listado Personalizado</CardTitle>
+                <CardTitle>Crea un Formulario Personalizado</CardTitle>
                 <CardDescription>
-                  Define el título, las columnas y el contenido para generar un formulario en PDF listo para imprimir.
+                  Define un título, las columnas y el contenido para generar un formulario en PDF con todos los empleados para rellenar.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -333,7 +335,10 @@ export default function ListingsPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="employees">
+          <TabsContent value="personal-data">
+             <PersonalDataReportGenerator />
+          </TabsContent>
+          <TabsContent value="external-employees">
             <HolidayEmployeeManager />
           </TabsContent>
         </Tabs>
