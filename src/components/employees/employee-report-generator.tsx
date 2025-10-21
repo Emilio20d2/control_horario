@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Mail, Loader2, FileDown } from 'lucide-react';
+import { FileDown, Loader2 } from 'lucide-react';
 import type { Employee } from '@/lib/types';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { getYear } from 'date-fns';
@@ -22,7 +23,7 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
     const { toast } = useToast();
 
     const dataProvider = useDataProvider();
-    const { weeklyRecords, absenceTypes, holidays } = dataProvider;
+    const { weeklyRecords } = dataProvider;
 
     const availableYears = useMemo(() => {
         if (!weeklyRecords) return [new Date().getFullYear()];
@@ -37,36 +38,23 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
     }, [weeklyRecords]);
 
 
-    const handleGenerateAndSend = async () => {
-        if (!selectedReport || !employee.email) return;
+    const handleGenerateReport = async () => {
+        if (!selectedReport) return;
         
         setIsGenerating(true);
         
         try {
-            let subject = '';
-            let body = '';
-            
             switch (selectedReport) {
                 case 'annual-summary':
-                    subject = `Informe de Resumen Anual ${selectedYear}`;
-                    body = `Hola ${employee.name},\n\nAdjunto tu informe de resumen anual para el año ${selectedYear}.\n\nSaludos.`;
-                    await generateAnnualReportPDF(employee, selectedYear, weeklyRecords, dataProvider);
+                    await generateAnnualReportPDF(employee, selectedYear, dataProvider);
                     break;
                 case 'annual-workday':
-                    subject = `Informe de Jornada Anual ${selectedYear}`;
-                    body = `Hola ${employee.name},\n\nAdjunto tu informe de jornada anual para el año ${selectedYear}.\n\nSaludos.`;
                     await generateAnnualDetailedReportPDF(employee, selectedYear, dataProvider);
                     break;
                 case 'absences':
-                    subject = `Informe de Ausencias ${selectedYear}`;
-                    body = `Hola ${employee.name},\n\nAdjunto tu informe de ausencias para el año ${selectedYear}.\n\nSaludos.`;
-                    await generateAbsenceReportPDF(employee, selectedYear, weeklyRecords, absenceTypes);
+                    await generateAbsenceReportPDF(employee, selectedYear, dataProvider);
                     break;
             }
-            
-            const mailtoLink = `mailto:${employee.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-            window.location.href = mailtoLink;
-
         } catch (error) {
             console.error('Error generating report:', error);
             toast({
@@ -102,8 +90,8 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button>
-                        <Mail className="mr-2 h-4 w-4" />
-                        Generar Informe para Enviar
+                        <FileDown className="mr-2 h-4 w-4" />
+                        Generar Informe
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
@@ -118,9 +106,9 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Generar y Enviar {getReportName(selectedReport)}</DialogTitle>
+                        <DialogTitle>Generar {getReportName(selectedReport)}</DialogTitle>
                         <DialogDescription>
-                            Selecciona el año para el informe de {employee.name}. Se descargará el PDF y se abrirá tu cliente de correo.
+                            Selecciona el año para el informe de {employee.name}. Se descargará el PDF.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
@@ -135,9 +123,9 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                        <Button onClick={handleGenerateAndSend} disabled={isGenerating}>
+                        <Button onClick={handleGenerateReport} disabled={isGenerating}>
                             {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                            Generar y Enviar
+                            Generar PDF
                         </Button>
                     </DialogFooter>
                 </DialogContent>

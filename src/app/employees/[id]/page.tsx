@@ -4,7 +4,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Edit, PlusCircle, Wallet, Briefcase, Gift, Scale, Mail, FileDown } from 'lucide-react';
+import { ChevronLeft, Edit, PlusCircle, Wallet, Briefcase, Gift, Scale } from 'lucide-react';
 import { notFound, useParams } from 'next/navigation';
 import { Badge } from "@/components/ui/badge";
 import { EmployeeDetails } from "@/components/employees/employee-details";
@@ -114,7 +114,7 @@ export default function EmployeeDetailPage() {
                         ) : (
                             <Badge variant="destructive">Inactivo</Badge>
                         )}
-                        {employee.dni && <Badge variant="secondary">{employee.dni}</Badge>}
+                        {employee.employeeNumber && <Badge variant="secondary">{employee.employeeNumber}</Badge>}
                      </div>
                 </div>
                </div>
@@ -125,7 +125,7 @@ export default function EmployeeDetailPage() {
                             Editar Ficha
                         </Button>
                     </Link>
-                    {isContractActive && employee.email && (
+                    {isContractActive && (
                        <EmployeeReportGenerator employee={employee} />
                     )}
                     {!isContractActive && (
