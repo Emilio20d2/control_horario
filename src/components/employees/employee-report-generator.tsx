@@ -23,7 +23,7 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
     const { toast } = useToast();
 
     const dataProvider = useDataProvider();
-    const { weeklyRecords } = dataProvider;
+    const { weeklyRecords, absenceTypes, getEmployeeBalancesForWeek, calculateBalancePreview, getActivePeriod, getEffectiveWeeklyHours, holidays, getWeekId, getProcessedAnnualDataForEmployee, calculateTheoreticalAnnualWorkHours, calculateCurrentAnnualComputedHours } = dataProvider;
 
     const availableYears = useMemo(() => {
         if (!weeklyRecords) return [new Date().getFullYear()];
@@ -46,13 +46,13 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
         try {
             switch (selectedReport) {
                 case 'annual-summary':
-                    await generateAnnualReportPDF(employee, selectedYear, dataProvider);
+                    await generateAnnualReportPDF(employee, selectedYear, weeklyRecords, dataProvider);
                     break;
                 case 'annual-workday':
                     await generateAnnualDetailedReportPDF(employee, selectedYear, dataProvider);
                     break;
                 case 'absences':
-                    await generateAbsenceReportPDF(employee, selectedYear, dataProvider);
+                    await generateAbsenceReportPDF(employee, selectedYear, weeklyRecords, absenceTypes);
                     break;
             }
         } catch (error) {
@@ -74,7 +74,7 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
         switch (type) {
             case 'annual-summary': return 'Resumen Anual';
             case 'annual-workday': return 'Jornada Anual';
-            case 'absences': return 'Ausencias';
+            case 'absences': return 'Informe de Ausencias';
             default: return 'Informe';
         }
     };
