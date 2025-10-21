@@ -363,7 +363,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     dayData.absence === 'ninguna';
 
                 return (
-                    <TableCell key={day.toISOString()} className={cn("p-1 align-top text-xs min-w-[140px] sm:min-w-[150px]", isHoliday && "bg-primary/10")}>
+                    <TableCell key={day.toISOString()} className={cn("p-1 align-top text-xs min-w-[140px] sm:min-w-[150px]", isHoliday && "bg-blue-100")}>
                         <div className="flex flex-col gap-1 h-full">
                             <div className='w-full space-y-1 flex-grow'>
                                 <p className="text-muted-foreground text-xs h-4">
