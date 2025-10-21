@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Mail, Loader2, FileDown } from 'lucide-react';
 import type { Employee } from '@/lib/types';
 import { useDataProvider } from '@/hooks/use-data-provider';
+import { generateAnnualReport, generateAnnualDetailedReport, generateAbsenceReport } from '@/lib/actions/reportActions';
 
 type ReportType = 'annual-summary' | 'annual-workday' | 'absences';
 
@@ -23,25 +24,40 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
         if (!selectedReport || !employee.email) return;
         
         setIsGenerating(true);
-        // In a real scenario, this would call a server action to generate the PDF
-        // and then trigger the email. For now, we simulate it.
-        console.log(`Generating ${selectedReport} for ${employee.name} for year ${selectedYear}`);
         
-        // This is where you'd call your report generation functions from reportActions.ts
-        // e.g., await generateAnnualReportServer(employee.id, selectedYear);
-        
-        // Simulate PDF generation delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const subject = `Informe de ${selectedYear}: ${getReportName(selectedReport)}`;
-        const body = `Hola ${employee.name},\n\nAdjunto tu informe de ${getReportName(selectedReport)} para el año ${selectedYear}.\n\nSaludos.`;
-        const mailtoLink = `mailto:${employee.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        
-        window.location.href = mailtoLink;
-        
-        setIsGenerating(false);
-        setDialogOpen(false);
-        setSelectedReport(null);
+        try {
+            let subject = '';
+            let body = '';
+            
+            switch (selectedReport) {
+                case 'annual-summary':
+                    subject = `Informe de Resumen Anual ${selectedYear}`;
+                    body = `Hola ${employee.name},\n\nAdjunto tu informe de resumen anual para el año ${selectedYear}.\n\nSaludos.`;
+                    await generateAnnualReport(employee.id, selectedYear);
+                    break;
+                case 'annual-workday':
+                    subject = `Informe de Jornada Anual ${selectedYear}`;
+                    body = `Hola ${employee.name},\n\nAdjunto tu informe de jornada anual para el año ${selectedYear}.\n\nSaludos.`;
+                    await generateAnnualDetailedReport(employee.id, selectedYear);
+                    break;
+                case 'absences':
+                    subject = `Informe de Ausencias ${selectedYear}`;
+                    body = `Hola ${employee.name},\n\nAdjunto tu informe de ausencias para el año ${selectedYear}.\n\nSaludos.`;
+                    await generateAbsenceReport(employee.id, selectedYear);
+                    break;
+            }
+
+            const mailtoLink = `mailto:${employee.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = mailtoLink;
+
+        } catch (error) {
+            console.error('Error generating report:', error);
+            // Handle error toast if needed
+        } finally {
+            setIsGenerating(false);
+            setDialogOpen(false);
+            setSelectedReport(null);
+        }
     };
 
     const getReportName = (type: ReportType) => {
