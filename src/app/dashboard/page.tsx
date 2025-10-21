@@ -10,7 +10,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, FileDown, CalendarX2, Library, BookUser, AlertTriangle, FileSignature, ScanText, Loader2 as Loader2Icon } from 'lucide-react';
+import { Users, FileDown, CalendarX2, Library, BookUser, AlertTriangle, FileSignature, ScanText, Loader2 as Loader2Icon, Mail } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Bar, CartesianGrid, XAxis, BarChart as RechartsBarChart } from 'recharts';
@@ -66,7 +66,8 @@ export default function DashboardPage() {
 
     
     const activeEmployeesForReport = useMemo(() => {
-        return employees.filter(e => e.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), startOfDay(new Date()))));
+        const today = startOfDay(new Date());
+        return employees.filter(e => e.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), today)));
     }, [employees]);
 
     useEffect(() => {
@@ -85,7 +86,7 @@ export default function DashboardPage() {
             if (!detailedReportEmployeeId) setDetailedReportEmployeeId(activeEmployeesForReport[0].id);
             if (!absenceReportEmployeeId) setAbsenceReportEmployeeId(activeEmployeesForReport[0].id);
         }
-    }, [loading, weeklyRecords, activeEmployeesForReport, reportEmployeeId, detailedReportEmployeeId, absenceReportEmployeeId]);
+    }, [loading, weeklyRecords, activeEmployeesForReport]);
 
     const months = Array.from({ length: 12 }, (_, i) => ({
         value: i,
