@@ -1,30 +1,23 @@
 'use server';
 
-import type { Employee, WeeklyRecord, AbsenceType, AnnualConfiguration, Holiday, EmploymentPeriod, WeeklyScheduleData } from '@/lib/types';
-
-// NOTE: This is a placeholder file. The report generation logic from the dashboard
-// would be moved here to be used as Server Actions.
-// For this example, we are keeping the logic in the client components
-// to demonstrate the UI changes.
-
-// The actual implementation would involve fetching all necessary data from Firestore
-// using the admin SDK, similar to how auditActions.ts is structured, because
-// these actions run on the server.
+// NOTE: This file is a placeholder. The original server-side generation logic
+// was moved back to the client to enable the `mailto:` functionality.
+// The core PDF generation logic is now in `src/lib/report-generators.ts`.
 
 export async function generateAnnualReportServer(employeeId: string, year: number) {
     console.log(`Generating Annual Report for ${employeeId} for ${year}`);
-    // Server-side PDF generation logic would go here.
-    return { success: true, message: "Annual Report generated." };
+    // This server action is currently not in use.
+    return { success: true, message: "Action not implemented." };
 }
 
 export async function generateAnnualDetailedReportServer(employeeId: string, year: number) {
     console.log(`Generating Annual Detailed Report for ${employeeId} for ${year}`);
-    // Server-side PDF generation logic would go here.
-    return { success: true, message: "Annual Detailed Report generated." };
+    // This server action is currently not in use.
+    return { success: true, message: "Action not implemented." };
 }
 
 export async function generateAbsenceReportServer(employeeId: string, year: number) {
     console.log(`Generating Absence Report for ${employeeId} for ${year}`);
-    // Server-side PDF generation logic would go here.
-    return { success: true, message: "Absence Report generated." };
+    // This server action is currently not in use.
+    return { success: true, message: "Action not implemented." };
 }

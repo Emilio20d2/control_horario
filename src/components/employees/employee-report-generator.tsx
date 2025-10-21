@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Mail, Loader2, FileDown } from 'lucide-react';
 import type { Employee } from '@/lib/types';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { generateAnnualReport, generateAnnualDetailedReport, generateAbsenceReport } from '@/lib/actions/reportActions';
 import { getYear } from 'date-fns';
+import { generateAnnualReportPDF, generateAnnualDetailedReportPDF, generateAbsenceReportPDF } from '@/lib/report-generators';
+import { useToast } from '@/hooks/use-toast';
 
 type ReportType = 'annual-summary' | 'annual-workday' | 'absences';
 
@@ -19,8 +19,9 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
     const [selectedReport, setSelectedReport] = useState<ReportType | null>(null);
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [isGenerating, setIsGenerating] = useState(false);
+    const { toast } = useToast();
 
-    const { weeklyRecords } = useDataProvider();
+    const { weeklyRecords, getProcessedAnnualDataForEmployee, calculateTheoreticalAnnualWorkHours, calculateCurrentAnnualComputedHours, absenceTypes, holidays } = useDataProvider();
 
     const availableYears = useMemo(() => {
         if (!weeklyRecords) return [new Date().getFullYear()];
@@ -43,37 +44,24 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
         try {
             let subject = '';
             let body = '';
-            let pdfBlob: Blob | null = null;
             
             switch (selectedReport) {
                 case 'annual-summary':
                     subject = `Informe de Resumen Anual ${selectedYear}`;
                     body = `Hola ${employee.name},\n\nAdjunto tu informe de resumen anual para el año ${selectedYear}.\n\nSaludos.`;
-                    pdfBlob = await generateAnnualReport(employee.id, selectedYear);
+                    // Esta función ahora genera el PDF en el cliente
+                    await generateAnnualReportPDF(employee, selectedYear, weeklyRecords, useDataProvider);
                     break;
                 case 'annual-workday':
                     subject = `Informe de Jornada Anual ${selectedYear}`;
                     body = `Hola ${employee.name},\n\nAdjunto tu informe de jornada anual para el año ${selectedYear}.\n\nSaludos.`;
-                    pdfBlob = await generateAnnualDetailedReport(employee.id, selectedYear);
+                     await generateAnnualDetailedReportPDF(employee, selectedYear, useDataProvider);
                     break;
                 case 'absences':
                     subject = `Informe de Ausencias ${selectedYear}`;
                     body = `Hola ${employee.name},\n\nAdjunto tu informe de ausencias para el año ${selectedYear}.\n\nSaludos.`;
-                    pdfBlob = await generateAbsenceReport(employee.id, selectedYear);
+                    await generateAbsenceReportPDF(employee, selectedYear, weeklyRecords, absenceTypes);
                     break;
-            }
-
-            if (pdfBlob) {
-                // Descargar el PDF
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(pdfBlob);
-                const safeEmployeeName = employee.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-                const fileName = `informe_${selectedReport}_${safeEmployeeName}_${selectedYear}.pdf`;
-                link.download = fileName;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(link.href);
             }
             
             const mailtoLink = `mailto:${employee.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -81,7 +69,11 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
 
         } catch (error) {
             console.error('Error generating report:', error);
-            // Handle error toast if needed
+            toast({
+                title: 'Error al generar el informe',
+                description: error instanceof Error ? error.message : 'No se pudo generar el PDF.',
+                variant: 'destructive',
+            });
         } finally {
             setIsGenerating(false);
             setDialogOpen(false);
