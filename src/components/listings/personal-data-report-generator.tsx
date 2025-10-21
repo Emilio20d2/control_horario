@@ -27,8 +27,6 @@ const availableFields = [
     { id: 'phone', label: 'Teléfono' },
     { id: 'email', label: 'Email' },
     { id: 'contractType', label: 'Tipo Contrato' },
-    { id: 'startDate', label: 'Fecha Inicio' },
-    { id: 'endDate', label: 'Fecha Fin' },
     { id: 'weeklyHours', label: 'Jornada Semanal' },
 ] as const;
 
@@ -97,8 +95,6 @@ export function PersonalDataReportGenerator() {
         case 'phone': return employee.phone || '';
         case 'email': return employee.email || '';
         case 'contractType': return activePeriod?.contractType || '';
-        case 'startDate': return activePeriod ? format(parseISO(activePeriod.startDate), 'P', { locale: es }) : '';
-        case 'endDate': return activePeriod?.endDate ? format(parseISO(activePeriod.endDate), 'P', { locale: es }) : 'Activo';
         case 'weeklyHours': return activePeriod ? `${getEffectiveWeeklyHours(activePeriod, new Date()).toFixed(2)}h` : '';
         default: return '';
     }
