@@ -31,9 +31,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
     const [editingAbsenceId, setEditingAbsenceId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    const nonSplittableAbsenceTypes = absenceTypes
-        .filter(at => !at.isAbsenceSplittable && at.name !== 'Vacaciones')
-        .sort((a, b) => a.name.localeCompare(b.name));
+    const sortedAbsenceTypes = [...absenceTypes].sort((a, b) => a.name.localeCompare(b.name));
 
     const allScheduledAbsences = employee.employmentPeriods.flatMap(p => 
         (p.scheduledAbsences || []).map(a => ({...a, periodId: p.id}))
@@ -144,7 +142,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                         <Select value={absenceTypeId} onValueChange={setAbsenceTypeId}>
                             <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                             <SelectContent>
-                                {nonSplittableAbsenceTypes.map(at => (
+                                {sortedAbsenceTypes.map(at => (
                                     <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>
                                 ))}
                             </SelectContent>
