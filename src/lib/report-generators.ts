@@ -20,7 +20,7 @@ const addHeaderFooter = (doc: jsPDF, title: string, pageNumber: number, totalPag
 export async function generateAnnualReportPDF(employee: Employee, year: number, weeklyRecords: Record<string, WeeklyRecord>, dataProvider: any) {
     if (!employee) throw new Error("Empleado no válido.");
 
-    const { getEmployeeBalancesForWeek, calculateBalancePreview, getActivePeriod, getEffectiveWeeklyHours, absenceTypes, holidays } = dataProvider();
+    const { getEmployeeBalancesForWeek, calculateBalancePreview, getActivePeriod, getEffectiveWeeklyHours, absenceTypes, holidays, getWeekId } = dataProvider;
     
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     const yearStart = new Date(year, 0, 1);
@@ -29,7 +29,7 @@ export async function generateAnnualReportPDF(employee: Employee, year: number, 
     let weekIdsInYear: string[] = [];
     let currentDate = yearStart;
     while (currentDate <= yearEnd) {
-        weekIdsInYear.push(dataProvider().getWeekId(currentDate));
+        weekIdsInYear.push(getWeekId(currentDate));
         currentDate = addDays(currentDate, 7);
     }
     weekIdsInYear = [...new Set(weekIdsInYear)].sort();
@@ -223,7 +223,7 @@ export async function generateAnnualReportPDF(employee: Employee, year: number, 
 export async function generateAnnualDetailedReportPDF(employee: Employee, year: number, dataProvider: any) {
     if (!employee) throw new Error("Empleado no válido.");
 
-    const { getProcessedAnnualDataForEmployee, calculateTheoreticalAnnualWorkHours, calculateCurrentAnnualComputedHours, getEffectiveWeeklyHours, absenceTypes } = dataProvider();
+    const { getProcessedAnnualDataForEmployee, calculateTheoreticalAnnualWorkHours, calculateCurrentAnnualComputedHours, absenceTypes } = dataProvider;
     
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     const { annualData } = await getProcessedAnnualDataForEmployee(employee.id, year);

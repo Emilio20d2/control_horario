@@ -21,7 +21,8 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
     const [isGenerating, setIsGenerating] = useState(false);
     const { toast } = useToast();
 
-    const { weeklyRecords, getProcessedAnnualDataForEmployee, calculateTheoreticalAnnualWorkHours, calculateCurrentAnnualComputedHours, absenceTypes, holidays } = useDataProvider();
+    const dataProvider = useDataProvider();
+    const { weeklyRecords, absenceTypes, holidays } = dataProvider;
 
     const availableYears = useMemo(() => {
         if (!weeklyRecords) return [new Date().getFullYear()];
@@ -49,13 +50,12 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
                 case 'annual-summary':
                     subject = `Informe de Resumen Anual ${selectedYear}`;
                     body = `Hola ${employee.name},\n\nAdjunto tu informe de resumen anual para el año ${selectedYear}.\n\nSaludos.`;
-                    // Esta función ahora genera el PDF en el cliente
-                    await generateAnnualReportPDF(employee, selectedYear, weeklyRecords, useDataProvider);
+                    await generateAnnualReportPDF(employee, selectedYear, weeklyRecords, dataProvider);
                     break;
                 case 'annual-workday':
                     subject = `Informe de Jornada Anual ${selectedYear}`;
                     body = `Hola ${employee.name},\n\nAdjunto tu informe de jornada anual para el año ${selectedYear}.\n\nSaludos.`;
-                     await generateAnnualDetailedReportPDF(employee, selectedYear, useDataProvider);
+                    await generateAnnualDetailedReportPDF(employee, selectedYear, dataProvider);
                     break;
                 case 'absences':
                     subject = `Informe de Ausencias ${selectedYear}`;
