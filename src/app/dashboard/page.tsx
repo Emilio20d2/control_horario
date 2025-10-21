@@ -71,7 +71,9 @@ export default function DashboardPage() {
     }, [employees]);
 
     useEffect(() => {
-        if (!loading && Object.keys(weeklyRecords).length > 0) {
+        if (loading) return;
+
+        if (Object.keys(weeklyRecords).length > 0) {
             const firstRecordId = Object.keys(weeklyRecords).sort()[0];
             const firstDayOfWeek = Object.keys(weeklyRecords[firstRecordId].weekData[Object.keys(weeklyRecords[firstRecordId].weekData)[0]]?.days || {})[0];
             if (firstDayOfWeek) {
@@ -86,7 +88,8 @@ export default function DashboardPage() {
             if (!detailedReportEmployeeId) setDetailedReportEmployeeId(activeEmployeesForReport[0].id);
             if (!absenceReportEmployeeId) setAbsenceReportEmployeeId(activeEmployeesForReport[0].id);
         }
-    }, [loading, weeklyRecords, activeEmployeesForReport]);
+    }, [loading, weeklyRecords, activeEmployeesForReport, reportEmployeeId, detailedReportEmployeeId, absenceReportEmployeeId]);
+
 
     const months = Array.from({ length: 12 }, (_, i) => ({
         value: i,
@@ -955,4 +958,5 @@ export default function DashboardPage() {
       );
 }
 
+    
     

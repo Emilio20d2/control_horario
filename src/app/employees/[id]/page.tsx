@@ -4,7 +4,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Edit, PlusCircle, Wallet, Briefcase, Gift, Scale, Loader2, Users } from 'lucide-react';
+import { ChevronLeft, Edit, PlusCircle, Wallet, Briefcase, Gift, Scale, Mail, FileDown } from 'lucide-react';
 import { notFound, useParams } from 'next/navigation';
 import { Badge } from "@/components/ui/badge";
 import { EmployeeDetails } from "@/components/employees/employee-details";
@@ -14,6 +14,7 @@ import { ScheduledAbsenceManager } from '@/components/employees/scheduled-absenc
 import { isAfter, parseISO, startOfDay } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMemo, useState, useEffect } from 'react';
+import { EmployeeReportGenerator } from '@/components/employees/employee-report-generator';
 
 const BalanceCard = ({ title, value, icon: Icon, isLoading }: { title: string; value: number | undefined; icon: React.ElementType, isLoading: boolean }) => (
     <Card className="flex-1 min-w-[200px]">
@@ -36,7 +37,7 @@ const BalanceCard = ({ title, value, icon: Icon, isLoading }: { title: string; v
 export default function EmployeeDetailPage() {
     const params = useParams();
     const id = params.id as string;
-    const { getEmployeeById, loading, weeklyRecords, getEmployeeFinalBalances, employeeGroups } = useDataProvider();
+    const { getEmployeeById, loading, weeklyRecords, getEmployeeFinalBalances } = useDataProvider();
     const [displayBalances, setDisplayBalances] = useState<{ ordinary: number; holiday: number; leave: number; total: number; } | null>(null);
 
     const employee = getEmployeeById(id);
@@ -78,8 +79,6 @@ export default function EmployeeDetailPage() {
         return notFound();
     }
     
-    const employeeGroup = employeeGroups.find(g => g.id === employee.groupId);
-
     const activePeriod = employee.employmentPeriods?.find(p => {
         if (!p.endDate) return true;
         const endDate = typeof p.endDate === 'string' ? parseISO(p.endDate) : p.endDate as Date;
@@ -116,14 +115,6 @@ export default function EmployeeDetailPage() {
                             <Badge variant="destructive">Inactivo</Badge>
                         )}
                         {employee.dni && <Badge variant="secondary">{employee.dni}</Badge>}
-                        {employeeGroup ? (
-                            <Badge variant="secondary" className="hidden items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                {employeeGroup.name}
-                            </Badge>
-                        ) : (
-                            <Badge variant="secondary" className="hidden">Sin Agrupación</Badge>
-                        )}
                      </div>
                 </div>
                </div>
@@ -134,6 +125,9 @@ export default function EmployeeDetailPage() {
                             Editar Ficha
                         </Button>
                     </Link>
+                    {isContractActive && employee.email && (
+                       <EmployeeReportGenerator employee={employee} />
+                    )}
                     {!isContractActive && (
                         <Link href={`/employees/${employee.id}/new-contract`} passHref>
                             <Button>
