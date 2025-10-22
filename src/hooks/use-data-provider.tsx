@@ -41,7 +41,7 @@ import {
     deleteEmployeeGroup,
     updateEmployeeGroupOrder,
 } from '../lib/services/settingsService';
-import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth } from 'date-fns';
+import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth } from 'date-fns';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp } from 'firebase/firestore';
@@ -185,6 +185,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [weeklyRecords, setWeeklyRecords] = useState<Record<string, WeeklyRecord>>({});
   const [users, setUsers] = useState<AppUser[]>([]);
   const [appUser, setAppUser] = useState<AppUser | null>(null);
+  const [employeeRecord, setEmployeeRecord] = useState<Employee | null>(null);
   const [holidayEmployees, setHolidayEmployees] = useState<HolidayEmployee[]>([]);
   const [holidayReports, setHolidayReports] = useState<HolidayReport[]>([]);
   const [employeeGroups, setEmployeeGroups] = useState<EmployeeGroup[]>([]);
@@ -236,23 +237,36 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [authUser, loadData]);
 
- useEffect(() => {
-    if (!authUser || users.length === 0 || employees.length === 0) {
-        setAppUser(null);
-        return;
+  // Dedicated effect to find the employee record linked to the auth user.
+  useEffect(() => {
+    if (authUser && employees.length > 0) {
+        const foundEmployee = employees.find(e => e.authId === authUser.uid);
+        setEmployeeRecord(foundEmployee || null);
     }
+  }, [authUser, employees]);
 
-    const userRecord = users.find(u => u.id === authUser.uid);
-    const employeeRecord = employees.find(e => e.authId === authUser.uid);
-
-    let trueRole: 'admin' | 'employee' = 'employee';
-    
-    // Superadmin rule
+  // This effect now depends on the result of the previous one.
+  useEffect(() => {
+    if (!authUser) {
+      setAppUser(null);
+      return;
+    }
+  
+    // Special superadmin rule, applied immediately.
     if (authUser.email === 'emiliogp@inditex.com') {
-        trueRole = 'admin';
-    } else if (userRecord?.role === 'admin') {
-        trueRole = 'admin';
+      setAppUser({
+        id: authUser.uid,
+        email: authUser.email!,
+        employeeId: employeeRecord?.id || '',
+        role: viewMode,
+        trueRole: 'admin',
+      });
+      return;
     }
+
+    // Standard user logic, depends on user record from 'users' collection.
+    const userRecord = users.find(u => u.id === authUser.uid);
+    const trueRole = userRecord?.role === 'admin' ? 'admin' : 'employee';
 
     setAppUser({
         id: authUser.uid,
@@ -261,7 +275,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         role: trueRole === 'admin' ? viewMode : 'employee',
         trueRole: trueRole,
     });
-}, [authUser, users, employees, viewMode]);
+    
+  }, [authUser, users, viewMode, employeeRecord]);
   
   const getWeekId = (d: Date): string => {
     const monday = startOfWeek(d, { weekStartsOn: 1 });
@@ -1155,3 +1170,5 @@ createAnnualConfig: createAnnualConfigService,
 };
 
 export const useDataProvider = () => useContext(DataContext);
+
+    
