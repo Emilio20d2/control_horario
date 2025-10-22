@@ -96,7 +96,7 @@ export default function EmployeeDetailPage() {
     const isContractActive = !!activePeriod;
 
     return (
-        <div className="flex flex-col gap-6 pt-6">
+        <div className="flex flex-col gap-6 pt-10">
             <div className="flex items-center justify-between gap-4 px-4 md:px-6">
                <div className="flex items-center gap-4">
                  <Link href="/employees" passHref>
