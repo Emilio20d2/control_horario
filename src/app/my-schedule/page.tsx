@@ -13,15 +13,15 @@ import { cn } from '@/lib/utils';
 import type { DailyData, WeeklyRecord, Employee } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
-interface ConfirmedWeekCardProps {
-    employee: Employee | null;
+interface ConfirmedWeek {
     weekId: string;
     weekData: WeeklyRecord['weekData'][string];
     initialBalances: { ordinary: number; holiday: number; leave: number; };
     impact: { ordinary: number; holiday: number; leave: number; };
 }
 
-const ConfirmedWeekCard: React.FC<ConfirmedWeekCardProps> = ({ employee, weekId, weekData, initialBalances, impact }) => {
+
+const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ employee, weekId, weekData, initialBalances, impact }) => {
     const { 
         absenceTypes,
         holidays,
@@ -145,50 +145,118 @@ const ConfirmedWeekCard: React.FC<ConfirmedWeekCardProps> = ({ employee, weekId,
 };
 
 export default function MySchedulePage() {
+    const { employeeRecord: employee, loading, weeklyRecords, getEmployeeBalancesForWeek, calculateBalancePreview } = useDataProvider();
+    const [processedWeeks, setProcessedWeeks] = useState<ConfirmedWeek[]>([]);
+    const [selectedYear, setSelectedYear] = useState<number>(2025);
+    const [isProcessing, setIsProcessing] = useState(true);
+
+    const availableYears = useMemo(() => {
+        if (!weeklyRecords) return [new Date().getFullYear()];
+        const years = new Set(Object.keys(weeklyRecords).map(id => parseInt(id.split('-')[0], 10)));
+        const currentYear = new Date().getFullYear();
+        if (!years.has(currentYear)) years.add(currentYear);
+        years.add(currentYear + 1);
+        return Array.from(years).filter(y => y >= 2025).sort((a, b) => b - a);
+    }, [weeklyRecords]);
     
-    // Mock data for one week to show the component structure
-    const mockWeekData: WeeklyRecord['weekData'][string] = {
-        days: {
-            '2025-03-03': { theoreticalHours: 8, workedHours: 8, absence: 'ninguna', absenceHours: 0, leaveHours: 0, doublePay: false },
-            '2025-03-04': { theoreticalHours: 8, workedHours: 8, absence: 'ninguna', absenceHours: 0, leaveHours: 0, doublePay: false },
-            '2025-03-05': { theoreticalHours: 8, workedHours: 0, absence: 'V', absenceHours: 8, leaveHours: 0, doublePay: false },
-            '2025-03-06': { theoreticalHours: 8, workedHours: 8, absence: 'ninguna', absenceHours: 0, leaveHours: 0, doublePay: false },
-            '2025-03-07': { theoreticalHours: 8, workedHours: 8, absence: 'ninguna', absenceHours: 0, leaveHours: 0, doublePay: false },
-            '2025-03-08': { theoreticalHours: 0, workedHours: 4, absence: 'ninguna', absenceHours: 0, leaveHours: 0, doublePay: false },
-            '2025-03-09': { theoreticalHours: 0, workedHours: 0, absence: 'ninguna', absenceHours: 0, leaveHours: 0, doublePay: false },
-        },
-        confirmed: true,
-        totalComplementaryHours: 2,
-        generalComment: "Semana de ejemplo con una ausencia y horas extra."
-    };
-    const mockInitialBalances = { ordinary: 10, holiday: 5, leave: 2 };
-    const mockImpact = { ordinary: -1.75, holiday: 0, leave: 0 };
+    useEffect(() => {
+        if (loading || !employee) {
+            setIsProcessing(true);
+            return;
+        }
+
+        const processWeeks = async () => {
+            setIsProcessing(true);
+            const confirmedWeeks: ConfirmedWeek[] = [];
+            const sortedWeekIds = Object.keys(weeklyRecords).sort();
+
+            for (const weekId of sortedWeekIds) {
+                const weekData = weeklyRecords[weekId]?.weekData?.[employee.id];
+                if (weekData?.confirmed && getYear(parseISO(weekId)) === selectedYear) {
+                    const initialBalances = getEmployeeBalancesForWeek(employee.id, weekId);
+                    const impact = await calculateBalancePreview(employee.id, weekData.days, initialBalances, weekData.weeklyHoursOverride, weekData.totalComplementaryHours);
+                    if (impact) {
+                        confirmedWeeks.push({
+                            weekId,
+                            weekData,
+                            initialBalances,
+                            impact,
+                        });
+                    }
+                }
+            }
+            setProcessedWeeks(confirmedWeeks);
+            setIsProcessing(false);
+        };
+        
+        processWeeks();
+
+    }, [loading, employee, weeklyRecords, selectedYear, getEmployeeBalancesForWeek, calculateBalancePreview]);
+    
+
+    if (loading) {
+        return (
+            <div className="flex flex-col gap-6 p-4 md:p-6">
+                 <div className="flex justify-between items-center">
+                    <Skeleton className="h-8 w-64" />
+                    <Skeleton className="h-10 w-48" />
+                </div>
+                <div className="space-y-4">
+                    <Skeleton className="h-64 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                </div>
+            </div>
+        );
+    }
+    
+    if (!employee) {
+        return (
+             <div className="flex flex-col gap-6 p-4 md:p-6">
+                <h1 className="text-2xl font-bold tracking-tight font-headline">Mis Horarios Confirmados</h1>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="text-destructive">Error</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p>No se ha podido encontrar tu ficha de empleado. Por favor, contacta con un administrador.</p>
+                    </CardContent>
+                 </Card>
+            </div>
+        )
+    }
     
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold tracking-tight font-headline">Mis Horarios Confirmados</h1>
-                <Select value="2025">
+                <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
                     <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Seleccionar año..." />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="2025">2025</SelectItem>
+                        {availableYears.map(y => (
+                           <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
             </div>
             
             <div className="space-y-4">
-                <p className="text-sm text-center text-muted-foreground">
-                    Esto es un ejemplo de cómo se verá una semana confirmada. Una vez que se carguen sus datos, aquí aparecerán todas sus semanas.
-                </p>
-                <ConfirmedWeekCard 
-                    employee={null}
-                    weekId="2025-03-03" 
-                    weekData={mockWeekData}
-                    initialBalances={mockInitialBalances}
-                    impact={mockImpact}
-                />
+                {isProcessing ? (
+                    <div className="flex justify-center items-center h-64">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                ) : processedWeeks.length > 0 ? (
+                    processedWeeks.map((week) => (
+                        <ConfirmedWeekCard key={week.weekId} employee={employee} {...week} />
+                    ))
+                ) : (
+                    <Card>
+                        <CardContent className="p-8 text-center text-muted-foreground">
+                            No tienes semanas confirmadas para el año {selectedYear}.
+                        </CardContent>
+                    </Card>
+                )}
             </div>
         </div>
     );
