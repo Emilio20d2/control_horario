@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -68,15 +69,15 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
     return (
         <Card>
             <CardHeader className="pb-4">
-                <CardTitle className="flex justify-between items-baseline">
+                <CardTitle className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline gap-1">
                     <span className="text-base font-bold">
                         {format(weekStartDate, 'd MMM')} - {format(endOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM, yyyy', {locale:es})}
                     </span>
                     <span className="text-sm font-mono font-medium text-muted-foreground">{weekLabel}</span>
                 </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
+            <CardContent className="flex flex-col md:grid md:grid-cols-3 gap-4">
+                <div className="md:col-span-2 overflow-x-auto">
                     <Table>
                         <TableHeader>
                              <TableRow>
@@ -158,8 +159,12 @@ export default function MySchedulePage() {
     }, [weeklyRecords]);
     
     useEffect(() => {
-        if (loading || !employee) {
+        if (loading) {
             setIsProcessing(true);
+            return;
+        }
+        if (!employee) {
+            setIsProcessing(false);
             return;
         }
 
@@ -230,10 +235,10 @@ export default function MySchedulePage() {
     
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl font-bold tracking-tight font-headline">Mis Horarios Confirmados</h1>
                 <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]">
                         <SelectValue placeholder="Seleccionar año..." />
                     </SelectTrigger>
                     <SelectContent>

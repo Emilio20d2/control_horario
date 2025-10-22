@@ -25,7 +25,6 @@ export default function MyProfilePage() {
         }
     }, [employee, dataLoading, getEmployeeFinalBalances, weeklyRecords]);
     
-    // If data provider is loading, or the specific employee hasn't been found yet, show skeleton.
     if (dataLoading || !employee) {
         return (
             <div className="flex flex-col gap-6 p-4 md:p-6">
@@ -56,7 +55,7 @@ export default function MyProfilePage() {
                 Mi Ficha Personal
             </h1>
 
-             <div className="flex flex-wrap items-stretch justify-center gap-4">
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <BalanceCard title="B. Ordinaria" value={displayBalances?.ordinary} icon={Briefcase} isLoading={!displayBalances} />
                 <BalanceCard title="B. Festivos" value={displayBalances?.holiday} icon={Gift} isLoading={!displayBalances} />
                 <BalanceCard title="B. Libranza" value={displayBalances?.leave} icon={Wallet} isLoading={!displayBalances} />
