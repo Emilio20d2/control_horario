@@ -86,7 +86,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/my-profile', label: 'Mi Ficha', icon: User },
     { href: '/my-schedule', label: 'Mis Horarios', icon: CalendarCheck },
     { href: '/my-vacations', label: 'Vacaciones', icon: PlaneTakeoff },
-    { href: '/README.md', label: 'Ayuda', icon: HelpCircle },
+    { href: '/help', label: 'Ayuda', icon: HelpCircle },
   ];
 
   const isAdminView = appUser?.role === 'admin';
