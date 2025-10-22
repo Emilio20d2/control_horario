@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -82,6 +83,17 @@ export default function LoginPage() {
               {loading ? 'Iniciando...' : 'Acceder'}
             </Button>
           </form>
+            <div className="mt-4 text-center text-sm">
+                ¿No tienes una cuenta?{' '}
+                <Link href="/register" className="underline">
+                    Regístrate
+                </Link>
+            </div>
+            <div className="mt-2 text-center text-sm">
+                 <Link href="/forgot-password" className="underline text-sm text-muted-foreground hover:text-primary">
+                    ¿Olvidaste tu contraseña?
+                </Link>
+            </div>
         </CardContent>
       </Card>
     </div>
