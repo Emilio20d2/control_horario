@@ -162,7 +162,7 @@ export default function EmployeeDetailPage() {
 
 
             <div className="px-4 md:px-6 pb-4 space-y-6">
-                {periodToDisplay && <EmployeeDetails period={periodToDisplay} employeeId={employee.id} allPeriods={employee.employmentPeriods} />}
+                {periodToDisplay && <EmployeeDetails period={periodToDisplay} employeeId={employee.id} allPeriods={employee.employmentPeriods} isEmployeeView={false} />}
                 {activePeriod && <ScheduledAbsenceManager employee={employee} period={activePeriod} />}
             </div>
 

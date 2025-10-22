@@ -1,6 +1,5 @@
 'use client';
 
-import { useAuth } from '@/hooks/useAuth';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { notFound } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -79,7 +78,7 @@ export default function MyProfilePage() {
             </div>
             
             <div className="space-y-6">
-                {activePeriod && <EmployeeDetails period={activePeriod} employeeId={employee.id} allPeriods={employee.employmentPeriods} />}
+                {activePeriod && <EmployeeDetails period={activePeriod} employeeId={employee.id} allPeriods={employee.employmentPeriods} isEmployeeView={true} />}
                 {activePeriod && <ScheduledAbsenceManager employee={employee} period={activePeriod} />}
             </div>
         </div>

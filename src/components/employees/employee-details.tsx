@@ -18,6 +18,7 @@ interface EmployeeDetailsProps {
     period: EmploymentPeriod;
     employeeId: string;
     allPeriods: EmploymentPeriod[];
+    isEmployeeView: boolean;
 }
 
 const weekDays = [
@@ -55,7 +56,7 @@ const ShiftRow = ({ shift, shiftName }: { shift: Record<string, DaySchedule>, sh
 };
 
 
-export function EmployeeDetails({ period, employeeId, allPeriods }: EmployeeDetailsProps) {
+export function EmployeeDetails({ period, employeeId, allPeriods, isEmployeeView }: EmployeeDetailsProps) {
     const { 
         getEffectiveWeeklyHours,
         getProcessedAnnualDataForAllYears,
@@ -116,6 +117,11 @@ export function EmployeeDetails({ period, employeeId, allPeriods }: EmployeeDeta
     const endDate = period.endDate ? (typeof period.endDate === 'string' ? parseISO(period.endDate) : period.endDate) : null;
     
     const sortedPeriods = allPeriods.slice().sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime());
+
+    const workHoursHistoryToShow = (period.workHoursHistory || [])
+        .filter(record => isEmployeeView ? isAfter(new Date(record.effectiveDate), new Date('2025-01-01')) : true)
+        .slice()
+        .reverse();
 
     return (
         <Card>
@@ -183,7 +189,7 @@ export function EmployeeDetails({ period, employeeId, allPeriods }: EmployeeDeta
                     </div>
                 </div>
 
-                {sortedPeriods.length > 1 && (
+                {!isEmployeeView && sortedPeriods.length > 1 && (
                      <div className="space-y-2">
                         <h4 className="font-medium text-muted-foreground">Historial de Contratos</h4>
                         <div className="border rounded-md">
@@ -209,7 +215,7 @@ export function EmployeeDetails({ period, employeeId, allPeriods }: EmployeeDeta
                     </div>
                 )}
                 
-                {period.workHoursHistory && period.workHoursHistory.length > 0 && (
+                {workHoursHistoryToShow.length > 0 && (
                      <div className="space-y-2">
                         <h4 className="font-medium text-muted-foreground">Historial de Cambio de Jornada</h4>
                         <div className="border rounded-md">
@@ -221,7 +227,7 @@ export function EmployeeDetails({ period, employeeId, allPeriods }: EmployeeDeta
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {period.workHoursHistory.slice().reverse().map((record, index) => (
+                                    {workHoursHistoryToShow.map((record, index) => (
                                         <TableRow key={index}>
                                             <TableCell>{format(new Date(record.effectiveDate), 'PPP', { locale: es })}</TableCell>
                                             <TableCell className="text-right font-mono">{record.weeklyHours.toFixed(2)}h</TableCell>
@@ -233,9 +239,9 @@ export function EmployeeDetails({ period, employeeId, allPeriods }: EmployeeDeta
                     </div>
                 )}
                 
-                <Separator />
+                {!isEmployeeView && <Separator />}
                 
-                <div className="space-y-4">
+                {!isEmployeeView && <div className="space-y-4">
                      <h3 className="text-lg font-medium">Cómputo Anual de Horas</h3>
                     <div className="border rounded-lg">
                         <Table>
@@ -287,11 +293,11 @@ export function EmployeeDetails({ period, employeeId, allPeriods }: EmployeeDeta
                              </div>
                         )}
                     </div>
-                </div>
+                </div>}
 
-                <Separator />
+                {!isEmployeeView && <Separator />}
 
-                <div className="space-y-4">
+                {!isEmployeeView && <div className="space-y-4">
                     <div className="flex justify-between items-end">
                         <div>
                             <h3 className="text-lg font-medium">Historial de Calendarios Laborales</h3>
@@ -328,7 +334,7 @@ export function EmployeeDetails({ period, employeeId, allPeriods }: EmployeeDeta
                     ) : (
                         <p className="text-muted-foreground">No hay un calendario laboral definido para este periodo.</p>
                     )}
-                </div>
+                </div>}
             </CardContent>
         </Card>
     );
