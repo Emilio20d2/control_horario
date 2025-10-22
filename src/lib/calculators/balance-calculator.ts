@@ -61,6 +61,12 @@ export const calculateBalancePreview = (
         const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
         const dayOfWeek = getISODay(dayDate);
 
+        // --- SAFETY GUARD ---
+        // Ensure doublePay is only possible on 'Apertura' holidays.
+        if (dayData.holidayType !== 'Apertura') {
+            dayData.doublePay = false;
+        }
+
         let dailyComputableForWeek = 0;
         
         // --- EXCEPCIÓN: Festivo de Apertura (Lunes a Sábado) ---
