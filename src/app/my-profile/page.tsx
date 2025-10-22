@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import { ScheduledAbsenceManager } from '@/components/employees/scheduled-absence-manager';
 
 export default function MyProfilePage() {
-    const { employeeRecord: employee, loading, getEmployeeFinalBalances, weeklyRecords } = useDataProvider();
+    const { employeeRecord: employee, getEmployeeFinalBalances, weeklyRecords, loading } = useDataProvider();
     const [displayBalances, setDisplayBalances] = useState<{ ordinary: number; holiday: number; leave: number; total: number; } | null>(null);
     
     useEffect(() => {
@@ -23,7 +23,7 @@ export default function MyProfilePage() {
         }
     }, [employee, loading, getEmployeeFinalBalances, weeklyRecords]);
 
-    if (loading || !employee) {
+    if (!employee) {
         return (
             <div className="flex flex-col gap-6 p-4 md:p-6">
                 <Skeleton className="h-8 w-48" />
