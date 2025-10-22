@@ -426,32 +426,36 @@ export function AnnualVacationQuadrant() {
 
     const weeksOfYear = useMemo(() => {
         const year = selectedYear;
-        const firstDayOfYear = new Date(year, 0, 1);
-        let firstMonday = startOfWeek(firstDayOfYear, { weekStartsOn: 1 });
+        const yearStart = new Date(year, 0, 1);
+        const yearEnd = new Date(year, 11, 31);
     
-        if (getYear(firstMonday) < year) {
-            firstMonday = addWeeks(firstMonday, 1);
-        }
+        const weeks = eachWeekOfInterval({
+            start: yearStart,
+            end: yearEnd,
+        }, { weekStartsOn: 1 });
 
-        const weeks = [];
-        for (let i = 0; i < 53; i++) {
-            const weekStart = addWeeks(firstMonday, i);
+        return weeks.map(weekStart => {
             const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+            const weekNumber = getISOWeek(weekStart);
+            const weekYear = getYear(weekStart);
 
-            if (getYear(weekStart) === year || getYear(weekEnd) === year) {
-                 weeks.push({
-                    start: weekStart,
-                    end: weekEnd,
-                    number: getISOWeek(weekStart),
-                    year: getYear(weekStart),
-                    key: `${getYear(weekStart)}-W${String(getISOWeek(weekStart)).padStart(2, '0')}`
-                });
-            } else if (getYear(weekStart) > year) {
-                break;
+            // Handle cases where ISO week belongs to the previous or next year.
+            let keyYear = weekYear;
+            if (getMonth(weekStart) === 11 && weekNumber === 1) {
+                keyYear = weekYear + 1;
+            } else if (getMonth(weekStart) === 0 && weekNumber >= 52) {
+                keyYear = weekYear -1;
             }
-        }
-        return weeks;
-    }, [selectedYear]);
+
+            return {
+                start: weekStart,
+                end: weekEnd,
+                number: weekNumber,
+                year: weekYear,
+                key: getWeekId(weekStart) // Use the reliable getWeekId
+            };
+        });
+    }, [selectedYear, getWeekId]);
 
     const schedulableAbsenceTypes = useMemo(() => {
         return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
