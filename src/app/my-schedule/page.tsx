@@ -174,12 +174,11 @@ export default function MySchedulePage() {
     }, [weeklyRecords]);
     
     useEffect(() => {
-        if (loading || !employee) {
-            setIsProcessing(true);
-            return;
-        };
-
         const processWeeks = async () => {
+            if (loading || !employee) {
+                setIsProcessing(true);
+                return;
+            }
             setIsProcessing(true);
             const confirmedWeeks = Object.entries(weeklyRecords)
                 .filter(([weekId, record]) => {
