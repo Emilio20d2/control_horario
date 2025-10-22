@@ -281,6 +281,15 @@ useEffect(() => {
     }
 }, [authUser, employeeRecord, users, loading, viewMode]);
 
+// Effect to update appUser role when viewMode changes
+useEffect(() => {
+    if (appUser && appUser.trueRole === 'admin') {
+      setAppUser(currentUser => ({
+        ...currentUser!,
+        role: viewMode,
+      }));
+    }
+}, [viewMode, appUser?.trueRole]);
 
 
   const getWeekId = (d: Date): string => {

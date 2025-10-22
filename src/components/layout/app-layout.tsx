@@ -60,6 +60,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { unconfirmedWeeksDetails, appUser, employeeRecord, viewMode, setViewMode, loading: dataLoading } = useDataProvider();
+  
+  useEffect(() => {
+    if (!appUser || !appUser.trueRole) return;
+    if (appUser.trueRole === 'admin') {
+      if (viewMode === 'employee' && !pathname.startsWith('/my-')) {
+        router.replace('/my-profile');
+      } else if (viewMode === 'admin' && pathname.startsWith('/my-')) {
+        router.replace('/dashboard');
+      }
+    }
+  }, [viewMode, appUser, pathname, router]);
 
   const getInitials = (name: string | undefined | null, email: string | undefined | null): string => {
     if (name) {
