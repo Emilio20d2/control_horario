@@ -97,13 +97,20 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
                                 if (!dayData) return null;
 
                                 const absenceName = dayData.absence === 'ninguna' ? '' : (absenceTypes.find(at => at.abbreviation === dayData.absence)?.abbreviation || dayData.absence);
-                                const isHoliday = holidays.some(h => isSameDay(h.date, day));
+                                const holiday = holidays.find(h => isSameDay(h.date, day));
 
                                 return (
-                                    <TableRow key={dayKey} className={cn(isHoliday && "bg-blue-50", !isHoliday && dayData.absence !== 'ninguna' && "bg-red-50")}>
+                                    <TableRow 
+                                        key={dayKey}
+                                        className={cn(
+                                            holiday && holiday.type === 'Apertura' && 'bg-green-50',
+                                            holiday && holiday.type !== 'Apertura' && 'bg-gray-100',
+                                            !holiday && dayData.absence !== 'ninguna' && 'bg-red-50'
+                                        )}
+                                    >
                                         <TableCell className="font-semibold p-1 text-xs">{format(day, 'E', { locale: es })}</TableCell>
                                         <TableCell className="p-1 text-xs">{format(day, 'dd/MM/yy')}</TableCell>
-                                        <TableCell className="text-right p-1 text-xs font-mono">{dayData.workedHours.toFixed(2)}</TableCell>
+                                        <TableCell className="text-right p-1 text-xs font-mono">{dayData.workedHours > 0 ? dayData.workedHours.toFixed(2) : ''}</TableCell>
                                         <TableCell className="p-1 text-xs">{absenceName}</TableCell>
                                         <TableCell className="text-right p-1 text-xs font-mono">{dayData.absenceHours > 0 ? dayData.absenceHours.toFixed(2) : ''}</TableCell>
                                         <TableCell className="text-right p-1 text-xs font-mono">{dayData.leaveHours > 0 ? dayData.leaveHours.toFixed(2) : ''}</TableCell>
@@ -144,7 +151,7 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
 };
 
 export default function MySchedulePage() {
-    const { employeeRecord: employee, loading, weeklyRecords, getEmployeeBalancesForWeek, calculateBalancePreview } = useDataProvider();
+    const { employeeRecord: employee, loading, weeklyRecords, getEmployeeBalancesForWeek, calculateBalancePreview, getWeekId } = useDataProvider();
     const [processedWeeks, setProcessedWeeks] = useState<ConfirmedWeek[]>([]);
     const [selectedYear, setSelectedYear] = useState<number>(2025);
     const [isProcessing, setIsProcessing] = useState(true);
@@ -269,4 +276,3 @@ export default function MySchedulePage() {
         </div>
     );
 }
-
