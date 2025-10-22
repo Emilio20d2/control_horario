@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ReactNode } from 'react';
@@ -60,13 +59,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { unconfirmedWeeksDetails, appUser, employeeRecord, viewMode, setViewMode, loading: dataLoading } = useDataProvider();
-
-  // Redirect employee from dashboard to their profile
-  useEffect(() => {
-    if (appUser?.role === 'employee' && pathname === '/dashboard') {
-      router.replace('/my-profile');
-    }
-  }, [appUser, pathname, router]);
 
   const getInitials = (name: string | undefined | null, email: string | undefined | null): string => {
     if (name) {
@@ -130,11 +122,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
     );
   }
   
-    // Don't render layout for employee if they land on an admin-only page (they will be redirected)
-  if (appUser?.role === 'employee' && pathname.startsWith('/dashboard')) {
-    return null;
-  }
-
   return (
     <div className="flex h-screen w-full flex-col bg-background">
       <header className="sticky top-0 inset-x-0 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">

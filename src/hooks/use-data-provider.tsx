@@ -1,4 +1,3 @@
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type {
@@ -256,7 +255,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 }, [authUser, users, employees]);
 
 useEffect(() => {
-    if (authUser && employeeRecord !== undefined && !loading) {
+    if (authUser && employeeRecord !== undefined && !loading && users.length > 0) {
         const userRecord = users.find(u => u.id === authUser.uid);
         const trueRole = userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
 
