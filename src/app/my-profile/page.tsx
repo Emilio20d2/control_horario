@@ -78,7 +78,7 @@ export default function MyProfilePage() {
             </div>
             
             <div className="space-y-6">
-                {activePeriod && <EmployeeDetails period={activePeriod} employeeId={employee.id} allPeriods={employee.employmentPeriods} isEmployeeView={true} />}
+                {activePeriod && <EmployeeDetails employee={employee} period={activePeriod} allPeriods={employee.employmentPeriods} isEmployeeView={true} />}
                 {activePeriod && <ScheduledAbsenceManager employee={employee} period={activePeriod} />}
             </div>
         </div>

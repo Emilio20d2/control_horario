@@ -4,7 +4,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import type { EmploymentPeriod, DaySchedule, WeeklyScheduleData, AnnualConfiguration, WeeklyRecordWithBalances } from '@/lib/types';
+import type { EmploymentPeriod, DaySchedule, WeeklyScheduleData, AnnualConfiguration, WeeklyRecordWithBalances, Employee } from '@/lib/types';
 import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@/components/ui/table';
 import { format, parseISO, isAfter, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -15,8 +15,8 @@ import { TrendingDown, TrendingUp, Scale, Loader2, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface EmployeeDetailsProps {
+    employee: Employee;
     period: EmploymentPeriod;
-    employeeId: string;
     allPeriods: EmploymentPeriod[];
     isEmployeeView: boolean;
 }
@@ -56,31 +56,30 @@ const ShiftRow = ({ shift, shiftName }: { shift: Record<string, DaySchedule>, sh
 };
 
 
-export function EmployeeDetails({ period, employeeId, allPeriods, isEmployeeView }: EmployeeDetailsProps) {
+export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }: EmployeeDetailsProps) {
     const { 
         getEffectiveWeeklyHours,
         getProcessedAnnualDataForAllYears,
-        getEmployeeById,
         employeeGroups,
     } = useDataProvider();
 
     const [annualData, setAnnualData] = useState<Awaited<ReturnType<typeof getProcessedAnnualDataForAllYears>> | null>(null);
     const [isLoadingAnnual, setIsLoadingAnnual] = useState(true);
 
-    const employee = getEmployeeById(employeeId);
     const employeeGroup = employee ? employeeGroups.find(g => g.id === employee.groupId) : undefined;
 
     const currentWeeklyHours = getEffectiveWeeklyHours(period, new Date());
     
     useEffect(() => {
         const fetchAnnualData = async () => {
+            if (!employee) return;
             setIsLoadingAnnual(true);
-            const data = await getProcessedAnnualDataForAllYears(employeeId);
+            const data = await getProcessedAnnualDataForAllYears(employee.id);
             setAnnualData(data);
             setIsLoadingAnnual(false);
         };
         fetchAnnualData();
-    }, [employeeId, getProcessedAnnualDataForAllYears]);
+    }, [employee, getProcessedAnnualDataForAllYears]);
     
     
     const processedAnnualData = () => {
@@ -122,6 +121,19 @@ export function EmployeeDetails({ period, employeeId, allPeriods, isEmployeeView
         .filter(record => isEmployeeView ? isAfter(new Date(record.effectiveDate), new Date('2025-01-01')) : true)
         .slice()
         .reverse();
+
+    if (!employee) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Datos del Contrato y Personales</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">No se pudo cargar la información del empleado.</p>
+                </CardContent>
+            </Card>
+        );
+    }
 
     return (
         <Card>
