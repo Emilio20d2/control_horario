@@ -7,9 +7,23 @@ import type { Employee, EmployeeFormData, WorkHoursRecord, ScheduledAbsence, Emp
 import { isAfter, parseISO, startOfDay, addDays, subDays, format } from 'date-fns';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { createUser } from './userService';
 
 export const createEmployee = async (formData: EmployeeFormData): Promise<string> => {
     const { name, employeeNumber, dni, phone, email, groupId, role, startDate, isTransfer, vacationDaysUsedInAnotherCenter, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours, vacationDays2024 } = formData;
+    
+    // 1. Create user in Firebase Auth if email and password are provided
+    let authId = null;
+    if (email) {
+        // We'll use a hardcoded password for now. This should be improved later.
+        const tempPassword = "password123";
+        const userResult = await createUser({ email, password: tempPassword, employeeId: '' }); // employeeId is updated later
+        if (userResult.success) {
+            authId = userResult.uid;
+        } else {
+            throw new Error(userResult.error || 'Failed to create authentication user.');
+        }
+    }
     
     const newEmployee = {
         name,
@@ -18,6 +32,7 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
         phone: phone || null,
         email: email || null,
         groupId: groupId || null,
+        authId: authId,
         employmentPeriods: [
             {
                 id: `period_${Date.now()}`,
@@ -46,11 +61,10 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
     const docRef = await addDocument('employees', newEmployee);
     const employeeId = docRef.id;
 
-    // After creating the employee, if an email is provided, create a user document
-    // This part does not create the auth user, just the firestore user document.
-    if (email && role) {
-        // This logic will be fully implemented with user registration.
-        console.log(`User document creation/update for ${email} with role ${role} should be handled server-side upon auth user creation.`);
+    // Now update the user document in 'users' collection with the correct employeeId
+    if (authId) {
+        await setDocument('users', authId, { email, employeeId, role: role || 'employee' });
+        await updateDocument('employees', employeeId, { authId: authId }); // Ensure authId is set
     }
 
     return employeeId;

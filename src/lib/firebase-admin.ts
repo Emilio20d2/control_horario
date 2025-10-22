@@ -3,7 +3,6 @@
 
 import admin from 'firebase-admin';
 import { getApps } from 'firebase-admin/app';
-import serviceAccount from '../../shiftmaster-9iefy-firebase-adminsdk-fbsvc-c67926a133.json';
 
 const initializeAdminApp = () => {
     if (getApps().length > 0) {
@@ -11,36 +10,35 @@ const initializeAdminApp = () => {
     }
     
     try {
-        // The serviceAccount object needs to be cast to the correct type.
+        // These will be automatically set by the environment in production.
+        const serviceAccount = {
+            projectId: process.env.FIREBASE_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+            privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        }
         return admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+            credential: admin.credential.cert(serviceAccount),
         });
-    } catch (error) {
-        console.error('ERROR CRÍTICO: No se pudieron procesar las credenciales del Firebase Admin SDK.', error);
-        throw new Error('Fallo en la inicialización del Firebase Admin SDK. Revisa los logs del servidor y las credenciales.');
+    } catch (error: any) {
+        console.error('ERROR CRÍTICO: No se pudieron procesar las credenciales del Firebase Admin SDK.', error.message);
+        throw new Error('Fallo en la inicialización del Firebase Admin SDK. Revisa las variables de entorno del servidor.');
     }
 };
 
-// Ensure the app is initialized before it's used.
 let adminApp: admin.app.App | undefined;
 try {
     adminApp = initializeAdminApp();
 } catch (e) {
-    // Error is already logged in initializeAdminApp, just prevent crash
+    // Error is logged, prevent crash
 }
 
-
 const getDbAdmin = () => {
-    if (!adminApp) {
-        adminApp = initializeAdminApp();
-    }
+    if (!adminApp) adminApp = initializeAdminApp();
     return admin.firestore();
 };
 
 const getAuthAdmin = () => {
-     if (!adminApp) {
-        adminApp = initializeAdminApp();
-    }
+     if (!adminApp) adminApp = initializeAdminApp();
     return admin.auth();
 };
 
