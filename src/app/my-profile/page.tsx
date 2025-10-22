@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { notFound } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,21 +10,21 @@ import { isAfter, parseISO, startOfDay } from 'date-fns';
 import { BalanceCard } from '../employees/[id]/page';
 import { Briefcase, Gift, Scale, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { useEffect, useState } from 'react';
 import { ScheduledAbsenceManager } from '@/components/employees/scheduled-absence-manager';
 
 export default function MyProfilePage() {
-    const { employeeRecord: employee, getEmployeeFinalBalances, weeklyRecords, loading } = useDataProvider();
+    const { employeeRecord: employee, getEmployeeFinalBalances, weeklyRecords, loading: dataLoading } = useDataProvider();
     const [displayBalances, setDisplayBalances] = useState<{ ordinary: number; holiday: number; leave: number; total: number; } | null>(null);
-    
+
     useEffect(() => {
-        if (!loading && employee) {
+        if (!dataLoading && employee) {
             const balances = getEmployeeFinalBalances(employee.id);
             setDisplayBalances(balances);
         }
-    }, [employee, loading, getEmployeeFinalBalances, weeklyRecords]);
-
-    if (!employee) {
+    }, [employee, dataLoading, getEmployeeFinalBalances, weeklyRecords]);
+    
+    // Step 1: Handle initial data loading for the entire app.
+    if (dataLoading) {
         return (
             <div className="flex flex-col gap-6 p-4 md:p-6">
                 <Skeleton className="h-8 w-48" />
@@ -37,7 +38,14 @@ export default function MyProfilePage() {
             </div>
         );
     }
-    
+
+    // Step 2: After initial load, check if the specific employee record was found.
+    // If not found, it's a critical error, so we can use notFound() or show a message.
+    if (!employee) {
+        return notFound();
+    }
+
+    // Step 3: If employee record is found, proceed to render the page content.
     const activePeriod = employee.employmentPeriods?.find(p => {
         if (!p.endDate) return true;
         const endDate = typeof p.endDate === 'string' ? parseISO(p.endDate) : p.endDate as Date;
@@ -72,8 +80,21 @@ export default function MyProfilePage() {
             </div>
             
             <div className="space-y-6">
-                {activePeriod && <EmployeeDetails employee={employee} period={activePeriod} allPeriods={employee.employmentPeriods} isEmployeeView={true} />}
-                {activePeriod && <ScheduledAbsenceManager employee={employee} period={activePeriod} />}
+                {activePeriod ? (
+                    <>
+                        <EmployeeDetails employee={employee} period={activePeriod} allPeriods={employee.employmentPeriods} isEmployeeView={true} />
+                        <ScheduledAbsenceManager employee={employee} period={activePeriod} />
+                    </>
+                ) : (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Sin Contrato Activo</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p>No tienes un periodo de contrato activo en este momento.</p>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
         </div>
     );
