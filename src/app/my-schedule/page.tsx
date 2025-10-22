@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -6,67 +5,39 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { addWeeks, endOfWeek, getISOWeek, getYear, isAfter, parseISO, startOfWeek, subWeeks, addDays, eachDayOfInterval, format, isSameDay, getISODay } from 'date-fns';
+import { getYear, isAfter, parseISO, endOfWeek, eachDayOfInterval, format, isSameDay, getISODay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import type { DailyEmployeeData, DailyData } from '@/lib/types';
+import type { DailyData, WeeklyRecord, Employee } from '@/lib/types';
+import { Loader2 } from 'lucide-react';
 
 interface ConfirmedWeekCardProps {
-    employeeId: string;
+    employee: Employee;
     weekId: string;
+    weekData: WeeklyRecord['weekData'][string];
+    initialBalances: { ordinary: number; holiday: number; leave: number; };
+    impact: { ordinary: number; holiday: number; leave: number; };
 }
 
-const ConfirmedWeekCard: React.FC<ConfirmedWeekCardProps> = ({ employeeId, weekId }) => {
+const ConfirmedWeekCard: React.FC<ConfirmedWeekCardProps> = ({ employee, weekId, weekData, initialBalances, impact }) => {
     const { 
-        getEmployeeById,
-        weeklyRecords,
         absenceTypes,
         holidays,
-        getEmployeeBalancesForWeek,
-        calculateBalancePreview,
-        getActivePeriod,
         getEffectiveWeeklyHours
     } = useDataProvider();
-
-    const [impact, setImpact] = useState<any | null>(null);
-    const [initialBalances, setInitialBalances] = useState<ReturnType<typeof getEmployeeBalancesForWeek> | null>(null);
-
-    const employee = getEmployeeById(employeeId);
-    const weekData = weeklyRecords[weekId]?.weekData?.[employeeId];
-    
-    useEffect(() => {
-        const calculateAsyncData = async () => {
-            if (weekData && employee) {
-                const balances = getEmployeeBalancesForWeek(employee.id, weekId);
-                setInitialBalances(balances);
-
-                const previewResult = await calculateBalancePreview(
-                    employee.id,
-                    weekData.days || {},
-                    balances,
-                    weekData.weeklyHoursOverride,
-                    weekData.totalComplementaryHours
-                );
-                setImpact(previewResult);
-            }
-        };
-        calculateAsyncData();
-    }, [weekData, employee, weekId, getEmployeeBalancesForWeek, calculateBalancePreview]);
-
-    if (!weekData || !employee || !initialBalances || !impact) {
-        return <Skeleton className="h-48 w-full" />;
-    }
 
     const weekStartDate = parseISO(weekId);
     const weekDays = eachDayOfInterval({ start: weekStartDate, end: endOfWeek(weekStartDate, { weekStartsOn: 1 }) });
 
-    const activePeriod = getActivePeriod(employee.id, weekStartDate);
-    const effectiveWeeklyHours = weekData.weeklyHoursOverride ?? getEffectiveWeeklyHours(activePeriod, weekStartDate);
+    const effectiveWeeklyHours = weekData.weeklyHoursOverride ?? getEffectiveWeeklyHours(
+        employee.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), weekStartDate)), 
+        weekStartDate
+    );
 
     let totalWeeklyComputableHours = 0;
-    for (const dayKey of Object.keys(weekData.days).sort()) {
+    for (const dayKey of Object.keys(weekData.days || {}).sort()) {
         const dayDate = parseISO(dayKey);
         const dayData = weekData.days[dayKey];
         const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
@@ -82,16 +53,19 @@ const ConfirmedWeekCard: React.FC<ConfirmedWeekCardProps> = ({ employeeId, weekI
 
     const weekLabel = `Computadas: ${totalWeeklyComputableHours.toFixed(2)}h / Teóricas: ${effectiveWeeklyHours.toFixed(2)}h`;
 
-    const renderBalanceRow = (label: string, initialVal: number, impactVal: number, finalVal: number) => (
-        <div className="grid grid-cols-4 gap-2 text-xs">
-            <span className="font-semibold col-span-1">{label}</span>
-            <span className="text-right font-mono col-span-1">{initialVal.toFixed(2)}h</span>
-            <span className={cn("text-right font-mono font-bold col-span-1", impactVal > 0 ? "text-blue-600" : impactVal < 0 ? "text-red-600" : "")}>
-                {(impactVal >= 0 ? '+' : '') + impactVal.toFixed(2)}h
-            </span>
-            <span className="text-right font-mono font-bold col-span-1">{finalVal.toFixed(2)}h</span>
-        </div>
-    );
+    const renderBalanceRow = (label: string, initialVal: number, impactVal: number) => {
+        const finalVal = initialVal + impactVal;
+        return (
+            <div className="grid grid-cols-4 gap-2 text-xs">
+                <span className="font-semibold col-span-1">{label}</span>
+                <span className="text-right font-mono col-span-1">{initialVal.toFixed(2)}h</span>
+                <span className={cn("text-right font-mono font-bold col-span-1", impactVal > 0 ? "text-blue-600" : impactVal < 0 ? "text-red-600" : "")}>
+                    {(impactVal >= 0 ? '+' : '') + impactVal.toFixed(2)}h
+                </span>
+                <span className="text-right font-mono font-bold col-span-1">{finalVal.toFixed(2)}h</span>
+            </div>
+        );
+    };
 
     return (
         <Card>
@@ -148,9 +122,9 @@ const ConfirmedWeekCard: React.FC<ConfirmedWeekCardProps> = ({ employeeId, weekI
                         <span className="text-right col-span-1">Impacto</span>
                         <span className="text-right col-span-1">Final</span>
                     </div>
-                    {renderBalanceRow("Ordinaria", initialBalances.ordinary, impact.ordinary, impact.resultingOrdinary)}
-                    {renderBalanceRow("Festivos", initialBalances.holiday, impact.holiday, impact.resultingHoliday)}
-                    {renderBalanceRow("Libranza", initialBalances.leave, impact.leave, impact.resultingLeave)}
+                    {renderBalanceRow("Ordinaria", initialBalances.ordinary, impact.ordinary)}
+                    {renderBalanceRow("Festivos", initialBalances.holiday, impact.holiday)}
+                    {renderBalanceRow("Libranza", initialBalances.leave, impact.leave)}
                     
                     {(weekData.totalComplementaryHours ?? 0) > 0 && (
                         <div className="pt-2 text-xs grid grid-cols-4 gap-2">
@@ -170,29 +144,84 @@ const ConfirmedWeekCard: React.FC<ConfirmedWeekCardProps> = ({ employeeId, weekI
     );
 };
 
+interface ProcessedWeek {
+    id: string;
+    weekData: WeeklyRecord['weekData'][string];
+    initialBalances: { ordinary: number; holiday: number; leave: number; };
+    impact: { ordinary: number; holiday: number; leave: number; };
+}
+
 export default function MySchedulePage() {
-    const { appUser, employees, loading, weeklyRecords } = useDataProvider();
+    const { appUser, employees, loading, weeklyRecords, calculateBalancePreview, getEmployeeBalancesForWeek } = useDataProvider();
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [processedWeeks, setProcessedWeeks] = useState<ProcessedWeek[]>([]);
+    const [isProcessing, setIsProcessing] = useState(true);
 
     const employee = useMemo(() => {
         return employees.find(e => e.id === appUser?.employeeId);
     }, [employees, appUser]);
 
     const availableYears = useMemo(() => {
+        if (!weeklyRecords) return [new Date().getFullYear()];
+        const years = new Set<number>();
+        Object.keys(weeklyRecords).forEach(id => {
+            const year = getYear(parseISO(id));
+            years.add(year);
+        });
         const currentYear = new Date().getFullYear();
-        return Array.from({ length: 5 }, (_, i) => currentYear - 2 + i).filter(y => y >= 2025);
-    }, []);
+        if (!years.has(currentYear)) years.add(currentYear);
+        return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
+    }, [weeklyRecords]);
+    
+    useEffect(() => {
+        if (loading || !employee) {
+            setIsProcessing(true);
+            return;
+        };
 
-    const confirmedWeeks = useMemo(() => {
-        if (!employee) return [];
-        return Object.keys(weeklyRecords)
-            .filter(weekId => {
-                const weekYear = getYear(parseISO(weekId));
-                const empData = weeklyRecords[weekId]?.weekData?.[employee.id];
-                return empData?.confirmed && weekYear === selectedYear;
-            })
-            .sort((a,b) => b.localeCompare(a)); // Sort descending, most recent first
-    }, [weeklyRecords, employee, selectedYear]);
+        const processWeeks = async () => {
+            setIsProcessing(true);
+            const confirmedWeeks = Object.entries(weeklyRecords)
+                .filter(([weekId, record]) => {
+                    const weekYear = getYear(parseISO(weekId));
+                    const empData = record.weekData?.[employee.id];
+                    return empData?.confirmed && weekYear === selectedYear;
+                })
+                .sort(([a], [b]) => b.localeCompare(a)); // Sort descending
+
+            const processedData: ProcessedWeek[] = [];
+            
+            for (const [weekId, record] of confirmedWeeks) {
+                const weekData = record.weekData[employee.id];
+                const initialBalances = getEmployeeBalancesForWeek(employee.id, weekId);
+                const impactResult = await calculateBalancePreview(
+                    employee.id,
+                    weekData.days,
+                    initialBalances,
+                    weekData.weeklyHoursOverride,
+                    weekData.totalComplementaryHours
+                );
+
+                if (impactResult) {
+                    processedData.push({
+                        id: weekId,
+                        weekData,
+                        initialBalances,
+                        impact: {
+                            ordinary: impactResult.ordinary,
+                            holiday: impactResult.holiday,
+                            leave: impactResult.leave,
+                        }
+                    });
+                }
+            }
+            setProcessedWeeks(processedData);
+            setIsProcessing(false);
+        };
+        
+        processWeeks();
+
+    }, [weeklyRecords, employee, selectedYear, loading, calculateBalancePreview, getEmployeeBalancesForWeek]);
 
     if (loading) {
         return (
@@ -231,9 +260,20 @@ export default function MySchedulePage() {
             </div>
             
             <div className="space-y-4">
-                {confirmedWeeks.length > 0 ? (
-                    confirmedWeeks.map(weekId => (
-                        <ConfirmedWeekCard key={weekId} employeeId={employee.id} weekId={weekId} />
+                {isProcessing ? (
+                     <div className="flex items-center justify-center h-64">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                     </div>
+                ) : processedWeeks.length > 0 ? (
+                    processedWeeks.map(week => (
+                        <ConfirmedWeekCard 
+                            key={week.id} 
+                            employee={employee}
+                            weekId={week.id} 
+                            weekData={week.weekData}
+                            initialBalances={week.initialBalances}
+                            impact={week.impact}
+                        />
                     ))
                 ) : (
                     <Card>
@@ -246,4 +286,3 @@ export default function MySchedulePage() {
         </div>
     );
 }
-
