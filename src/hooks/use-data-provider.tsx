@@ -1,4 +1,3 @@
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type {
@@ -265,31 +264,28 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 }, [authUser, employees]);
 
 useEffect(() => {
-    if (authUser && employeeRecord !== undefined && !loading && users.length > 0) {
+    if (authUser && !loading && users.length > 0) {
         const userRecord = users.find(u => u.id === authUser.uid);
-        const trueRole = userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
+        // Ensure trueRole is determined once and stored.
+        const trueRole = (userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com') ? 'admin' : 'employee';
 
-        setAppUser({
-            id: authUser.uid,
-            email: authUser.email!,
-            employeeId: employeeRecord?.id || '',
-            role: trueRole === 'admin' ? viewMode : 'employee',
-            trueRole: trueRole,
+        setAppUser(currentUser => {
+            const newRole = trueRole === 'admin' ? viewMode : 'employee';
+            if (currentUser?.id === authUser.uid && currentUser?.trueRole === trueRole && currentUser?.role === newRole) {
+                return currentUser;
+            }
+            return {
+                id: authUser.uid,
+                email: authUser.email!,
+                employeeId: employeeRecord?.id || '',
+                role: newRole,
+                trueRole: trueRole,
+            };
         });
     } else if (!authUser && !loading) {
         setAppUser(null);
     }
 }, [authUser, employeeRecord, users, loading, viewMode]);
-
-// Effect to update appUser role when viewMode changes
-useEffect(() => {
-    if (appUser && appUser.trueRole === 'admin') {
-      setAppUser(currentUser => ({
-        ...currentUser!,
-        role: viewMode,
-      }));
-    }
-}, [viewMode, appUser?.trueRole]);
 
 
   const getWeekId = (d: Date): string => {
