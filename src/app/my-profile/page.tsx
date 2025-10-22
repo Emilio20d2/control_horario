@@ -13,10 +13,8 @@ import { useEffect, useState } from 'react';
 import { ScheduledAbsenceManager } from '@/components/employees/scheduled-absence-manager';
 
 export default function MyProfilePage() {
-    const { appUser, getEmployeeById, loading, getEmployeeFinalBalances, weeklyRecords } = useDataProvider();
+    const { employeeRecord: employee, loading, getEmployeeFinalBalances, weeklyRecords } = useDataProvider();
     const [displayBalances, setDisplayBalances] = useState<{ ordinary: number; holiday: number; leave: number; total: number; } | null>(null);
-
-    const employee = appUser ? getEmployeeById(appUser.employeeId) : undefined;
     
     useEffect(() => {
         if (!loading && employee) {
@@ -25,7 +23,7 @@ export default function MyProfilePage() {
         }
     }, [employee, loading, getEmployeeFinalBalances, weeklyRecords]);
 
-    if (loading || !appUser) {
+    if (loading || !employee) {
         return (
             <div className="flex flex-col gap-6 p-4 md:p-6">
                 <Skeleton className="h-8 w-48" />
@@ -38,10 +36,6 @@ export default function MyProfilePage() {
                 <Skeleton className="h-96 w-full" />
             </div>
         );
-    }
-
-    if (!employee) {
-        return notFound();
     }
     
     const activePeriod = employee.employmentPeriods?.find(p => {

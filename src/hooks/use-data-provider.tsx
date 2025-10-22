@@ -59,6 +59,7 @@ interface DataContextType {
   weeklyRecords: Record<string, WeeklyRecord>;
   users: AppUser[];
   appUser: AppUser | null;
+  employeeRecord: Employee | null;
   holidayEmployees: HolidayEmployee[];
   holidayReports: HolidayReport[];
   employeeGroups: EmployeeGroup[];
@@ -119,6 +120,7 @@ const DataContext = createContext<DataContextType>({
   weeklyRecords: {},
   users: [],
   appUser: null,
+  employeeRecord: null,
   holidayEmployees: [],
   holidayReports: [],
   employeeGroups: [],
@@ -238,7 +240,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   }, [authLoading, authUser, loadData]);
   
   useEffect(() => {
-    if (authUser && users.length > 0 && employees.length > 0) {
+    if (authUser && employees.length > 0 && users.length > 0) {
         const loggedInUserEmail = authUser.email?.trim().toLowerCase();
         if (loggedInUserEmail) {
             const foundEmployee = employees.find(e => 
@@ -1103,6 +1105,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     weeklyRecords,
     users,
     appUser,
+    employeeRecord,
     holidayEmployees,
     holidayReports,
     employeeGroups,

@@ -59,7 +59,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { unconfirmedWeeksDetails, appUser, viewMode, setViewMode, loading: dataLoading } = useDataProvider();
+  const { unconfirmedWeeksDetails, appUser, employeeRecord, viewMode, setViewMode, loading: dataLoading } = useDataProvider();
 
   // Redirect employee from dashboard to their profile
   useEffect(() => {
@@ -68,13 +68,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
     }
   }, [appUser, pathname, router]);
 
-  const getInitials = (email: string | null | undefined): string => {
-    if (!email) return 'U';
-    const nameParts = email.split('@')[0].replace('.', ' ').split(' ');
-    if (nameParts.length > 1) {
-        return (nameParts[0][0] + (nameParts[1][0] || '')).toUpperCase();
+  const getInitials = (name: string | undefined | null, email: string | undefined | null): string => {
+    if (name) {
+        return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     }
-    return (nameParts[0].substring(0, 2) || '').toUpperCase();
+    if (email) {
+        const emailPrefix = email.split('@')[0];
+        return emailPrefix.substring(0, 2).toUpperCase();
+    }
+    return 'U';
   }
 
 
@@ -190,7 +192,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                         <Avatar className="h-10 w-10">
-                            <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
+                            <AvatarFallback>{getInitials(employeeRecord?.name, user?.email)}</AvatarFallback>
                         </Avatar>
                     </Button>
                 </DropdownMenuTrigger>
