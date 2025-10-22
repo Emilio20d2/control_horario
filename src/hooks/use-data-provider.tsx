@@ -238,25 +238,38 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   }, [authLoading, authUser, loadData]);
   
   useEffect(() => {
-    if (authUser && users.length > 0 && employees.length > 0 && !loading) {
-      const foundEmployee = employees.find(e => e.email?.toLowerCase() === authUser.email?.toLowerCase());
-      setEmployeeRecord(foundEmployee || null);
-      
-      const userRecord = users.find(u => u.id === authUser.uid);
-      const trueRole = userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
-
-      setAppUser({
-          id: authUser.uid,
-          email: authUser.email!,
-          employeeId: foundEmployee?.id || userRecord?.employeeId || '',
-          role: trueRole === 'admin' ? viewMode : 'employee',
-          trueRole: trueRole,
-      });
-    } else if (!authUser && !loading) {
-        setAppUser(null);
+    if (authUser && users.length > 0 && employees.length > 0) {
+        const loggedInUserEmail = authUser.email?.trim().toLowerCase();
+        if (loggedInUserEmail) {
+            const foundEmployee = employees.find(e => 
+                e.email && e.email.trim().toLowerCase() === loggedInUserEmail
+            );
+            setEmployeeRecord(foundEmployee || null);
+        } else {
+            setEmployeeRecord(null);
+        }
+    } else if (!authUser) {
         setEmployeeRecord(null);
     }
-  }, [authUser, users, employees, loading, viewMode]);
+}, [authUser, users, employees]);
+
+useEffect(() => {
+    if (authUser && employeeRecord !== undefined && !loading) {
+        const userRecord = users.find(u => u.id === authUser.uid);
+        const trueRole = userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
+
+        setAppUser({
+            id: authUser.uid,
+            email: authUser.email!,
+            employeeId: employeeRecord?.id || '',
+            role: trueRole === 'admin' ? viewMode : 'employee',
+            trueRole: trueRole,
+        });
+    } else if (!authUser && !loading) {
+        setAppUser(null);
+    }
+}, [authUser, employeeRecord, users, loading, viewMode]);
+
 
 
   const getWeekId = (d: Date): string => {
@@ -1155,3 +1168,6 @@ export const useDataProvider = () => useContext(DataContext);
     
 
 
+
+
+    
