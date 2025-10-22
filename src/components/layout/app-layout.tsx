@@ -57,7 +57,7 @@ import { es } from 'date-fns/locale';
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const { unconfirmedWeeksDetails, appUser, viewMode, setViewMode } = useDataProvider();
+  const { unconfirmedWeeksDetails, appUser, viewMode, setViewMode, loading: dataLoading } = useDataProvider();
 
   const getInitials = (email: string | null | undefined): string => {
     if (!email) return 'U';
@@ -105,6 +105,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
         ))}
     </nav>
   );
+
+  if (dataLoading) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <div className="flex flex-col items-center gap-4">
+                <p className="text-muted-foreground">Cargando datos...</p>
+                <div className="w-64 h-2 rounded-full bg-muted-foreground/10 overflow-hidden">
+                    <div className="h-full bg-primary animate-pulse w-full"></div>
+                </div>
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full flex-col bg-background">

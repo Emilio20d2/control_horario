@@ -42,14 +42,13 @@ import {
     deleteEmployeeGroup,
     updateEmployeeGroupOrder,
 } from '../lib/services/settingsService';
-import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth } from 'date-fns';
+import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth } from 'date-fns';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
 import { calculateBalancePreview as calculateBalancePreviewIsolated } from '@/lib/calculators/balance-calculator';
-import { useAuth } from './useAuth';
-
+import { parseISO } from 'date-fns';
 
 interface DataContextType {
   employees: Employee[];
@@ -67,7 +66,7 @@ interface DataContextType {
   unconfirmedWeeksDetails: { weekId: string; employeeNames: string[] }[];
   viewMode: 'admin' | 'employee';
   setViewMode: (mode: 'admin' | 'employee') => void;
-  loadData: () => void;
+  loadData: (user: any) => void;
   refreshData: () => void;
   refreshUsers: () => Promise<void>;
   getEmployeeById: (id: string) => Employee | undefined;
@@ -92,7 +91,7 @@ interface DataContextType {
   updateAnnualConfig: (id: string, data: Partial<AnnualConfiguration>) => Promise<void>;
   deleteAnnualConfig: (id: string) => Promise<void>;
   createContractType: (data: Omit<ContractType, 'id'>) => Promise<string>;
-  updateContractType: (id: string, data: Partial<ContractType>) => Promise<void>;
+  updateContractType: (id: string, data: Partial<Omit<ContractType, 'id'>>) => Promise<void>;
 deleteContractType: (id: string) => Promise<void>;
   updateEmployeeWorkHours: (employeeId: string, weeklyHours: number, effectiveDate: string) => Promise<void>;
   getWeekId: (d: Date) => string;
@@ -177,7 +176,6 @@ const roundToNearestQuarter = (num: number) => {
 
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
-  const { user: authUser } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [absenceTypes, setAbsenceTypes] = useState<AbsenceType[]>([]);
@@ -194,7 +192,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
   const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
   
-  const loadData = useCallback(() => {
+  const loadData = useCallback((user: any) => {
+    if (!user) {
+        setLoading(false);
+        return;
+    }
     setLoading(true);
     const unsubs: (() => void)[] = [];
 
@@ -221,6 +223,22 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     ];
 
     Promise.all(promises).then(() => {
+        const authUser = user;
+        if (authUser && users.length > 0 && employees.length > 0) {
+            const foundEmployee = employees.find(e => e.authId === authUser.uid);
+            setEmployeeRecord(foundEmployee || null);
+
+            const userRecord = users.find(u => u.id === authUser.uid);
+            const trueRole = userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
+
+            setAppUser({
+                id: authUser.uid,
+                email: authUser.email!,
+                employeeId: foundEmployee?.id || userRecord?.employeeId || '',
+                role: trueRole === 'admin' ? viewMode : 'employee',
+                trueRole: trueRole,
+            });
+        }
         setLoading(false);
     }).catch(error => {
         console.error("Error during initial data load:", error);
@@ -228,65 +246,30 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubs.forEach(unsub => unsub());
-  }, []);
+  }, [viewMode]);
   
   useEffect(() => {
-    if (authUser) {
-        loadData();
-    } else {
-        setLoading(false);
-    }
-  }, [authUser, loadData]);
+    if (employees.length > 0 && users.length > 0 && appUser) {
+        const foundEmployee = employees.find(e => e.authId === appUser.id);
+        const userRecord = users.find(u => u.id === appUser.id);
 
-  // Dedicated effect to find the employee record linked to the auth user.
-  useEffect(() => {
-    if (authUser && employees.length > 0) {
-        const foundEmployee = employees.find(e => e.authId === authUser.uid);
-        setEmployeeRecord(foundEmployee || null);
-    }
-  }, [authUser, employees]);
+        const trueRole = userRecord?.role === 'admin' || appUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
 
-  // This effect now depends on the result of the previous one.
-  useEffect(() => {
-    if (!authUser) {
-      setAppUser(null);
-      return;
+        setAppUser(prevAppUser => ({
+            ...prevAppUser!,
+            employeeId: foundEmployee?.id || userRecord?.employeeId || '',
+            role: trueRole === 'admin' ? viewMode : 'employee',
+            trueRole: trueRole,
+        }));
     }
-  
-    // Special superadmin rule, applied immediately.
-    if (authUser.email === 'emiliogp@inditex.com') {
-      setAppUser({
-        id: authUser.uid,
-        email: authUser.email!,
-        employeeId: employeeRecord?.id || '',
-        role: viewMode,
-        trueRole: 'admin',
-      });
-      return;
-    }
+  }, [employees, users, viewMode, appUser?.id, appUser?.email]);
 
-    // Standard user logic, depends on user record from 'users' collection.
-    const userRecord = users.find(u => u.id === authUser.uid);
-    const trueRole = userRecord?.role === 'admin' ? 'admin' : 'employee';
-
-    setAppUser({
-        id: authUser.uid,
-        email: authUser.email!,
-        employeeId: employeeRecord?.id || userRecord?.employeeId || '',
-        role: trueRole === 'admin' ? viewMode : 'employee',
-        trueRole: trueRole,
-    });
-    
-  }, [authUser, users, viewMode, employeeRecord]);
-  
   const getWeekId = (d: Date): string => {
     const monday = startOfWeek(d, { weekStartsOn: 1 });
     return format(monday, 'yyyy-MM-dd');
   };
   
   const refreshData = useCallback(() => {
-    // This is a placeholder. The actual refresh is triggered by onSnapshot.
-    // We can enhance this if manual refresh is needed.
     console.log("Refreshing data (triggered by onSnapshot)...");
   }, []);
 
@@ -431,7 +414,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         suspensionDays: currentYearData.suspensionDays,
         vacationDaysAvailable: Math.ceil(totalAvailable)
     };
-}, [absenceTypes, weeklyRecords, employees]);
+}, [absenceTypes, weeklyRecords]);
 
 
 
