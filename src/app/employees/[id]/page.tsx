@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMemo, useState, useEffect } from 'react';
 import { EmployeeReportGenerator } from '@/components/employees/employee-report-generator';
 
-const BalanceCard = ({ title, value, icon: Icon, isLoading }: { title: string; value: number | undefined; icon: React.ElementType, isLoading: boolean }) => (
+export const BalanceCard = ({ title, value, icon: Icon, isLoading }: { title: string; value: number | undefined; icon: React.ElementType, isLoading: boolean }) => (
     <Card className="flex-1 min-w-[200px]">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>

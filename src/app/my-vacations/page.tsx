@@ -2,17 +2,9 @@
 
 import { AnnualVacationQuadrant } from '@/components/vacations/annual-vacation-quadrant';
 import { VacationPlanner } from '@/components/vacations/vacation-planner';
-import { useDataProvider } from '@/hooks/use-data-provider';
-import MyVacationsPage from '../my-vacations/page';
 
 
-export default function VacationsPage() {
-    const { appUser } = useDataProvider();
-
-    if (appUser?.role === 'employee') {
-        return <MyVacationsPage />;
-    }
-
+export default function MyVacationsPage() {
     return (
         <div className="flex flex-col gap-6">
             <div className="px-4 md:px-6 pt-4 space-y-6">

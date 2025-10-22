@@ -1,5 +1,3 @@
-
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type {
@@ -238,29 +236,30 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [authUser, loadData]);
 
-  useEffect(() => {
-    if (!authUser || users.length === 0) {
+ useEffect(() => {
+    if (!authUser || users.length === 0 || employees.length === 0) {
         setAppUser(null);
         return;
     }
-    
+
     const userRecord = users.find(u => u.id === authUser.uid);
     const employeeRecord = employees.find(e => e.authId === authUser.uid);
 
-    let finalRole: 'admin' | 'employee' = 'employee'; // Default role
+    let trueRole: 'admin' | 'employee' = 'employee';
     
+    // Superadmin rule
     if (authUser.email === 'emiliogp@inditex.com') {
-        finalRole = 'admin';
+        trueRole = 'admin';
     } else if (userRecord?.role === 'admin') {
-        finalRole = 'admin';
+        trueRole = 'admin';
     }
-    
+
     setAppUser({
         id: authUser.uid,
         email: authUser.email!,
         employeeId: employeeRecord?.id || userRecord?.employeeId || '',
-        role: viewMode === 'admin' ? finalRole : 'employee',
-        trueRole: finalRole,
+        role: trueRole === 'admin' ? viewMode : 'employee',
+        trueRole: trueRole,
     });
 }, [authUser, users, employees, viewMode]);
   

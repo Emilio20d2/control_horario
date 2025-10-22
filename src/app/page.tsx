@@ -3,20 +3,26 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useDataProvider } from '@/hooks/use-data-provider';
 
 export default function Home() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const { appUser } = useDataProvider();
 
   useEffect(() => {
     if (!loading) {
-      if (user) {
-        router.replace('/dashboard');
+      if (user && appUser) {
+        if (appUser.role === 'admin') {
+            router.replace('/dashboard');
+        } else {
+            router.replace('/my-profile');
+        }
       } else {
         router.replace('/login');
       }
     }
-  }, [user, loading, router]);
+  }, [user, appUser, loading, router]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center">

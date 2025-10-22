@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import type { ReactNode } from 'react';
@@ -17,6 +15,9 @@ import {
   Menu,
   ListChecks,
   Plane,
+  User,
+  CalendarCheck,
+  PlaneTakeoff
 } from 'lucide-react';
 import {
   Sheet,
@@ -55,7 +56,7 @@ import { es } from 'date-fns/locale';
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const { unconfirmedWeeksDetails } = useDataProvider();
+  const { unconfirmedWeeksDetails, appUser, viewMode, setViewMode } = useDataProvider();
 
   const getInitials = (email: string | null | undefined): string => {
     if (!email) return 'U';
@@ -67,7 +68,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   }
 
 
-  const menuItems = [
+  const adminMenuItems = [
     { href: '/dashboard', label: 'Panel', icon: LayoutDashboard },
     { href: '/schedule', label: 'Horario', icon: CalendarDays },
     { href: '/employees', label: 'Empleados', icon: Users },
@@ -75,6 +76,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/vacations', label: 'Vacaciones', icon: Plane },
     { href: '/settings', label: 'Ajustes', icon: Settings },
   ];
+  
+  const employeeMenuItems = [
+    { href: '/my-profile', label: 'Mi Ficha', icon: User },
+    { href: '/my-schedule', label: 'Mis Horarios', icon: CalendarCheck },
+    { href: '/my-vacations', label: 'Vacaciones', icon: PlaneTakeoff },
+  ];
+
+  const isAdminView = appUser?.role === 'admin';
+  const menuItems = isAdminView ? adminMenuItems : employeeMenuItems;
 
   const MainNav = ({className}: {className?: string}) => (
     <nav className={className}>
@@ -105,47 +115,49 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <MainNav className="hidden md:flex items-center gap-4 mx-auto" />
 
         <div className="flex items-center gap-4 ml-auto">
-             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full relative">
-                        <Bell className="h-5 w-5" />
-                        {unconfirmedWeeksDetails.length > 0 && (
-                            <span className="absolute top-1.5 right-1.5 flex h-3 w-3">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
-                            </span>
-                        )}
-                        <span className="sr-only">Alternar notificaciones</span>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                     <DropdownMenuLabel>Semanas Anteriores Sin Confirmar</DropdownMenuLabel>
-                     <DropdownMenuSeparator />
-                     {unconfirmedWeeksDetails.length > 0 ? (
-                        unconfirmedWeeksDetails.map(detail => (
-                             <TooltipProvider key={detail.weekId}>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Link href={`/schedule?week=${detail.weekId}`} passHref>
-                                            <DropdownMenuItem>
-                                                Semana del {format(parseISO(detail.weekId), 'd MMM, yyyy', { locale: es })}
-                                            </DropdownMenuItem>
-                                        </Link>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="left">
-                                        <p className='font-medium'>Empleados pendientes:</p>
-                                        <ul className="list-disc pl-4 text-muted-foreground">
-                                            {detail.employeeNames.map(name => <li key={name}>{name}</li>)}
-                                        </ul>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        ))
-                     ) : (
-                        <DropdownMenuItem disabled>No hay semanas pendientes.</DropdownMenuItem>
-                     )}
-                </DropdownMenuContent>
-            </DropdownMenu>
+            {isAdminView && (
+              <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="rounded-full relative">
+                          <Bell className="h-5 w-5" />
+                          {unconfirmedWeeksDetails.length > 0 && (
+                              <span className="absolute top-1.5 right-1.5 flex h-3 w-3">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
+                              </span>
+                          )}
+                          <span className="sr-only">Alternar notificaciones</span>
+                      </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80">
+                      <DropdownMenuLabel>Semanas Anteriores Sin Confirmar</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {unconfirmedWeeksDetails.length > 0 ? (
+                          unconfirmedWeeksDetails.map(detail => (
+                              <TooltipProvider key={detail.weekId}>
+                                  <Tooltip>
+                                      <TooltipTrigger asChild>
+                                          <Link href={`/schedule?week=${detail.weekId}`} passHref>
+                                              <DropdownMenuItem>
+                                                  Semana del {format(parseISO(detail.weekId), 'd MMM, yyyy', { locale: es })}
+                                              </DropdownMenuItem>
+                                          </Link>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="left">
+                                          <p className='font-medium'>Empleados pendientes:</p>
+                                          <ul className="list-disc pl-4 text-muted-foreground">
+                                              {detail.employeeNames.map(name => <li key={name}>{name}</li>)}
+                                          </ul>
+                                      </TooltipContent>
+                                  </Tooltip>
+                              </TooltipProvider>
+                          ))
+                      ) : (
+                          <DropdownMenuItem disabled>No hay semanas pendientes.</DropdownMenuItem>
+                      )}
+                  </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -156,6 +168,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
+                    {appUser?.trueRole === 'admin' && (
+                        <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                                <span>Cambiar Vista</span>
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                                <DropdownMenuSubContent>
+                                    <DropdownMenuItem onClick={() => setViewMode('admin')}>Administrador</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setViewMode('employee')}>Empleado</DropdownMenuItem>
+                                </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={logout} className="text-destructive">
                         <LogOut className="mr-2 h-4 w-4" />
