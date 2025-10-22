@@ -78,7 +78,6 @@ export default function MyProfilePage() {
                 {activePeriod ? (
                     <>
                         <EmployeeDetails employee={employee} period={activePeriod} allPeriods={employee.employmentPeriods} isEmployeeView={true} />
-                        <ScheduledAbsenceManager employee={employee} period={activePeriod} />
                     </>
                 ) : (
                     <Card>

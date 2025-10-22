@@ -171,14 +171,18 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
                 <div className="space-y-4">
                     <h3 className="text-lg font-medium">Datos del Contrato</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground">Fecha de Inicio</p>
-                            <p>{format(startDate, 'PPP', { locale: es })}</p>
-                        </div>
-                         <div>
-                            <p className="text-sm font-medium text-muted-foreground">Fecha de Fin</p>
-                            <p>{endDate ? format(endDate, 'PPP', { locale: es }) : 'Activo'}</p>
-                        </div>
+                        {!isEmployeeView && (
+                            <>
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Fecha de Inicio</p>
+                                    <p>{format(startDate, 'PPP', { locale: es })}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Fecha de Fin</p>
+                                    <p>{endDate ? format(endDate, 'PPP', { locale: es }) : 'Activo'}</p>
+                                </div>
+                            </>
+                        )}
                         <div>
                             <p className="text-sm font-medium text-muted-foreground">Tipo de Contrato</p>
                             <p>{period.contractType}</p>
