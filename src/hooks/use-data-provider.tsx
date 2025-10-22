@@ -44,7 +44,7 @@ import {
     updateEmployeeGroupOrder,
 } from '../lib/services/settingsService';
 import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth } from 'date-fns';
-import { addDocument, setDocument } from '@/lib/services/firestoreService';
+import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
@@ -70,7 +70,7 @@ interface DataContextType {
   setViewMode: (mode: 'admin' | 'employee') => void;
   loadData: () => void;
   refreshData: () => void;
-  refreshUsers: () => void;
+  refreshUsers: () => Promise<void>;
   getEmployeeById: (id: string) => Employee | undefined;
   getActivePeriod: (employeeId: string, date: Date) => EmploymentPeriod | null;
   getEffectiveWeeklyHours: (period: EmploymentPeriod | null, date: Date) => number;
@@ -130,7 +130,7 @@ const DataContext = createContext<DataContextType>({
   setViewMode: () => {},
   loadData: () => {},
   refreshData: () => {},
-  refreshUsers: () => {},
+  refreshUsers: async () => {},
   getEmployeeById: () => undefined,
   getActivePeriod: () => null,
   getEffectiveWeeklyHours: () => 0,
@@ -275,7 +275,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     console.log("Refreshing data (triggered by onSnapshot)...");
   }, []);
 
-  const refreshUsers = () => {};
+  const refreshUsers = async () => {
+    const freshUsers = await getCollection<AppUser>('users');
+    setUsers(freshUsers);
+  };
 
   const calculateEmployeeVacations = useCallback((emp: Employee): { vacationDaysTaken: number, suspensionDays: number, vacationDaysAvailable: number } => {
     const currentYear = new Date().getFullYear();

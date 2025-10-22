@@ -138,7 +138,7 @@ const generateDefaultShift = (hours: number, days: string[]) => {
 export function EmployeeForm({ employee }: EmployeeFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { contractTypes, getEmployeeFinalBalances, users, appUser } = useDataProvider();
+  const { contractTypes, getEmployeeFinalBalances, users, appUser, refreshUsers } = useDataProvider();
   const { reauthenticateWithPassword } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const [password, setPassword] = useState('');
@@ -239,6 +239,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                 title: "Empleado Actualizado",
                 description: `Los datos de ${values.name} han sido guardados.`,
             });
+            await refreshUsers();
             router.push(`/employees/${employee.id}`);
         } else {
             const newEmployeeId = await createEmployee(dataToSave);
