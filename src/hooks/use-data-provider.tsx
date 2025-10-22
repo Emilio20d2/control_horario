@@ -241,26 +241,25 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   
   useEffect(() => {
     if (authUser && users.length > 0 && employees.length > 0) {
-      const userRecord = users.find(u => u.id === authUser.uid);
       const foundEmployee = employees.find(e => e.authId === authUser.uid);
       setEmployeeRecord(foundEmployee || null);
     }
   }, [authUser, users, employees]);
 
-    useEffect(() => {
-        if (authUser) {
-            const userRecord = users.find(u => u.id === authUser.uid);
-            const trueRole = userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
+  useEffect(() => {
+      if (authUser && users.length > 0 && employees.length > 0) {
+          const userRecord = users.find(u => u.id === authUser.uid);
+          const trueRole = userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
 
-            setAppUser({
-                id: authUser.uid,
-                email: authUser.email!,
-                employeeId: employeeRecord?.id || userRecord?.employeeId || '',
-                role: trueRole === 'admin' ? viewMode : 'employee',
-                trueRole: trueRole,
-            });
-        }
-    }, [authUser, users, employeeRecord, viewMode]);
+          setAppUser({
+              id: authUser.uid,
+              email: authUser.email!,
+              employeeId: employeeRecord?.id || userRecord?.employeeId || '',
+              role: trueRole === 'admin' ? viewMode : 'employee',
+              trueRole: trueRole,
+          });
+      }
+  }, [authUser, users, employeeRecord, viewMode, employees]);
 
 
   const getWeekId = (d: Date): string => {
