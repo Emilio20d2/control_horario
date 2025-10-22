@@ -42,13 +42,13 @@ import {
     deleteEmployeeGroup,
     updateEmployeeGroupOrder,
 } from '../lib/services/settingsService';
-import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth } from 'date-fns';
+import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, parseISO } from 'date-fns';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
 import { calculateBalancePreview as calculateBalancePreviewIsolated } from '@/lib/calculators/balance-calculator';
-import { parseISO } from 'date-fns';
+import { useAuth } from './useAuth';
 
 interface DataContextType {
   employees: Employee[];
@@ -191,6 +191,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
   const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
+  const { user: authUser } = useAuth();
   
   const loadData = useCallback((user: any) => {
     if (!user) {
@@ -223,12 +224,19 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     ];
 
     Promise.all(promises).then(() => {
-        const authUser = user;
-        if (authUser && users.length > 0 && employees.length > 0) {
-            const foundEmployee = employees.find(e => e.authId === authUser.uid);
-            setEmployeeRecord(foundEmployee || null);
+        setLoading(false);
+    }).catch(error => {
+        console.error("Error during initial data load:", error);
+        setLoading(false);
+    });
 
+    return () => unsubs.forEach(unsub => unsub());
+  }, []);
+  
+    useEffect(() => {
+        if (authUser && users.length > 0 && employees.length > 0) {
             const userRecord = users.find(u => u.id === authUser.uid);
+            const foundEmployee = employees.find(e => e.authId === authUser.uid);
             const trueRole = userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
 
             setAppUser({
@@ -238,31 +246,19 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
                 role: trueRole === 'admin' ? viewMode : 'employee',
                 trueRole: trueRole,
             });
+        } else if (authUser && (users.length === 0 || employees.length === 0)) {
+            // Still loading dependent data, but we know the user
+            const trueRole = authUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
+            setAppUser({
+                id: authUser.uid,
+                email: authUser.email!,
+                employeeId: '',
+                role: trueRole === 'admin' ? viewMode : 'employee',
+                trueRole: trueRole,
+            });
         }
-        setLoading(false);
-    }).catch(error => {
-        console.error("Error during initial data load:", error);
-        setLoading(false);
-    });
+  }, [authUser, users, employees, viewMode]);
 
-    return () => unsubs.forEach(unsub => unsub());
-  }, [viewMode]);
-  
-  useEffect(() => {
-    if (employees.length > 0 && users.length > 0 && appUser) {
-        const foundEmployee = employees.find(e => e.authId === appUser.id);
-        const userRecord = users.find(u => u.id === appUser.id);
-
-        const trueRole = userRecord?.role === 'admin' || appUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
-
-        setAppUser(prevAppUser => ({
-            ...prevAppUser!,
-            employeeId: foundEmployee?.id || userRecord?.employeeId || '',
-            role: trueRole === 'admin' ? viewMode : 'employee',
-            trueRole: trueRole,
-        }));
-    }
-  }, [employees, users, viewMode, appUser?.id, appUser?.email]);
 
   const getWeekId = (d: Date): string => {
     const monday = startOfWeek(d, { weekStartsOn: 1 });
