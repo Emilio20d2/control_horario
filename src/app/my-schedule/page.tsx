@@ -31,10 +31,8 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
     const weekStartDate = parseISO(weekId);
     const weekDays = eachDayOfInterval({ start: weekStartDate, end: endOfWeek(weekStartDate, { weekStartsOn: 1 }) });
 
-    const effectiveWeeklyHours = employee ? (weekData.weeklyHoursOverride ?? getEffectiveWeeklyHours(
-        employee.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), weekStartDate)), 
-        weekStartDate
-    )) : 40;
+    const activePeriod = employee ? employee.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), weekStartDate)) : null;
+    const effectiveWeeklyHours = employee && activePeriod ? (weekData.weeklyHoursOverride ?? getEffectiveWeeklyHours(activePeriod, weekStartDate)) : 40;
 
     let totalWeeklyComputableHours = 0;
     for (const dayKey of Object.keys(weekData.days || {}).sort()) {
@@ -171,8 +169,13 @@ export default function MySchedulePage() {
             const sortedWeekIds = Object.keys(weeklyRecords).sort();
 
             for (const weekId of sortedWeekIds) {
+                const weekStartDate = parseISO(weekId);
+                const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
                 const weekData = weeklyRecords[weekId]?.weekData?.[employee.id];
-                if (weekData?.confirmed && getYear(parseISO(weekId)) === selectedYear) {
+                
+                const isInYear = getYear(weekStartDate) === selectedYear || getYear(weekEndDate) === selectedYear;
+
+                if (weekData?.confirmed && isInYear) {
                     const initialBalances = getEmployeeBalancesForWeek(employee.id, weekId);
                     const impact = await calculateBalancePreview(employee.id, weekData.days, initialBalances, weekData.weeklyHoursOverride, weekData.totalComplementaryHours);
                     if (impact) {
