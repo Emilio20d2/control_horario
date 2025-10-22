@@ -42,7 +42,7 @@ import {
     deleteEmployeeGroup,
     updateEmployeeGroupOrder,
 } from '../lib/services/settingsService';
-import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, parseISO } from 'date-fns';
+import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth } from 'date-fns';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp } from 'firebase/firestore';
@@ -191,7 +191,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
   const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
-  const { user: authUser } = useAuth();
+  const { user: authUser, loadData: authLoadData } = useAuth();
   
   const loadData = useCallback((user: any) => {
     if (!user) {
@@ -232,32 +232,35 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
     return () => unsubs.forEach(unsub => unsub());
   }, []);
+
+  useEffect(() => {
+    if (authLoadData) {
+        authLoadData(loadData);
+    }
+  }, [authLoadData, loadData]);
   
+  useEffect(() => {
+    if (authUser && users.length > 0 && employees.length > 0) {
+      const userRecord = users.find(u => u.id === authUser.uid);
+      const foundEmployee = employees.find(e => e.authId === authUser.uid);
+      setEmployeeRecord(foundEmployee || null);
+    }
+  }, [authUser, users, employees]);
+
     useEffect(() => {
-        if (authUser && users.length > 0 && employees.length > 0) {
+        if (authUser) {
             const userRecord = users.find(u => u.id === authUser.uid);
-            const foundEmployee = employees.find(e => e.authId === authUser.uid);
             const trueRole = userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
 
             setAppUser({
                 id: authUser.uid,
                 email: authUser.email!,
-                employeeId: foundEmployee?.id || userRecord?.employeeId || '',
-                role: trueRole === 'admin' ? viewMode : 'employee',
-                trueRole: trueRole,
-            });
-        } else if (authUser && (users.length === 0 || employees.length === 0)) {
-            // Still loading dependent data, but we know the user
-            const trueRole = authUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
-            setAppUser({
-                id: authUser.uid,
-                email: authUser.email!,
-                employeeId: '',
+                employeeId: employeeRecord?.id || userRecord?.employeeId || '',
                 role: trueRole === 'admin' ? viewMode : 'employee',
                 trueRole: trueRole,
             });
         }
-  }, [authUser, users, employees, viewMode]);
+    }, [authUser, users, employeeRecord, viewMode]);
 
 
   const getWeekId = (d: Date): string => {
@@ -1150,5 +1153,7 @@ createAnnualConfig: createAnnualConfigService,
 };
 
 export const useDataProvider = () => useContext(DataContext);
+
+    
 
     

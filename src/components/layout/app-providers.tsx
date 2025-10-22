@@ -22,7 +22,6 @@ const CoreApp = ({ children }: { children: ReactNode }) => {
         );
     }
     
-    // If a user is logged in, wrap the content with AppLayout which handles data loading states
     if (user) {
         return (
             <AppLayout>
@@ -31,7 +30,6 @@ const CoreApp = ({ children }: { children: ReactNode }) => {
         );
     }
 
-    // If no user, show login page or other public pages
     return <>{children}</>;
 }
 

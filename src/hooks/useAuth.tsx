@@ -4,7 +4,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { useDataProvider } from './use-data-provider';
 
 interface AuthContextType {
   user: User | null;
@@ -12,6 +11,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   reauthenticateWithPassword: (password: string) => Promise<boolean>;
+  loadData: ((user: any) => void) | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,24 +20,25 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   logout: async () => {},
   reauthenticateWithPassword: async () => false,
+  loadData: null,
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const dataProvider = useDataProvider();
+  const [loadData, setLoadData] = useState<((user: any) => void) | null>(null);
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
-      if (user) {
-        dataProvider.loadData(user);
+      if (user && loadData) {
+        loadData(user);
       }
     });
     return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadData]);
 
   const login = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
@@ -59,7 +60,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const value = { user, loading, login, logout, reauthenticateWithPassword };
+  const value = { user, loading, login, logout, reauthenticateWithPassword, loadData: setLoadData as any };
 
   return (
     <AuthContext.Provider value={value}>
@@ -69,3 +70,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+
+    
