@@ -100,7 +100,7 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
                                 const isHoliday = holidays.some(h => isSameDay(h.date, day));
 
                                 return (
-                                    <TableRow key={dayKey} className={cn(isHoliday && "bg-blue-50", dayData.absence !== 'ninguna' && "bg-red-50")}>
+                                    <TableRow key={dayKey} className={cn(isHoliday && "bg-blue-50", !isHoliday && dayData.absence !== 'ninguna' && "bg-red-50")}>
                                         <TableCell className="font-semibold p-1 text-xs">{format(day, 'E', { locale: es })}</TableCell>
                                         <TableCell className="p-1 text-xs">{format(day, 'dd/MM/yy')}</TableCell>
                                         <TableCell className="text-right p-1 text-xs font-mono">{dayData.workedHours.toFixed(2)}</TableCell>
@@ -269,3 +269,4 @@ export default function MySchedulePage() {
         </div>
     );
 }
+
