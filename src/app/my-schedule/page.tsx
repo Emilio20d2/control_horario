@@ -176,7 +176,6 @@ export default function MySchedulePage() {
     useEffect(() => {
         const processWeeks = async () => {
             if (loading || !employee) {
-                setIsProcessing(true);
                 return;
             }
             setIsProcessing(true);
