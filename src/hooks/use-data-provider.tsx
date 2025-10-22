@@ -240,26 +240,29 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (!authUser || users.length === 0) {
-      setAppUser(null);
-      return;
+        setAppUser(null);
+        return;
     }
-
+    
     const userRecord = users.find(u => u.id === authUser.uid);
     const employeeRecord = employees.find(e => e.authId === authUser.uid);
+
+    let finalRole: 'admin' | 'employee' = 'employee'; // Default role
     
-    let finalRole: 'admin' | 'employee' = 'employee';
-    if (userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com') {
+    if (authUser.email === 'emiliogp@inditex.com') {
+        finalRole = 'admin';
+    } else if (userRecord?.role === 'admin') {
         finalRole = 'admin';
     }
-
+    
     setAppUser({
-      id: authUser.uid,
-      email: authUser.email!,
-      employeeId: employeeRecord?.id || userRecord?.employeeId || '',
-      role: viewMode === 'admin' ? finalRole : 'employee',
-      trueRole: finalRole,
+        id: authUser.uid,
+        email: authUser.email!,
+        employeeId: employeeRecord?.id || userRecord?.employeeId || '',
+        role: viewMode === 'admin' ? finalRole : 'employee',
+        trueRole: finalRole,
     });
-  }, [authUser, users, employees, viewMode]);
+}, [authUser, users, employees, viewMode]);
   
   const getWeekId = (d: Date): string => {
     const monday = startOfWeek(d, { weekStartsOn: 1 });
@@ -1150,4 +1153,3 @@ createAnnualConfig: createAnnualConfigService,
 };
 
 export const useDataProvider = () => useContext(DataContext);
-
