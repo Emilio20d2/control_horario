@@ -14,7 +14,7 @@ import type { DailyData, WeeklyRecord, Employee } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
 interface ConfirmedWeekCardProps {
-    employee: Employee;
+    employee: Employee | null;
     weekId: string;
     weekData: WeeklyRecord['weekData'][string];
     initialBalances: { ordinary: number; holiday: number; leave: number; };
@@ -31,10 +31,10 @@ const ConfirmedWeekCard: React.FC<ConfirmedWeekCardProps> = ({ employee, weekId,
     const weekStartDate = parseISO(weekId);
     const weekDays = eachDayOfInterval({ start: weekStartDate, end: endOfWeek(weekStartDate, { weekStartsOn: 1 }) });
 
-    const effectiveWeeklyHours = weekData.weeklyHoursOverride ?? getEffectiveWeeklyHours(
+    const effectiveWeeklyHours = employee ? (weekData.weeklyHoursOverride ?? getEffectiveWeeklyHours(
         employee.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), weekStartDate)), 
         weekStartDate
-    );
+    )) : 40;
 
     let totalWeeklyComputableHours = 0;
     for (const dayKey of Object.keys(weekData.days || {}).sort()) {
@@ -144,160 +144,51 @@ const ConfirmedWeekCard: React.FC<ConfirmedWeekCardProps> = ({ employee, weekId,
     );
 };
 
-interface ProcessedWeek {
-    id: string;
-    weekData: WeeklyRecord['weekData'][string];
-    initialBalances: { ordinary: number; holiday: number; leave: number; };
-    impact: { ordinary: number; holiday: number; leave: number; };
-}
-
 export default function MySchedulePage() {
-    const { appUser, employees, loading, weeklyRecords, calculateBalancePreview, getEmployeeBalancesForWeek } = useDataProvider();
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-    const [processedWeeks, setProcessedWeeks] = useState<ProcessedWeek[]>([]);
-    const [isProcessing, setIsProcessing] = useState(true);
-
-    const employee = useMemo(() => {
-        if (loading) return null;
-        return employees.find(e => e.id === appUser?.employeeId);
-    }, [employees, appUser, loading]);
-
-    const availableYears = useMemo(() => {
-        if (!weeklyRecords) return [new Date().getFullYear()];
-        const years = new Set<number>();
-        Object.keys(weeklyRecords).forEach(id => {
-            const year = getYear(parseISO(id));
-            years.add(year);
-        });
-        const currentYear = new Date().getFullYear();
-        if (!years.has(currentYear)) years.add(currentYear);
-        return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
-    }, [weeklyRecords]);
     
-    useEffect(() => {
-        const processWeeks = async () => {
-            if (loading || !employee) {
-                if (!loading) setIsProcessing(false);
-                return;
-            }
-            setIsProcessing(true);
-            setProcessedWeeks([]);
-            
-            const confirmedWeeks = Object.entries(weeklyRecords)
-                .filter(([weekId, record]) => {
-                    const weekYear = getYear(parseISO(weekId));
-                    const empData = record.weekData?.[employee.id];
-                    return empData?.confirmed && weekYear === selectedYear;
-                })
-                .sort(([a], [b]) => b.localeCompare(a)); // Sort descending
-
-            if (confirmedWeeks.length === 0) {
-                setIsProcessing(false);
-                return;
-            }
-
-            const processedData: ProcessedWeek[] = [];
-            
-            for (const [weekId, record] of confirmedWeeks) {
-                const weekData = record.weekData[employee.id];
-                const initialBalances = getEmployeeBalancesForWeek(employee.id, weekId);
-                const impactResult = await calculateBalancePreview(
-                    employee.id,
-                    weekData.days,
-                    initialBalances,
-                    weekData.weeklyHoursOverride,
-                    weekData.totalComplementaryHours
-                );
-
-                if (impactResult) {
-                    processedData.push({
-                        id: weekId,
-                        weekData,
-                        initialBalances,
-                        impact: {
-                            ordinary: impactResult.ordinary,
-                            holiday: impactResult.holiday,
-                            leave: impactResult.leave,
-                        }
-                    });
-                }
-            }
-            setProcessedWeeks(processedData);
-            setIsProcessing(false);
-        };
-        
-        processWeeks();
-
-    }, [weeklyRecords, employee, selectedYear, loading, calculateBalancePreview, getEmployeeBalancesForWeek]);
-
-    if (loading) {
-        return (
-             <div className="flex flex-col gap-6 p-4 md:p-6">
-                <div className="flex justify-between items-center">
-                    <Skeleton className="h-8 w-64" />
-                    <Skeleton className="h-10 w-48" />
-                </div>
-                <div className="space-y-4">
-                    <Skeleton className="h-48 w-full" />
-                    <Skeleton className="h-48 w-full" />
-                    <Skeleton className="h-48 w-full" />
-                </div>
-            </div>
-        );
-    }
-
-    if (!appUser || !employee) {
-        return (
-            <div className="flex flex-col gap-6 p-4 md:p-6">
-                 <h1 className="text-2xl font-bold tracking-tight font-headline">Mis Horarios Confirmados</h1>
-                <Card>
-                    <CardContent className="p-12 text-center text-muted-foreground">
-                        No se ha podido encontrar tu ficha de empleado.
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
-
+    // Mock data for one week to show the component structure
+    const mockWeekData: WeeklyRecord['weekData'][string] = {
+        days: {
+            '2025-03-03': { theoreticalHours: 8, workedHours: 8, absence: 'ninguna', absenceHours: 0, leaveHours: 0, doublePay: false },
+            '2025-03-04': { theoreticalHours: 8, workedHours: 8, absence: 'ninguna', absenceHours: 0, leaveHours: 0, doublePay: false },
+            '2025-03-05': { theoreticalHours: 8, workedHours: 0, absence: 'V', absenceHours: 8, leaveHours: 0, doublePay: false },
+            '2025-03-06': { theoreticalHours: 8, workedHours: 8, absence: 'ninguna', absenceHours: 0, leaveHours: 0, doublePay: false },
+            '2025-03-07': { theoreticalHours: 8, workedHours: 8, absence: 'ninguna', absenceHours: 0, leaveHours: 0, doublePay: false },
+            '2025-03-08': { theoreticalHours: 0, workedHours: 4, absence: 'ninguna', absenceHours: 0, leaveHours: 0, doublePay: false },
+            '2025-03-09': { theoreticalHours: 0, workedHours: 0, absence: 'ninguna', absenceHours: 0, leaveHours: 0, doublePay: false },
+        },
+        confirmed: true,
+        totalComplementaryHours: 2,
+        generalComment: "Semana de ejemplo con una ausencia y horas extra."
+    };
+    const mockInitialBalances = { ordinary: 10, holiday: 5, leave: 2 };
+    const mockImpact = { ordinary: -1.75, holiday: 0, leave: 0 };
+    
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold tracking-tight font-headline">Mis Horarios Confirmados</h1>
-                <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+                <Select value="2025">
                     <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Seleccionar año..." />
                     </SelectTrigger>
                     <SelectContent>
-                        {availableYears.map(year => (
-                            <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                        ))}
+                        <SelectItem value="2025">2025</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
             
             <div className="space-y-4">
-                {isProcessing ? (
-                     <div className="flex items-center justify-center h-64">
-                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                     </div>
-                ) : processedWeeks.length > 0 ? (
-                    processedWeeks.map(week => (
-                        <ConfirmedWeekCard 
-                            key={week.id} 
-                            employee={employee}
-                            weekId={week.id} 
-                            weekData={week.weekData}
-                            initialBalances={week.initialBalances}
-                            impact={week.impact}
-                        />
-                    ))
-                ) : (
-                    <Card>
-                        <CardContent className="p-12 text-center text-muted-foreground">
-                            No tienes semanas confirmadas para el año {selectedYear}.
-                        </CardContent>
-                    </Card>
-                )}
+                <p className="text-sm text-center text-muted-foreground">
+                    Esto es un ejemplo de cómo se verá una semana confirmada. Una vez que se carguen sus datos, aquí aparecerán todas sus semanas.
+                </p>
+                <ConfirmedWeekCard 
+                    employee={null}
+                    weekId="2025-03-03" 
+                    weekData={mockWeekData}
+                    initialBalances={mockInitialBalances}
+                    impact={mockImpact}
+                />
             </div>
         </div>
     );
