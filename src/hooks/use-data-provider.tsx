@@ -239,7 +239,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   
   useEffect(() => {
     if (authUser && users.length > 0 && employees.length > 0 && !loading) {
-      const foundEmployee = employees.find(e => e.email === authUser.email);
+      const foundEmployee = employees.find(e => e.email?.toLowerCase() === authUser.email?.toLowerCase());
       setEmployeeRecord(foundEmployee || null);
       
       const userRecord = users.find(u => u.id === authUser.uid);
@@ -1136,7 +1136,7 @@ createAnnualConfig: createAnnualConfigService,
     updateHolidayReport,
     createEmployeeGroup,
     updateEmployeeGroup,
-    deleteEmployeeGroup,
+deleteEmployeeGroup,
     updateEmployeeGroupOrder,
     findNextUnconfirmedWeek,
   };
@@ -1153,4 +1153,5 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
