@@ -1,24 +1,27 @@
+
 'use client';
 
-import { AnnualVacationQuadrant } from '@/components/vacations/annual-vacation-quadrant';
-import { VacationPlanner } from '@/components/vacations/vacation-planner';
-import { useDataProvider } from '@/hooks/use-data-provider';
-import MyVacationsPage from '../my-vacations/page';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { HardHat } from "lucide-react";
 
 
 export default function VacationsPage() {
-    const { appUser } = useDataProvider();
-
-    if (appUser?.role === 'employee') {
-        return <MyVacationsPage />;
-    }
 
     return (
-        <div className="flex flex-col gap-6">
-            <div className="px-4 md:px-6 pt-4 space-y-6">
-                <VacationPlanner />
-                <AnnualVacationQuadrant />
-            </div>
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4 md:p-6">
+            <Card className="w-full max-w-md text-center">
+                <CardHeader>
+                    <div className="mx-auto bg-primary/10 p-4 rounded-full mb-4">
+                        <HardHat className="h-12 w-12 text-primary" />
+                    </div>
+                    <CardTitle>Página en Construcción</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">
+                        Esta sección se encuentra actualmente en desarrollo. Vuelve pronto para ver las nuevas funcionalidades de planificación de vacaciones.
+                    </p>
+                </CardContent>
+            </Card>
         </div>
     )
 }
