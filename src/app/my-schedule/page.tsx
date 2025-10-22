@@ -158,8 +158,9 @@ export default function MySchedulePage() {
     const [isProcessing, setIsProcessing] = useState(true);
 
     const employee = useMemo(() => {
+        if (loading) return null;
         return employees.find(e => e.id === appUser?.employeeId);
-    }, [employees, appUser]);
+    }, [employees, appUser, loading]);
 
     const availableYears = useMemo(() => {
         if (!weeklyRecords) return [new Date().getFullYear()];
@@ -176,9 +177,12 @@ export default function MySchedulePage() {
     useEffect(() => {
         const processWeeks = async () => {
             if (loading || !employee) {
+                if (!loading) setIsProcessing(false);
                 return;
             }
             setIsProcessing(true);
+            setProcessedWeeks([]);
+            
             const confirmedWeeks = Object.entries(weeklyRecords)
                 .filter(([weekId, record]) => {
                     const weekYear = getYear(parseISO(weekId));
@@ -186,6 +190,11 @@ export default function MySchedulePage() {
                     return empData?.confirmed && weekYear === selectedYear;
                 })
                 .sort(([a], [b]) => b.localeCompare(a)); // Sort descending
+
+            if (confirmedWeeks.length === 0) {
+                setIsProcessing(false);
+                return;
+            }
 
             const processedData: ProcessedWeek[] = [];
             
@@ -238,7 +247,16 @@ export default function MySchedulePage() {
     }
 
     if (!appUser || !employee) {
-        return notFound();
+        return (
+            <div className="flex flex-col gap-6 p-4 md:p-6">
+                 <h1 className="text-2xl font-bold tracking-tight font-headline">Mis Horarios Confirmados</h1>
+                <Card>
+                    <CardContent className="p-12 text-center text-muted-foreground">
+                        No se ha podido encontrar tu ficha de empleado.
+                    </CardContent>
+                </Card>
+            </div>
+        );
     }
 
     return (
