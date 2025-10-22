@@ -49,6 +49,7 @@ import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib
 import { Timestamp } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
 import { calculateBalancePreview as calculateBalancePreviewIsolated } from '@/lib/calculators/balance-calculator';
+import { useAuth } from './useAuth';
 
 
 interface DataContextType {
@@ -59,11 +60,14 @@ interface DataContextType {
   annualConfigs: AnnualConfiguration[];
   weeklyRecords: Record<string, WeeklyRecord>;
   users: AppUser[];
+  appUser: AppUser | null;
   holidayEmployees: HolidayEmployee[];
   holidayReports: HolidayReport[];
   employeeGroups: EmployeeGroup[];
   loading: boolean;
   unconfirmedWeeksDetails: { weekId: string; employeeNames: string[] }[];
+  viewMode: 'admin' | 'employee';
+  setViewMode: (mode: 'admin' | 'employee') => void;
   loadData: () => void;
   refreshData: () => void;
   refreshUsers: () => void;
@@ -116,11 +120,14 @@ const DataContext = createContext<DataContextType>({
   annualConfigs: [],
   weeklyRecords: {},
   users: [],
+  appUser: null,
   holidayEmployees: [],
   holidayReports: [],
   employeeGroups: [],
   loading: true,
   unconfirmedWeeksDetails: [],
+  viewMode: 'admin',
+  setViewMode: () => {},
   loadData: () => {},
   refreshData: () => {},
   refreshUsers: () => {},
@@ -171,6 +178,7 @@ const roundToNearestQuarter = (num: number) => {
 
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
+  const { user: authUser } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [absenceTypes, setAbsenceTypes] = useState<AbsenceType[]>([]);
@@ -178,13 +186,81 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [annualConfigs, setAnnualConfigs] = useState<AnnualConfiguration[]>([]);
   const [weeklyRecords, setWeeklyRecords] = useState<Record<string, WeeklyRecord>>({});
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [holidayEmployees, setHolidayEmployees] = useState<HolidayEmployee[]>([]);
   const [holidayReports, setHolidayReports] = useState<HolidayReport[]>([]);
   const [employeeGroups, setEmployeeGroups] = useState<EmployeeGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loaded, setLoaded] = useState(false);
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
+  const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
+  
+  const loadData = useCallback(() => {
+    setLoading(true);
+    const unsubs: (() => void)[] = [];
 
+    const setupSubscription = <T extends { id: string }>(collectionName: string, setter: React.Dispatch<React.SetStateAction<T[]>>, processor?: (data: any[]) => T[]) => {
+        const { unsubscribe, ready } = onCollectionUpdate<T>(collectionName, (data) => {
+            const processedData = processor ? processor(data) : data;
+            setter(processedData as T[]);
+        });
+        unsubs.push(unsubscribe);
+        return ready;
+    };
+    
+    const promises = [
+        setupSubscription<Employee>('employees', setEmployees, (data) => data.map(emp => ({...emp, employmentPeriods: emp.employmentPeriods.map(p => ({...p, startDate: (p.startDate as any)?.toDate ? (p.startDate as any).toDate() : p.startDate, endDate: p.endDate ? ((p.endDate as any)?.toDate ? (p.endDate as any).toDate() : p.endDate) : null, scheduledAbsences: (p.scheduledAbsences || []).map(a => ({...a, startDate: (a.startDate as any)?.toDate ? (a.startDate as any).toDate() : parseISO(a.startDate as string), endDate: a.endDate ? ((a.endDate as any)?.toDate ? (a.endDate as any).toDate() : parseISO(a.endDate as string)) : null,})),}))})).sort((a,b) => a.name.localeCompare(b.name))),
+        setupSubscription<AbsenceType>('absenceTypes', setAbsenceTypes, data => data.sort((a,b) => a.name.localeCompare(b.name))),
+        setupSubscription<Holiday>('holidays', setHolidays, data => data.map(h => ({ ...h, date: (h.date as Timestamp).toDate() })).sort((a,b) => a.date.getTime() - b.date.getTime())),
+        setupSubscription<ContractType>('contractTypes', setContractTypes),
+        setupSubscription<AnnualConfiguration>('annualConfigurations', setAnnualConfigs, data => data.sort((a,b) => a.year - b.year)),
+        setupSubscription<WeeklyRecord>('weeklyRecords', (data) => setWeeklyRecords(data.reduce((acc, record) => ({ ...acc, [record.id]: record }), {}))),
+        setupSubscription<AppUser>('users', setUsers),
+        setupSubscription<HolidayEmployee>('holidayEmployees', setHolidayEmployees, data => data.sort((a,b) => a.name.localeCompare(b.name))),
+        setupSubscription<HolidayReport>('holidayReports', setHolidayReports),
+        setupSubscription<EmployeeGroup>('employeeGroups', setEmployeeGroups, data => data.sort((a,b) => a.order - b.order)),
+    ];
+
+    Promise.all(promises).then(() => {
+        setLoading(false);
+    }).catch(error => {
+        console.error("Error during initial data load:", error);
+        setLoading(false);
+    });
+
+    return () => unsubs.forEach(unsub => unsub());
+  }, []);
+  
+  useEffect(() => {
+    if (authUser) {
+        loadData();
+    } else {
+        setLoading(false);
+    }
+  }, [authUser, loadData]);
+
+  useEffect(() => {
+    if (!authUser || users.length === 0) {
+      setAppUser(null);
+      return;
+    }
+
+    const userRecord = users.find(u => u.id === authUser.uid);
+    const employeeRecord = employees.find(e => e.authId === authUser.uid);
+    
+    let finalRole: 'admin' | 'employee' = 'employee';
+    if (userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com') {
+      finalRole = 'admin';
+    }
+
+    setAppUser({
+      id: authUser.uid,
+      email: authUser.email!,
+      employeeId: employeeRecord?.id || userRecord?.employeeId || '',
+      role: viewMode === 'admin' ? finalRole : 'employee',
+      trueRole: finalRole,
+    });
+  }, [authUser, users, employees, viewMode]);
+  
   const getWeekId = (d: Date): string => {
     const monday = startOfWeek(d, { weekStartsOn: 1 });
     return format(monday, 'yyyy-MM-dd');
@@ -337,94 +413,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 }, [absenceTypes, weeklyRecords, employees]);
 
 
-
-const loadData = useCallback(() => {
-    if (loaded) return;
-    setLoading(true);
-
-    let mounted = true;
-    
-    const unsubEmployees = onCollectionUpdate<Employee[]>('employees', (data) => {
-        if (mounted) {
-            const processedEmployees = data.map(emp => ({
-                ...emp,
-                employmentPeriods: emp.employmentPeriods.map(p => ({
-                    ...p,
-                    startDate: (p.startDate as any)?.toDate ? (p.startDate as any).toDate() : p.startDate,
-                    endDate: p.endDate ? ((p.endDate as any)?.toDate ? (p.endDate as any).toDate() : p.endDate) : null,
-                    scheduledAbsences: (p.scheduledAbsences || []).map(a => ({
-                        ...a,
-                        startDate: (a.startDate as any)?.toDate ? (a.startDate as any).toDate() : parseISO(a.startDate as string),
-                        endDate: a.endDate ? ((a.endDate as any)?.toDate ? (a.endDate as any).toDate() : parseISO(a.endDate as string)) : null,
-                    })),
-                })),
-            })).sort((a, b) => a.name.localeCompare(b.name));
-             setEmployees(processedEmployees);
-        }
-    });
-
-    const unsubAbsenceTypes = onCollectionUpdate<AbsenceType[]>('absenceTypes', (data) => {
-        if (mounted) {
-            setAbsenceTypes(data.sort((a, b) => a.name.localeCompare(b.name)));
-        }
-    });
-
-    const unsubWeeklyRecords = onCollectionUpdate<WeeklyRecord[]>('weeklyRecords', (data) => {
-        if (mounted) {
-            setWeeklyRecords(data.reduce((acc, record) => ({ ...acc, [record.id]: record }), {}));
-        }
-    });
-
-    const unsubHolidays = onCollectionUpdate<any>('holidays', (data) => {
-      if (mounted) setHolidays(data.map((h: any) => ({ ...h, date: (h.date as Timestamp).toDate() })).sort((a:any,b:any) => a.date.getTime() - b.date.getTime()));
-    });
-    const unsubContractTypes = onCollectionUpdate<ContractType[]>('contractTypes', (data) => { if(mounted) setContractTypes(data)});
-    const unsubAnnualConfigs = onCollectionUpdate<AnnualConfiguration[]>('annualConfigurations', (data) => { if(mounted) setAnnualConfigs(data.sort((a:any,b:_any) => a.year - b.year))});
-    const unsubUsers = onCollectionUpdate<AppUser[]>('users', (data) => {if(mounted) setUsers(data)});
-    const unsubHolidayEmployees = onCollectionUpdate<HolidayEmployee[]>('holidayEmployees', (data) => { if(mounted) setHolidayEmployees(data.sort((a,b) => a.name.localeCompare(b.name))) });
-    const unsubHolidayReports = onCollectionUpdate<HolidayReport[]>('holidayReports', (data) => { if(mounted) setHolidayReports(data) });
-    const unsubEmployeeGroups = onCollectionUpdate<EmployeeGroup[]>('employeeGroups', (data) => { if (mounted) setEmployeeGroups(data.sort((a,b) => a.order - b.order)) });
-
-
-    const allSubscriptionsReady = Promise.all([
-        unsubEmployees.ready,
-        unsubAbsenceTypes.ready,
-        unsubWeeklyRecords.ready,
-        unsubHolidays.ready,
-        unsubContractTypes.ready,
-        unsubAnnualConfigs.ready,
-        unsubUsers.ready,
-        unsubHolidayEmployees.ready,
-        unsubHolidayReports.ready,
-        unsubEmployeeGroups.ready,
-    ]);
-
-    allSubscriptionsReady.then(() => {
-        if (mounted) {
-            setLoading(false);
-            setLoaded(true);
-        }
-    }).catch(error => {
-        console.error("Error during initial data load:", error);
-        if (mounted) {
-            setLoading(false);
-        }
-    });
-
-    return () => {
-        mounted = false;
-        unsubEmployees.unsubscribe();
-        unsubAbsenceTypes.unsubscribe();
-        unsubWeeklyRecords.unsubscribe();
-        unsubHolidays.unsubscribe();
-        unsubContractTypes.unsubscribe();
-        unsubAnnualConfigs.unsubscribe();
-        unsubUsers.unsubscribe();
-        unsubHolidayEmployees.unsubscribe();
-        unsubHolidayReports.unsubscribe();
-        unsubEmployeeGroups.unsubscribe();
-    };
-}, [loaded]);
 
   const getActiveEmployeesForDate = useCallback((date: Date): Employee[] => {
     const weekStart = startOfDay(startOfWeek(date, { weekStartsOn: 1 }));
@@ -1102,11 +1090,14 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     annualConfigs,
     weeklyRecords,
     users,
+    appUser,
     holidayEmployees,
     holidayReports,
     employeeGroups,
     loading,
     unconfirmedWeeksDetails,
+    viewMode,
+    setViewMode,
     loadData,
     refreshData,
     refreshUsers,
@@ -1159,3 +1150,4 @@ createAnnualConfig: createAnnualConfigService,
 };
 
 export const useDataProvider = () => useContext(DataContext);
+

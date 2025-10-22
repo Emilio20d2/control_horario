@@ -268,3 +268,4 @@ export interface Ausencia {
     absenceAbbreviation: string;
     periodId?: string;
   }
+

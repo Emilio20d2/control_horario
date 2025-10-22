@@ -48,11 +48,9 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
 
     // After creating the employee, if an email is provided, create a user document
     // This part does not create the auth user, just the firestore user document.
-    if (email) {
-        // This part needs to be improved to get the authId after user registration
-        // For now, let's assume we don't have authId yet, but we prepare the user doc
+    if (email && role) {
         // This logic will be fully implemented with user registration.
-        console.log(`User document would be created/updated for ${email} with role ${role}`);
+        console.log(`User document creation/update for ${email} with role ${role} should be handled server-side upon auth user creation.`);
     }
 
     return employeeId;
@@ -179,9 +177,7 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
             await setDocument('users', currentEmployee.authId, { email: currentEmployee.email, employeeId: id, role });
         }
     } else if (email && role) {
-        // If there's no authId, we can't be sure which user doc to update.
-        // This logic should be coupled with user registration.
-        // For now, we'll log this action.
+        // This logic will be fully implemented with user registration.
         console.log(`Role update for ${email} to '${role}' was provided, but no authId is linked. This should be handled during user registration.`);
     }
 };
