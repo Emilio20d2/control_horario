@@ -144,7 +144,11 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
   const [password, setPassword] = useState('');
 
   const getInitialValues = () => {
-    const userForEmployee = employee ? users.find(u => u.id === employee.authId) : undefined;
+    const userForEmployee = employee?.authId ? users.find(u => u.id === employee.authId) : undefined;
+    
+    // Hardcoded rule for superadmin
+    const role = employee?.email === 'emiliogp@inditex.com' ? 'admin' : userForEmployee?.role || 'employee';
+
     if (employee && employee.employmentPeriods?.length > 0) {
         const period = [...employee.employmentPeriods].sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
         
@@ -154,7 +158,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             dni: employee.dni,
             phone: employee.phone,
             email: employee.email,
-            role: userForEmployee?.role || 'employee',
+            role: role,
             groupId: employee.groupId,
             startDate: period.startDate as string,
             endDate: period.endDate as string | null,

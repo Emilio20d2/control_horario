@@ -163,6 +163,7 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
         email: email || null,
         groupId: groupId || null,
         employmentPeriods: updatedPeriods,
+        authId: currentEmployee.authId || null,
     };
 
     await updateDocument('employees', id, finalData);
