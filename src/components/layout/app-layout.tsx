@@ -212,7 +212,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                         <span className="sr-only">Abrir menú</span>
                     </Button>
                 </SheetTrigger>
-                <SheetContent side="left">
+                <SheetContent side="right">
                     <SheetHeader>
                         <SheetTitle>
                             <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
