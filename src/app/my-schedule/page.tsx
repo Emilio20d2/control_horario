@@ -6,7 +6,7 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getYear, isAfter, parseISO, endOfWeek, eachDayOfInterval, format, isSameDay, getISODay } from 'date-fns';
+import { getYear, isAfter, parseISO, endOfWeek, eachDayOfInterval, format, isSameDay, getISODay, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
