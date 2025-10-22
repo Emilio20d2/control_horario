@@ -138,7 +138,7 @@ const generateDefaultShift = (hours: number, days: string[]) => {
 export function EmployeeForm({ employee }: EmployeeFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { contractTypes, employeeGroups, getEmployeeFinalBalances, users, appUser } = useDataProvider();
+  const { contractTypes, getEmployeeFinalBalances, users, appUser } = useDataProvider();
   const { reauthenticateWithPassword } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const [password, setPassword] = useState('');
@@ -378,7 +378,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         </FormItem>
                         )}
                     />
-                     {appUser?.role === 'admin' && (
+                    {appUser?.role === 'admin' && (
                         <FormField
                             control={form.control}
                             name="role"
