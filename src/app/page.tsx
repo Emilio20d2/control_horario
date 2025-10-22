@@ -8,21 +8,18 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 export default function Home() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const { appUser } = useDataProvider();
 
   useEffect(() => {
     if (!loading) {
-      if (user && appUser) {
-        if (appUser.role === 'admin') {
-            router.replace('/dashboard');
-        } else {
-            router.replace('/my-profile');
-        }
+      if (user) {
+        // Redirect to a default authenticated page. 
+        // The AppLayout will then handle role-based redirection.
+        router.replace('/dashboard');
       } else {
         router.replace('/login');
       }
     }
-  }, [user, appUser, loading, router]);
+  }, [user, loading, router]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center">

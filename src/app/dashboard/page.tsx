@@ -22,6 +22,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Loader2 } from 'lucide-react';
 import { HolidayReportGenerator } from '@/components/dashboard/holiday-report-generator';
+import { useRouter } from 'next/navigation';
 
 const chartConfig = {
     balance: {
@@ -32,7 +33,15 @@ const chartConfig = {
 
 
 export default function DashboardPage() {
-    const { employees, weeklyRecords, loading, absenceTypes, holidays, getProcessedAnnualDataForEmployee, getEmployeeFinalBalances, calculateTheoreticalAnnualWorkHours, getEmployeeBalancesForWeek, getWeekId, calculateCurrentAnnualComputedHours, getEffectiveWeeklyHours, getTheoreticalHoursAndTurn, getActivePeriod, processEmployeeWeekData, calculateBalancePreview, vacationData } = useDataProvider();
+    const { employees, weeklyRecords, loading, absenceTypes, holidays, getProcessedAnnualDataForEmployee, getEmployeeFinalBalances, calculateTheoreticalAnnualWorkHours, getEmployeeBalancesForWeek, getWeekId, calculateCurrentAnnualComputedHours, getEffectiveWeeklyHours, getTheoreticalHoursAndTurn, getActivePeriod, processEmployeeWeekData, calculateBalancePreview, vacationData, appUser } = useDataProvider();
+    const router = useRouter();
+
+    // Redirect if not admin
+    useEffect(() => {
+        if (!loading && appUser && appUser.role !== 'admin') {
+            router.replace('/my-profile');
+        }
+    }, [loading, appUser, router]);
     
     // Default to a date from data if available, otherwise today
     const [referenceDate, setReferenceDate] = useState(new Date());
@@ -142,7 +151,7 @@ export default function DashboardPage() {
     }, [complementaryHoursRecord]);
 
 
-    if (loading) {
+    if (loading || !appUser || appUser.role !== 'admin') {
         return (
             <div className="flex flex-col gap-6 p-4 md:p-6">
                 <div className="flex justify-between items-center">

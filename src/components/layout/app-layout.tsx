@@ -3,7 +3,7 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -56,8 +56,16 @@ import { es } from 'date-fns/locale';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuth();
   const { unconfirmedWeeksDetails, appUser, viewMode, setViewMode, loading: dataLoading } = useDataProvider();
+
+  // Redirect employee from dashboard to their profile
+  useEffect(() => {
+    if (appUser?.role === 'employee' && pathname === '/dashboard') {
+      router.replace('/my-profile');
+    }
+  }, [appUser, pathname, router]);
 
   const getInitials = (email: string | null | undefined): string => {
     if (!email) return 'U';
@@ -96,7 +104,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 (pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href)))
                 ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                : 'text-foreground hover:bg-accent hover:text-accent-foreground'
             }`}
             >
             <item.icon className="h-4 w-4" />
@@ -117,6 +125,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
         </div>
     );
+  }
+  
+    // Don't render layout for employee if they land on an admin-only page (they will be redirected)
+  if (appUser?.role === 'employee' && pathname.startsWith('/dashboard')) {
+    return null;
   }
 
   return (
