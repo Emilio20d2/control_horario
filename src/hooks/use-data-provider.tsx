@@ -191,13 +191,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
   const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
-  const { user: authUser, loadData: authLoadData } = useAuth();
+  const { user: authUser, loading: authLoading } = useAuth();
   
-  const loadData = useCallback((user: any) => {
-    if (!user) {
-        setLoading(false);
-        return;
-    }
+  const loadData = useCallback(() => {
     setLoading(true);
     const unsubs: (() => void)[] = [];
 
@@ -234,32 +230,33 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (authLoadData) {
-        authLoadData(loadData);
+    if (!authLoading && authUser) {
+      loadData();
+    } else if (!authLoading && !authUser) {
+      setLoading(false);
     }
-  }, [authLoadData, loadData]);
+  }, [authLoading, authUser, loadData]);
   
   useEffect(() => {
-    if (authUser && users.length > 0 && employees.length > 0) {
-      const foundEmployee = employees.find(e => e.authId === authUser.uid);
+    if (authUser && users.length > 0 && employees.length > 0 && !loading) {
+      const foundEmployee = employees.find(e => e.email === authUser.email);
       setEmployeeRecord(foundEmployee || null);
+      
+      const userRecord = users.find(u => u.id === authUser.uid);
+      const trueRole = userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
+
+      setAppUser({
+          id: authUser.uid,
+          email: authUser.email!,
+          employeeId: foundEmployee?.id || userRecord?.employeeId || '',
+          role: trueRole === 'admin' ? viewMode : 'employee',
+          trueRole: trueRole,
+      });
+    } else if (!authUser && !loading) {
+        setAppUser(null);
+        setEmployeeRecord(null);
     }
-  }, [authUser, users, employees]);
-
-  useEffect(() => {
-      if (authUser && users.length > 0 && employees.length > 0) {
-          const userRecord = users.find(u => u.id === authUser.uid);
-          const trueRole = userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com' ? 'admin' : 'employee';
-
-          setAppUser({
-              id: authUser.uid,
-              email: authUser.email!,
-              employeeId: employeeRecord?.id || userRecord?.employeeId || '',
-              role: trueRole === 'admin' ? viewMode : 'employee',
-              trueRole: trueRole,
-          });
-      }
-  }, [authUser, users, employeeRecord, viewMode, employees]);
+  }, [authUser, users, employees, loading, viewMode]);
 
 
   const getWeekId = (d: Date): string => {
@@ -1156,3 +1153,4 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+

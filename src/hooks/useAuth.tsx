@@ -11,7 +11,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   reauthenticateWithPassword: (password: string) => Promise<boolean>;
-  loadData: ((user: any) => void) | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,25 +19,19 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   logout: async () => {},
   reauthenticateWithPassword: async () => false,
-  loadData: null,
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadData, setLoadData] = useState<((user: any) => void) | null>(null);
-
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
-      if (user && loadData) {
-        loadData(user);
-      }
     });
     return () => unsubscribe();
-  }, [loadData]);
+  }, []);
 
   const login = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
@@ -60,7 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const value = { user, loading, login, logout, reauthenticateWithPassword, loadData: setLoadData as any };
+  const value = { user, loading, login, logout, reauthenticateWithPassword };
 
   return (
     <AuthContext.Provider value={value}>
