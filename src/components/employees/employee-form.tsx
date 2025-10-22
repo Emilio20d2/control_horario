@@ -224,7 +224,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     try {
         const dataToSave: EmployeeFormData = {
             ...values,
-            role: appUser?.role === 'admin' ? values.role : undefined, // Only include role if admin
+            role: values.role,
             initialOrdinaryHours: values.initialOrdinaryHours ?? 0,
             initialHolidayHours: values.initialHolidayHours ?? 0,
             initialLeaveHours: values.initialLeaveHours ?? 0,
@@ -378,30 +378,28 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         </FormItem>
                         )}
                     />
-                    {appUser?.role === 'admin' && (
-                        <FormField
-                            control={form.control}
-                            name="role"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Rol del Usuario</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                    <SelectTrigger>
-                                    <SelectValue placeholder="Selecciona un rol" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    <SelectItem value="employee">Empleado</SelectItem>
-                                    <SelectItem value="admin">Administrador</SelectItem>
-                                </SelectContent>
-                                </Select>
-                                <FormDescription>Define los permisos del usuario en la aplicación.</FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                    )}
+                    <FormField
+                        control={form.control}
+                        name="role"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Rol del Usuario</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                <SelectValue placeholder="Selecciona un rol" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="employee">Empleado</SelectItem>
+                                <SelectItem value="admin">Administrador</SelectItem>
+                            </SelectContent>
+                            </Select>
+                            <FormDescription>Define los permisos del usuario en la aplicación.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
                 </div>
             </div>
 
