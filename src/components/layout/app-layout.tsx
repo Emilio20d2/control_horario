@@ -63,6 +63,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   
   useEffect(() => {
     if (!appUser || !appUser.trueRole) return;
+
     if (appUser.trueRole === 'admin') {
       if (viewMode === 'employee' && !pathname.startsWith('/my-')) {
         router.replace('/my-profile');

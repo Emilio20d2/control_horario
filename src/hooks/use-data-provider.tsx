@@ -19,7 +19,7 @@ import type {
   HolidayReport,
   EmployeeGroup,
 } from '../types';
-import { onCollectionUpdate } from '@/lib/services/firestoreService';
+import { onCollectionUpdate, getDocumentById } from '@/lib/services/firestoreService';
 import { 
     createAbsenceType as createAbsenceTypeService, 
     updateAbsenceType as updateAbsenceTypeService, 
@@ -46,7 +46,7 @@ import { addDocument, setDocument, getCollection } from '@/lib/services/firestor
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
-import { calculateBalancePreview } from '@/lib/calculators/balance-calculator';
+import { calculateBalancePreview } from '../lib/calculators/balance-calculator';
 import { useAuth } from './useAuth';
 
 interface DataContextType {
@@ -264,28 +264,38 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 }, [authUser, employees]);
 
 useEffect(() => {
-    if (authUser && !loading && users.length > 0) {
-        const userRecord = users.find(u => u.id === authUser.uid);
-        // Ensure trueRole is determined once and stored.
-        const trueRole = (userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com') ? 'admin' : 'employee';
+    if (authLoading) return;
 
-        setAppUser(currentUser => {
+    if (authUser) {
+        getDocumentById<AppUser>('users', authUser.uid).then(userRecord => {
+            const isHardcodedAdmin = authUser.email === 'emiliogp@inditex.com';
+            const trueRole = (userRecord?.role === 'admin' || isHardcodedAdmin) ? 'admin' : 'employee';
+            
             const newRole = trueRole === 'admin' ? viewMode : 'employee';
-            if (currentUser?.id === authUser.uid && currentUser?.trueRole === trueRole && currentUser?.role === newRole) {
-                return currentUser;
-            }
-            return {
+
+            setAppUser({
                 id: authUser.uid,
                 email: authUser.email!,
-                employeeId: employeeRecord?.id || '',
+                employeeId: userRecord?.employeeId || employeeRecord?.id || '',
                 role: newRole,
                 trueRole: trueRole,
-            };
+            });
+        }).catch(() => {
+             const isHardcodedAdmin = authUser.email === 'emiliogp@inditex.com';
+             const trueRole = isHardcodedAdmin ? 'admin' : 'employee';
+             const newRole = trueRole === 'admin' ? viewMode : 'employee';
+             setAppUser({
+                id: authUser.uid,
+                email: authUser.email!,
+                employeeId: '',
+                role: newRole,
+                trueRole: trueRole,
+             });
         });
-    } else if (!authUser && !loading) {
+    } else {
         setAppUser(null);
     }
-}, [authUser, employeeRecord, users, loading, viewMode]);
+}, [authLoading, authUser, viewMode, employeeRecord]);
 
 
   const getWeekId = (d: Date): string => {
