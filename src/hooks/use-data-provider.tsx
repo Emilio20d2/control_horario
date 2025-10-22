@@ -1,3 +1,4 @@
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type {
@@ -46,7 +47,7 @@ import { addDocument, setDocument, getCollection } from '@/lib/services/firestor
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
-import { calculateBalancePreview as calculateBalancePreviewIsolated } from '@/lib/calculators/balance-calculator';
+import { calculateBalancePreview } from '@/lib/calculators/balance-calculator';
 import { useAuth } from './useAuth';
 
 interface DataContextType {
@@ -487,11 +488,11 @@ const getEffectiveWeeklyHours = (period: EmploymentPeriod | null, date: Date): n
     return effectiveRecord?.weeklyHours || 0;
   };
 
-const calculateBalancePreview = useCallback((employeeId: string, weekData: Record<string, DailyData>, initialBalances: { ordinary: number, holiday: number, leave: number }, weeklyHoursOverride?: number | null, totalComplementaryHours?: number | null) => {
+const calculateBalancePreviewCallback = useCallback((employeeId: string, weekData: Record<string, DailyData>, initialBalances: { ordinary: number, holiday: number, leave: number }, weeklyHoursOverride?: number | null, totalComplementaryHours?: number | null) => {
     const employee = getEmployeeById(employeeId);
     if (!employee) return null;
 
-    return calculateBalancePreviewIsolated(
+    return calculateBalancePreview(
         employee.id,
         weekData,
         initialBalances,
@@ -527,7 +528,7 @@ const calculateBalancePreview = useCallback((employeeId: string, weekData: Recor
 
     for (const record of previousConfirmedRecords) {
         const weekData = record.weekData[employeeId];
-        const preview = calculateBalancePreview(
+        const preview = calculateBalancePreviewCallback(
             employeeId,
             weekData.days,
             currentBalances,
@@ -544,7 +545,7 @@ const calculateBalancePreview = useCallback((employeeId: string, weekData: Recor
     }
     
     return { ...currentBalances, total: currentBalances.ordinary + currentBalances.holiday + currentBalances.leave };
-}, [employees, weeklyRecords, calculateBalancePreview]);
+}, [employees, weeklyRecords, calculateBalancePreviewCallback]);
   
 const getEmployeeFinalBalances = useCallback((employeeId: string): { ordinary: number, holiday: number, leave: number, total: number } => {
     const employee = employees.find(e => e.id === employeeId);
@@ -559,7 +560,7 @@ const getEmployeeFinalBalances = useCallback((employeeId: string): { ordinary: n
         const initialBalances = getEmployeeBalancesForWeek(employeeId, latestRecordWeekId);
         
         const latestRecordData = allConfirmedRecords[0].weekData[employeeId];
-        const preview = calculateBalancePreview(
+        const preview = calculateBalancePreviewCallback(
             employeeId,
             latestRecordData.days,
             { ordinary: initialBalances.ordinary, holiday: initialBalances.holiday, leave: initialBalances.leave },
@@ -590,7 +591,7 @@ const getEmployeeFinalBalances = useCallback((employeeId: string): { ordinary: n
     }
 
     return { ordinary: 0, holiday: 0, leave: 0, total: 0 };
-}, [employees, weeklyRecords, getEmployeeBalancesForWeek, calculateBalancePreview]);
+}, [employees, weeklyRecords, getEmployeeBalancesForWeek, calculateBalancePreviewCallback]);
 
 
 const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { turnId: string | null; weekDaysWithTheoreticalHours: { dateKey: string; theoreticalHours: number }[] } => {
@@ -790,7 +791,7 @@ const getProcessedAnnualDataForEmployee = async (employeeId: string, year: numbe
         const weekData = processEmployeeWeekData(employee, weekDays, currentWeekId);
         
         if (weekData?.days) {
-            const preview = calculateBalancePreview(employeeId, weekData.days, initialBalances, weekData.weeklyHoursOverride, weekData.totalComplementaryHours);
+            const preview = calculateBalancePreviewCallback(employeeId, weekData.days, initialBalances, weekData.weeklyHoursOverride, weekData.totalComplementaryHours);
             
             if (preview) {
                 annualData.push({
@@ -1094,7 +1095,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     getEmployeeBalancesForWeek,
     getEmployeeFinalBalances,
     getTheoreticalHoursAndTurn,
-    calculateBalancePreview,
+    calculateBalancePreview: calculateBalancePreviewCallback,
     calculateCurrentAnnualComputedHours,
     calculateTheoreticalAnnualWorkHours,
     getProcessedAnnualDataForEmployee,
@@ -1147,3 +1148,6 @@ export const useDataProvider = () => useContext(DataContext);
     
 
 
+
+
+    
