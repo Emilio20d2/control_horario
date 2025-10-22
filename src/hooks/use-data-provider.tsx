@@ -239,7 +239,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   }, [authLoading, authUser, loadData]);
   
   useEffect(() => {
-    if (authUser && employees.length > 0 && users.length > 0) {
+    if (authUser && employees.length > 0) {
         const loggedInUserEmail = authUser.email?.trim().toLowerCase();
         if (loggedInUserEmail) {
             const foundEmployee = employees.find(e => 
@@ -252,7 +252,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     } else if (!authUser) {
         setEmployeeRecord(null);
     }
-}, [authUser, users, employees]);
+}, [authUser, employees]);
 
 useEffect(() => {
     if (authUser && employeeRecord !== undefined && !loading && users.length > 0) {
@@ -1173,3 +1173,4 @@ export const useDataProvider = () => useContext(DataContext);
 
 
     
+
