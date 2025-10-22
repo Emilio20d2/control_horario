@@ -249,7 +249,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     
     let finalRole: 'admin' | 'employee' = 'employee';
     if (userRecord?.role === 'admin' || authUser.email === 'emiliogp@inditex.com') {
-      finalRole = 'admin';
+        finalRole = 'admin';
     }
 
     setAppUser({
