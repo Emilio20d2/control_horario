@@ -103,9 +103,8 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
                                     <TableRow 
                                         key={dayKey}
                                         className={cn(
-                                            holiday && holiday.type === 'Apertura' && 'bg-green-50',
-                                            holiday && holiday.type !== 'Apertura' && 'bg-gray-100',
-                                            !holiday && dayData.absence !== 'ninguna' && 'bg-red-50'
+                                            holiday && 'bg-blue-100',
+                                            !holiday && dayData.absence !== 'ninguna' && 'bg-destructive/10'
                                         )}
                                     >
                                         <TableCell className="font-semibold p-1 text-xs">{format(day, 'E', { locale: es })}</TableCell>
