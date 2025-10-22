@@ -24,7 +24,6 @@ export default function MyProfilePage() {
         }
     }, [employee, dataLoading, getEmployeeFinalBalances, weeklyRecords]);
     
-    // Paso 1: Manejar la carga inicial de toda la aplicación.
     if (dataLoading) {
         return (
             <div className="flex flex-col gap-6 p-4 md:p-6">
@@ -40,13 +39,10 @@ export default function MyProfilePage() {
         );
     }
 
-    // Paso 2: Una vez que la carga inicial ha terminado, comprobar si se encontró la ficha del empleado.
-    // Si no se encuentra, es un estado anómalo y se muestra la página de error.
     if (!employee) {
         return notFound();
     }
 
-    // Paso 3: Si se encuentra la ficha del empleado, renderizar la página completa.
     const activePeriod = employee.employmentPeriods?.find(p => {
         if (!p.endDate) return true;
         const endDate = typeof p.endDate === 'string' ? parseISO(p.endDate) : p.endDate as Date;
