@@ -183,6 +183,7 @@ export interface EmployeeFormData {
     dni?: string;
     phone?: string;
     email?: string;
+    role?: string;
     groupId?: string;
     startDate: string;
     endDate?: string | null;
@@ -220,6 +221,8 @@ export interface AppUser {
     id: string; // Corresponds to Firebase Auth UID
     email: string;
     employeeId: string;
+    role: 'admin' | 'employee';
+    trueRole?: 'admin' | 'employee';
 }
 
 

@@ -73,6 +73,7 @@ const formSchema = z.object({
   dni: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email({ message: "Correo electrónico no válido." }).optional().or(z.literal('')),
+  role: z.string().optional(),
   
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'La fecha debe estar en formato AAAA-MM-DD.' }),
   endDate: z.string().nullable().optional(),
@@ -137,12 +138,13 @@ const generateDefaultShift = (hours: number, days: string[]) => {
 export function EmployeeForm({ employee }: EmployeeFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { contractTypes, employeeGroups, getEmployeeFinalBalances } = useDataProvider();
+  const { contractTypes, employeeGroups, getEmployeeFinalBalances, users, appUser } = useDataProvider();
   const { reauthenticateWithPassword } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const [password, setPassword] = useState('');
 
   const getInitialValues = () => {
+    const userForEmployee = employee ? users.find(u => u.id === employee.authId) : undefined;
     if (employee && employee.employmentPeriods?.length > 0) {
         const period = [...employee.employmentPeriods].sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
         
@@ -152,6 +154,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             dni: employee.dni,
             phone: employee.phone,
             email: employee.email,
+            role: userForEmployee?.role || 'employee',
             groupId: employee.groupId,
             startDate: period.startDate as string,
             endDate: period.endDate as string | null,
@@ -178,6 +181,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         dni: '',
         phone: '',
         email: '',
+        role: 'employee',
         groupId: '',
         startDate: new Date().toISOString().split('T')[0],
         endDate: null,
@@ -368,10 +372,35 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             <FormControl>
                             <Input placeholder="juan.perez@email.com" {...field} value={field.value ?? ''} />
                             </FormControl>
+                             <FormDescription>Usado para el inicio de sesión del empleado.</FormDescription>
                             <FormMessage />
                         </FormItem>
                         )}
                     />
+                     {appUser?.role === 'admin' && (
+                        <FormField
+                            control={form.control}
+                            name="role"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Rol del Usuario</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona un rol" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="employee">Empleado</SelectItem>
+                                    <SelectItem value="admin">Administrador</SelectItem>
+                                </SelectContent>
+                                </Select>
+                                <FormDescription>Define los permisos del usuario en la aplicación.</FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    )}
                 </div>
             </div>
 
