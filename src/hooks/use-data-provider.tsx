@@ -660,16 +660,31 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
     
         let totalComputedHours = 0;
     
-        const relevantRecords = Object.values(weeklyRecords).filter(
-            record => record.weekData[employeeId] && getISOWeekYear(parseISO(record.id)) === year && record.weekData[employeeId].confirmed
-        );
+        const relevantRecords = Object.values(weeklyRecords).filter(record => {
+            const weekDate = parseISO(record.id);
+            const isoYear = getISOWeekYear(weekDate);
+            if (year === 2025) {
+                return isoYear === 2025 && record.weekData[employeeId]?.confirmed;
+            }
+            return isoYear === year && record.weekData[employeeId]?.confirmed;
+        });
     
         relevantRecords.forEach(weekRecord => {
             const employeeData = weekRecord.weekData[employeeId];
             if (employeeData?.days) {
                 Object.entries(employeeData.days).forEach(([dayKey, dayData]) => {
                     const dayDate = parseISO(dayKey);
-                    if (getISOWeekYear(dayDate) !== year) return;
+                    const isoYear = getISOWeekYear(dayDate);
+                    
+                    let isCorrectYear = false;
+                     if (year === 2025) {
+                        isCorrectYear = isoYear === 2025;
+                    } else {
+                        isCorrectYear = isoYear === year;
+                    }
+
+                    if (!isCorrectYear) return;
+
     
                     const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
                     let dailyComputable = 0;
@@ -702,34 +717,34 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
     };
 
     const calculateTheoreticalAnnualWorkHours = (employeeId: string, year: number): { theoreticalHours: number, baseTheoreticalHours: number, suspensionDetails: any[], workHoursChangeDetails: any[] } => {
-        const employee = getEmployeeById(employeeId);
+        const employee = getById(employeeId);
         const annualConfig = annualConfigs.find(c => c.year === year);
-
+    
         if (!employee || !annualConfig) {
             return { theoreticalHours: 0, baseTheoreticalHours: 0, suspensionDetails: [], workHoursChangeDetails: [] };
         }
-
+    
         const suspensionTypeIds = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.id));
         const suspensionAbsenceAbbrs = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.abbreviation));
-
+    
         const yearStart = startOfYear(new Date(year, 0, 1));
         const yearEnd = endOfYear(new Date(year, 11, 31));
-
+    
         let totalProratedHours = 0;
-        let totalSuspensionDays = 0;
-
-        const allSuspensionIntervals = [];
-
-        // 1. Collect all suspensions from scheduled absences
+        const suspensionIntervals = [];
+    
+        // Collect all suspension intervals
         for (const period of (employee.employmentPeriods || [])) {
             for (const absence of (period.scheduledAbsences || [])) {
                 if (suspensionTypeIds.has(absence.absenceTypeId) && absence.endDate) {
-                    allSuspensionIntervals.push({ start: startOfDay(absence.startDate), end: endOfDay(absence.endDate) });
+                    suspensionIntervals.push({
+                        start: startOfDay(absence.startDate),
+                        end: endOfDay(absence.endDate)
+                    });
                 }
             }
         }
-        
-        // 2. Collect all suspensions from weekly records
+    
         for (const weekId in weeklyRecords) {
             const record = weeklyRecords[weekId];
             const empData = record?.weekData?.[employeeId];
@@ -737,34 +752,32 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
                 for (const dayStr in empData.days) {
                     if (suspensionAbsenceAbbrs.has(empData.days[dayStr].absence)) {
                         const day = parseISO(dayStr);
-                        allSuspensionIntervals.push({ start: day, end: day });
+                        suspensionIntervals.push({ start: day, end: day });
                     }
                 }
             }
         }
-
+    
+        // Iterate through each day of the year to calculate prorated hours
         for (let day = new Date(yearStart); day <= yearEnd; day = addDays(day, 1)) {
+            // Check if the day is within any suspension interval
+            const isSuspended = suspensionIntervals.some(interval => isWithinInterval(day, interval));
+            if (isSuspended) continue;
+    
+            // Find the active employment period for the day
             const activePeriod = getActivePeriod(employee.id, day);
             if (!activePeriod) continue;
-
-            const isSuspended = allSuspensionIntervals.some(interval => isWithinInterval(day, interval));
-            if (isSuspended) {
-                totalSuspensionDays++;
-                continue;
-            }
-
+    
+            // Prorate hours based on the weekly hours for that day
             const dailyProratedHours = getEffectiveWeeklyHours(activePeriod, day) / 7;
             totalProratedHours += dailyProratedHours;
         }
-
-        const daysInYear = differenceInDays(yearEnd, yearStart) + 1;
-        const theoreticalHours = totalProratedHours;
-
+    
         return {
-            theoreticalHours: roundToNearestQuarter(theoreticalHours),
+            theoreticalHours: roundToNearestQuarter(totalProratedHours),
             baseTheoreticalHours: annualConfig.maxAnnualHours,
-            suspensionDetails: [],
-            workHoursChangeDetails: []
+            suspensionDetails: [], 
+            workHoursChangeDetails: [] 
         };
     };
     
@@ -776,15 +789,13 @@ const getProcessedAnnualDataForEmployee = async (employeeId: string, year: numbe
     const yearStart = new Date(year, 0, 1);
     const yearEnd = new Date(year, 11, 31);
     const weekIdsInYear = new Set<string>();
-    let currentDate = yearStart;
     
-    // Logic to include the last week of the previous year if it belongs to the current ISO year
-    const firstDayOfYear = new Date(year, 0, 1);
-    if (getISOWeek(firstDayOfYear) > 1) { // It means week 1 started in the previous year
-        weekIdsInYear.add(getWeekId(startOfWeek(firstDayOfYear, { weekStartsOn: 1 })));
+    // Critical override for 2025
+    if (year === 2025) {
+        weekIdsInYear.add('2024-12-30');
     }
 
-
+    let currentDate = yearStart;
     while(currentDate <= yearEnd) {
         if(getISOWeekYear(currentDate) === year) {
             weekIdsInYear.add(getWeekId(currentDate));
@@ -1060,37 +1071,27 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     }
 
     const findNextUnconfirmedWeek = (startDate: Date): string | null => {
-        const sortedWeekIds = Object.keys(weeklyRecords).sort();
-        const startWeekId = getWeekId(startDate);
-        const auditStartDate = startOfDay(new Date('2025-01-27'));
-
-        let searchStarted = false;
-        for (const weekId of sortedWeekIds) {
-            if (weekId > startWeekId) {
-                searchStarted = true;
-            }
-
-            if (searchStarted) {
-                const weekDate = parseISO(weekId);
-                
-                if (isBefore(weekDate, auditStartDate)) {
-                    continue;
-                }
-
-                const activeEmployeesThisWeek = getActiveEmployeesForDate(weekDate);
-
-                if (activeEmployeesThisWeek.length > 0) {
-                    const isUnconfirmed = activeEmployeesThisWeek.some(emp => {
-                        return !(weeklyRecords[weekId]?.weekData?.[emp.id]?.confirmed ?? false);
-                    });
-
-                    if (isUnconfirmed) {
-                        return weekId;
-                    }
+        let currentDate = startDate;
+        const limit = addWeeks(new Date(), 104);
+    
+        while (isBefore(currentDate, limit)) {
+            const weekId = getWeekId(currentDate);
+            const activeEmployeesThisWeek = getActiveEmployeesForDate(currentDate);
+    
+            if (activeEmployeesThisWeek.length > 0) {
+                const isUnconfirmed = activeEmployeesThisWeek.some(emp =>
+                    !(weeklyRecords[weekId]?.weekData?.[emp.id]?.confirmed ?? false)
+                );
+    
+                if (isUnconfirmed) {
+                    return weekId;
                 }
             }
+    
+            currentDate = addWeeks(currentDate, 1);
         }
-        return null; // No subsequent unconfirmed week found
+    
+        return null;
     };
 
   const value = {

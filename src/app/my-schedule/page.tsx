@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -185,8 +186,7 @@ export default function MySchedulePage() {
                     if (selectedYear === 2025) {
                         return isoYear === 2025;
                     }
-                    // For other years, use standard year matching but based on ISO year for consistency
-                    return getYear(weekDate) === selectedYear && isoYear === selectedYear;
+                    return isoYear === selectedYear;
                 })
                 .sort();
 
