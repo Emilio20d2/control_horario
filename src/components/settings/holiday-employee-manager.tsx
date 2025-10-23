@@ -20,7 +20,7 @@ import { isAfter, parseISO } from 'date-fns';
 
 
 export function HolidayEmployeeManager() {
-    const { employees, holidayEmployees, employeeGroups, addHolidayEmployee, updateHolidayEmployee, deleteHolidayEmployee, loading, getEffectiveWeeklyHours } = useDataProvider();
+    const { employees, holidayEmployees, employeeGroups, addHolidayEmployee, updateHolidayEmployee, deleteHolidayEmployee, loading } = useDataProvider();
     const { toast } = useToast();
 
     const [newEmployeeName, setNewEmployeeName] = useState('');
@@ -43,10 +43,7 @@ export function HolidayEmployeeManager() {
 
             if (mainEmp) {
                 const activePeriod = mainEmp.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
-                
-                if (!activePeriod) {
-                    return null;
-                }
+                if (!activePeriod) return null;
                 
                 return {
                     id: mainEmp.id,
@@ -59,7 +56,7 @@ export function HolidayEmployeeManager() {
                 return { ...holidayEmp, isEventual: true };
             }
             return null;
-        }).filter((emp): emp is HolidayEmployee & { isEventual: boolean; workShift?: string } => emp !== null)
+        }).filter((emp): emp is HolidayEmployee & { isEventual: boolean } => emp !== null)
           .sort((a, b) => a.name.localeCompare(b.name));
 
     }, [loading, employees, holidayEmployees]);
@@ -114,7 +111,7 @@ export function HolidayEmployeeManager() {
         }
     };
 
-    const handleToggleActive = async (employee: HolidayEmployee & { isEventual: boolean; workShift?: string }) => {
+    const handleToggleActive = async (employee: HolidayEmployee & { isEventual: boolean }) => {
         try {
             const holidayEmpExists = holidayEmployees.some(he => he.id === employee.id);
             const newActiveState = !employee.active;
@@ -145,7 +142,6 @@ export function HolidayEmployeeManager() {
              if (holidayEmp) {
                 await updateHolidayEmployee(employeeId, { groupId: groupValue });
             } else {
-                // If the employee is not in holidayEmployees, add them
                 const mainEmp = employees.find(e => e.id === employeeId);
                 if (mainEmp) {
                      await addHolidayEmployee({ id: mainEmp.id, name: mainEmp.name, active: true, groupId: groupValue });
