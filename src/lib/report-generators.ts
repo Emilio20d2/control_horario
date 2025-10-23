@@ -2,9 +2,9 @@
 'use client';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear } from 'date-fns';
+import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { Employee, WeeklyRecord, AbsenceType, Holiday } from './types';
+import type { Employee, WeeklyRecord, AbsenceType, Holiday, EmployeeGroup, Ausencia } from './types';
 
 // Helper function to add headers and footers to PDF
 const addHeaderFooter = (doc: jsPDF, title: string, pageNumber: number, totalPages: number) => {
@@ -409,3 +409,177 @@ export async function generateAbsenceReportPDF(employee: Employee, year: number,
     const safeEmployeeName = employee.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     doc.save(`informe-ausencias-${safeEmployeeName}-${year}.pdf`);
 }
+
+export const generateQuadrantReportPDF = (
+    year: number,
+    weeksOfYear: any[],
+    holidays: Holiday[],
+    employeeGroups: EmployeeGroup[],
+    allEmployeesForQuadrant: Employee[],
+    employeesByWeek: Record<string, { employeeId: string; employeeName: string; }[]>,
+    weeklySummaries: Record<string, { employeeCount: number; hourImpact: number; }>
+) => {
+    const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a3' });
+    const pageMargin = 10;
+    const cellWidth = (doc.internal.pageSize.width - (pageMargin * 2) - 25) / 13;
+    const cellHeight = 12;
+    const headerHeight = 20;
+
+    let page = 1;
+    let totalPages = 1;
+
+    const addPageHeader = (doc: jsPDF, pageNum: number, totalPages: number) => {
+        doc.setFontSize(14).setFont('helvetica', 'bold');
+        doc.text(`Cuadrante Anual de Ausencias - ${year}`, pageMargin, 15);
+        doc.setFontSize(10);
+        doc.text(`Página ${pageNum}/${totalPages}`, doc.internal.pageSize.width - pageMargin, 15, { align: 'right' });
+    };
+
+    const drawPage = (startWeekIndex: number, endWeekIndex: number) => {
+        const weeksToDraw = weeksOfYear.slice(startWeekIndex, endWeekIndex);
+        const headers = ['Grupo', ...weeksToDraw.map(week => `${format(week.start, 'dd/MM')}\n${getISOWeek(week.start)}`)];
+
+        const body = employeeGroups.map(group => {
+            const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
+            const rowData = [group.name];
+
+            weeksToDraw.forEach(week => {
+                const absentEmployees = groupEmployees
+                    .filter(emp => employeesByWeek[week.key]?.some(e => e.employeeId === emp.id))
+                    .map(emp => {
+                        const absence = employeesByWeek[week.key].find(e => e.employeeId === emp.id);
+                        return `${emp.name} (${absence.absenceAbbreviation})`;
+                    })
+                    .join('\n');
+                rowData.push(absentEmployees);
+            });
+            return rowData;
+        });
+
+        autoTable(doc, {
+            head: [headers],
+            body: body,
+            startY: headerHeight,
+            theme: 'grid',
+            styles: { fontSize: 5, cellPadding: 1, valign: 'middle' },
+            headStyles: { fillColor: [220, 220, 220], textColor: 20, halign: 'center', fontSize: 6 },
+            columnStyles: {
+                0: { cellWidth: 25, fontStyle: 'bold' },
+            },
+            margin: { left: pageMargin, right: pageMargin }
+        });
+    };
+
+    const quarterWeeks = Math.ceil(weeksOfYear.length / 4);
+    totalPages = 4;
+    
+    for (let i = 0; i < 4; i++) {
+        if (i > 0) doc.addPage();
+        addPageHeader(doc, i + 1, totalPages);
+        drawPage(i * quarterWeeks, (i + 1) * quarterWeeks);
+    }
+    
+    doc.save(`cuadrante_anual_${year}.pdf`);
+};
+
+export const generateSignatureReportPDF = (
+    year: number,
+    allEmployeesForQuadrant: Employee[],
+    employeesWithAbsences: Record<string, Ausencia[]>,
+    dataProvider: any,
+) => {
+    const doc = new jsPDF();
+    const vacationType = dataProvider.absenceTypes.find((at: AbsenceType) => at.name === 'Vacaciones');
+    if (!vacationType) {
+        alert('No se encuentra el tipo de ausencia "Vacaciones".');
+        return;
+    }
+
+    doc.setFontSize(16).setFont('helvetica', 'bold');
+    doc.text(`Listado para Firmas de Vacaciones - ${year}`, 15, 20);
+
+    let finalY = 25;
+
+    allEmployeesForQuadrant.forEach((employee, index) => {
+        const vacationAbsences = (employeesWithAbsences[employee.id] || [])
+            .filter(a => a.absenceTypeId === vacationType.id)
+            .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
+
+        const vacationPeriodsText = vacationAbsences.length > 0
+            ? vacationAbsences.map(v => `del ${format(v.startDate, 'dd/MM/yyyy')} al ${format(v.endDate, 'dd/MM/yyyy')}`).join('\n')
+            : 'No tiene vacaciones programadas.';
+        
+        const textLines = doc.splitTextToSize(vacationPeriodsText, 180);
+        const blockHeight = Math.max(30, textLines.length * 5 + 15);
+        
+        if (finalY + blockHeight > doc.internal.pageSize.height - 20) {
+            doc.addPage();
+            finalY = 20;
+        }
+
+        autoTable(doc, {
+            body: [
+                [
+                    { content: employee.name, styles: { fontStyle: 'bold' } },
+                    { content: vacationPeriodsText, styles: { fontSize: 9 } },
+                    { content: 'Firma:', styles: { halign: 'right', valign: 'bottom' } },
+                ],
+            ],
+            startY: finalY,
+            theme: 'grid',
+            styles: { cellHeight: blockHeight, valign: 'top' },
+            columnStyles: { 0: { cellWidth: 40 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 30 } }
+        });
+        finalY = doc.lastAutoTable.finalY + 5;
+    });
+
+    doc.save(`firmas_vacaciones_${year}.pdf`);
+};
+
+
+export const generateSeasonalReportPDF = (
+    allEmployeesForQuadrant: Employee[],
+    year: number,
+    dataProvider: any,
+) => {
+    const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+    const { calculateSeasonalVacationStatus } = dataProvider;
+
+    doc.setFontSize(16).setFont('helvetica', 'bold');
+    doc.text(`Check de Vacaciones por Temporada - ${year}`, 15, 20);
+
+    const body = allEmployeesForQuadrant.map(emp => {
+        const status = calculateSeasonalVacationStatus(emp.id, year);
+        return [
+            emp.name,
+            status.winterDaysTaken,
+            status.winterDaysRemaining,
+            status.summerDaysTaken,
+            status.summerDaysRemaining
+        ];
+    });
+
+    autoTable(doc, {
+        head: [['Empleado', 'Invierno (Tomados)', 'Invierno (Restantes)', 'Verano (Tomados)', 'Verano (Restantes)']],
+        body: body,
+        startY: 30,
+        theme: 'grid',
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        columnStyles: {
+            0: { cellWidth: 'auto' },
+            1: { halign: 'center' },
+            2: { halign: 'center' },
+            3: { halign: 'center' },
+            4: { halign: 'center' },
+        },
+        didDrawCell: (data) => {
+            if (data.section === 'body' && (data.column.index === 2 || data.column.index === 4)) {
+                if (Number(data.cell.text[0]) < 0) {
+                    doc.setTextColor(255, 0, 0); // Red
+                }
+            }
+        }
+    });
+
+    doc.save(`check_vacaciones_temporada_${year}.pdf`);
+};

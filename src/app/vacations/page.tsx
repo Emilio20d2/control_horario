@@ -585,47 +585,45 @@ export default function VacationsPage() {
                     const cellBg = cellHasContent ? (groupColors[group.id] || '#f0f0f0') : 'transparent';
 
                     return (
-                      <td key={`${group.id}-${week.key}`} className="border align-top py-0 px-0.5" style={{ backgroundColor: cellBg }}>
-                        <div className="flex flex-col gap-0 relative h-full">
+                      <td key={`${group.id}-${week.key}`} className="border align-top py-0.5 px-1" style={{ backgroundColor: cellBg }}>
+                        <div className="flex flex-col gap-0.5 relative h-full">
                           {employeesWithAbsenceInWeek.map(item => {
                             if (!item) return null;
                             const substitute = substitutesByWeek[week.key]?.find(s => s.employeeId === item.employee.id);
-                             const { turnId } = getTheoreticalHoursAndTurn(item.employee.id, week.start);
-
                             return (
-                              <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[10px] leading-tight py-0">
+                                <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[9px] leading-tight">
                                 <span className="flex-grow text-left truncate">
-                                  {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
+                                    {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
                                 </span>
-                                 <Popover>
+                                <Popover>
                                     <PopoverTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
+                                    <Button variant="ghost" size="icon" className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
                                         <Plus className="h-3 w-3" />
-                                      </Button>
+                                    </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-56 p-1">
-                                      <div className="flex flex-col">
-                                        {eventualEmployees.map(emp => (
-                                          <Button
-                                            key={emp.id}
-                                            variant="ghost"
-                                            className="w-full justify-start text-xs h-8"
-                                            onClick={() => {
-                                                handleAssignSubstitute(week.key, item.employee.id, emp.id);
-                                            }}
-                                          >
-                                            {emp.name}
-                                          </Button>
-                                        ))}
-                                      </div>
+                                        <div className="flex flex-col">
+                                            {eventualEmployees.map(emp => (
+                                            <Button
+                                                key={emp.id}
+                                                variant="ghost"
+                                                className="w-full justify-start text-xs h-8"
+                                                onClick={() => {
+                                                    handleAssignSubstitute(week.key, item.employee.id, emp.id);
+                                                }}
+                                            >
+                                                {emp.name}
+                                            </Button>
+                                            ))}
+                                        </div>
                                     </PopoverContent>
-                                  </Popover>
+                                </Popover>
                                 {substitute && (
                                     <div className="text-[10px] truncate text-red-600 font-semibold">
-                                      Sust: {substitute.substituteName}
+                                    Sust: {substitute.substituteName}
                                     </div>
                                 )}
-                              </div>
+                                </div>
                             )
                           })}
                         </div>
