@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -305,7 +306,7 @@ export default function VacationsPage() {
         const employeesByWeek: Record<string, { employeeId: string; employeeName: string; groupId?: string | null; absenceAbbreviation: string }[]> = {};
         const substitutesByWeek: Record<string, { employeeId: string, substituteId: string, substituteName: string }[]> = {};
 
-        holidayReports.filter(r => getISOWeekYear(r.weekDate.toDate()) === year).forEach(report => {
+        holidayReports.filter(r => r.weekDate && getISOWeekYear(r.weekDate.toDate()) === year).forEach(report => {
             if (!substitutesByWeek[report.weekId]) substitutesByWeek[report.weekId] = [];
             const subName = holidayEmployees.find(he => he.id === report.substituteId)?.name || 'Desconocido';
             substitutesByWeek[report.weekId].push({ employeeId: report.employeeId, substituteId: report.substituteId, substituteName: subName });
