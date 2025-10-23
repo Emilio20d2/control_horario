@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
-import type { Employee, EmploymentPeriod } from '@/lib/types';
+import type { Employee, EmploymentPeriod, Ausencia } from '@/lib/types';
 import {
   format,
   isAfter,
@@ -91,14 +91,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
-interface FormattedAbsence {
-  id: string;
-  startDate: Date;
-  endDate: Date;
-  absenceTypeId: string;
-  absenceAbbreviation: string;
-  periodId?: string;
-}
+interface FormattedAbsence extends Ausencia {}
 
 export default function VacationsPage() {
     const dataProvider = useDataProvider();
@@ -137,9 +130,6 @@ export default function VacationsPage() {
     const [editCalendarMonth, setEditCalendarMonth] = useState<Date>(new Date());
     
     // State for substitute assignment
-    const [assignSubstituteOpen, setAssignSubstituteOpen] = useState(false);
-    const [currentWeekAndEmployee, setCurrentWeekAndEmployee] = useState<{ weekKey: string, employeeId: string } | null>(null);
-    const [selectedSubstituteId, setSelectedSubstituteId] = useState('');
     const [isFullScreen, setIsFullScreen] = useState(false);
     
     const activeEmployees = useMemo(() => {
@@ -595,25 +585,25 @@ export default function VacationsPage() {
                                 <span className="flex-grow text-left truncate">
                                     {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
                                 </span>
-                                <Popover>
+                                 <Popover>
                                     <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
-                                        <Plus className="h-3 w-3" />
-                                    </Button>
+                                        <Button variant="ghost" size="icon" className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
+                                            <Plus className="h-3 w-3" />
+                                        </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-56 p-1">
                                         <div className="flex flex-col">
                                             {eventualEmployees.map(emp => (
-                                            <Button
-                                                key={emp.id}
-                                                variant="ghost"
-                                                className="w-full justify-start text-xs h-8"
-                                                onClick={() => {
-                                                    handleAssignSubstitute(week.key, item.employee.id, emp.id);
-                                                }}
-                                            >
-                                                {emp.name}
-                                            </Button>
+                                                <Button
+                                                    key={emp.id}
+                                                    variant="ghost"
+                                                    className="w-full justify-start text-xs h-8"
+                                                    onClick={() => {
+                                                        handleAssignSubstitute(week.key, item.employee.id, emp.id);
+                                                    }}
+                                                >
+                                                    {emp.name}
+                                                </Button>
                                             ))}
                                         </div>
                                     </PopoverContent>
@@ -641,8 +631,12 @@ export default function VacationsPage() {
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
              <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Planificar Nueva Ausencia</CardTitle>
+                    <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+                        <SelectTrigger className='w-32'><SelectValue /></SelectTrigger>
+                        <SelectContent>{availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+                    </Select>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                     <div className="space-y-4">
@@ -809,10 +803,6 @@ export default function VacationsPage() {
                     <div className="flex justify-between items-center">
                         <CardTitle>Programador vacaciones</CardTitle>
                         <div className="flex items-center gap-2">
-                             <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
-                                <SelectTrigger className='w-32'><SelectValue /></SelectTrigger>
-                                <SelectContent>{availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
-                            </Select>
                             <div className="flex items-center gap-1 border rounded-md p-1">
                                 <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileDown className="mr-2 h-4 w-4" /> Cuadrante
