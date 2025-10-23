@@ -588,9 +588,9 @@ export default function VacationsPage() {
                             return (
                                 <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[9px] leading-tight py-0">
                                     <span className="flex-grow text-left truncate">{item.employee.name}</span>
-                                     <Popover>
+                                    <Popover>
                                         <PopoverTrigger asChild>
-                                            <button className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
+                                             <button className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
                                                 <Plus className="h-3 w-3" />
                                             </button>
                                         </PopoverTrigger>
@@ -788,13 +788,11 @@ export default function VacationsPage() {
             </Dialog>
 
             <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
-              <DialogContent className="max-w-none w-screen h-screen p-2 flex flex-col">
-                <div className="flex justify-end items-center flex-shrink-0">
-                    <Button variant="ghost" size="icon" onClick={() => setIsFullScreen(false)}>
-                        <X className="h-6 w-6" />
-                    </Button>
-                </div>
-                <div className="flex-grow overflow-auto h-[95vh]">
+              <DialogContent className="max-w-none w-screen h-screen p-0 m-0 relative">
+                 <Button variant="ghost" size="icon" onClick={() => setIsFullScreen(false)} className="absolute top-2 right-2 z-20 bg-background/50 border hover:bg-background">
+                    <X className="h-6 w-6" />
+                </Button>
+                <div className="w-full h-full overflow-auto">
                     {renderQuadrant()}
                 </div>
               </DialogContent>
@@ -827,4 +825,5 @@ export default function VacationsPage() {
         </div>
     );
 }
+
 
