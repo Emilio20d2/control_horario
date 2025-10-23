@@ -116,9 +116,13 @@ export default function MyMessagesPage() {
             }
         } catch (error) {
             console.error("Error getting bot response:", error);
-            // Optionally, send a fallback message
+            let errorMessage = "He tenido un problema y no puedo responder ahora mismo. Un responsable revisará tu mensaje pronto.";
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+            // Send a fallback message
             await addDoc(messagesColRef, {
-                text: "He tenido un problema y no puedo responder ahora mismo. Un responsable revisará tu mensaje pronto.",
+                text: errorMessage,
                 senderId: 'admin',
                 timestamp: serverTimestamp()
             });

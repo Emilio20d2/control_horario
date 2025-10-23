@@ -52,5 +52,5 @@ Responde al último mensaje del usuario de forma natural y útil, usando tus her
 `,
   });
 
-  return llmResponse.text;
+  return llmResponse.output!;
 }
