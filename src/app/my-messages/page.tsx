@@ -154,9 +154,7 @@ export default function MyMessagesPage() {
              <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                    Este servicio de mensajería es exclusivamente para incidencias relacionadas con el control de horas semanales o con esta aplicación.
-Pronto recibirás una contestación por este chat.
-Para cualquier otra consulta, ponte en contacto directamente con Dirección.
+                   Recibirás una respuesta inicial de nuestro asistente virtual, ShiftBot. Si tu consulta necesita atención personalizada, un responsable de Dirección la revisará y te contestará por este mismo chat. Este servicio es para incidencias con el control de horas o la aplicación.
                 </AlertDescription>
             </Alert>
             <Card className="flex flex-col flex-grow h-[calc(100vh-16rem)]">
