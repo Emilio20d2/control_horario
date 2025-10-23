@@ -99,16 +99,16 @@ export default function MyMessagesPage() {
                 ]
             });
             
-            if (botResponse.responseText) {
+            if (botResponse) {
                 const botMessageData = {
-                    text: botResponse.responseText,
+                    text: botResponse,
                     senderId: 'admin', // Bot responds as admin
                     timestamp: serverTimestamp()
                 };
                 await addDoc(messagesColRef, botMessageData);
                 // Update conversation with bot's last message
                 await updateDoc(convDocRef, {
-                    lastMessageText: botResponse.responseText,
+                    lastMessageText: botResponse,
                     lastMessageTimestamp: serverTimestamp(),
                     unreadByEmployee: true, // Mark as unread for the employee to see
                     unreadByAdmin: false, // Bot's own message is considered "read" by admin

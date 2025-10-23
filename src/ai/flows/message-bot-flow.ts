@@ -23,10 +23,7 @@ const MessageBotInputSchema = z.object({
 });
 export type MessageBotInput = z.infer<typeof MessageBotInputSchema>;
 
-const MessageBotOutputSchema = z.object({
-  responseText: z.string().describe("The bot's response to the user's message."),
-});
-export type MessageBotOutput = z.infer<typeof MessageBotOutputSchema>;
+export type MessageBotOutput = string;
 
 export async function generateBotResponse(input: MessageBotInput): Promise<MessageBotOutput> {
   return messageBotFlow(input);
@@ -35,7 +32,6 @@ export async function generateBotResponse(input: MessageBotInput): Promise<Messa
 const prompt = ai.definePrompt({
   name: 'messageBotPrompt',
   input: { schema: MessageBotInputSchema },
-  output: { schema: MessageBotOutputSchema },
   tools: [getEmployeeBalancesTool, getEmployeeVacationSummaryTool],
   prompt: `Eres un asistente virtual para la aplicación "Control Horario". Tu nombre es Z-Assist y trabajas para "Dirección".
 Tu objetivo es ayudar al empleado, {{employeeName}}, con sus dudas sobre el control de horas, balances y vacaciones.
@@ -60,10 +56,10 @@ const messageBotFlow = ai.defineFlow(
   {
     name: 'messageBotFlow',
     inputSchema: MessageBotInputSchema,
-    outputSchema: MessageBotOutputSchema,
+    outputSchema: z.string(),
   },
   async (input) => {
-    const { output } = await prompt(input);
-    return output!;
+    const response = await prompt(input);
+    return response.text;
   }
 );
