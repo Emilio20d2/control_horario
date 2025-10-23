@@ -66,6 +66,8 @@ export default function MessagesPage() {
             lastMessageText: messageText,
             lastMessageTimestamp: serverTimestamp(),
             unreadByEmployee: true,
+            // When admin replies, it's considered "read" by admin
+            unreadByAdmin: false, 
         });
     };
 

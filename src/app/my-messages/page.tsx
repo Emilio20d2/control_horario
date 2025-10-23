@@ -16,7 +16,7 @@ import { db } from '@/lib/firebase';
 import type { Message } from '@/lib/types';
 import { format } from 'date-fns';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import Link from 'next/link';
+import { generateBotResponse } from '@/ai/flows/message-bot-flow';
 
 export default function MyMessagesPage() {
     const { employeeRecord, loading, conversations } = useDataProvider();
@@ -28,7 +28,7 @@ export default function MyMessagesPage() {
         return conversations.find(c => c.id === conversationId);
     }, [conversations, conversationId]);
 
-    const [messages, messagesLoading] = useCollectionData(
+    const [messagesSnapshot, messagesLoading] = useCollectionData(
         conversationId ? query(collection(db, 'conversations', conversationId, 'messages'), orderBy('timestamp', 'asc')) : null
     );
 
@@ -41,8 +41,8 @@ export default function MyMessagesPage() {
     }, [conversationId, conversation]);
 
     const formattedMessages = useMemo(() => {
-        if (!messages) return [];
-        return messages.map(doc => {
+        if (!messagesSnapshot) return [];
+        return messagesSnapshot.map(doc => {
             const data = doc;
             return {
                 id: doc.id,
@@ -50,7 +50,7 @@ export default function MyMessagesPage() {
                 timestamp: data.timestamp?.toDate() // Convert Firestore Timestamp to Date
             } as Message;
         });
-    }, [messages]);
+    }, [messagesSnapshot]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -58,6 +58,13 @@ export default function MyMessagesPage() {
         
         const messageText = newMessage;
         setNewMessage('');
+
+        const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
+        const userMessageData = {
+            text: messageText,
+            senderId: employeeRecord.id,
+            timestamp: serverTimestamp()
+        };
 
         const convDocRef = doc(db, 'conversations', conversationId);
         const convDoc = await getDoc(convDocRef);
@@ -80,12 +87,42 @@ export default function MyMessagesPage() {
             }, { merge: true });
         }
 
-        const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
-        await addDoc(messagesColRef, {
-            text: messageText,
-            senderId: employeeRecord.id,
-            timestamp: serverTimestamp()
-        });
+        await addDoc(messagesColRef, userMessageData);
+
+        // Call the AI bot for a response
+        try {
+            const botResponse = await generateBotResponse({
+                employeeName: employeeRecord.name,
+                messages: [
+                    ...formattedMessages.map(m => ({ text: m.text, sender: m.senderId === employeeRecord.id ? 'user' : 'bot' })),
+                    { text: messageText, sender: 'user' }
+                ]
+            });
+            
+            if (botResponse.responseText) {
+                const botMessageData = {
+                    text: botResponse.responseText,
+                    senderId: 'admin', // Bot responds as admin
+                    timestamp: serverTimestamp()
+                };
+                await addDoc(messagesColRef, botMessageData);
+                // Update conversation with bot's last message
+                await updateDoc(convDocRef, {
+                    lastMessageText: botResponse.responseText,
+                    lastMessageTimestamp: serverTimestamp(),
+                    unreadByEmployee: true, // Mark as unread for the employee to see
+                    unreadByAdmin: false, // Bot's own message is considered "read" by admin
+                });
+            }
+        } catch (error) {
+            console.error("Error getting bot response:", error);
+            // Optionally, send a fallback message
+            await addDoc(messagesColRef, {
+                text: "He tenido un problema y no puedo responder ahora mismo. Un responsable revisará tu mensaje pronto.",
+                senderId: 'admin',
+                timestamp: serverTimestamp()
+            });
+        }
     };
     
     if (loading) {
@@ -118,8 +155,8 @@ export default function MyMessagesPage() {
                 <Info className="h-4 w-4" />
                 <AlertDescription>
                     Este servicio de mensajería es exclusivamente para incidencias relacionadas con el control de horas semanales o con esta aplicación.
-                    Pronto recibirás una contestación por este chat.
-                    Para cualquier otra consulta, ponte en contacto directamente con Dirección.
+Pronto recibirás una contestación por este chat.
+Para cualquier otra consulta, ponte en contacto directamente con Dirección.
                 </AlertDescription>
             </Alert>
             <Card className="flex flex-col flex-grow h-[calc(100vh-16rem)]">
