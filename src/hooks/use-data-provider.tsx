@@ -1,7 +1,7 @@
 
 
 'use client';
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
   Employee,
   Holiday,
@@ -20,6 +20,7 @@ import type {
   HolidayEmployee,
   HolidayReport,
   EmployeeGroup,
+  Conversation,
 } from '../types';
 import { onCollectionUpdate, getDocumentById } from '@/lib/services/firestoreService';
 import { 
@@ -46,10 +47,11 @@ import {
 import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, getISOWeekYear } from 'date-fns';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, collection, orderBy, query } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
 import { calculateBalancePreview } from '../lib/calculators/balance-calculator';
 import { useAuth } from './useAuth';
+import { db } from '@/lib/firebase';
 
 interface DataContextType {
   employees: Employee[];
@@ -64,7 +66,9 @@ interface DataContextType {
   holidayEmployees: HolidayEmployee[];
   holidayReports: HolidayReport[];
   employeeGroups: EmployeeGroup[];
+  conversations: Conversation[];
   loading: boolean;
+  unreadMessageCount: number;
   unconfirmedWeeksDetails: { weekId: string; employeeNames: string[] }[];
   viewMode: 'admin' | 'employee';
   setViewMode: (mode: 'admin' | 'employee') => void;
@@ -134,7 +138,9 @@ const DataContext = createContext<DataContextType>({
   holidayEmployees: [],
   holidayReports: [],
   employeeGroups: [],
+  conversations: [],
   loading: true,
+  unreadMessageCount: 0,
   unconfirmedWeeksDetails: [],
   viewMode: 'admin',
   setViewMode: () => {},
@@ -200,6 +206,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [holidayEmployees, setHolidayEmployees] = useState<HolidayEmployee[]>([]);
   const [holidayReports, setHolidayReports] = useState<HolidayReport[]>([]);
   const [employeeGroups, setEmployeeGroups] = useState<EmployeeGroup[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
   const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
@@ -229,6 +236,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setupSubscription<HolidayEmployee>('holidayEmployees', setHolidayEmployees, data => data.sort((a,b) => a.name.localeCompare(b.name))),
         setupSubscription<HolidayReport>('holidayReports', setHolidayReports),
         setupSubscription<EmployeeGroup>('employeeGroups', setEmployeeGroups, data => data.sort((a,b) => a.order - b.order)),
+        setupSubscription<Conversation>('conversations', setConversations, data => data.sort((a, b) => b.lastMessageTimestamp.toDate().getTime() - a.lastMessageTimestamp.toDate().getTime())),
     ];
 
     Promise.all(promises).then(() => {
@@ -298,6 +306,18 @@ useEffect(() => {
         setAppUser(null);
     }
 }, [authLoading, authUser, viewMode, employeeRecord]);
+
+const unreadMessageCount = useMemo(() => {
+    if (!appUser) return 0;
+    if (appUser.role === 'admin') {
+        return conversations.filter(c => c.unreadByAdmin).length;
+    }
+    if (appUser.role === 'employee' && employeeRecord) {
+        const myConversation = conversations.find(c => c.employeeId === employeeRecord.id);
+        return myConversation?.unreadByEmployee ? 1 : 0;
+    }
+    return 0;
+}, [conversations, appUser, employeeRecord]);
 
 
   const getWeekId = (d: Date): string => {
@@ -1115,7 +1135,9 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     holidayEmployees,
     holidayReports,
     employeeGroups,
+    conversations,
     loading,
+    unreadMessageCount,
     unconfirmedWeeksDetails,
     viewMode,
     setViewMode,

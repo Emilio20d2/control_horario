@@ -9,20 +9,33 @@ import { SendHorizonal, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
 import type { Message } from '@/lib/types';
 import { format } from 'date-fns';
 
 export default function MyMessagesPage() {
-    const { employeeRecord, loading } = useDataProvider();
+    const { employeeRecord, loading, conversations } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
     const conversationId = employeeRecord?.id;
+
+    const conversation = useMemo(() => {
+        if (!conversationId) return null;
+        return conversations.find(c => c.id === conversationId);
+    }, [conversations, conversationId]);
 
     const [messages, messagesLoading] = useCollectionData(
         conversationId ? query(collection(db, 'conversations', conversationId, 'messages'), orderBy('timestamp', 'asc')) : null
     );
+
+     // Effect to mark conversation as read
+    useEffect(() => {
+        if (conversationId && conversation?.unreadByEmployee) {
+            const convRef = doc(db, 'conversations', conversationId);
+            updateDoc(convRef, { unreadByEmployee: false });
+        }
+    }, [conversationId, conversation]);
 
     const formattedMessages = useMemo(() => {
         if (!messages) return [];
@@ -53,12 +66,14 @@ export default function MyMessagesPage() {
                 lastMessageText: messageText,
                 lastMessageTimestamp: serverTimestamp(),
                 unreadByAdmin: true,
+                unreadByEmployee: false,
             });
         } else {
              await setDoc(convDocRef, {
                 lastMessageText: messageText,
                 lastMessageTimestamp: serverTimestamp(),
                 unreadByAdmin: true,
+                unreadByEmployee: false,
             }, { merge: true });
         }
 
@@ -112,8 +127,8 @@ export default function MyMessagesPage() {
                             <Loader2 className="h-8 w-8 animate-spin" />
                         </div>
                      ) : (
-                        formattedMessages.map(message => (
-                            <div key={message.id} className={cn('flex items-end gap-2', message.senderId === employeeRecord.id ? 'justify-end' : 'justify-start')}>
+                        formattedMessages.map((message, index) => (
+                            <div key={index} className={cn('flex items-end gap-2', message.senderId === employeeRecord.id ? 'justify-end' : 'justify-start')}>
                                 {message.senderId !== employeeRecord.id && <Avatar className="h-8 w-8"><AvatarFallback>D</AvatarFallback></Avatar>}
                                 <div className={cn(
                                     'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg',

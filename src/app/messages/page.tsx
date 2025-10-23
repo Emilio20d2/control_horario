@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,38 +10,27 @@ import { SendHorizonal, ArrowLeft, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { useCollection, useCollectionData } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
 import type { Conversation, Message } from '@/lib/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function MessagesPage() {
-    const { employees, loading: dataLoading } = useDataProvider();
+    const { employees, conversations, loading: dataLoading } = useDataProvider();
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
     const [newMessage, setNewMessage] = useState('');
     const isMobile = useIsMobile();
 
-    const [conversationsSnapshot, conversationsLoading] = useCollection(
-        query(collection(db, 'conversations'), orderBy('lastMessageTimestamp', 'desc'))
-    );
-
-    const conversations = useMemo(() => {
-        if (!conversationsSnapshot) return [];
-        return conversationsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
-    }, [conversationsSnapshot]);
-
-    const [messagesSnapshot, messagesLoading] = useCollection(
+    const [messagesSnapshot, messagesLoading] = useCollectionData(
         selectedConversationId ? query(collection(db, 'conversations', selectedConversationId, 'messages'), orderBy('timestamp', 'asc')) : null
     );
 
     const messages = useMemo(() => {
         if (!messagesSnapshot) return [];
-        return messagesSnapshot.docs.map(doc => {
-            const data = doc.data();
+        return messagesSnapshot.map(data => {
             return {
-                id: doc.id,
                 ...data,
                 timestamp: data.timestamp?.toDate() // Convert Firestore Timestamp to Date
             } as Message;
@@ -49,6 +38,14 @@ export default function MessagesPage() {
     }, [messagesSnapshot]);
 
     const selectedConversation = conversations.find(c => c.id === selectedConversationId);
+
+    // Effect to mark conversation as read
+    useEffect(() => {
+        if (selectedConversationId && selectedConversation?.unreadByAdmin) {
+            const convRef = doc(db, 'conversations', selectedConversationId);
+            updateDoc(convRef, { unreadByAdmin: false });
+        }
+    }, [selectedConversationId, selectedConversation]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -77,7 +74,7 @@ export default function MessagesPage() {
             <div className="p-4 border-b">
                 <h2 className="text-xl font-bold font-headline">Bandeja de Entrada</h2>
             </div>
-             {conversationsLoading || dataLoading ? (
+             {dataLoading ? (
                 <div className="flex items-center justify-center flex-1">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
@@ -136,8 +133,8 @@ export default function MessagesPage() {
                                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                             </div>
                         ) : (
-                            messages.map(message => (
-                                <div key={message.id} className={cn('flex items-end gap-2', message.senderId === 'admin' ? 'justify-end' : 'justify-start')}>
+                            messages.map((message, index) => (
+                                <div key={index} className={cn('flex items-end gap-2', message.senderId === 'admin' ? 'justify-end' : 'justify-start')}>
                                     <div className={cn(
                                         'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg',
                                         message.senderId === 'admin' ? 'bg-primary text-primary-foreground' : 'bg-muted'
@@ -169,7 +166,7 @@ export default function MessagesPage() {
                 </>
             ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                     {conversationsLoading || dataLoading ? (
+                     {dataLoading ? (
                          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                      ) : (
                         <p className="text-muted-foreground">Selecciona una conversación para ver los mensajes.</p>

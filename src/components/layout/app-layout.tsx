@@ -61,7 +61,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { unconfirmedWeeksDetails, appUser, employeeRecord, viewMode, setViewMode, loading: dataLoading } = useDataProvider();
+  const { unconfirmedWeeksDetails, appUser, employeeRecord, viewMode, setViewMode, loading: dataLoading, unreadMessageCount } = useDataProvider();
   
   useEffect(() => {
     if (!appUser || !appUser.trueRole) return;
@@ -70,9 +70,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
     const adminPages = ['/dashboard', '/schedule', '/employees', '/listings', '/vacations', '/messages', '/settings'];
 
     if (appUser.trueRole === 'admin') {
+      // If admin is in employee view, and goes to a page that isn't a designated employee page
       if (viewMode === 'employee' && !employeePages.some(p => pathname.startsWith(p))) {
         router.replace('/my-profile');
-      } else if (viewMode === 'admin' && employeePages.some(p => pathname.startsWith(p))) {
+      } 
+      // If admin is in admin view and tries to access an employee-only page
+      else if (viewMode === 'admin' && employeePages.some(p => pathname.startsWith(p))) {
         router.replace('/dashboard');
       }
     }
@@ -96,14 +99,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/employees', label: 'Empleados', icon: Users },
     { href: '/listings', label: 'Listados', icon: ListChecks },
     { href: '/vacations', label: 'Vacaciones', icon: Plane },
-    { href: '/messages', label: 'Mensajes', icon: Mail },
+    { href: '/messages', label: 'Mensajes', icon: Mail, notification: unreadMessageCount > 0 },
     { href: '/settings', label: 'Ajustes', icon: Settings },
   ];
   
   const employeeMenuItems = [
     { href: '/my-profile', label: 'Mi Ficha', icon: User },
     { href: '/my-schedule', label: 'Mis Horarios', icon: CalendarCheck },
-    { href: '/my-messages', label: 'Mis Mensajes', icon: Mail },
+    { href: '/my-messages', label: 'Mis Mensajes', icon: Mail, notification: unreadMessageCount > 0 },
     { href: '/help', label: 'Ayuda', icon: HelpCircle },
   ];
 
@@ -120,7 +123,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                        'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors relative',
                         isActive
                             ? 'bg-primary text-primary-foreground'
                             : 'text-foreground hover:bg-accent hover:text-accent-foreground'
@@ -128,6 +131,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 >
                     <item.icon className="h-4 w-4" />
                     {item.label}
+                    {item.notification && (
+                         <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+                        </span>
+                    )}
                 </Link>
             )
         })}
