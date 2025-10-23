@@ -12,12 +12,15 @@ import { createUser } from './userService';
 export const createEmployee = async (formData: EmployeeFormData): Promise<string> => {
     const { name, employeeNumber, dni, phone, email, groupId, role, startDate, isTransfer, vacationDaysUsedInAnotherCenter, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours, vacationDays2024 } = formData;
     
-    // 1. Create user in Firebase Auth if email and password are provided
+    if (!employeeNumber) {
+        throw new Error("El número de empleado es obligatorio para crear un nuevo empleado.");
+    }
+
+    // 1. Create user in Firebase Auth if email is provided
     let authId = null;
     if (email) {
-        // We'll use a hardcoded password for now. This should be improved later.
         const tempPassword = "password123";
-        const userResult = await createUser({ email, password: tempPassword, employeeId: '' }); // employeeId is updated later
+        const userResult = await createUser({ email, password: tempPassword, employeeId: employeeNumber });
         if (userResult.success) {
             authId = userResult.uid;
         } else {
@@ -25,9 +28,9 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
         }
     }
     
-    const newEmployee = {
+    const newEmployee: Omit<Employee, 'id'> = {
         name,
-        employeeNumber: employeeNumber || null,
+        employeeNumber: employeeNumber,
         dni: dni || null,
         phone: phone || null,
         email: email || null,
@@ -58,16 +61,16 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
         ]
     };
 
-    const docRef = await addDocument('employees', newEmployee);
-    const employeeId = docRef.id;
+    // Use employeeNumber as the document ID
+    await setDocument('employees', employeeNumber, newEmployee);
 
     // Now update the user document in 'users' collection with the correct employeeId
     if (authId) {
-        await setDocument('users', authId, { email, employeeId, role: role || 'employee' });
-        await updateDocument('employees', employeeId, { authId: authId }); // Ensure authId is set
+        await setDocument('users', authId, { email, employeeId: employeeNumber, role: role || 'employee' });
+        await updateDocument('employees', employeeNumber, { authId: authId });
     }
 
-    return employeeId;
+    return employeeNumber;
 };
 
 export const updateEmployee = async (id: string, currentEmployee: Employee, formData: EmployeeFormData, finalBalances: { ordinary: number; holiday: number; leave: number; total: number; }): Promise<void> => {

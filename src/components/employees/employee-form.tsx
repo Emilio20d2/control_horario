@@ -69,7 +69,7 @@ const weeklyScheduleSchema = z.object({
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'El nombre debe tener al menos 2 caracteres.' }),
-  employeeNumber: z.string().optional(),
+  employeeNumber: z.string().min(1, { message: 'El Nº de Empleado es obligatorio.' }),
   dni: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email({ message: "Correo electrónico no válido." }).optional().or(z.literal('')),
@@ -335,10 +335,11 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         name="employeeNumber"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Nº Empleado</FormLabel>
+                            <FormLabel>Nº Empleado (ID)</FormLabel>
                             <FormControl>
-                            <Input placeholder="12345" {...field} value={field.value ?? ''} />
+                            <Input placeholder="12345" {...field} value={field.value ?? ''} disabled={!!employee} />
                             </FormControl>
+                            {!!employee && <FormDescription>El Nº de empleado no se puede cambiar.</FormDescription>}
                             <FormMessage />
                         </FormItem>
                         )}

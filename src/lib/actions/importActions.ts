@@ -100,7 +100,7 @@ const employeeNumberMapping: Record<string, string> = {
 
 const employeesNotFoundInList = [
     'ALBERTO JAVIER MONDEJAR BELTRAN',
-    'GABRIEL MARIN HERNANDEZ',
+    'GABRIEL MARIN HHernandez',
     'MAXIMILIAN RIVALDO PETRISOR',
     'MIGUEL ANGEL MONFERRER MANRESA',
     'SAMUEL RODRIGUEZ MUNOZ',
@@ -119,23 +119,36 @@ export async function processAndSeedData() {
     }
     const dataToImport = JSON.parse(fileContent);
 
-    // --- LOGIC TO ADD EMPLOYEE NUMBERS ---
-    const employeesData = dataToImport.employees;
+    // --- LOGIC TO ADD EMPLOYEE NUMBERS AND USE THEM AS IDs ---
+    const originalEmployeesData = dataToImport.employees;
+    const newEmployeesData: Record<string, Omit<Employee, 'id'>> = {};
     const employeesFoundInMapping = new Set<string>();
 
-    for (const docId in employeesData) {
-        const employee: Employee = employeesData[docId];
+    for (const docId in originalEmployeesData) {
+        const employee: Employee = originalEmployeesData[docId];
         const employeeNameUpper = employee.name.toUpperCase();
+        let employeeNumber: string | undefined = undefined;
 
         for (const fullName in employeeNumberMapping) {
             if (fullName.toUpperCase().includes(employeeNameUpper)) {
-                employee.employeeNumber = employeeNumberMapping[fullName];
+                employeeNumber = employeeNumberMapping[fullName];
                 employeesFoundInMapping.add(fullName);
-                break; // Move to the next employee once a match is found
+                break; 
             }
+        }
+
+        if (employeeNumber) {
+            employee.employeeNumber = employeeNumber;
+            // Use employeeNumber as the key for the new data structure
+            newEmployeesData[employeeNumber] = employee;
+        } else {
+            console.warn(`Warning: Employee number not found for ${employee.name}. This employee will be skipped.`);
         }
     }
     
+    // Replace old employee data with the new ID-based structure
+    dataToImport.employees = newEmployeesData;
+
     const employeesToAddToEventual = Object.entries(employeeNumberMapping)
         .filter(([fullName]) => !employeesFoundInMapping.has(fullName))
         .map(([fullName, number]) => ({
@@ -158,5 +171,3 @@ export async function processAndSeedData() {
     return { success: false, error: errorMessage };
   }
 }
-
-    
