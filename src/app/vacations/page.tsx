@@ -683,7 +683,7 @@ export default function VacationsPage() {
                              <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
                                 <thead className="sticky top-0 z-10 bg-card shadow-sm">
                                     <tr>
-                                        <th className="p-1 text-left font-semibold border-b border-r sticky left-0 bg-card z-20" style={{ width: '1px', overflow: 'hidden' }}>
+                                        <th className="p-0 border-b border-r sticky left-0 bg-card z-20" style={{ width: '1px', overflow: 'hidden' }}>
                                             <div className="w-0 opacity-0">Grupo</div>
                                         </th>
                                         {weeksOfYear.map(week => {
@@ -745,13 +745,10 @@ export default function VacationsPage() {
                                                                     const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
                                                                     
                                                                     return (
-                                                                        <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[10px] leading-tight">
-                                                                            <button 
-                                                                                onClick={() => setEditingAbsence({ employee: item.employee, absence: item.absence })}
-                                                                                className={cn("flex-grow text-left truncate", isSpecialAbsence && "text-blue-600 font-semibold")}
-                                                                            >
-                                                                                {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
-                                                                            </button>
+                                                                        <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[10px] leading-tight py-0">
+                                                                            <span className={cn("flex-grow text-left truncate", isSpecialAbsence && "text-blue-600 font-semibold")}>
+                                                                                 {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
+                                                                            </span>
                                                                             <div className="flex items-center gap-1 flex-shrink-0">
                                                                                 <Select onValueChange={(substituteId) => handleAssignSubstitute(week.key, item.employee.id, substituteId)}>
                                                                                     <SelectTrigger className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
@@ -788,4 +785,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-
