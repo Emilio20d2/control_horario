@@ -80,7 +80,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
 } from '@/components/ui/alert-dialog';
-import { cn } from '@/lib/utils';
+import { cn, generateGroupColors } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { generateAbsenceReportPDF, generateQuadrantReportPDF, generateSignatureReportPDF, generateSeasonalReportPDF } from '@/lib/report-generators';
 
@@ -129,6 +129,9 @@ export default function VacationsPage() {
     const activeEmployees = useMemo(() => {
         return employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
     }, [employees]);
+
+    const groupColors = useMemo(() => generateGroupColors(employeeGroups.map(g => g.id)), [employeeGroups]);
+
 
     useEffect(() => {
         if (activeEmployees.length > 0 && !selectedEmployeeId) {
@@ -289,7 +292,8 @@ export default function VacationsPage() {
         let weeksOfYear = [];
         if (year === 2025) {
             let current = new Date('2024-12-30');
-            while (current <= endOfWeek(new Date('2025-12-28'))) {
+            const end = endOfWeek(new Date('2025-12-28'));
+            while (current <= end) {
                 weeksOfYear.push(startOfWeek(current, { weekStartsOn: 1 }));
                 current = addWeeks(current, 1);
             }
@@ -584,6 +588,7 @@ export default function VacationsPage() {
                             <table className="w-full border-collapse text-xs">
                                 <thead className="sticky top-0 z-10 bg-card shadow-sm">
                                     <tr>
+                                        <th className="p-1 text-left font-semibold border-b border-r min-w-[150px] sticky left-0 bg-card">Grupo</th>
                                         {weeksOfYear.map(week => (
                                             <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r min-w-[150px]", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")}>
                                                 <div className='flex flex-col items-center justify-center h-full'>
@@ -609,22 +614,41 @@ export default function VacationsPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {allEmployeesForQuadrant.map(emp => (
-                                        <tr key={emp.id}>
-                                            {weeksOfYear.map(week => {
-                                                const empAbsence = employeesWithAbsences[emp.id]?.find(a => isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end));
-                                                return (
-                                                    <td key={`${emp.id}-${week.key}`} className={cn("border text-center p-1 h-8", empAbsence ? "bg-blue-100 font-semibold" : "hover:bg-gray-50")}>
-                                                        {empAbsence && (
-                                                             <button onClick={() => setEditingAbsence({ employee: emp, absence: empAbsence })} className="w-full h-full text-left p-1 text-xs truncate">
-                                                                {`${emp.name} (${empAbsence.absenceAbbreviation})`}
-                                                            </button>
-                                                        )}
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
-                                    ))}
+                                    {employeeGroups.map(group => {
+                                        const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
+                                        if (groupEmployees.length === 0) return null;
+                                        return (
+                                            <tr key={group.id} style={{ backgroundColor: groupColors[group.id] || 'transparent' }}>
+                                                <td className="border p-1 font-semibold text-sm align-top sticky left-0" style={{ backgroundColor: groupColors[group.id] || 'transparent' }}>
+                                                    {group.name}
+                                                </td>
+                                                {weeksOfYear.map(week => {
+                                                    const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
+                                                        const absence = employeesWithAbsences[emp.id]?.find(a => 
+                                                            isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
+                                                        );
+                                                        return absence ? { employee: emp, absence } : null;
+                                                    }).filter(Boolean);
+
+                                                    return (
+                                                        <td key={`${group.id}-${week.key}`} className="border p-1 align-top min-w-[150px]">
+                                                            <div className="flex flex-col gap-1">
+                                                                {employeesWithAbsenceInWeek.map(item => item && (
+                                                                    <button 
+                                                                        key={item.employee.id}
+                                                                        onClick={() => setEditingAbsence({ employee: item.employee, absence: item.absence })}
+                                                                        className="w-full text-left p-1 text-xs truncate rounded-sm bg-background/50 hover:bg-background"
+                                                                    >
+                                                                        {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
