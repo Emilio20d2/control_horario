@@ -1,4 +1,5 @@
 
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type {
@@ -663,6 +664,7 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
         const relevantRecords = Object.values(weeklyRecords).filter(record => {
             const weekDate = parseISO(record.id);
             const isoYear = getISOWeekYear(weekDate);
+            // CRITICAL OVERRIDE for 2025
             if (year === 2025) {
                 return isoYear === 2025 && record.weekData[employeeId]?.confirmed;
             }
@@ -677,8 +679,9 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
                     const isoYear = getISOWeekYear(dayDate);
                     
                     let isCorrectYear = false;
-                     if (year === 2025) {
-                        isCorrectYear = isoYear === 2025;
+                     // CRITICAL OVERRIDE for 2025
+                    if (year === 2025) {
+                        isCorrectYear = isoYear === 2025 || (getYear(dayDate) === 2024 && getISOWeek(dayDate) === 1);
                     } else {
                         isCorrectYear = isoYear === year;
                     }
@@ -717,7 +720,7 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
     };
 
     const calculateTheoreticalAnnualWorkHours = (employeeId: string, year: number): { theoreticalHours: number, baseTheoreticalHours: number, suspensionDetails: any[], workHoursChangeDetails: any[] } => {
-        const employee = getById(employeeId);
+        const employee = getEmployeeById(employeeId);
         const annualConfig = annualConfigs.find(c => c.year === year);
     
         if (!employee || !annualConfig) {
@@ -790,7 +793,7 @@ const getProcessedAnnualDataForEmployee = async (employeeId: string, year: numbe
     const yearEnd = new Date(year, 11, 31);
     const weekIdsInYear = new Set<string>();
     
-    // Critical override for 2025
+    // CRITICAL OVERRIDE for 2025
     if (year === 2025) {
         weekIdsInYear.add('2024-12-30');
     }
@@ -1062,7 +1065,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, getEffectiveWeeklyHours, holidays, absenceTypes, contractTypes, prefilledRecords]);
 
     const addHolidayReport = async (report: Omit<HolidayReport, 'id'>): Promise<string> => {
-        const docRef = await addDocument('holidayReports', report);
+        const docRef = await addDoc(collection(db, 'holidayReports'), report);
         return docRef.id;
     }
 
@@ -1071,12 +1074,17 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     }
 
     const findNextUnconfirmedWeek = (startDate: Date): string | null => {
-        let currentDate = startDate;
+        const auditStartDate = startOfDay(new Date('2025-01-27'));
+        let dateToCheck = startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
+        if (isBefore(dateToCheck, auditStartDate)) {
+            dateToCheck = auditStartDate;
+        }
+
         const limit = addWeeks(new Date(), 104);
     
-        while (isBefore(currentDate, limit)) {
-            const weekId = getWeekId(currentDate);
-            const activeEmployeesThisWeek = getActiveEmployeesForDate(currentDate);
+        while (isBefore(dateToCheck, limit)) {
+            const weekId = getWeekId(dateToCheck);
+            const activeEmployeesThisWeek = getActiveEmployeesForDate(dateToCheck);
     
             if (activeEmployeesThisWeek.length > 0) {
                 const isUnconfirmed = activeEmployeesThisWeek.some(emp =>
@@ -1088,7 +1096,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                 }
             }
     
-            currentDate = addWeeks(currentDate, 1);
+            dateToCheck = addWeeks(dateToCheck, 1);
         }
     
         return null;
