@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -160,7 +161,7 @@ export default function VacationsPage() {
             const holidayInfo = holidayEmployees.find(he => he.id === e.id);
             return {
                 ...e,
-                groupId: e.groupId || holidayInfo?.groupId, // Prioritize main groupId, fallback to holiday one
+                groupId: holidayInfo?.groupId,
                 isEventual: false
             };
         });
@@ -180,8 +181,15 @@ export default function VacationsPage() {
             if (e.isEventual) return true;
             const holidayEmp = holidayEmployees.find(he => he.id === e.id);
             return holidayEmp ? holidayEmp.active : true;
-        }).sort((a,b) => a.name.localeCompare(b.name));
-    }, [employees, holidayEmployees]);
+        }).sort((a,b) => {
+            const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
+            const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
+            if (groupA !== groupB) {
+                return groupA - groupB;
+            }
+            return a.name.localeCompare(b.name);
+        });
+    }, [employees, holidayEmployees, employeeGroups]);
 
 
     const schedulableAbsenceTypes = useMemo(() => {
@@ -277,26 +285,28 @@ export default function VacationsPage() {
         const year = selectedYear;
         const yearStartBoundary = startOfYear(new Date(year, 0, 1));
         const yearEndBoundary = endOfYear(new Date(year, 11, 31));
-        let weeks = eachWeekOfInterval({ start: yearStartBoundary, end: yearEndBoundary }, { weekStartsOn: 1 });
-        // Handle week 53 from previous year if it belongs to the selected year
-        if (getISOWeekYear(subDays(yearStartBoundary, 1)) === year) {
-            weeks.unshift(startOfWeek(subDays(yearStartBoundary, 1), { weekStartsOn: 1 }));
+        
+        let weeksOfYear = [];
+        if (year === 2025) {
+            let current = new Date('2024-12-30');
+            while (current <= endOfWeek(new Date('2025-12-28'))) {
+                weeksOfYear.push(startOfWeek(current, { weekStartsOn: 1 }));
+                current = addWeeks(current, 1);
+            }
+        } else {
+            weeksOfYear = eachWeekOfInterval({ start: yearStartBoundary, end: yearEndBoundary }, { weekStartsOn: 1 });
         }
-        // Ensure first week belongs to the selected year
-        if (getISOWeekYear(weeks[0]) < year) {
-             weeks.shift();
-        }
-        const weeksOfYear = weeks.map(weekStart => ({
+        
+        const weekInfo = weeksOfYear.map(weekStart => ({
             start: weekStart,
             end: endOfWeek(weekStart, { weekStartsOn: 1 }),
             key: getWeekId(weekStart)
         }));
 
-
         const weeklySummaries: Record<string, { employeeCount: number; hourImpact: number }> = {};
         const employeesByWeek: Record<string, { employeeId: string; employeeName: string; groupId?: string | null; absenceAbbreviation: string }[]> = {};
 
-        weeksOfYear.forEach(week => {
+        weekInfo.forEach(week => {
             weeklySummaries[week.key] = { employeeCount: 0, hourImpact: 0 };
             employeesByWeek[week.key] = [];
             
@@ -422,13 +432,19 @@ export default function VacationsPage() {
         const year = selectedYear;
         const yearStartBoundary = startOfYear(new Date(year, 0, 1));
         const yearEndBoundary = endOfYear(new Date(year, 11, 31));
-        let weeks = eachWeekOfInterval({ start: yearStartBoundary, end: yearEndBoundary }, { weekStartsOn: 1 });
-        if (getISOWeekYear(subDays(yearStartBoundary, 1)) === year) {
-            weeks.unshift(startOfWeek(subDays(yearStartBoundary, 1), { weekStartsOn: 1 }));
+        
+        let weeks: Date[] = [];
+        if (year === 2025) {
+            let current = new Date('2024-12-30');
+            const end = endOfWeek(new Date('2025-12-28'));
+            while (current <= end) {
+                weeks.push(current);
+                current = addWeeks(current, 1);
+            }
+        } else {
+            weeks = eachWeekOfInterval({ start: yearStartBoundary, end: yearEndBoundary }, { weekStartsOn: 1 });
         }
-        if (getISOWeekYear(weeks[0]) < year) {
-             weeks.shift();
-        }
+
         return {
             weeksOfYear: weeks.map(weekStart => ({
                 start: weekStart,
@@ -593,28 +609,21 @@ export default function VacationsPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {employeeGroups.filter(g => allEmployeesForQuadrant.some(e => e.groupId === g.id)).map(group => (
-                                        <React.Fragment key={group.id}>
-                                            <tr className='bg-muted/50'>
-                                                <td colSpan={weeksOfYear.length} className='p-1.5 font-bold text-sm sticky left-0 bg-muted/50'>{group.name}</td>
-                                            </tr>
-                                            {allEmployeesForQuadrant.filter(e => e.groupId === group.id).map(emp => (
-                                                <tr key={emp.id}>
-                                                    {weeksOfYear.map(week => {
-                                                        const empAbsence = employeesWithAbsences[emp.id]?.find(a => isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end));
-                                                        return (
-                                                            <td key={`${emp.id}-${week.key}`} className={cn("border text-center p-1 h-8", empAbsence ? "bg-blue-100 font-semibold" : "hover:bg-gray-50")}>
-                                                                {empAbsence && (
-                                                                     <button onClick={() => setEditingAbsence({ employee: emp, absence: empAbsence })} className="w-full h-full text-left p-1 text-xs truncate">
-                                                                        {`${emp.name} (${empAbsence.absenceAbbreviation})`}
-                                                                    </button>
-                                                                )}
-                                                            </td>
-                                                        );
-                                                    })}
-                                                </tr>
-                                            ))}
-                                        </React.Fragment>
+                                    {allEmployeesForQuadrant.map(emp => (
+                                        <tr key={emp.id}>
+                                            {weeksOfYear.map(week => {
+                                                const empAbsence = employeesWithAbsences[emp.id]?.find(a => isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end));
+                                                return (
+                                                    <td key={`${emp.id}-${week.key}`} className={cn("border text-center p-1 h-8", empAbsence ? "bg-blue-100 font-semibold" : "hover:bg-gray-50")}>
+                                                        {empAbsence && (
+                                                             <button onClick={() => setEditingAbsence({ employee: emp, absence: empAbsence })} className="w-full h-full text-left p-1 text-xs truncate">
+                                                                {`${emp.name} (${empAbsence.absenceAbbreviation})`}
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
                                     ))}
                                 </tbody>
                             </table>
