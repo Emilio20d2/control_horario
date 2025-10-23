@@ -6,6 +6,7 @@
  * This bot can access employee data tools to answer specific questions.
  */
 import { ai } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
 import { getFinalBalancesForEmployee, getVacationSummaryForEmployee } from '@/lib/services/employee-data-service';
 
@@ -54,20 +55,20 @@ const getEmployeeVacationSummaryTool = ai.defineTool(
 );
 
 
-export async function messageBotFlow(input: any): Promise<string> {
-    const MessageBotInputSchema = z.object({
-        employeeId: z.string().describe('The unique ID of the employee starting the conversation.'),
-        employeeName: z.string().describe('The name of the employee.'),
-        formattedHistory: z.string().describe('The full conversation history, pre-formatted as a single string.'),
-    });
+const MessageBotInputSchema = z.object({
+    employeeId: z.string().describe('The unique ID of the employee starting the conversation.'),
+    employeeName: z.string().describe('The name of the employee.'),
+    formattedHistory: z.string().describe('The full conversation history, pre-formatted as a single string.'),
+});
 
-    const messageBotPrompt = ai.definePrompt(
-        {
-            name: 'messageBotPrompt',
-            input: { schema: MessageBotInputSchema },
-            output: { schema: z.string() },
-            tools: [getEmployeeBalancesTool, getEmployeeVacationSummaryTool],
-            prompt: `Eres Z-Assist, un asistente virtual de RRHH para la app "Control Horario". Tu objetivo es ser amable y ayudar a los empleados.
+const messageBotPrompt = ai.definePrompt(
+    {
+        name: 'messageBotPrompt',
+        model: googleAI.model('gemini-1.5-pro-latest'),
+        input: { schema: MessageBotInputSchema },
+        output: { schema: z.string() },
+        tools: [getEmployeeBalancesTool, getEmployeeVacationSummaryTool],
+        system: `Eres Z-Assist, un asistente virtual de RRHH para la app "Control Horario". Tu objetivo es ser amable y ayudar a los empleados.
 
 Tu identidad:
 - Nombre: Z-Assist.
@@ -88,9 +89,11 @@ Contexto de la Conversación Actual:
 
 Responde al último mensaje del usuario de forma natural y útil, usando tus herramientas si es necesario.
 `
-        }
-    );
+    }
+);
 
+
+export async function messageBotFlow(input: z.infer<typeof MessageBotInputSchema>): Promise<string> {
     const result = await messageBotPrompt(input);
     return result.text;
 }
