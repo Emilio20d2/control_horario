@@ -163,17 +163,6 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
                             <p className="text-sm font-medium text-muted-foreground">Email</p>
                             <p>{employee?.email || 'N/A'}</p>
                         </div>
-                         <div>
-                            <p className="text-sm font-medium text-muted-foreground">Agrupación</p>
-                            {employeeGroup ? (
-                                <p className="flex items-center gap-1">
-                                    <Users className="h-4 w-4" />
-                                    {employeeGroup.name}
-                                </p>
-                            ) : (
-                                <p>Sin agrupación</p>
-                            )}
-                        </div>
                     </div>
                 </div>
 
@@ -181,7 +170,7 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
 
                 <div className="space-y-4">
                     <h3 className="text-lg font-medium">Datos del Contrato</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                         {!isEmployeeView && (
                             <>
                                 <div>
@@ -202,7 +191,7 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
                             <p className="text-sm font-medium text-muted-foreground">Jornada Semanal Vigente</p>
                             <p className="text-xl font-bold">{currentWeeklyHours.toFixed(2)} horas</p>
                         </div>
-                         <div className="hidden">
+                         <div>
                             <p className="text-sm font-medium text-muted-foreground">Agrupación</p>
                             {employeeGroup ? (
                                 <p className="flex items-center gap-1">
