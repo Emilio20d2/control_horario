@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable'; // Import this to apply the plugin
 import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Employee, WeeklyRecord, AbsenceType, Holiday } from './types';
@@ -181,7 +181,7 @@ export async function generateAnnualReportPDF(employee: Employee, year: number, 
             ];
         });
 
-        autoTable(doc, {
+        (doc as any).autoTable({
             head,
             body,
             startY: balancesYStart,
@@ -303,7 +303,7 @@ export async function generateAnnualDetailedReportPDF(employee: Employee, year: 
         return [weekLabel, concept, weeklyComputableHours !== 0 ? weeklyComputableHours.toFixed(2) : ''];
     });
 
-    autoTable(doc, {
+    (doc as any).autoTable({
         head: [['Semana', 'Concepto', 'Horas que Computan']],
         body: bodyRows,
         startY: currentY + 10,
@@ -398,7 +398,7 @@ export async function generateAbsenceReportPDF(employee: Employee, year: number,
     doc.setFontSize(12).setFont('helvetica', 'bold');
     doc.text('Resumen por Tipo de Ausencia', 14, 30);
     
-    autoTable(doc, {
+    (doc as any).autoTable({
         startY: 33,
         head: [['Tipo de Ausencia', 'Total', 'Límite Anual', 'Exceso']],
         body: summaryBody.map(s => [s.name, s.total, s.limit, s.excess]),

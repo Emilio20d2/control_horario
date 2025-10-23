@@ -24,15 +24,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from '../ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { endOfWeek, endOfDay } from 'date-fns';
-import jsPDF, { Cell, UserOptions } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable'; // Import this to apply the plugin
 
-interface AutoTableWithUserOptions extends UserOptions {
+interface AutoTableWithUserOptions extends jsPDF.UserOptions {
     didDrawCell?: (data: {
         table: any;
         column: any;
         row: any;
-        cell: Cell;
+        cell: any; // Correct type is complex, 'any' is simpler here
         doc: jsPDF;
     }) => void;
     didDrawPage?: (data: {
@@ -696,7 +696,7 @@ export function AnnualVacationQuadrant() {
                 return `${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}${turnText}\n\n${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
             });
     
-            autoTable(doc, {
+            (doc as any).autoTable({
                 head: [headContent],
                 body: [],
                 startY: 25,
@@ -755,7 +755,7 @@ export function AnnualVacationQuadrant() {
                         currentY += maxRowHeight;
                     });
                 }
-            });
+            } as AutoTableWithUserOptions);
         });
     
         doc.save(`cuadrante_ausencias_${selectedYear}.pdf`);
@@ -856,7 +856,7 @@ export function AnnualVacationQuadrant() {
             },
         };
     
-        autoTable(doc, autoTableOptions);
+        (doc as any).autoTable(autoTableOptions);
     
         doc.save(`listado_firmas_vacaciones_${selectedYear}.pdf`);
         setIsGenerating(false);
@@ -886,7 +886,7 @@ export function AnnualVacationQuadrant() {
             `${data.totalTaken} / ${data.totalAvailable}`
         ]);
     
-        autoTable(doc, {
+        (doc as any).autoTable({
             head: [['Empleado', 'Invierno', 'Verano', 'Balance']],
             body: body,
             startY: 22,
