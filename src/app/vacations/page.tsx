@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -85,6 +84,7 @@ import {
 import { cn, generateGroupColors } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { generateAbsenceReportPDF, generateQuadrantReportPDF, generateSignatureReportPDF, generateSeasonalReportPDF } from '@/lib/report-generators';
+import { Badge } from '@/components/ui/badge';
 
 
 interface FormattedAbsence {
@@ -114,6 +114,7 @@ export default function VacationsPage() {
         holidayReports,
         addHolidayReport,
         updateHolidayReport,
+        getTheoreticalHoursAndTurn,
     } = dataProvider;
     const { toast } = useToast();
     
@@ -141,7 +142,7 @@ export default function VacationsPage() {
     }, [employees]);
     
     const eventualEmployees = useMemo(() => {
-        return holidayEmployees.filter(he => he.workShift === 'Eventual');
+        return holidayEmployees.filter(he => he.workShift === 'Eventual' && he.active);
     }, [holidayEmployees]);
     
     const groupColors = useMemo(() => generateGroupColors(employeeGroups.map(g => g.id)), [employeeGroups]);
@@ -658,34 +659,37 @@ export default function VacationsPage() {
                                 <thead className="sticky top-0 z-10 bg-card shadow-sm">
                                     <tr>
                                         <th className="p-1 text-left font-semibold border-b border-r sticky left-0 bg-card z-20 overflow-hidden" style={{ width: '1px', padding: 0, border: 0 }}></th>
-                                        {weeksOfYear.map(week => (
-                                            <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
-                                                <div className='flex flex-col items-center justify-center h-full'>
-                                                    <span>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
-                                                    <div className="flex gap-3 mt-1 text-xs items-center font-normal text-muted-foreground">
-                                                        <Popover>
-                                                            <PopoverTrigger asChild>
-                                                                <button className='flex items-center gap-1 cursor-pointer'><Users className="h-3 w-3"/>{weeklySummaries[week.key]?.employeeCount ?? 0}</button>
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="w-64 p-2">
-                                                                <div className="space-y-1">
-                                                                    <p className="font-bold text-sm">Personal Ausente</p>
-                                                                    {employeesByWeek[week.key]?.map(e => <p key={e.employeeId} className="text-xs">{e.employeeName} ({e.absenceAbbreviation})</p>)}
-                                                                    {employeesByWeek[week.key]?.length === 0 && <p className="text-xs text-muted-foreground">Nadie.</p>}
-                                                                </div>
-                                                            </PopoverContent>
-                                                        </Popover>
-                                                        <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
+                                        {weeksOfYear.map(week => {
+                                            const { turnId } = getTheoreticalHoursAndTurn('any-employee', week.start);
+                                            return (
+                                                <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
+                                                    <div className='flex flex-col items-center justify-center h-full'>
+                                                        <span>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
+                                                        <Badge variant="secondary" className="mt-1">{turnId ? `T.${turnId.replace('turn', '')}`: 'N/A'}</Badge>
+                                                        <div className="flex gap-3 mt-1 text-xs items-center font-normal text-muted-foreground">
+                                                            <Popover>
+                                                                <PopoverTrigger asChild>
+                                                                    <button className='flex items-center gap-1 cursor-pointer'><Users className="h-3 w-3"/>{weeklySummaries[week.key]?.employeeCount ?? 0}</button>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="w-64 p-2">
+                                                                    <div className="space-y-1">
+                                                                        <p className="font-bold text-sm">Personal Ausente</p>
+                                                                        {employeesByWeek[week.key]?.map(e => <p key={e.employeeId} className="text-xs">{e.employeeName} ({e.absenceAbbreviation})</p>)}
+                                                                        {employeesByWeek[week.key]?.length === 0 && <p className="text-xs text-muted-foreground">Nadie.</p>}
+                                                                    </div>
+                                                                </PopoverContent>
+                                                            </Popover>
+                                                            <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </th>
-                                        ))}
+                                                </th>
+                                            )
+                                        })}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {employeeGroups.map(group => {
                                         const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-                                        if (groupEmployees.length === 0) return null;
                                         return (
                                             <tr key={group.id}>
                                                 <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 bg-card overflow-hidden" style={{ width: '1px', padding: 0, border: 0 }}>
@@ -696,7 +700,8 @@ export default function VacationsPage() {
                                                         const absence = employeesWithAbsences[emp.id]?.find(a => 
                                                             isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
                                                         );
-                                                        return absence ? { employee: emp, absence } : null;
+                                                        const { turnId } = getTheoreticalHoursAndTurn(emp.id, week.start);
+                                                        return absence ? { employee: emp, absence, turnId: turnId ? turnId.replace('turn', '') : null } : null;
                                                     }).filter(Boolean);
 
                                                     const cellHasContent = employeesWithAbsenceInWeek.length > 0;
@@ -709,6 +714,7 @@ export default function VacationsPage() {
                                                                     if (!item) return null;
                                                                     const substitute = substitutesByWeek[week.key]?.find(s => s.employeeId === item.employee.id);
                                                                     const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
+                                                                    const { turnId } = getTheoreticalHoursAndTurn(item.employee.id, week.start);
 
                                                                     return (
                                                                         <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left p-0.5 text-xs truncate rounded-sm">
@@ -716,7 +722,7 @@ export default function VacationsPage() {
                                                                                 onClick={() => setEditingAbsence({ employee: item.employee, absence: item.absence })}
                                                                                 className={cn("flex-grow text-left truncate", isSpecialAbsence && "text-blue-600 font-semibold")}
                                                                             >
-                                                                                {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
+                                                                                {`${item.employee.name} (${item.absence.absenceAbbreviation}) (T.${turnId ? turnId.replace('turn', '') : '?'})`}
                                                                             </button>
                                                                             <div className="flex items-center flex-shrink-0 gap-1">
                                                                                 <button
