@@ -18,12 +18,12 @@ const OCRInputSchema = z.object({
       "A photo of a document or scene with text, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
 });
-export type OCRInput = z.infer<typeof OCRInputSchema>;
+type OCRInput = z.infer<typeof OCRInputSchema>;
 
 const OCROutputSchema = z.object({
   text: z.string().describe('The text extracted from the image.'),
 });
-export type OCROutput = z.infer<typeof OCROutputSchema>;
+type OCROutput = z.infer<typeof OCROutputSchema>;
 
 export async function extractTextFromImage(input: OCRInput): Promise<OCROutput> {
   return ocrFlow(input);
