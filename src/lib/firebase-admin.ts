@@ -24,7 +24,8 @@ const initializeAdminApp = () => {
         }
 
         if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-            throw new Error('Las credenciales del Firebase Admin SDK no están completas. Revisa las variables de entorno del servidor.');
+            console.error('Firebase Admin SDK Error: Las credenciales del Firebase Admin SDK no están completas en las variables de entorno del servidor.');
+            throw new Error('Fallo en la inicialización del Firebase Admin SDK. Revisa las variables de entorno del servidor.');
         }
 
         adminApp = admin.initializeApp({
