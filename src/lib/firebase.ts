@@ -3,7 +3,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
   "projectId": "shiftmaster-9iefy",
@@ -22,10 +21,10 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 // Connect to the default database
 const db = getFirestore(app);
 const auth = getAuth(app);
-const functions = getFunctions(app);
 
 
-export { app, db, auth, functions };
+export { app, db, auth };
+
 
 
 
