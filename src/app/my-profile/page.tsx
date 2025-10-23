@@ -1,21 +1,23 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmployeeDetails } from '@/components/employees/employee-details';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { isAfter, parseISO, startOfDay } from 'date-fns';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { isAfter, parseISO, startOfDay, getYear, isWithinInterval, startOfYear, endOfYear, getISOWeekYear } from 'date-fns';
 import { BalanceCard } from '../employees/[id]/page';
-import { Briefcase, Gift, Scale, Wallet, Plane, Info } from 'lucide-react';
+import { Briefcase, Gift, Scale, Wallet, Plane, Info, CalendarX2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
+import type { AbsenceType } from '@/lib/types';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function MyProfilePage() {
-    const { employeeRecord: employee, getEmployeeFinalBalances, weeklyRecords, loading: dataLoading, calculateEmployeeVacations } = useDataProvider();
+    const { employeeRecord: employee, getEmployeeFinalBalances, weeklyRecords, loading: dataLoading, calculateEmployeeVacations, absenceTypes } = useDataProvider();
     const [displayBalances, setDisplayBalances] = useState<{ ordinary: number; holiday: number; leave: number; total: number; } | null>(null);
 
     useEffect(() => {
@@ -24,6 +26,40 @@ export default function MyProfilePage() {
             setDisplayBalances(balances);
         }
     }, [employee, dataLoading, getEmployeeFinalBalances, weeklyRecords]);
+
+    const absenceSummary = useMemo(() => {
+        if (!employee || !weeklyRecords || absenceTypes.length === 0) return [];
+    
+        const currentYear = getYear(new Date());
+        const summary: Record<string, { type: AbsenceType; total: number; isDays: boolean }> = {};
+    
+        const dayCountAbsences = new Set(['V', 'AT', 'AP', 'B', 'B/C', 'EG', 'EXD', 'FF', 'PE']);
+    
+        Object.values(weeklyRecords).forEach(record => {
+            const weekDate = parseISO(record.id);
+            if (getISOWeekYear(weekDate) !== currentYear) return;
+    
+            const empWeekData = record.weekData[employee.id];
+            if (empWeekData?.days) {
+                Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                    if (getYear(parseISO(dayStr)) !== currentYear) return;
+    
+                    if (dayData.absence && dayData.absence !== 'ninguna') {
+                        const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
+                        if (absenceType) {
+                            if (!summary[absenceType.id]) {
+                                summary[absenceType.id] = { type: absenceType, total: 0, isDays: dayCountAbsences.has(absenceType.abbreviation) };
+                            }
+                            summary[absenceType.id].total += summary[absenceType.id].isDays ? 1 : (dayData.absenceHours || 0);
+                        }
+                    }
+                });
+            }
+        });
+    
+        return Object.values(summary);
+    
+    }, [employee, weeklyRecords, absenceTypes]);
     
     if (dataLoading || !employee) {
         return (
@@ -53,8 +89,8 @@ export default function MyProfilePage() {
                 Mi Ficha Personal
             </h1>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <Card className="flex-1 min-w-[200px]">
+            <div className="grid grid-cols-2 gap-4">
+                <Card className="flex-1 min-w-[150px]">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Balance Total</CardTitle>
                         <Scale className="h-4 w-4 text-muted-foreground" />
@@ -71,7 +107,7 @@ export default function MyProfilePage() {
                 </Card>
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Card className="flex-1 min-w-[200px] cursor-pointer hover:bg-muted/50 transition-colors">
+                        <Card className="flex-1 min-w-[150px] cursor-pointer hover:bg-muted/50 transition-colors">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Vacaciones</CardTitle>
                                 <div className="flex items-center gap-2">
@@ -112,11 +148,49 @@ export default function MyProfilePage() {
                 </Popover>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <BalanceCard title="B. Ordinaria" value={displayBalances?.ordinary} icon={Briefcase} isLoading={!displayBalances} />
-                <BalanceCard title="B. Festivos" value={displayBalances?.holiday} icon={Gift} isLoading={!displayBalances} />
-                <BalanceCard title="B. Libranza" value={displayBalances?.leave} icon={Wallet} isLoading={!displayBalances} />
-            </div>
+            <Card>
+                 <CardHeader>
+                    <CardTitle className="text-base">Detalle de Bolsas de Horas</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-3 gap-4">
+                    <BalanceCard title="B. Ordinaria" value={displayBalances?.ordinary} icon={Briefcase} isLoading={!displayBalances} />
+                    <BalanceCard title="B. Festivos" value={displayBalances?.holiday} icon={Gift} isLoading={!displayBalances} />
+                    <BalanceCard title="B. Libranza" value={displayBalances?.leave} icon={Wallet} isLoading={!displayBalances} />
+                </CardContent>
+            </Card>
+
+             <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <CalendarX2 className="h-5 w-5 text-primary" />
+                        Resumen de Ausencias ({getYear(new Date())})
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {absenceSummary.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Tipo de Ausencia</TableHead>
+                                    <TableHead className="text-right">Total Consumido</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {absenceSummary.map(item => (
+                                    <TableRow key={item.type.id}>
+                                        <TableCell>{item.type.name}</TableCell>
+                                        <TableCell className="text-right font-mono">
+                                            {item.total} {item.isDays ? 'días' : 'horas'}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                        <p className="text-muted-foreground text-center py-4">No tienes ausencias registradas este año.</p>
+                    )}
+                </CardContent>
+            </Card>
             
             <div className="space-y-6">
                 {activePeriod ? (
