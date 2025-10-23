@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizonal, Loader2, Info, Calendar as CalendarIcon, Edit, PlusCircle } from 'lucide-react';
+import { SendHorizonal, Loader2, Info, Calendar as CalendarIcon, Edit, PlusCircle, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useDataProvider } from '@/hooks/use-data-provider';
@@ -15,7 +15,7 @@ import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
 import type { Message, VacationCampaign } from '@/lib/types';
 import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -38,7 +38,7 @@ export default function MyMessagesPage() {
     const [isRequesting, setIsRequesting] = useState(false);
     const [requestStep, setRequestStep] = useState(0);
     const [selectedAbsenceTypeId, setSelectedAbsenceTypeId] = useState('');
-    const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(undefined);
+    const [selectedDateRanges, setSelectedDateRanges] = useState<DateRange[]>([]);
 
     const activeCampaign = useMemo(() => {
         const now = new Date();
@@ -60,7 +60,7 @@ export default function MyMessagesPage() {
         if(isRequesting) {
             setRequestStep(0);
             setSelectedAbsenceTypeId('');
-            setSelectedDateRange(undefined);
+            setSelectedDateRanges([]);
         }
     }, [isRequesting]);
 
@@ -194,17 +194,16 @@ export default function MyMessagesPage() {
 
     const handleSubmitRequest = async () => {
         const absenceType = campaignAbsenceTypes.find(at => at.id === selectedAbsenceTypeId);
-        if (!selectedDateRange || !selectedDateRange.from || !selectedDateRange.to || !absenceType) {
-            toast({ title: "Datos incompletos", description: "Completa todos los pasos para enviar la solicitud.", variant: "destructive" });
+        if (selectedDateRanges.length === 0 || !absenceType) {
+            toast({ title: "Datos incompletos", description: "Selecciona al menos un periodo de fechas para enviar la solicitud.", variant: "destructive" });
             return;
         }
 
-        const fromDate = format(selectedDateRange.from, 'dd/MM/yyyy');
-        const toDate = format(selectedDateRange.to, 'dd/MM/yyyy');
-
-        const requestText = `Solicitud de ${absenceType.name}:
-Desde: ${fromDate}
-Hasta: ${toDate}`;
+        const formattedRanges = selectedDateRanges.map(range => 
+            `Desde: ${format(range.from!, 'dd/MM/yyyy')} - Hasta: ${format(range.to!, 'dd/MM/yyyy')}`
+        ).join('\n');
+        
+        const requestText = `Solicitud de ${absenceType.name}:\n${formattedRanges}`;
 
         await sendMessage(requestText);
         
@@ -263,6 +262,16 @@ Hasta: ${toDate}`;
         const fromDate = activeCampaign ? (activeCampaign.absenceStartDate as Timestamp).toDate() : undefined;
         const toDate = activeCampaign ? (activeCampaign.absenceEndDate as Timestamp).toDate() : undefined;
         
+        const handleSelectRange = (range: DateRange | undefined) => {
+            if (range?.from && range.to) {
+                setSelectedDateRanges(prev => [...prev, range]);
+            }
+        }
+
+        const handleRemoveRange = (index: number) => {
+            setSelectedDateRanges(prev => prev.filter((_, i) => i !== index));
+        }
+
         return (
             <div className="flex flex-col gap-4">
                 {requestStep === 0 && (
@@ -281,30 +290,49 @@ Hasta: ${toDate}`;
                 )}
                 {requestStep === 1 && (
                     <div className="space-y-4">
-                        <h3 className="font-semibold text-center">Paso 2: Elige las fechas</h3>
+                        <h3 className="font-semibold text-center">Paso 2: Elige los periodos</h3>
                         <Calendar
                             mode="range"
-                            selected={selectedDateRange}
-                            onSelect={setSelectedDateRange}
+                            onSelect={handleSelectRange}
                             locale={es}
                             className="rounded-md border p-0"
                             fromDate={fromDate}
                             toDate={toDate}
                             disabled={{ before: fromDate, after: toDate }}
                         />
+                         <div className="space-y-2">
+                             <h4 className="font-semibold text-sm">Periodos Seleccionados:</h4>
+                             {selectedDateRanges.length === 0 ? (
+                                 <p className="text-xs text-muted-foreground">Aún no has seleccionado ningún periodo.</p>
+                             ) : (
+                                <ul className="space-y-1">
+                                    {selectedDateRanges.map((range, index) => (
+                                        <li key={index} className="flex items-center justify-between text-xs border rounded-md p-1.5">
+                                            <span>
+                                                {range.from ? format(range.from, 'dd/MM/yy') : ''} - {range.to ? format(range.to, 'dd/MM/yy') : ''}
+                                            </span>
+                                            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleRemoveRange(index)}>
+                                                <Trash2 className="h-3 w-3 text-destructive" />
+                                            </Button>
+                                        </li>
+                                    ))}
+                                </ul>
+                             )}
+                         </div>
                          <div className="flex justify-between">
                             <Button variant="outline" onClick={() => setRequestStep(0)}>Anterior</Button>
-                            <Button onClick={() => setRequestStep(2)} disabled={!selectedDateRange || !selectedDateRange.from || !selectedDateRange.to}>Siguiente</Button>
+                            <Button onClick={() => setRequestStep(2)} disabled={selectedDateRanges.length === 0}>Siguiente</Button>
                          </div>
                     </div>
                 )}
-                {requestStep === 2 && selectedDateRange && (
+                {requestStep === 2 && (
                     <div className="space-y-4 text-center">
                          <h3 className="font-semibold">Paso 3: Confirma tu solicitud</h3>
-                         <div className="p-4 rounded-md border bg-muted">
+                         <div className="p-4 rounded-md border bg-muted space-y-2">
                             <p><strong>Tipo:</strong> {campaignAbsenceTypes.find(at => at.id === selectedAbsenceTypeId)?.name}</p>
-                            <p><strong>Desde:</strong> {selectedDateRange.from ? format(selectedDateRange.from, 'PPP', {locale: es}) : ''}</p>
-                            <p><strong>Hasta:</strong> {selectedDateRange.to ? format(selectedDateRange.to, 'PPP', {locale: es}) : ''}</p>
+                            {selectedDateRanges.map((range, index) => (
+                                <p key={index}><strong>Periodo {index + 1}:</strong> {range.from ? format(range.from, 'PPP', {locale: es}) : ''} al {range.to ? format(range.to, 'PPP', {locale: es}) : ''}</p>
+                            ))}
                          </div>
                          <div className="flex justify-between">
                             <Button variant="outline" onClick={() => setRequestStep(1)}>Anterior</Button>
@@ -322,17 +350,9 @@ Hasta: ${toDate}`;
                 <h1 className="text-2xl font-bold tracking-tight font-headline">
                     Mis Mensajes
                 </h1>
-                {!activeCampaign && (
-                    <Alert className="mt-4">
-                        <Info className="h-4 w-4" />
-                        <AlertDescription>
-                        Usa este chat para comunicar a Dirección cualquier incidencia con el control de horas o la aplicación. Tu mensaje será revisado y recibirás una respuesta por este mismo medio.
-                        </AlertDescription>
-                    </Alert>
-                )}
             </div>
             
-            <Card className="flex flex-col flex-grow h-[calc(100vh-16rem)]">
+            <Card className="flex flex-col flex-grow h-[calc(100vh-12rem)]">
                 <div className="p-4 border-b">
                     {renderChatHeader()}
                 </div>
@@ -360,25 +380,31 @@ Hasta: ${toDate}`;
                         ))
                      )}
                 </ScrollArea>
-                <div className="p-4 border-t bg-background">
-                     {activeCampaign ? (
-                        <Button className="w-full" onClick={() => setIsRequesting(true)}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Hacer una nueva solicitud
+                <div className="p-4 border-t bg-background space-y-4">
+                    {activeCampaign && (
+                        <Alert>
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>{activeCampaign.title}</AlertTitle>
+                            <AlertDescription className="flex justify-between items-center">
+                                <p>Campaña de solicitud activa. ¿Quieres hacer una petición?</p>
+                                <Button size="sm" onClick={() => setIsRequesting(true)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Hacer Solicitud
+                                </Button>
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    <form onSubmit={handleSendMessage} className="relative">
+                        <Input 
+                            placeholder="Escribe tu mensaje para cualquier otra consulta..." 
+                            className="pr-12 h-10" 
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                        />
+                        <Button type="submit" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-8 w-8">
+                            <SendHorizonal className="h-4 w-4" />
                         </Button>
-                     ) : (
-                        <form onSubmit={handleSendMessage} className="relative">
-                            <Input 
-                                placeholder="Escribe tu mensaje..." 
-                                className="pr-12 h-10" 
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                            />
-                            <Button type="submit" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-8 w-8">
-                                <SendHorizonal className="h-4 w-4" />
-                            </Button>
-                        </form>
-                     )}
+                    </form>
                 </div>
             </Card>
 
@@ -391,7 +417,7 @@ Hasta: ${toDate}`;
                                 Solicitud de ausencias para el periodo del {activeCampaign ? format((activeCampaign.absenceStartDate as Timestamp).toDate(), 'dd/MM') : ''} al {activeCampaign ? format((activeCampaign.absenceEndDate as Timestamp).toDate(), 'dd/MM/yyyy') : ''}.
                             </DrawerDescription>
                         </DrawerHeader>
-                        <div className="p-4"><RequestDialogContent /></div>
+                        <div className="p-4 overflow-y-auto"><RequestDialogContent /></div>
                         <DrawerFooter className="pt-2">
                             <DrawerClose asChild><Button variant="outline">Cancelar</Button></DrawerClose>
                         </DrawerFooter>
@@ -399,14 +425,16 @@ Hasta: ${toDate}`;
                 </Drawer>
             ) : (
                 <Dialog open={isRequesting} onOpenChange={setIsRequesting}>
-                    <DialogContent>
+                    <DialogContent className="max-h-[90vh] flex flex-col">
                         <DialogHeader>
                             <DialogTitle>{activeCampaign?.title}</DialogTitle>
                             <DialogDescription>
                                 Solicitud de ausencias para el periodo del {activeCampaign ? format((activeCampaign.absenceStartDate as Timestamp).toDate(), 'dd/MM') : ''} al {activeCampaign ? format((activeCampaign.absenceEndDate as Timestamp).toDate(), 'dd/MM/yyyy') : ''}.
                             </DialogDescription>
                         </DialogHeader>
-                        <RequestDialogContent />
+                        <div className="overflow-y-auto -mr-6 pr-6">
+                            <RequestDialogContent />
+                        </div>
                     </DialogContent>
                 </Dialog>
             )}
@@ -414,4 +442,3 @@ Hasta: ${toDate}`;
         </div>
     );
 }
-
