@@ -29,6 +29,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Checkbox } from '../ui/checkbox';
 import type { VacationCampaign } from '@/lib/types';
+import { Timestamp } from 'firebase/firestore';
 
 
 const campaignSchema = z.object({
@@ -64,13 +65,14 @@ export function VacationCampaignManager() {
   const handleOpenDialog = (campaign: VacationCampaign | null) => {
     setEditingCampaign(campaign);
     if (campaign) {
+      const toDate = (date: Date | Timestamp) => (date instanceof Timestamp ? date.toDate() : date);
       form.reset({
         title: campaign.title,
         description: campaign.description,
-        submissionStartDate: format(new Date(campaign.submissionStartDate.toString()), 'yyyy-MM-dd'),
-        submissionEndDate: format(new Date(campaign.submissionEndDate.toString()), 'yyyy-MM-dd'),
-        absenceStartDate: format(new Date(campaign.absenceStartDate.toString()), 'yyyy-MM-dd'),
-        absenceEndDate: format(new Date(campaign.absenceEndDate.toString()), 'yyyy-MM-dd'),
+        submissionStartDate: format(toDate(campaign.submissionStartDate), 'yyyy-MM-dd'),
+        submissionEndDate: format(toDate(campaign.submissionEndDate), 'yyyy-MM-dd'),
+        absenceStartDate: format(toDate(campaign.absenceStartDate), 'yyyy-MM-dd'),
+        absenceEndDate: format(toDate(campaign.absenceEndDate), 'yyyy-MM-dd'),
         allowedAbsenceTypeIds: campaign.allowedAbsenceTypeIds,
       });
     } else {
@@ -133,6 +135,12 @@ export function VacationCampaignManager() {
   };
 
   const schedulableAbsenceTypes = absenceTypes.filter(at => ['Vacaciones', 'Excedencia', 'Permiso no retribuido'].includes(at.name));
+  
+  const formatDate = (date: Date | Timestamp): string => {
+    if (!date) return '';
+    const jsDate = date instanceof Timestamp ? date.toDate() : date;
+    return format(jsDate, 'dd/MM/yy');
+  };
 
   return (
     <Card>
@@ -169,10 +177,10 @@ export function VacationCampaignManager() {
                 <TableRow key={campaign.id}>
                   <TableCell className="font-medium">{campaign.title}</TableCell>
                   <TableCell>
-                    {format(new Date(campaign.submissionStartDate.toString()), 'dd/MM/yy')} - {format(new Date(campaign.submissionEndDate.toString()), 'dd/MM/yy')}
+                    {formatDate(campaign.submissionStartDate)} - {formatDate(campaign.submissionEndDate)}
                   </TableCell>
                   <TableCell>
-                    {format(new Date(campaign.absenceStartDate.toString()), 'dd/MM/yy')} - {format(new Date(campaign.absenceEndDate.toString()), 'dd/MM/yy')}
+                    {formatDate(campaign.absenceStartDate)} - {formatDate(campaign.absenceEndDate)}
                   </TableCell>
                   <TableCell>
                     <Switch checked={campaign.isActive} onCheckedChange={() => handleToggleActive(campaign)} />
