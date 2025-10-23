@@ -654,10 +654,10 @@ export default function VacationsPage() {
                 <CardContent>
                     {loading ? <Skeleton className="h-[600px] w-full" /> : (
                          <div className="overflow-auto h-[70vh] border rounded-lg">
-                            <table className="w-full border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
+                             <table className="w-full border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
                                 <thead className="sticky top-0 z-10 bg-card shadow-sm">
                                     <tr>
-                                        <th className="p-1 text-left font-semibold border-b border-r sticky left-0 bg-card z-20" style={{ width: '150px' }}>Grupo</th>
+                                        <th className="p-1 text-left font-semibold border-b border-r sticky left-0 bg-card z-20 overflow-hidden" style={{ width: '1px', padding: 0, border: 0 }}></th>
                                         {weeksOfYear.map(week => (
                                             <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
                                                 <div className='flex flex-col items-center justify-center h-full'>
@@ -688,8 +688,8 @@ export default function VacationsPage() {
                                         if (groupEmployees.length === 0) return null;
                                         return (
                                             <tr key={group.id}>
-                                                <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ width: '150px' }}>
-                                                    {group.name}
+                                                <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 bg-card overflow-hidden" style={{ width: '1px', padding: 0, border: 0 }}>
+                                                    <div className="w-full h-full" style={{backgroundColor: groupColors[group.id] || '#f0f0f0' }}></div>
                                                 </td>
                                                 {weeksOfYear.map(week => {
                                                     const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
@@ -712,7 +712,7 @@ export default function VacationsPage() {
 
                                                                     return (
                                                                         <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left p-0.5 text-xs truncate rounded-sm">
-                                                                             <button 
+                                                                            <button 
                                                                                 onClick={() => setEditingAbsence({ employee: item.employee, absence: item.absence })}
                                                                                 className={cn("flex-grow text-left truncate", isSpecialAbsence && "text-blue-600 font-semibold")}
                                                                             >
