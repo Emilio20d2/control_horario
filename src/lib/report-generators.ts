@@ -2,7 +2,7 @@
 'use client';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear, isWithinInterval } from 'date-fns';
+import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear, isWithinInterval, getISOWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Employee, WeeklyRecord, AbsenceType, Holiday, EmployeeGroup, Ausencia } from './types';
 
