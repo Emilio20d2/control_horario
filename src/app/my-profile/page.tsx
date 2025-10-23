@@ -35,16 +35,16 @@ const BalanceItem = ({ title, value, icon: Icon, isLoading }: { title: string; v
 
 
 export default function MyProfilePage() {
-    const { employeeRecord: employee, weeklyRecords, loading: dataLoading, absenceTypes } = useDataProvider();
+    const { employeeRecord: employee, weeklyRecords, loading: dataLoading, absenceTypes, getEmployeeFinalBalances, calculateEmployeeVacations } = useDataProvider();
     const [displayBalances, setDisplayBalances] = useState<{ ordinary: number; holiday: number; leave: number; total: number; } | null>(null);
     const [vacationInfo, setVacationInfo] = useState<Awaited<ReturnType<typeof getVacationSummaryForEmployee>> | null>(null);
 
     useEffect(() => {
         if (!dataLoading && employee) {
-            getFinalBalancesForEmployee(employee.id).then(setDisplayBalances);
-            getVacationSummaryForEmployee(employee.id).then(setVacationInfo);
+            getEmployeeFinalBalances(employee.id).then(setDisplayBalances);
+            calculateEmployeeVacations(employee).then(setVacationInfo);
         }
-    }, [employee, dataLoading, weeklyRecords]);
+    }, [employee, dataLoading, weeklyRecords, getEmployeeFinalBalances, calculateEmployeeVacations]);
 
     const absenceSummary = useMemo(() => {
         if (!employee || !weeklyRecords || absenceTypes.length === 0) return [];
