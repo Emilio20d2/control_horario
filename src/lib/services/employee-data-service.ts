@@ -9,7 +9,7 @@ import {
     getDoc,
     doc
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase-admin'; // Using admin SDK for server-side logic
+import { getDbAdmin } from '@/lib/firebase-admin'; // Using admin SDK for server-side logic
 import type { 
     Employee, 
     AbsenceType, 
@@ -34,11 +34,13 @@ import { calculateBalancePreview as calculateBalancePreviewInternal } from '../c
 // --- Data Fetching ---
 
 async function getCollectionData<T>(collectionName: string): Promise<T[]> {
+    const db = getDbAdmin();
     const snapshot = await db.collection(collectionName).get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
 }
 
 async function getDocumentData<T>(collectionName: string, docId: string): Promise<T | null> {
+    const db = getDbAdmin();
     const docRef = db.collection(collectionName).doc(docId);
     const docSnap = await docRef.get();
     return docSnap.exists ? { id: docSnap.id, ...docSnap.data() } as T : null;
