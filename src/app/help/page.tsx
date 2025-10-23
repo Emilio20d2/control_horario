@@ -37,7 +37,7 @@ export default function HelpPage() {
                         <strong>Usa la Mensajería:</strong> Si tras comprobarlo sigues detectando una incidencia, dirígete a la sección <span className="font-semibold text-primary">"Mis Mensajes"</span>.
                     </li>
                      <li>
-                        <strong>Deja tu Mensaje:</strong> Explica detalladamente la diferencia que has encontrado. Tu mensaje será recibido por un administrador.
+                        <strong>Deja tu Mensaje:</strong> Explica detalladamente la diferencia que has encontrado. Tu mensaje será recibido por la dirección.
                     </li>
                     <li>
                         <strong>Espera la Respuesta:</strong> Se revisará tu caso y se te responderá a través de la misma sección de mensajes.
