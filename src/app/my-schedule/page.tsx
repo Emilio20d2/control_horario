@@ -76,8 +76,8 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
                     <span className="text-sm font-mono font-medium text-muted-foreground">{weekLabel}</span>
                 </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col md:grid md:grid-cols-3 gap-4">
-                <div className="md:col-span-2 overflow-x-auto">
+            <CardContent className="flex flex-col md:grid md:grid-cols-3 gap-4 px-0 sm:px-6 pt-0">
+                 <div className="md:col-span-2 overflow-x-auto">
                     <Table>
                         <TableHeader>
                              <TableRow>
@@ -121,7 +121,7 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
                         </TableBody>
                     </Table>
                 </div>
-                <div className="space-y-2 border rounded-md p-3 bg-muted/20">
+                 <div className="space-y-2 border rounded-md p-3 bg-muted/20 mx-4 sm:mx-0">
                      <div className="grid grid-cols-4 gap-2 text-xs font-bold text-muted-foreground">
                         <span className="col-span-1">Bolsa</span>
                         <span className="text-right col-span-1">Inicial</span>
