@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -116,7 +117,9 @@ export default function MyMessagesPage() {
              <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                    Este servicio de mensajería es exclusivamente para incidencias sobre tu control de horas. Para dudas generales, por favor consulta la <Link href="/help" className="font-bold underline text-primary">Página de Ayuda</Link>.
+                    Este servicio de mensajería es exclusivamente para incidencias relacionadas con el control de horas semanales o con esta aplicación.
+                    Pronto recibirás una contestación por este chat.
+                    Para cualquier otra consulta, ponte en contacto directamente con Dirección.
                 </AlertDescription>
             </Alert>
             <Card className="flex flex-col flex-grow h-[calc(100vh-16rem)]">
