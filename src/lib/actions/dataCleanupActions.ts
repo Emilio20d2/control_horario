@@ -76,3 +76,41 @@ export async function clearAllCheckmarks() {
     return { success: false, error: errorMessage };
   }
 }
+
+
+export async function clearAllConversations(): Promise<{ success: boolean; message?: string; error?: string }> {
+    'use server';
+
+    try {
+        const dbAdmin = getDbAdmin();
+        const conversationsRef = dbAdmin.collection('conversations');
+        const snapshot = await conversationsRef.get();
+
+        if (snapshot.empty) {
+            return { success: true, message: 'No hay conversaciones que borrar.' };
+        }
+
+        const batch = dbAdmin.batch();
+        let deletedCount = 0;
+
+        for (const doc of snapshot.docs) {
+            // Also delete subcollections if they exist (e.g., 'messages')
+            const messagesRef = doc.ref.collection('messages');
+            const messagesSnapshot = await messagesRef.get();
+            messagesSnapshot.docs.forEach(messageDoc => {
+                batch.delete(messageDoc.ref);
+            });
+            
+            batch.delete(doc.ref);
+            deletedCount++;
+        }
+
+        await batch.commit();
+        return { success: true, message: `Se han eliminado ${deletedCount} conversaciones.` };
+
+    } catch (error) {
+        console.error('Error clearing conversations:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido al borrar las conversaciones.';
+        return { success: false, error: errorMessage };
+    }
+}
