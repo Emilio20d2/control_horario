@@ -60,6 +60,32 @@ export default function MyMessagesPage() {
     }, [formattedMessages, messagesLoading]);
 
 
+    // Effect to send initial welcome message
+    useEffect(() => {
+        const sendWelcomeMessage = async () => {
+            if (employeeRecord && conversationId && !messagesLoading && formattedMessages.length === 0) {
+                const welcomeText = `¡Hola, ${employeeRecord.name.split(' ')[0]}! Soy Z-Assist, tu asistente virtual. Estoy aquí para ayudarte con tus consultas sobre horarios y vacaciones. ¿En qué puedo ayudarte hoy?`;
+                const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
+                await addDoc(messagesColRef, {
+                    text: welcomeText,
+                    senderId: 'admin',
+                    timestamp: serverTimestamp()
+                });
+                
+                const convDocRef = doc(db, 'conversations', conversationId);
+                await setDoc(convDocRef, {
+                    employeeId: employeeRecord.id,
+                    employeeName: employeeRecord.name,
+                    lastMessageText: welcomeText,
+                    lastMessageTimestamp: serverTimestamp(),
+                    unreadByEmployee: true,
+                }, { merge: true });
+            }
+        };
+
+        sendWelcomeMessage();
+    }, [employeeRecord, conversationId, messagesLoading, formattedMessages.length]);
+
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (newMessage.trim() === '' || !conversationId || !employeeRecord) return;
