@@ -658,29 +658,34 @@ export default function VacationsPage() {
                              <table className="w-full border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
                                 <thead className="sticky top-0 z-10 bg-card shadow-sm">
                                     <tr>
-                                        <th className="p-1 text-left font-semibold border-b border-r sticky left-0 bg-card z-20 overflow-hidden" style={{ width: '1px', padding: 0, border: 0 }}></th>
+                                        <th className="p-1 text-left font-semibold border-b border-r sticky left-0 bg-card z-20 overflow-hidden" style={{ width: '150px' }}>
+                                            Grupo
+                                        </th>
                                         {weeksOfYear.map(week => {
-                                            const { turnId } = getTheoreticalHoursAndTurn('any-employee', week.start);
+                                            const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
+
                                             return (
-                                                <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
-                                                    <div className='flex flex-col items-center justify-center h-full'>
-                                                        <span>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
-                                                        <Badge variant="secondary" className="mt-1">{turnId ? `T.${turnId.replace('turn', '')}`: 'N/A'}</Badge>
-                                                        <div className="flex gap-3 mt-1 text-xs items-center font-normal text-muted-foreground">
-                                                            <Popover>
-                                                                <PopoverTrigger asChild>
-                                                                    <button className='flex items-center gap-1 cursor-pointer'><Users className="h-3 w-3"/>{weeklySummaries[week.key]?.employeeCount ?? 0}</button>
-                                                                </PopoverTrigger>
-                                                                <PopoverContent className="w-64 p-2">
-                                                                    <div className="space-y-1">
-                                                                        <p className="font-bold text-sm">Personal Ausente</p>
-                                                                        {employeesByWeek[week.key]?.map(e => <p key={e.employeeId} className="text-xs">{e.employeeName} ({e.absenceAbbreviation})</p>)}
-                                                                        {employeesByWeek[week.key]?.length === 0 && <p className="text-xs text-muted-foreground">Nadie.</p>}
-                                                                    </div>
-                                                                </PopoverContent>
-                                                            </Popover>
-                                                            <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
+                                                <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '200px' }}>
+                                                    <div className='flex justify-between items-center h-full px-1'>
+                                                        <div className="flex flex-col items-start">
+                                                            <span>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
+                                                            <div className="flex gap-3 mt-1 text-xs items-center font-normal text-muted-foreground">
+                                                                <Popover>
+                                                                    <PopoverTrigger asChild>
+                                                                        <button className='flex items-center gap-1 cursor-pointer'><Users className="h-3 w-3"/>{weeklySummaries[week.key]?.employeeCount ?? 0}</button>
+                                                                    </PopoverTrigger>
+                                                                    <PopoverContent className="w-64 p-2">
+                                                                        <div className="space-y-1">
+                                                                            <p className="font-bold text-sm">Personal Ausente</p>
+                                                                            {employeesByWeek[week.key]?.map(e => <p key={e.employeeId} className="text-xs">{e.employeeName} ({e.absenceAbbreviation})</p>)}
+                                                                            {employeesByWeek[week.key]?.length === 0 && <p className="text-xs text-muted-foreground">Nadie.</p>}
+                                                                        </div>
+                                                                    </PopoverContent>
+                                                                </Popover>
+                                                                <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
+                                                            </div>
                                                         </div>
+                                                        <Badge variant="secondary">{turnId ? `T.${turnId.replace('turn', '')}`: 'N/A'}</Badge>
                                                     </div>
                                                 </th>
                                             )
@@ -692,23 +697,22 @@ export default function VacationsPage() {
                                         const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
                                         return (
                                             <tr key={group.id}>
-                                                <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 bg-card overflow-hidden" style={{ width: '1px', padding: 0, border: 0 }}>
-                                                    <div className="w-full h-full" style={{backgroundColor: groupColors[group.id] || '#f0f0f0' }}></div>
+                                                <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ backgroundColor: groupColors[group.id] || '#f0f0f0' }}>
+                                                    {group.name}
                                                 </td>
                                                 {weeksOfYear.map(week => {
                                                     const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
                                                         const absence = employeesWithAbsences[emp.id]?.find(a => 
                                                             isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
                                                         );
-                                                        const { turnId } = getTheoreticalHoursAndTurn(emp.id, week.start);
-                                                        return absence ? { employee: emp, absence, turnId: turnId ? turnId.replace('turn', '') : null } : null;
+                                                        return absence ? { employee: emp, absence } : null;
                                                     }).filter(Boolean);
 
                                                     const cellHasContent = employeesWithAbsenceInWeek.length > 0;
                                                     const cellBg = cellHasContent ? (groupColors[group.id] || '#f0f0f0') : 'transparent';
                                                     
                                                     return (
-                                                        <td key={`${group.id}-${week.key}`} className="border p-1 align-top" style={{ backgroundColor: cellBg, width: '400px' }}>
+                                                        <td key={`${group.id}-${week.key}`} className="border p-1 align-top" style={{ backgroundColor: cellBg }}>
                                                             <div className="flex flex-col gap-1 relative h-full">
                                                                 {employeesWithAbsenceInWeek.map(item => {
                                                                     if (!item) return null;
@@ -718,15 +722,15 @@ export default function VacationsPage() {
 
                                                                     return (
                                                                         <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left p-0.5 text-xs truncate rounded-sm">
-                                                                            <button 
-                                                                                onClick={() => setEditingAbsence({ employee: item.employee, absence: item.absence })}
-                                                                                className={cn("flex-grow text-left truncate", isSpecialAbsence && "text-blue-600 font-semibold")}
-                                                                            >
-                                                                                {`${item.employee.name} (${item.absence.absenceAbbreviation}) (T.${turnId ? turnId.replace('turn', '') : '?'})`}
-                                                                            </button>
-                                                                            <div className="flex items-center flex-shrink-0 gap-1">
+                                                                            <div className="flex items-center gap-1 flex-grow truncate">
+                                                                                <button 
+                                                                                    onClick={() => setEditingAbsence({ employee: item.employee, absence: item.absence })}
+                                                                                    className={cn("flex-grow text-left truncate", isSpecialAbsence && "text-blue-600 font-semibold")}
+                                                                                >
+                                                                                    {`${item.employee.name} (${item.absence.absenceAbbreviation}) (T.${turnId ? turnId.replace('turn', '') : '?'})`}
+                                                                                </button>
                                                                                 <button
-                                                                                    className="h-4 w-4 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600"
+                                                                                    className="h-4 w-4 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0"
                                                                                     onClick={() => {
                                                                                         setCurrentWeekAndEmployee({ weekKey: week.key, employeeId: item.employee.id });
                                                                                         setAssignSubstituteOpen(true);
@@ -734,12 +738,12 @@ export default function VacationsPage() {
                                                                                 >
                                                                                     <Plus className="h-3 w-3" />
                                                                                 </button>
-                                                                                {substitute && (
-                                                                                    <div className="text-xs truncate text-red-600 font-semibold">
-                                                                                        Sust: {substitute.substituteName}
-                                                                                    </div>
-                                                                                )}
                                                                             </div>
+                                                                            {substitute && (
+                                                                                <div className="text-xs truncate text-red-600 font-semibold ml-1 flex-shrink-0">
+                                                                                    Sust: {substitute.substituteName}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     )
                                                                 })}
