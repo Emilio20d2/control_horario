@@ -737,7 +737,7 @@ export default function VacationsPage() {
                                                     const cellBg = cellHasContent ? (groupColors[group.id] || '#f0f0f0') : 'transparent';
                                                     
                                                     return (
-                                                        <td key={`${group.id}-${week.key}`} className="border align-top" style={{ backgroundColor: cellBg, padding: '1px 2px' }}>
+                                                        <td key={`${group.id}-${week.key}`} className="border align-top py-0 px-0.5" style={{ backgroundColor: cellBg }}>
                                                             <div className="flex flex-col gap-0 relative h-full">
                                                                 {employeesWithAbsenceInWeek.map(item => {
                                                                     if (!item) return null;
@@ -749,17 +749,29 @@ export default function VacationsPage() {
                                                                             <span className={cn("flex-grow text-left truncate", isSpecialAbsence && "text-blue-600 font-semibold")}>
                                                                                  {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
                                                                             </span>
-                                                                            <div className="flex items-center gap-1 flex-shrink-0">
-                                                                                <Select onValueChange={(substituteId) => handleAssignSubstitute(week.key, item.employee.id, substituteId)}>
-                                                                                    <SelectTrigger className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
-                                                                                         <Plus className="h-3 w-3" />
-                                                                                    </SelectTrigger>
-                                                                                    <SelectContent>
-                                                                                         {eventualEmployees.map(emp => (
-                                                                                            <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                                                                                        ))}
-                                                                                    </SelectContent>
-                                                                                </Select>
+                                                                             <div className="flex items-center gap-1 flex-shrink-0">
+                                                                                <Popover>
+                                                                                    <PopoverTrigger asChild>
+                                                                                        <Button variant="ghost" size="icon" className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
+                                                                                            <Plus className="h-3 w-3" />
+                                                                                        </Button>
+                                                                                    </PopoverTrigger>
+                                                                                    <PopoverContent className="w-56 p-1">
+                                                                                        <div className="flex flex-col">
+                                                                                            {eventualEmployees.map(emp => (
+                                                                                                <Button
+                                                                                                    key={emp.id}
+                                                                                                    variant="ghost"
+                                                                                                    className="w-full justify-start text-xs h-8"
+                                                                                                    onClick={() => handleAssignSubstitute(week.key, item.employee.id, emp.id)}
+                                                                                                >
+                                                                                                    {emp.name}
+                                                                                                </Button>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    </PopoverContent>
+                                                                                </Popover>
+
                                                                                 {substitute && (
                                                                                     <div className="text-[10px] truncate text-red-600 font-semibold">
                                                                                         Sust: {substitute.substituteName}
@@ -785,3 +797,5 @@ export default function VacationsPage() {
         </div>
     );
 }
+
+    
