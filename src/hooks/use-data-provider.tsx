@@ -405,13 +405,13 @@ const unreadMessageCount = useMemo(() => {
             }
         });
     });
+    
+    vacationDaysTaken = vacationDaysUsedInAnotherCenter;
 
     yearDayMap.forEach(value => {
         if (value === 'S') suspensionDays++;
         else if (value === 'V') vacationDaysTaken++;
     });
-    
-    vacationDaysTaken += vacationDaysUsedInAnotherCenter;
 
     const baseDays = 31;
     const daysInCurrentYear = differenceInDays(yearEnd, yearStart) + 1;
