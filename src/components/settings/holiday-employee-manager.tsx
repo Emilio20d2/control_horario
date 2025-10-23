@@ -54,7 +54,7 @@ export function HolidayEmployeeManager() {
                 return {
                     id: mainEmp.id,
                     name: mainEmp.name,
-                    groupId: mainEmp.groupId,
+                    groupId: holidayEmp?.groupId,
                     active: holidayEmp?.active ?? true,
                     workShift: `${weeklyHours.toFixed(2)}h`,
                     isEventual: false,
@@ -97,6 +97,7 @@ export function HolidayEmployeeManager() {
         setEditingEmployee({ 
             name: employee.name,
             workShift: employee.workShift,
+            groupId: employee.groupId,
         });
     };
 
@@ -111,6 +112,7 @@ export function HolidayEmployeeManager() {
             await updateHolidayEmployee(editingId, {
                  name: editingEmployee.name.trim(),
                  workShift: editingEmployee.workShift || null,
+                 groupId: editingEmployee.groupId || null,
             });
             toast({ title: 'Empleado actualizado', description: 'Los datos del empleado han sido actualizados.' });
             handleCancelEdit();
@@ -143,6 +145,28 @@ export function HolidayEmployeeManager() {
             toast({ title: 'Error', description: 'No se pudo actualizar el estado.', variant: 'destructive' });
         }
     };
+    
+    const handleGroupChange = async (employeeId: string, groupId: string) => {
+        const holidayEmp = holidayEmployees.find(he => he.id === employeeId);
+        const groupValue = groupId === 'none' ? null : groupId;
+
+        try {
+             if (holidayEmp) {
+                await updateHolidayEmployee(employeeId, { groupId: groupValue });
+            } else {
+                // If the employee is not in holidayEmployees, add them
+                const mainEmp = employees.find(e => e.id === employeeId);
+                if (mainEmp) {
+                     await addHolidayEmployee({ id: mainEmp.id, name: mainEmp.name, active: true, groupId: groupValue });
+                }
+            }
+            toast({ title: 'Grupo actualizado', description: 'La agrupación del empleado ha sido actualizada.' });
+        } catch (error) {
+             console.error(error);
+            toast({ title: 'Error', description: 'No se pudo actualizar la agrupación.', variant: 'destructive' });
+        }
+    };
+
 
     const handleDeleteEmployee = async (employeeId: string) => {
         try {
@@ -163,7 +187,7 @@ export function HolidayEmployeeManager() {
             <CardHeader>
                 <CardTitle>Gestionar Empleados para Informes</CardTitle>
                 <CardDescription>
-                    Esta lista combina empleados fijos activos y eventuales. Usa el interruptor "Activo" para incluirlos o no en los informes de festivos y listados personalizados.
+                    Esta lista combina empleados fijos activos y eventuales. Gestiona su aparición en informes y asígnalos a grupos de vacaciones.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -197,7 +221,7 @@ export function HolidayEmployeeManager() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="min-w-[200px]">Empleado</TableHead>
-                                <TableHead className="min-w-[120px]">Jornada</TableHead>
+                                <TableHead className="w-[150px]">Agrupación</TableHead>
                                 <TableHead className="text-center w-24">Activo</TableHead>
                                 <TableHead className="text-right w-32">Acciones</TableHead>
                             </TableRow>
@@ -226,16 +250,18 @@ export function HolidayEmployeeManager() {
                                             emp.name
                                         )}
                                     </TableCell>
-                                     <TableCell className="min-w-[120px]">
-                                         {isEditingCurrent && emp.isEventual ? (
-                                             <Input 
-                                                value={editingEmployee.workShift || ''} 
-                                                onChange={(e) => setEditingEmployee(prev => ({...prev, workShift: e.target.value}))}
-                                                className="h-8"
-                                             />
-                                         ) : (
-                                            emp.workShift || <span className="text-muted-foreground">N/A</span>
-                                         )}
+                                    <TableCell>
+                                        <Select value={emp.groupId || 'none'} onValueChange={(value) => handleGroupChange(emp.id, value)}>
+                                            <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue placeholder="Sin grupo" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">Sin Grupo</SelectItem>
+                                                {employeeGroups.map(g => (
+                                                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </TableCell>
                                     <TableCell className="text-center">
                                         <Switch
@@ -244,20 +270,22 @@ export function HolidayEmployeeManager() {
                                         />
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        {isEditingCurrent ? (
-                                            <div className="flex gap-2 justify-end">
-                                                <Button variant="ghost" size="icon" onClick={handleSaveEdit} className="text-green-600 hover:text-green-700">
-                                                    <Check className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" onClick={handleCancelEdit} className="text-destructive hover:text-destructive-foreground">
-                                                    <X className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        ) : emp.isEventual ? (
+                                        {emp.isEventual ? (
                                             <>
-                                                <Button variant="ghost" size="icon" onClick={() => handleEditClick(emp as HolidayEmployee)}>
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
+                                                {isEditingCurrent ? (
+                                                     <div className="flex gap-2 justify-end">
+                                                        <Button variant="ghost" size="icon" onClick={handleSaveEdit} className="text-green-600 hover:text-green-700">
+                                                            <Check className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={handleCancelEdit} className="text-destructive hover:text-destructive-foreground">
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                     <Button variant="ghost" size="icon" onClick={() => handleEditClick(emp as HolidayEmployee)}>
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
                                                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive-foreground">
@@ -279,7 +307,7 @@ export function HolidayEmployeeManager() {
                                                 </AlertDialog>
                                             </>
                                         ) : (
-                                            <span className="text-xs text-muted-foreground">No editable</span>
+                                            <span className="text-xs text-muted-foreground">Fijo</span>
                                         )}
                                     </TableCell>
                                 </TableRow>

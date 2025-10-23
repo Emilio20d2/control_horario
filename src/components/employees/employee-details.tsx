@@ -61,12 +61,14 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
         getEffectiveWeeklyHours,
         getProcessedAnnualDataForAllYears,
         employeeGroups,
+        holidayEmployees
     } = useDataProvider();
 
     const [annualData, setAnnualData] = useState<Awaited<ReturnType<typeof getProcessedAnnualDataForAllYears>> | null>(null);
     const [isLoadingAnnual, setIsLoadingAnnual] = useState(true);
 
-    const employeeGroup = employee ? employeeGroups.find(g => g.id === employee.groupId) : undefined;
+    const holidayEmployeeRecord = holidayEmployees.find(he => he.id === employee.id);
+    const employeeGroup = employeeGroups.find(g => g.id === holidayEmployeeRecord?.groupId);
 
     const currentWeeklyHours = getEffectiveWeeklyHours(period, new Date());
     

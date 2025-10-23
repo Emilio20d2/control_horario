@@ -74,7 +74,6 @@ const formSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email({ message: "Correo electrónico no válido." }).optional().or(z.literal('')),
   role: z.string().optional(),
-  groupId: z.string().optional(),
   
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'La fecha debe estar en formato AAAA-MM-DD.' }),
   endDate: z.string().nullable().optional(),
@@ -160,7 +159,6 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             phone: employee.phone,
             email: employee.email,
             role: role,
-            groupId: employee.groupId,
             startDate: period.startDate as string,
             endDate: period.endDate as string | null,
             isTransfer: period.isTransfer || false,
@@ -187,7 +185,6 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         phone: '',
         email: '',
         role: 'employee',
-        groupId: '',
         startDate: new Date().toISOString().split('T')[0],
         endDate: null,
         isTransfer: false,
@@ -229,7 +226,6 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     try {
         const dataToSave: EmployeeFormData = {
             ...values,
-            groupId: values.groupId === 'none' ? null : values.groupId,
             role: values.role,
             initialOrdinaryHours: values.initialOrdinaryHours ?? 0,
             initialHolidayHours: values.initialHolidayHours ?? 0,
@@ -404,30 +400,6 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             </SelectContent>
                             </Select>
                             <FormDescription>Define los permisos del usuario en la aplicación.</FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="groupId"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Agrupación de Vacaciones</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                            <FormControl>
-                                <SelectTrigger>
-                                <SelectValue placeholder="Selecciona un grupo..." />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                <SelectItem value="none">Sin Grupo</SelectItem>
-                                {employeeGroups.map(g => (
-                                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                            </Select>
-                            <FormDescription>Grupo para organizar el cuadrante de vacaciones.</FormDescription>
                             <FormMessage />
                         </FormItem>
                         )}

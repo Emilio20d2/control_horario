@@ -10,7 +10,7 @@ import { db } from '../firebase';
 import { createUser } from './userService';
 
 export const createEmployee = async (formData: EmployeeFormData): Promise<string> => {
-    const { name, employeeNumber, dni, phone, email, groupId, role, startDate, isTransfer, vacationDaysUsedInAnotherCenter, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours, vacationDays2024 } = formData;
+    const { name, employeeNumber, dni, phone, email, role, startDate, isTransfer, vacationDaysUsedInAnotherCenter, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours, vacationDays2024 } = formData;
     
     if (!employeeNumber) {
         throw new Error("El número de empleado es obligatorio para crear un nuevo empleado.");
@@ -34,7 +34,6 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
         dni: dni || null,
         phone: phone || null,
         email: email || null,
-        groupId: groupId || null,
         authId: authId,
         employmentPeriods: [
             {
@@ -74,7 +73,7 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
 };
 
 export const updateEmployee = async (id: string, currentEmployee: Employee, formData: EmployeeFormData, finalBalances: { ordinary: number; holiday: number; leave: number; total: number; }): Promise<void> => {
-    const { name, employeeNumber, dni, phone, email, groupId, role, newWeeklyWorkHours, newWeeklyWorkHoursDate, endDate, newContractType, newContractTypeDate, newWeeklySchedule, weeklySchedules, isTransfer, vacationDays2024, vacationDaysUsedInAnotherCenter } = formData;
+    const { name, employeeNumber, dni, phone, email, role, newWeeklyWorkHours, newWeeklyWorkHoursDate, endDate, newContractType, newContractTypeDate, newWeeklySchedule, weeklySchedules, isTransfer, vacationDays2024, vacationDaysUsedInAnotherCenter } = formData;
 
     const updatedPeriods = [...(currentEmployee.employmentPeriods || [])];
     const periodToUpdate = updatedPeriods.sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
@@ -178,7 +177,6 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
         dni: dni || null,
         phone: phone || null,
         email: email || null,
-        groupId: groupId || null,
         employmentPeriods: updatedPeriods,
         authId: currentEmployee.authId || null,
     };

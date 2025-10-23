@@ -65,7 +65,6 @@ export interface Employee {
     phone?: string;
     email?: string;
     authId?: string;
-    groupId?: string;
     employmentPeriods: EmploymentPeriod[];
     vacationDaysUsed?: number; // Campo añadido para la vista de lista
 }
@@ -184,7 +183,6 @@ export interface EmployeeFormData {
     phone?: string;
     email?: string;
     role?: string;
-    groupId?: string;
     startDate: string;
     endDate?: string | null;
     isTransfer?: boolean;
