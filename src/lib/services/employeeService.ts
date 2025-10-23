@@ -1,10 +1,9 @@
 
-
 'use client';
 
 import { addDocument, updateDocument, deleteDocument, setDocument } from './firestoreService';
-import type { Employee, EmployeeFormData, WorkHoursRecord, ScheduledAbsence, EmploymentPeriod, WeeklyScheduleData } from '../types';
-import { isAfter, parseISO, startOfDay, addDays, subDays, format } from 'date-fns';
+import type { Employee, EmployeeFormData, WorkHoursRecord, ScheduledAbsence, EmploymentPeriod, WeeklyScheduleData, WeeklyRecord } from '../types';
+import { isAfter, parseISO, startOfDay, addDays, subDays, format, eachDayOfInterval, startOfWeek } from 'date-fns';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { createUser } from './userService';
@@ -305,10 +304,27 @@ export const deleteScheduledAbsence = async (
     employeeId: string, 
     periodId: string, 
     absenceId: string, 
-    currentEmployee: Employee
+    currentEmployee: Employee,
+    weeklyRecords: Record<string, WeeklyRecord>
 ): Promise<void> => {
     const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
     if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
+
+    const absenceToDelete = period.scheduledAbsences.find(a => a.id === absenceId);
+    if (!absenceToDelete) throw new Error("Ausencia no encontrada para eliminar");
+    
+    const daysInAbsence = eachDayOfInterval({
+        start: startOfDay(absenceToDelete.startDate),
+        end: startOfDay(absenceToDelete.endDate || absenceToDelete.startDate)
+    });
+
+    for(const day of daysInAbsence) {
+        const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        const weekRecord = weeklyRecords[weekId]?.weekData?.[employeeId];
+        if (weekRecord?.confirmed) {
+            throw new Error(`No se puede eliminar la ausencia. La semana del ${weekId} ya está confirmada y afecta a este periodo.`);
+        }
+    }
 
     period.scheduledAbsences = period.scheduledAbsences.filter(a => a.id !== absenceId);
     

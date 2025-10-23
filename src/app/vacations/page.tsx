@@ -85,6 +85,7 @@ import { cn, generateGroupColors } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { generateAbsenceReportPDF, generateQuadrantReportPDF, generateSignatureReportPDF, generateSeasonalReportPDF } from '@/lib/report-generators';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
 interface FormattedAbsence {
@@ -352,7 +353,7 @@ export default function VacationsPage() {
             const period = employee.employmentPeriods.find((p: EmploymentPeriod) => p.id === absence.periodId);
             if (!period) throw new Error("Periodo laboral no encontrado para la ausencia.");
 
-            await deleteScheduledAbsence(employee.id, period.id, absence.id, employee);
+            await deleteScheduledAbsence(employee.id, period.id, absence.id, employee, weeklyRecords);
             
             await addScheduledAbsence(employee.id, period.id, {
                 absenceTypeId: absence.absenceTypeId,
@@ -371,27 +372,26 @@ export default function VacationsPage() {
         }
     };
     
-    const handleDeleteAbsence = async () => {
-        if (!editingAbsence) return;
-        
-        if (editingAbsence.absence.id.startsWith('weekly-')) {
+    const handleDeleteAbsence = async (absence: FormattedAbsence) => {
+        if (absence.id.startsWith('weekly-')) {
             toast({ title: 'No editable', description: 'Las ausencias puntuales registradas en el horario semanal no se pueden borrar desde aquí.', variant: 'destructive' });
             return;
         }
 
         setIsGenerating(true);
         try {
-            const { employee, absence } = editingAbsence;
+            const employee = activeEmployees.find(e => e.id === selectedEmployeeId);
+            if (!employee) throw new Error("Empleado no encontrado");
+
             const period = employee.employmentPeriods.find((p: EmploymentPeriod) => p.id === absence.periodId);
             if (!period) throw new Error("Periodo laboral no encontrado para la ausencia.");
 
-            await deleteScheduledAbsence(employee.id, period.id, absence.id, employee);
+            await deleteScheduledAbsence(employee.id, period.id, absence.id, employee, weeklyRecords);
             toast({ title: 'Ausencia eliminada', description: `La ausencia de ${employee.name} ha sido eliminada.`, variant: 'destructive'});
             refreshData();
-            setEditingAbsence(null);
         } catch (error) {
             console.error("Error deleting absence:", error);
-            toast({ title: 'Error al eliminar', description: 'No se pudo eliminar la ausencia.', variant: 'destructive' });
+            toast({ title: 'Error al eliminar', description: error instanceof Error ? error.message : "No se pudo eliminar la ausencia.", variant: 'destructive' });
         } finally {
             setIsGenerating(false);
         }
@@ -500,6 +500,8 @@ export default function VacationsPage() {
 
     const specialAbsenceAbbreviations = new Set(['EXD', 'PNR']);
 
+    const selectedEmployeeAbsences = employeesWithAbsences[selectedEmployeeId]?.filter(a => getYear(a.startDate) === selectedYear || getYear(a.endDate) === selectedYear) || [];
+
 
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
@@ -544,13 +546,67 @@ export default function VacationsPage() {
                             Guardar Periodo
                         </Button>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                       <p className="font-medium">Leyenda</p>
                       <div className="flex flex-wrap gap-4 text-sm">
                         <div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={plannerModifiersStyles.employeeAbsence}></div>Ausencia Programada</div>
                         <div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={plannerModifiersStyles.other}></div>Festivo</div>
                         <div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={plannerModifiersStyles.opening}></div>Festivo de Apertura</div>
                       </div>
+
+                       <div className="space-y-2 pt-6">
+                        <h4 className="font-medium">Historial de Ausencias Programadas ({selectedYear})</h4>
+                        <div className="border rounded-md max-h-60 overflow-y-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Tipo</TableHead>
+                                        <TableHead>Inicio</TableHead>
+                                        <TableHead>Fin</TableHead>
+                                        <TableHead className="text-right">Acciones</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {selectedEmployeeAbsences.length > 0 ? (
+                                        selectedEmployeeAbsences.map(absence => (
+                                            <TableRow key={absence.id}>
+                                                <TableCell>{absenceTypes.find(at => at.id === absence.absenceTypeId)?.name || 'Desconocido'}</TableCell>
+                                                <TableCell>{format(absence.startDate, 'dd/MM/yyyy')}</TableCell>
+                                                <TableCell>{format(absence.endDate, 'dd/MM/yyyy')}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button variant="ghost" size="icon" disabled={isGenerating || absence.id.startsWith('weekly-')}>
+                                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Esta acción eliminará la ausencia. Si alguna semana dentro de este periodo ya está confirmada, la eliminación fallará.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteAbsence(absence)}>Sí, eliminar</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
+                                                No hay ausencias programadas para este empleado en {selectedYear}.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                       </div>
                     </div>
                 </CardContent>
             </Card>
@@ -658,14 +714,14 @@ export default function VacationsPage() {
                              <table className="w-full border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
                                 <thead className="sticky top-0 z-10 bg-card shadow-sm">
                                     <tr>
-                                        <th className="p-1 text-left font-semibold border-b border-r sticky left-0 bg-card z-20 overflow-hidden" style={{ width: '150px' }}>
-                                            Grupo
+                                        <th className="p-1 text-left font-semibold border-b border-r sticky left-0 bg-card z-20 overflow-hidden" style={{ width: '1px', padding: 0, overflow: 'hidden' }}>
+                                            <div style={{width: '1px', overflow: 'hidden'}}>Grupo</div>
                                         </th>
                                         {weeksOfYear.map(week => {
                                             const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
 
                                             return (
-                                                <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '200px' }}>
+                                                <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
                                                     <div className='flex justify-between items-center h-full px-1'>
                                                         <div className="flex flex-col items-start">
                                                             <span>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
@@ -697,8 +753,8 @@ export default function VacationsPage() {
                                         const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
                                         return (
                                             <tr key={group.id}>
-                                                <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ backgroundColor: groupColors[group.id] || '#f0f0f0' }}>
-                                                    {group.name}
+                                                <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ width: '1px', padding: 0, overflow: 'hidden' }}>
+                                                   <div style={{width: '1px', overflow: 'hidden'}}>{group.name}</div>
                                                 </td>
                                                 {weeksOfYear.map(week => {
                                                     const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
