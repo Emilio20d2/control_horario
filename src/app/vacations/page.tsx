@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -579,19 +580,19 @@ export default function VacationsPage() {
                     const cellBg = cellHasContent ? (groupColors[group.id] || '#f0f0f0') : 'transparent';
 
                     return (
-                      <td key={`${group.id}-${week.key}`} className="border align-top py-0.5 px-1" style={{ backgroundColor: cellBg }}>
+                      <td key={`${group.id}-${week.key}`} className="border align-top py-0 px-0.5" style={{ backgroundColor: cellBg }}>
                         <div className="flex flex-col gap-0.5 relative h-full">
                           {employeesWithAbsenceInWeek.map(item => {
                             if (!item) return null;
                             const substitute = substitutesByWeek[week.key]?.find(s => s.employeeId === item.employee.id);
                             return (
-                                <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[9px] leading-tight">
-                                    <span className="flex-grow text-left truncate">{`${item.employee.name} (${item.absence.absenceAbbreviation})`}</span>
-                                    <Popover>
+                                <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[9px] leading-tight py-0">
+                                    <span className="flex-grow text-left truncate">{item.employee.name}</span>
+                                     <Popover>
                                         <PopoverTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
+                                            <button className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
                                                 <Plus className="h-3 w-3" />
-                                            </Button>
+                                            </button>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-56 p-1">
                                             <div className="flex flex-col">
@@ -610,7 +611,6 @@ export default function VacationsPage() {
                                             </div>
                                         </PopoverContent>
                                     </Popover>
-
                                     {substitute && (
                                         <div className="text-[10px] truncate text-red-600 font-semibold">
                                             Sust: {substitute.substituteName}
@@ -788,23 +788,21 @@ export default function VacationsPage() {
             </Dialog>
 
             <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
-              <DialogContent className="max-w-none w-screen h-screen p-4 flex flex-col">
-                <div className="flex justify-between items-center flex-shrink-0">
-                    <h2 className="text-lg font-bold">Cuadrante Anual (Pantalla Completa)</h2>
+              <DialogContent className="max-w-none w-screen h-screen p-2 flex flex-col">
+                <div className="flex justify-end items-center flex-shrink-0">
                     <Button variant="ghost" size="icon" onClick={() => setIsFullScreen(false)}>
                         <X className="h-6 w-6" />
                     </Button>
                 </div>
-                <div className="flex-grow overflow-auto">
+                <div className="flex-grow overflow-auto h-[95vh]">
                     {renderQuadrant()}
                 </div>
               </DialogContent>
             </Dialog>
 
             <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <CardTitle>Programador vacaciones</CardTitle>
+                 <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Programador vacaciones</CardTitle>
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1 border rounded-md p-1">
                                 <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries)} disabled={isGenerating} size="sm" variant="ghost">
@@ -821,7 +819,6 @@ export default function VacationsPage() {
                                 </Button>
                             </div>
                         </div>
-                    </div>
                 </CardHeader>
                 <CardContent>
                     {loading ? <Skeleton className="h-[600px] w-full" /> : renderQuadrant()}
@@ -830,3 +827,4 @@ export default function VacationsPage() {
         </div>
     );
 }
+
