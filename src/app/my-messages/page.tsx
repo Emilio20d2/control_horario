@@ -154,7 +154,7 @@ export default function MyMessagesPage() {
              <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                   Recibirás una respuesta inicial de nuestro asistente virtual, ShiftBot. Si tu consulta necesita atención personalizada, un responsable de Dirección la revisará y te contestará por este mismo chat. Este servicio es para incidencias con el control de horas o la aplicación.
+                   Recibirás una respuesta inicial de nuestro asistente virtual, Z-Assist. Si tu consulta necesita atención personalizada, un responsable de Dirección la revisará y te contestará por este mismo chat. Este servicio es para incidencias con el control de horas o la aplicación.
                 </AlertDescription>
             </Alert>
             <Card className="flex flex-col flex-grow h-[calc(100vh-16rem)]">
@@ -208,3 +208,4 @@ export default function MyMessagesPage() {
         </div>
     );
 }
+
