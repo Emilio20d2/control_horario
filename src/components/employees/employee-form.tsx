@@ -229,6 +229,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     try {
         const dataToSave: EmployeeFormData = {
             ...values,
+            groupId: values.groupId === 'none' ? undefined : values.groupId,
             role: values.role,
             initialOrdinaryHours: values.initialOrdinaryHours ?? 0,
             initialHolidayHours: values.initialHolidayHours ?? 0,
@@ -413,14 +414,14 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Agrupación de Vacaciones</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
                             <FormControl>
                                 <SelectTrigger>
                                 <SelectValue placeholder="Selecciona un grupo..." />
                                 </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                                <SelectItem value="">Sin Grupo</SelectItem>
+                                <SelectItem value="none">Sin Grupo</SelectItem>
                                 {employeeGroups.map(g => (
                                     <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                                 ))}
@@ -827,3 +828,5 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     </Card>
   );
 }
+
+    
