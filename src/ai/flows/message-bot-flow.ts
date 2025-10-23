@@ -53,6 +53,7 @@ const getEmployeeVacationSummaryTool = ai.defineTool(
   }
 );
 
+
 export async function messageBotFlow(input: any): Promise<string> {
     const MessageSchema = z.object({
         text: z.string(),
@@ -65,10 +66,14 @@ export async function messageBotFlow(input: any): Promise<string> {
         conversationHistory: z.array(MessageSchema).describe('The history of the conversation so far.'),
     });
 
-    const llmResponse = await ai.generate({
-        model: 'googleai/gemini-1.0-pro',
-        tools: [getEmployeeBalancesTool, getEmployeeVacationSummaryTool],
-        prompt: `Eres Z-Assist, un asistente virtual de RRHH para la app "Control Horario". Tu objetivo es ser amable y ayudar a los empleados.
+    const messageBotPrompt = ai.definePrompt(
+        {
+            name: 'messageBotPrompt',
+            model: 'googleai/gemini-1.0-pro',
+            input: { schema: MessageBotInputSchema },
+            output: { schema: z.string() },
+            tools: [getEmployeeBalancesTool, getEmployeeVacationSummaryTool],
+            prompt: `Eres Z-Assist, un asistente virtual de RRHH para la app "Control Horario". Tu objetivo es ser amable y ayudar a los empleados.
 
 Tu identidad:
 - Nombre: Z-Assist.
@@ -83,13 +88,21 @@ Tus capacidades:
 3.  **Delegación**: Si la pregunta es compleja, subjetiva o no la entiendes, responde amablemente que no puedes ayudar con esa consulta y que un responsable del departamento revisará el mensaje para dar una respuesta. No inventes información.
 
 Contexto de la Conversación Actual:
-- Estás hablando con: ${input.employeeName} (ID: ${input.employeeId})
+- Estás hablando con: {{{employeeName}}} (ID: {{{employeeId}}})
 - Historial de la conversación:
-${input.conversationHistory.map((m: any) => `${m.sender === 'user' ? input.employeeName : 'Z-Assist'}: ${m.text}`).join('\n')}
+{{#each conversationHistory}}
+{{#if (eq sender 'user')}}
+{{{../employeeName}}}: {{{text}}}
+{{else}}
+Z-Assist: {{{text}}}
+{{/if}}
+{{/each}}
 
 Responde al último mensaje del usuario de forma natural y útil, usando tus herramientas si es necesario.
-`,
-    });
+`
+        }
+    );
 
-    return llmResponse.output!;
+    const result = await messageBotPrompt(input);
+    return result.output!;
 }
