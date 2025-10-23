@@ -65,11 +65,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
   
   useEffect(() => {
     if (!appUser || !appUser.trueRole) return;
+    
+    const employeePages = ['/my-profile', '/my-schedule', '/my-messages', '/help'];
+    const adminPages = ['/dashboard', '/schedule', '/employees', '/listings', '/vacations', '/messages', '/settings'];
 
     if (appUser.trueRole === 'admin') {
-      if (viewMode === 'employee' && !pathname.startsWith('/my-')) {
+      if (viewMode === 'employee' && !employeePages.some(p => pathname.startsWith(p))) {
         router.replace('/my-profile');
-      } else if (viewMode === 'admin' && pathname.startsWith('/my-')) {
+      } else if (viewMode === 'admin' && employeePages.some(p => pathname.startsWith(p))) {
         router.replace('/dashboard');
       }
     }
@@ -110,9 +113,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const MainNav = ({className}: {className?: string}) => (
     <nav className={className}>
         {menuItems.map((item) => {
-             const isActive = (item.href === '/dashboard' || item.href === '/my-profile' || item.href === '/help') 
-                ? pathname === item.href
-                : pathname.startsWith(item.href);
+             const isActive = pathname.startsWith(item.href);
 
             return (
                 <Link
