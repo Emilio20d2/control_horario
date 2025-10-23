@@ -109,20 +109,28 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const MainNav = ({className}: {className?: string}) => (
     <nav className={className}>
-        {menuItems.map((item) => (
-            <Link
-            key={item.href}
-            href={item.href}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                (pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href)))
-                ? 'bg-primary text-primary-foreground'
-                : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
-            >
-            <item.icon className="h-4 w-4" />
-            {item.label}
-            </Link>
-        ))}
+        {menuItems.map((item) => {
+            const isDashboard = item.href === '/dashboard';
+            const isActive = isDashboard 
+                ? pathname === item.href
+                : pathname.startsWith(item.href);
+
+            return (
+                <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                        isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+                    )}
+                >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                </Link>
+            )
+        })}
     </nav>
   );
 
