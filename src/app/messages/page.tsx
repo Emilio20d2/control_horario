@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,8 @@ export default function MessagesPage() {
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
     const [newMessage, setNewMessage] = useState('');
     const isMobile = useIsMobile();
+    const viewportRef = useRef<HTMLDivElement>(null);
+
 
     const [messagesSnapshot, messagesLoading] = useCollectionData(
         selectedConversationId ? query(collection(db, 'conversations', selectedConversationId, 'messages'), orderBy('timestamp', 'asc')) : null
@@ -36,6 +39,12 @@ export default function MessagesPage() {
             } as Message;
         });
     }, [messagesSnapshot]);
+
+    useEffect(() => {
+        if (viewportRef.current) {
+            viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
+        }
+    }, [messages, messagesLoading]);
 
     const selectedConversation = conversations.find(c => c.id === selectedConversationId);
 
@@ -129,7 +138,7 @@ export default function MessagesPage() {
                         </Avatar>
                         <h2 className="text-xl font-bold font-headline">{selectedConversation.employeeName}</h2>
                     </div>
-                    <ScrollArea className="flex-1 p-4 space-y-4">
+                    <ScrollArea className="flex-1 p-4 space-y-4" viewportRef={viewportRef}>
                         {messagesLoading ? (
                              <div className="flex items-center justify-center flex-1 h-full">
                                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

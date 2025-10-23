@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,6 +22,8 @@ export default function MyMessagesPage() {
     const { employeeRecord, loading, conversations } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
     const conversationId = employeeRecord?.id;
+    const viewportRef = useRef<HTMLDivElement>(null);
+
 
     const conversation = useMemo(() => {
         if (!conversationId) return null;
@@ -51,6 +53,13 @@ export default function MyMessagesPage() {
             } as Message;
         });
     }, [messagesSnapshot]);
+
+    useEffect(() => {
+        if (viewportRef.current) {
+            viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
+        }
+    }, [formattedMessages, messagesLoading]);
+
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -179,7 +188,7 @@ export default function MyMessagesPage() {
                         <p className="text-sm text-muted-foreground">Conversación sobre tus incidencias</p>
                     </div>
                 </div>
-                <ScrollArea className="flex-1 p-4 space-y-4">
+                <ScrollArea className="flex-1 p-4 space-y-4" viewportRef={viewportRef}>
                      {messagesLoading ? (
                         <div className="flex h-full items-center justify-center">
                             <Loader2 className="h-8 w-8 animate-spin" />
