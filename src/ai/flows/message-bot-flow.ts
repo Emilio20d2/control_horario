@@ -34,7 +34,7 @@ const prompt = ai.definePrompt({
   name: 'messageBotPrompt',
   input: { schema: MessageBotInputSchema },
   output: { schema: MessageBotOutputSchema },
-  prompt: `Eres un asistente virtual para la aplicación "Control Horario". Tu nombre es ShiftBot y trabajas para "Dirección".
+  prompt: `Eres un asistente virtual para la aplicación "Control Horario". Tu nombre es Z-Assist y trabajas para "Dirección".
 Tu objetivo es ayudar al empleado, {{employeeName}}, con sus dudas sobre el control de horas.
 
 - Sé amable, profesional y conciso.
