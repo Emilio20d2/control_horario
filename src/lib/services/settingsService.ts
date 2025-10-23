@@ -173,14 +173,36 @@ export const updateEmployeeGroupOrder = async (groups: EmployeeGroup[]): Promise
 
 
 // --- Vacation Campaign Service Functions ---
+const convertToTimestampIfDate = (value: any): Timestamp | any => {
+    if (value instanceof Date) {
+        return Timestamp.fromDate(value);
+    }
+    return value;
+};
+
 export const createVacationCampaign = async (data: Omit<VacationCampaign, 'id'>): Promise<string> => {
-    const docRef = await addDoc(collection(db, 'vacationCampaigns'), data);
+    const dataToSave = {
+        ...data,
+        submissionStartDate: convertToTimestampIfDate(data.submissionStartDate),
+        submissionEndDate: convertToTimestampIfDate(data.submissionEndDate),
+        absenceStartDate: convertToTimestampIfDate(data.absenceStartDate),
+        absenceEndDate: convertToTimestampIfDate(data.absenceEndDate),
+    };
+    const docRef = await addDoc(collection(db, 'vacationCampaigns'), dataToSave);
     return docRef.id;
 }
 
 export const updateVacationCampaign = async (id: string, data: Partial<Omit<VacationCampaign, 'id'>>): Promise<void> => {
     const docRef = doc(db, 'vacationCampaigns', id);
-    await updateDoc(docRef, data);
+    const dataToSave: Partial<Omit<VacationCampaign, 'id'>> = { ...data };
+
+    for (const key in dataToSave) {
+        if (Object.prototype.hasOwnProperty.call(dataToSave, key) && key.includes('Date')) {
+            (dataToSave as any)[key] = convertToTimestampIfDate((dataToSave as any)[key]);
+        }
+    }
+    
+    await updateDoc(docRef, dataToSave);
 }
 
 export const deleteVacationCampaign = async (id: string): Promise<void> => {

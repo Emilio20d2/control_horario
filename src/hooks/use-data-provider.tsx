@@ -1,3 +1,4 @@
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -19,6 +20,7 @@ import type {
   HolidayReport,
   EmployeeGroup,
   Conversation,
+  VacationCampaign,
 } from '../types';
 import { onCollectionUpdate, getDocumentById } from '@/lib/services/firestoreService';
 import { 
@@ -41,6 +43,9 @@ import {
     updateEmployeeGroup,
     deleteEmployeeGroup,
     updateEmployeeGroupOrder,
+    createVacationCampaign,
+    updateVacationCampaign,
+    deleteVacationCampaign,
 } from '../lib/services/settingsService';
 import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, getISOWeekYear } from 'date-fns';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
@@ -66,6 +71,7 @@ interface DataContextType {
   holidayReports: HolidayReport[];
   employeeGroups: EmployeeGroup[];
   conversations: Conversation[];
+  vacationCampaigns: VacationCampaign[];
   loading: boolean;
   unreadMessageCount: number;
   unconfirmedWeeksDetails: { weekId: string; employeeNames: string[] }[];
@@ -121,6 +127,9 @@ deleteContractType: (id: string) => Promise<void>;
   updateEmployeeGroup: (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => Promise<void>;
   deleteEmployeeGroup: (id: string) => Promise<void>;
   updateEmployeeGroupOrder: (groups: EmployeeGroup[]) => Promise<void>;
+  createVacationCampaign: (data: Omit<VacationCampaign, 'id'>) => Promise<string>;
+  updateVacationCampaign: (id: string, data: Partial<Omit<VacationCampaign, 'id'>>) => Promise<void>;
+  deleteVacationCampaign: (id: string) => Promise<void>;
   findNextUnconfirmedWeek: (startDate: Date) => string | null;
 }
 
@@ -138,6 +147,7 @@ const DataContext = createContext<DataContextType>({
   holidayReports: [],
   employeeGroups: [],
   conversations: [],
+  vacationCampaigns: [],
   loading: true,
   unreadMessageCount: 0,
   unconfirmedWeeksDetails: [],
@@ -184,6 +194,9 @@ deleteContractType: async () => {},
   updateEmployeeGroup: async (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => {},
   deleteEmployeeGroup: async (id: string) => {},
   updateEmployeeGroupOrder: async (groups: EmployeeGroup[]) => {},
+  createVacationCampaign: async (data: Omit<VacationCampaign, 'id'>) => '',
+  updateVacationCampaign: async (id: string, data: Partial<Omit<VacationCampaign, 'id'>>) => {},
+  deleteVacationCampaign: async (id: string) => {},
   findNextUnconfirmedWeek: () => null,
 });
 
@@ -206,6 +219,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [holidayReports, setHolidayReports] = useState<HolidayReport[]>([]);
   const [employeeGroups, setEmployeeGroups] = useState<EmployeeGroup[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [vacationCampaigns, setVacationCampaigns] = useState<VacationCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
   const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
@@ -236,6 +250,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setupSubscription<HolidayReport>('holidayReports', setHolidayReports),
         setupSubscription<EmployeeGroup>('employeeGroups', setEmployeeGroups, data => data.sort((a,b) => a.order - b.order)),
         setupSubscription<Conversation>('conversations', setConversations, data => data.sort((a, b) => b.lastMessageTimestamp.toDate().getTime() - a.lastMessageTimestamp.toDate().getTime())),
+        setupSubscription<VacationCampaign>('vacationCampaigns', setVacationCampaigns, data => data.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime())),
     ];
 
     Promise.all(promises).then(() => {
@@ -1135,6 +1150,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     holidayReports,
     employeeGroups,
     conversations,
+    vacationCampaigns,
     loading,
     unreadMessageCount,
     unconfirmedWeeksDetails,
@@ -1181,6 +1197,9 @@ createAnnualConfig: createAnnualConfigService,
     updateEmployeeGroup,
 deleteEmployeeGroup,
     updateEmployeeGroupOrder,
+    createVacationCampaign,
+    updateVacationCampaign,
+    deleteVacationCampaign,
     findNextUnconfirmedWeek,
   };
 

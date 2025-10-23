@@ -247,9 +247,10 @@ export type HolidayReportAssignment = 'doublePay' | 'dayOff' | 'ninguna';
 
 export interface HolidayReport {
     id: string;
-    generationDate: Timestamp;
-    selectedHolidays: string[]; // Array of holiday dates (YYYY-MM-DD)
-    assignments: Record<string, Record<string, HolidayReportAssignment>>; // { [holidayDate]: { [employeeId]: assignment } }
+    weekId: string;
+    weekDate: Timestamp;
+    employeeId: string;
+    substituteId: string;
 }
 
 export interface EmployeeGroup {
