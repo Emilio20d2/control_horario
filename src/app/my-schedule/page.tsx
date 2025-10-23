@@ -71,7 +71,7 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
             <CardHeader className="pb-4">
                 <CardTitle className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline gap-1">
                     <span className="text-base font-bold">
-                        {format(weekStartDate, 'd MMM')} - {format(endOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM, yyyy', {locale:es})}
+                        {format(weekStartDate, 'd MMM', { locale: es })} - {format(endOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM, yyyy', {locale:es})}
                     </span>
                     <span className="text-sm font-mono font-medium text-muted-foreground">{weekLabel}</span>
                 </CardTitle>
@@ -109,7 +109,7 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
                                         )}
                                     >
                                         <TableCell className="font-semibold p-1 text-xs">{format(day, 'E', { locale: es })}</TableCell>
-                                        <TableCell className="p-1 text-xs">{format(day, 'dd/MM/yy')}</TableCell>
+                                        <TableCell className="p-1 text-xs">{format(day, 'dd/MM/yy', { locale: es })}</TableCell>
                                         <TableCell className="text-right p-1 text-xs font-mono">{dayData.workedHours > 0 ? dayData.workedHours.toFixed(2) : ''}</TableCell>
                                         <TableCell className="p-1 text-xs">{absenceName}</TableCell>
                                         <TableCell className="text-right p-1 text-xs font-mono">{dayData.absenceHours > 0 ? dayData.absenceHours.toFixed(2) : ''}</TableCell>
@@ -282,6 +282,8 @@ export default function MySchedulePage() {
         </div>
     );
 }
+
+    
 
     
 
