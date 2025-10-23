@@ -421,12 +421,7 @@ export const generateQuadrantReportPDF = (
 ) => {
     const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a3' });
     const pageMargin = 10;
-    const cellWidth = (doc.internal.pageSize.width - (pageMargin * 2) - 25) / 13;
-    const cellHeight = 12;
     const headerHeight = 20;
-
-    let page = 1;
-    let totalPages = 1;
 
     const addPageHeader = (doc: jsPDF, pageNum: number, totalPages: number) => {
         doc.setFontSize(14).setFont('helvetica', 'bold');
@@ -435,13 +430,16 @@ export const generateQuadrantReportPDF = (
         doc.text(`Página ${pageNum}/${totalPages}`, doc.internal.pageSize.width - pageMargin, 15, { align: 'right' });
     };
 
-    const drawPage = (startWeekIndex: number, endWeekIndex: number) => {
-        const weeksToDraw = weeksOfYear.slice(startWeekIndex, endWeekIndex);
+    const drawPage = (weeksToDraw: any[], pageNum: number, totalPages: number) => {
+        addPageHeader(doc, pageNum, totalPages);
+        
+        const cellWidth = (doc.internal.pageSize.width - (pageMargin * 2) - 0.1) / weeksToDraw.length;
+        
         const headers = ['Grupo', ...weeksToDraw.map(week => `${format(week.start, 'dd/MM')}\n${getISOWeek(week.start)}`)];
 
         const body = employeeGroups.map(group => {
             const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-            const rowData = [group.name];
+            const rowData = [{content: group.name, styles: { textColor: [255,255,255]}}]; // Hide text by making it white
 
             weeksToDraw.forEach(week => {
                 const absentEmployees = groupEmployees
@@ -464,19 +462,25 @@ export const generateQuadrantReportPDF = (
             styles: { fontSize: 5, cellPadding: 1, valign: 'middle' },
             headStyles: { fillColor: [220, 220, 220], textColor: 20, halign: 'center', fontSize: 6 },
             columnStyles: {
-                0: { cellWidth: 25, fontStyle: 'bold' },
+                0: { cellWidth: 0.1, fontStyle: 'bold' },
+                 ...weeksToDraw.reduce((acc, _, index) => {
+                    acc[index + 1] = { cellWidth: cellWidth };
+                    return acc;
+                }, {})
             },
             margin: { left: pageMargin, right: pageMargin }
         });
     };
-
-    const quarterWeeks = Math.ceil(weeksOfYear.length / 4);
-    totalPages = 4;
     
-    for (let i = 0; i < 4; i++) {
+    const weeksPerPage = 5;
+    const totalPages = Math.ceil(weeksOfYear.length / weeksPerPage);
+
+    for (let i = 0; i < totalPages; i++) {
         if (i > 0) doc.addPage();
-        addPageHeader(doc, i + 1, totalPages);
-        drawPage(i * quarterWeeks, (i + 1) * quarterWeeks);
+        const startWeekIndex = i * weeksPerPage;
+        const endWeekIndex = startWeekIndex + weeksPerPage;
+        const weeksForPage = weeksOfYear.slice(startWeekIndex, endWeekIndex);
+        drawPage(weeksForPage, i + 1, totalPages);
     }
     
     doc.save(`cuadrante_anual_${year}.pdf`);
