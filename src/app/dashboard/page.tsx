@@ -376,15 +376,10 @@ export default function DashboardPage() {
     
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     
-        let weekIdsInYear: string[] = [];
-        let currentDate = new Date(reportYear, 0, 1);
-        while (getISOWeekYear(currentDate) <= reportYear) {
-            if (getISOWeekYear(currentDate) === reportYear) {
-                weekIdsInYear.push(getWeekId(currentDate));
-            }
-            currentDate = addDays(currentDate, 7);
-        }
-        weekIdsInYear = [...new Set(weekIdsInYear)].sort();
+        const weekIdsInYear: string[] = Object.keys(weeklyRecords).filter(weekId => {
+            const weekDate = parseISO(weekId);
+            return getISOWeekYear(weekDate) === reportYear;
+        }).sort();
         
         const confirmedWeekIds = weekIdsInYear.filter(weekId => weeklyRecords[weekId]?.weekData?.[employee.id]?.confirmed);
 

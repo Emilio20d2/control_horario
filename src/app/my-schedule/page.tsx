@@ -178,15 +178,14 @@ export default function MySchedulePage() {
         const processWeeks = async () => {
             setIsProcessing(true);
             const confirmedWeeks: ConfirmedWeek[] = [];
-            const sortedWeekIds = Object.keys(weeklyRecords).sort();
+            const sortedWeekIds = Object.keys(weeklyRecords)
+                .filter(weekId => getISOWeekYear(parseISO(weekId)) === selectedYear)
+                .sort();
 
             for (const weekId of sortedWeekIds) {
-                const weekStartDate = parseISO(weekId);
                 const weekData = weeklyRecords[weekId]?.weekData?.[employee.id];
                 
-                const isoYear = getISOWeekYear(weekStartDate);
-
-                if (weekData?.confirmed && isoYear === selectedYear) {
+                if (weekData?.confirmed) {
                     const initialBalances = getEmployeeBalancesForWeek(employee.id, weekId);
                     const impact = await calculateBalancePreview(employee.id, weekData.days, initialBalances, weekData.weeklyHoursOverride, weekData.totalComplementaryHours);
                     if (impact) {
