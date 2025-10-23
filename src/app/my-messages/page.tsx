@@ -90,13 +90,18 @@ export default function MyMessagesPage() {
         await addDoc(messagesColRef, userMessageData);
 
         try {
+            const history = [
+                ...formattedMessages.map(m => {
+                    const senderName = m.senderId === employeeRecord.id ? employeeRecord.name : 'Z-Assist';
+                    return `${senderName}: ${m.text}`;
+                }),
+                `${employeeRecord.name}: ${messageText}`
+            ].join('\n');
+
             const botResponse = await generateBotResponse({
                 employeeId: employeeRecord.id,
                 employeeName: employeeRecord.name,
-                conversationHistory: [
-                    ...formattedMessages.map(m => ({ text: m.text, sender: m.senderId === employeeRecord.id ? 'user' : 'bot' })),
-                    { text: messageText, sender: 'user' }
-                ]
+                formattedHistory: history
             });
             
             if (botResponse) {
@@ -116,15 +121,18 @@ export default function MyMessagesPage() {
             }
         } catch (error) {
             console.error("Error getting bot response:", error);
-            let errorMessage = "He tenido un problema y no puedo responder ahora mismo. Un responsable revisará tu mensaje pronto.";
-            if (error instanceof Error) {
-                errorMessage = error.message;
-            }
+            const errorMessage = "He tenido un problema y no puedo responder ahora mismo. Un responsable revisará tu mensaje pronto.";
+            
             // Send a fallback message
             await addDoc(messagesColRef, {
                 text: errorMessage,
                 senderId: 'admin',
                 timestamp: serverTimestamp()
+            });
+             await updateDoc(convDocRef, {
+                lastMessageText: errorMessage,
+                lastMessageTimestamp: serverTimestamp(),
+                unreadByEmployee: true, 
             });
         }
     };

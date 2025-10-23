@@ -55,15 +55,10 @@ const getEmployeeVacationSummaryTool = ai.defineTool(
 
 
 export async function messageBotFlow(input: any): Promise<string> {
-    const MessageSchema = z.object({
-        text: z.string(),
-        sender: z.enum(['user', 'bot']),
-    });
-
     const MessageBotInputSchema = z.object({
         employeeId: z.string().describe('The unique ID of the employee starting the conversation.'),
         employeeName: z.string().describe('The name of the employee.'),
-        conversationHistory: z.array(MessageSchema).describe('The history of the conversation so far.'),
+        formattedHistory: z.string().describe('The full conversation history, pre-formatted as a single string.'),
     });
 
     const messageBotPrompt = ai.definePrompt(
@@ -90,13 +85,7 @@ Tus capacidades:
 Contexto de la Conversación Actual:
 - Estás hablando con: {{{employeeName}}} (ID: {{{employeeId}}})
 - Historial de la conversación:
-{{#each conversationHistory}}
-{{#if (eq sender 'user')}}
-{{{../employeeName}}}: {{{text}}}
-{{else}}
-Z-Assist: {{{text}}}
-{{/if}}
-{{/each}}
+{{{formattedHistory}}}
 
 Responde al último mensaje del usuario de forma natural y útil, usando tus herramientas si es necesario.
 `
