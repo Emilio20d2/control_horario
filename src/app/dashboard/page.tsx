@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -196,7 +197,7 @@ export default function DashboardPage() {
         const doc = new jsPDF();
         const weekStartDate = parseISO(complementaryHoursReportWeek);
         const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
-        const weekLabel = `${format(weekStartDate, 'd MMM')} - ${format(weekEndDate, 'd MMM yyyy', { locale: es })}`;
+        const weekLabel = `${format(weekStartDate, 'd MMM', { locale: es })} - ${format(weekEndDate, 'd MMM yyyy', { locale: es })}`;
         
         doc.text(`Informe de Horas Complementarias - Semana del ${weekLabel}`, 14, 16);
 
@@ -299,7 +300,7 @@ export default function DashboardPage() {
     
         const doc = new jsPDF();
         const weekDateParsed = parseISO(selectedBalanceReportWeek);
-        const weekLabel = `${format(weekDateParsed, 'd MMM')} - ${format(endOfWeek(weekDateParsed, { weekStartsOn: 1 }), 'd MMM, yyyy')}`;
+        const weekLabel = `${format(weekDateParsed, 'd MMM', { locale: es })} - ${format(endOfWeek(weekDateParsed, { weekStartsOn: 1 }), 'd MMM, yyyy', { locale: es })}`;
         const pageMargin = 14;
         const addHeader = () => {
              doc.setFontSize(16).setFont('helvetica', 'bold');

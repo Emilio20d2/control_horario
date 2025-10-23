@@ -20,11 +20,11 @@ export const WeekNavigator: React.FC<WeekNavigatorProps> = ({ currentDate, onWee
     const end = endOfWeek(currentDate, { weekStartsOn: 1 });
  
     const formatRange = (start: Date, end: Date): string => {
-        const startDay = format(start, 'd');
+        const startDay = format(start, 'd', { locale: es });
         const startMonth = format(start, 'MMMM', { locale: es });
-        const endDay = format(end, 'd');
+        const endDay = format(end, 'd', { locale: es });
         const endMonth = format(end, 'MMMM', { locale: es });
-        const year = format(end, 'yyyy');
+        const year = format(end, 'yyyy', { locale: es });
         if (startMonth === endMonth) return `${startDay} - ${endDay} de ${startMonth}, ${year}`;
         return `${startDay} de ${startMonth} - ${endDay} de ${endMonth}, ${year}`;
     }

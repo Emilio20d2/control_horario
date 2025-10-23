@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -101,7 +102,7 @@ export async function generateAnnualReportPDF(employee: Employee, year: number, 
         }
         totalWeeklyComputableHours -= (weekData.totalComplementaryHours || 0);
 
-        const weekLabel = `Semana del ${format(weekDays[0], 'd MMM')} - ${format(weekDays[6], 'd MMM yyyy')} (Computadas: ${totalWeeklyComputableHours.toFixed(2)}h / Teóricas: ${effectiveWeeklyHours.toFixed(2)}h)`;
+        const weekLabel = `Semana del ${format(weekDays[0], 'd MMM', { locale: es })} - ${format(weekDays[6], 'd MMM yyyy', { locale: es })} (Computadas: ${totalWeeklyComputableHours.toFixed(2)}h / Teóricas: ${effectiveWeeklyHours.toFixed(2)}h)`;
 
         currentY += 5;
         
@@ -172,7 +173,7 @@ export async function generateAnnualReportPDF(employee: Employee, year: number, 
             const absenceName = dayData.absence === 'ninguna' ? '' : absenceTypes.find(at => at.abbreviation === dayData.absence)?.abbreviation || dayData.absence;
             return [
                 format(day, 'E', { locale: es }),
-                format(day, 'dd/MM/yy'),
+                format(day, 'dd/MM/yy', { locale: es }),
                 dayData.workedHours.toFixed(2),
                 absenceName,
                 dayData.absenceHours.toFixed(2),
@@ -246,7 +247,7 @@ export async function generateAnnualDetailedReportPDF(employee: Employee, year: 
         currentY += 5;
         doc.setFontSize(10);
         workHoursChangeDetails.forEach(detail => {
-            const text = `· Cambio de jornada a ${detail.newWeeklyHours.toFixed(2)}h/sem (desde ${format(parseISO(detail.effectiveDate), 'dd/MM/yy')})`;
+            const text = `· Cambio de jornada a ${detail.newWeeklyHours.toFixed(2)}h/sem (desde ${format(parseISO(detail.effectiveDate), 'dd/MM/yy', { locale: es })})`;
             doc.text(text, pageMargin + 5, currentY);
             doc.setFont('helvetica', 'bold');
             doc.text(`${detail.impact > 0 ? '+' : ''}${detail.impact.toFixed(2)}h`, doc.internal.pageSize.width - pageMargin, currentY, { align: 'right' });
@@ -277,7 +278,7 @@ export async function generateAnnualDetailedReportPDF(employee: Employee, year: 
     const bodyRows = confirmedAnnualData.map(weekRecord => {
         const weekData = weekRecord.data;
         const weekStartDate = parseISO(weekRecord.id);
-        const weekLabel = `${format(weekStartDate, 'dd/MM')}`;
+        const weekLabel = `${format(weekStartDate, 'dd/MM', { locale: es })}`;
         let weeklyComputableHours = 0;
         const weekAbsences = new Set<string>();
 
@@ -340,7 +341,7 @@ export async function generateAbsenceReportPDF(employee: Employee, year: number,
 
                     if (amount > 0) {
                         absenceRecords.push({
-                            date: format(parseISO(dateStr), 'dd/MM/yyyy'),
+                            date: format(parseISO(dateStr), 'dd/MM/yyyy', { locale: es }),
                             type: absenceType,
                             amount: amount,
                         });
@@ -435,7 +436,7 @@ export const generateQuadrantReportPDF = (
         
         const cellWidth = (doc.internal.pageSize.width - (pageMargin * 2) - 0.1) / weeksToDraw.length;
         
-        const headers = ['Grupo', ...weeksToDraw.map(week => `${format(week.start, 'dd/MM')}\n${getISOWeek(week.start)}`)];
+        const headers = ['Grupo', ...weeksToDraw.map(week => `${format(week.start, 'dd/MM', { locale: es })}\n${getISOWeek(week.start)}`)];
 
         const body = employeeGroups.map(group => {
             const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
@@ -510,7 +511,7 @@ export const generateSignatureReportPDF = (
             .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
 
         const vacationPeriodsText = vacationAbsences.length > 0
-            ? vacationAbsences.map(v => `del ${format(v.startDate, 'dd/MM/yyyy')} al ${format(v.endDate, 'dd/MM/yyyy')}`).join('\n')
+            ? vacationAbsences.map(v => `del ${format(v.startDate, 'dd/MM/yyyy', { locale: es })} al ${format(v.endDate, 'dd/MM/yyyy', { locale: es })}`).join('\n')
             : 'No tiene vacaciones programadas.';
         
         const textLines = doc.splitTextToSize(vacationPeriodsText, 180);

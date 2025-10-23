@@ -17,9 +17,9 @@ export function VacationSummary() {
     // Default to the most recent week with data
     const lastWeekId = useMemo(() => {
         if (!weeklyRecords || Object.keys(weeklyRecords).length === 0) {
-            return format(new Date(), 'yyyy-MM-dd');
+            return format(new Date(), 'yyyy-MM-dd', { locale: es });
         }
-        return Object.keys(weeklyRecords).sort().pop() || format(new Date(), 'yyyy-MM-dd');
+        return Object.keys(weeklyRecords).sort().pop() || format(new Date(), 'yyyy-MM-dd', { locale: es });
     }, [weeklyRecords]);
 
     const [selectedWeek, setSelectedWeek] = useState<string>(lastWeekId);
