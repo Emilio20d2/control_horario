@@ -52,6 +52,7 @@ import {
   subMonths,
   addMonths,
   subDays,
+  eachWeekOfInterval,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
@@ -81,6 +82,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { generateAbsenceReportPDF, generateQuadrantReportPDF, generateSignatureReportPDF, generateSeasonalReportPDF } from '@/lib/report-generators';
 
 
 interface FormattedAbsence {
@@ -93,6 +95,7 @@ interface FormattedAbsence {
 }
 
 export default function VacationsPage() {
+    const dataProvider = useDataProvider();
     const {
         employees,
         loading,
@@ -106,7 +109,7 @@ export default function VacationsPage() {
         getEffectiveWeeklyHours,
         calculateSeasonalVacationStatus,
         calculateEmployeeVacations,
-    } = useDataProvider();
+    } = dataProvider;
     const { toast } = useToast();
     
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
@@ -186,7 +189,7 @@ export default function VacationsPage() {
         }
     }, [schedulableAbsenceTypes, selectedAbsenceTypeId]);
     
-    const weeksOfYear = useMemo(() => {
+    const { employeesWithAbsences, weeklySummaries, employeesByWeek } = useMemo(() => {
         const year = selectedYear;
         const yearStartBoundary = startOfYear(new Date(year, 0, 1));
         const yearEndBoundary = endOfYear(new Date(year, 11, 31));
@@ -199,14 +202,12 @@ export default function VacationsPage() {
         if (getISOWeekYear(weeks[0]) < year) {
              weeks.shift();
         }
-        return weeks.map(weekStart => ({
+        const weeksOfYear = weeks.map(weekStart => ({
             start: weekStart,
             end: endOfWeek(weekStart, { weekStartsOn: 1 }),
             key: getWeekId(weekStart)
         }));
-    }, [selectedYear, getWeekId]);
-    
-    const { employeesWithAbsences, weeklySummaries, employeesByWeek } = useMemo(() => {
+
         const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
 
@@ -283,7 +284,7 @@ export default function VacationsPage() {
 
         return { employeesWithAbsences, weeklySummaries, employeesByWeek };
 
-    }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, weeksOfYear]);
+    }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId]);
     
     const handleUpdateAbsence = async () => {
         if (!editingAbsence || !editedDateRange?.from) return;
@@ -365,20 +366,6 @@ export default function VacationsPage() {
         }
     };
     
-    // PDF Generation
-    const generateQuadrantReport = () => {
-      /* Logic will be implemented here */
-      toast({ title: "Función no implementada", description: "La generación de PDF del cuadrante se añadirá pronto." });
-    };
-    const generateSignatureReport = () => {
-      /* Logic will be implemented here */
-      toast({ title: "Función no implementada", description: "La generación de PDF de firmas se añadirá pronto." });
-    };
-    const generateSeasonalReport = () => {
-      /* Logic will be implemented here */
-      toast({ title: "Función no implementada", description: "La generación de PDF de checkeo se añadirá pronto." });
-    };
-
     const openingHolidays = holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date);
     const otherHolidays = holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date);
     const employeeAbsenceDays = employeesWithAbsences[selectedEmployeeId]?.flatMap(p => eachDayOfInterval({ start: p.startDate, end: p.endDate })) || [];
@@ -386,6 +373,26 @@ export default function VacationsPage() {
     const plannerModifiers = { opening: openingHolidays, other: otherHolidays, employeeAbsence: employeeAbsenceDays };
     const plannerModifiersStyles = { opening: { backgroundColor: '#a7f3d0' }, other: { backgroundColor: '#fecaca' }, employeeAbsence: { backgroundColor: '#dbeafe' }};
     const editModifiersStyles = { ...plannerModifiersStyles };
+
+    const { weeksOfYear } = useMemo(() => {
+        const year = selectedYear;
+        const yearStartBoundary = startOfYear(new Date(year, 0, 1));
+        const yearEndBoundary = endOfYear(new Date(year, 11, 31));
+        let weeks = eachWeekOfInterval({ start: yearStartBoundary, end: yearEndBoundary }, { weekStartsOn: 1 });
+        if (getISOWeekYear(subDays(yearStartBoundary, 1)) === year) {
+            weeks.unshift(startOfWeek(subDays(yearStartBoundary, 1), { weekStartsOn: 1 }));
+        }
+        if (getISOWeekYear(weeks[0]) < year) {
+             weeks.shift();
+        }
+        return {
+            weeksOfYear: weeks.map(weekStart => ({
+                start: weekStart,
+                end: endOfWeek(weekStart, { weekStartsOn: 1 }),
+                key: getWeekId(weekStart)
+            }))
+        };
+    }, [selectedYear, getWeekId]);
 
 
     return (
@@ -498,13 +505,13 @@ export default function VacationsPage() {
                                 <SelectContent>{availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
                             </Select>
                             <div className="flex items-center gap-1 border rounded-md p-1">
-                                <Button onClick={generateQuadrantReport} disabled={isGenerating} size="sm" variant="ghost">
+                                <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileDown className="mr-2 h-4 w-4" /> Cuadrante
                                 </Button>
-                                <Button onClick={generateSignatureReport} disabled={isGenerating} size="sm" variant="ghost">
+                                <Button onClick={() => generateSignatureReportPDF(selectedYear, allEmployeesForQuadrant, employeesWithAbsences, dataProvider)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileSignature className="mr-2 h-4 w-4" /> Firmas
                                 </Button>
-                                <Button onClick={generateSeasonalReport} disabled={isGenerating} size="sm" variant="ghost">
+                                <Button onClick={() => generateSeasonalReportPDF(allEmployeesForQuadrant, selectedYear, dataProvider)} disabled={isGenerating} size="sm" variant="ghost">
                                     <SunSnow className="mr-2 h-4 w-4" /> Check
                                 </Button>
                             </div>
