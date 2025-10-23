@@ -99,18 +99,17 @@ export default function MyMessagesPage() {
         await addDoc(messagesColRef, userMessageData);
 
         try {
-            const history = [
-                ...formattedMessages.map(m => {
+            const historyString = [...formattedMessages, { senderId: employeeRecord.id, text: messageText }]
+                .map(m => {
                     const senderName = m.senderId === employeeRecord.id ? 'Usuario' : 'Z-Assist';
                     return `${senderName}: ${m.text}`;
-                }),
-                `Usuario: ${messageText}`
-            ].join('\n');
+                })
+                .join('\n');
 
             const botResponse = await generateBotResponse({
                 employeeId: employeeRecord.id,
                 employeeName: employeeRecord.name,
-                formattedHistory: history
+                formattedHistory: historyString
             });
             
             if (botResponse) {
@@ -180,7 +179,7 @@ export default function MyMessagesPage() {
             </Alert>
             <Card className="flex flex-col flex-grow h-[calc(100vh-16rem)]">
                 <div className="flex items-center gap-4 p-4 border-b">
-                    <Avatar>
+                    <Avatar className="border-2 border-foreground">
                         <AvatarFallback>D</AvatarFallback>
                     </Avatar>
                     <div>
@@ -196,7 +195,7 @@ export default function MyMessagesPage() {
                      ) : (
                         formattedMessages.map((message, index) => (
                             <div key={index} className={cn('flex items-end gap-2', message.senderId === employeeRecord.id ? 'justify-end' : 'justify-start')}>
-                                {message.senderId !== employeeRecord.id && <Avatar className="h-8 w-8"><AvatarFallback>D</AvatarFallback></Avatar>}
+                                {message.senderId !== employeeRecord.id && <Avatar className="h-8 w-8 border-2 border-foreground"><AvatarFallback>D</AvatarFallback></Avatar>}
                                 <div className={cn(
                                     'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg',
                                     message.senderId === employeeRecord.id ? 'bg-primary text-primary-foreground' : 'bg-muted'
