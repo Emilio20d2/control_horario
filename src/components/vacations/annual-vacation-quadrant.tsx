@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useLayoutEffect, forwardRef } from 'react';
@@ -12,7 +11,7 @@ import { PlusCircle, Trash2, Loader2, Users, Clock, FileDown, Maximize, Minimize
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod, Ausencia, HolidayEmployee, EmployeeGroup } from '@/lib/types';
-import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, getMonth, subMonths, addMonths, startOfMonth, endOfMonth, eachWeekOfInterval, getDaysInMonth } from 'date-fns';
+import { format, isAfter, parseISO, addDays, differenceInDays, isWithinInterval, startOfDay, eachDayOfInterval, startOfWeek, isSameDay, getISOWeek, getYear, addWeeks, isBefore, getISODay, getMonth, subMonths, addMonths, startOfMonth, endOfMonth, eachWeekOfInterval, getDaysInMonth, getISOWeekYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { addScheduledAbsence, deleteScheduledAbsence } from '@/lib/services/employeeService';
@@ -21,7 +20,7 @@ import { writeBatch, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Badge } from '../ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from '../ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { endOfWeek, endOfDay } from 'date-fns';
 import jsPDF, { Cell, UserOptions } from 'jspdf';
@@ -372,7 +371,10 @@ export function AnnualVacationQuadrant() {
     const availableYears = useMemo(() => {
         const years = new Set<number>();
         if (weeklyRecords) {
-            Object.keys(weeklyRecords).forEach(id => years.add(parseInt(id.split('-')[0], 10)));
+            Object.keys(weeklyRecords).forEach(id => {
+                const year = getISOWeekYear(parseISO(id));
+                years.add(year);
+            });
         }
         const currentYear = new Date().getFullYear();
         years.add(currentYear);
@@ -426,33 +428,30 @@ export function AnnualVacationQuadrant() {
 
     const weeksOfYear = useMemo(() => {
         const year = selectedYear;
-        const yearStart = new Date(year, 0, 1);
-        const yearEnd = new Date(year, 11, 31);
-    
-        const weeks = eachWeekOfInterval({
-            start: yearStart,
-            end: yearEnd,
-        }, { weekStartsOn: 1 });
+        const yearStart = startOfWeek(new Date(year, 0, 4), { weekStartsOn: 1 }); // Primer lunes del año ISO
+        
+        // Ensure we catch week 1 of the next year if it starts in the current year.
+        const yearEnd = endOfWeek(new Date(year, 11, 28), { weekStartsOn: 1 }); 
 
+        const weeks = [];
+        let currentWeek = yearStart;
+        
+        // Handle week 53 from previous year if it belongs to the selected year
+        if (getISOWeekYear(subDays(yearStart, 1)) === year) {
+            weeks.push(startOfWeek(subDays(yearStart, 1), { weekStartsOn: 1 }));
+        }
+
+        while (getISOWeekYear(currentWeek) <= year) {
+            weeks.push(currentWeek);
+            currentWeek = addWeeks(currentWeek, 1);
+        }
+        
         return weeks.map(weekStart => {
             const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-            const weekNumber = getISOWeek(weekStart);
-            const weekYear = getYear(weekStart);
-
-            // Handle cases where ISO week belongs to the previous or next year.
-            let keyYear = weekYear;
-            if (getMonth(weekStart) === 11 && weekNumber === 1) {
-                keyYear = weekYear + 1;
-            } else if (getMonth(weekStart) === 0 && weekNumber >= 52) {
-                keyYear = weekYear -1;
-            }
-
             return {
                 start: weekStart,
                 end: weekEnd,
-                number: weekNumber,
-                year: weekYear,
-                key: getWeekId(weekStart) // Use the reliable getWeekId
+                key: getWeekId(weekStart)
             };
         });
     }, [selectedYear, getWeekId]);
@@ -469,8 +468,6 @@ export function AnnualVacationQuadrant() {
         const absencesByEmployee: Record<string, any[]> = {};
         
         const schedulableAbsenceTypeIds = new Set(schedulableAbsenceTypes.map(at => at.id));
-        const schedulableAbsenceTypeAbbrs = new Set(schedulableAbsenceTypes.map(at => at.abbreviation));
-
 
         weeksOfYear.forEach(week => {
             weeklySummaries[week.key] = { employeeCount: 0, hourImpact: 0 };
@@ -491,7 +488,7 @@ export function AnnualVacationQuadrant() {
                             if (!absenceType) return;
 
                             eachDayOfInterval({ start: startOfDay(absence.startDate), end: startOfDay(absence.endDate) }).forEach(day => {
-                                if (getYear(day) === selectedYear) {
+                                if (getISOWeekYear(day) === selectedYear) {
                                     allAbsenceDays.set(format(day, 'yyyy-MM-dd'), { 
                                         typeId: absenceType.id, 
                                         typeAbbr: absenceType.abbreviation, 
@@ -503,19 +500,6 @@ export function AnnualVacationQuadrant() {
                             });
                         });
                  });
-                
-                Object.values(weeklyRecords).forEach(record => {
-                    const empWeekData = record.weekData[emp.id];
-                    if (!empWeekData?.days) return;
-                    Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
-                        const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
-                        if (absenceType && schedulableAbsenceTypeAbbrs.has(absenceType.abbreviation) && getYear(new Date(dayStr)) === selectedYear) {
-                            if (!allAbsenceDays.has(dayStr)) {
-                                allAbsenceDays.set(dayStr, { typeId: absenceType.id, typeAbbr: absenceType.abbreviation, isScheduled: false });
-                            }
-                        }
-                    });
-                });
             }
 
             const uniqueSortedDays = Array.from(allAbsenceDays.keys()).map(d => parseISO(d)).sort((a,b) => a.getTime() - b.getTime());
@@ -584,7 +568,7 @@ export function AnnualVacationQuadrant() {
 
         return { weeklySummaries, employeesByWeek, absencesByEmployee };
 
-    }, [loading, allEmployees, schedulableAbsenceTypes, weeksOfYear, weeklyRecords, selectedYear, getEffectiveWeeklyHours, absenceTypes]);
+    }, [loading, allEmployees, schedulableAbsenceTypes, weeksOfYear, selectedYear, getEffectiveWeeklyHours, absenceTypes]);
     
     const handleUpdateAbsence = async () => {
         if (!editingAbsence || !editedDateRange?.from) return;
@@ -989,9 +973,25 @@ export function AnnualVacationQuadrant() {
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button variant="destructive" onClick={handleDeleteAbsence} disabled={isGenerating}>
-                                    {isGenerating ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
-                                </Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive" disabled={isGenerating}>
+                                            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Esta acción es permanente y eliminará el periodo de ausencia.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleDeleteAbsence}>Eliminar</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                                 <DialogClose asChild>
                                     <Button variant="outline">Cancelar</Button>
                                 </DialogClose>
@@ -1058,3 +1058,5 @@ export function AnnualVacationQuadrant() {
         </>
     );
 }
+
+    

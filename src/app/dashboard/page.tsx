@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Bar, CartesianGrid, XAxis, BarChart as RechartsBarChart } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getMonth, getYear, parseISO, format, isSameDay, isAfter, startOfDay, startOfWeek, endOfMonth, endOfWeek, parse, isWithinInterval, parseFromISO, subWeeks, getISODay, addDays, getISOWeekYear } from 'date-fns';
+import { getMonth, getYear, parseISO, format, isSameDay, isAfter, startOfDay, startOfWeek, endOfMonth, endOfWeek, parse, isWithinInterval, subWeeks, getISODay, addDays, getISOWeekYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -353,7 +353,7 @@ export default function DashboardPage() {
         autoTable(doc, {
             startY: 33,
             head: [['Tipo de Ausencia', 'Total', 'Límite Anual', 'Exceso']],
-            body: summaryBody.map(s => [s.name, s.total, s.limit, s.excess]),
+            body: summaryBody.map(s => [s.total, s.limit, s.excess]),
             theme: 'grid',
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },
         });
@@ -378,7 +378,11 @@ export default function DashboardPage() {
     
         const weekIdsInYear: string[] = Object.keys(weeklyRecords).filter(weekId => {
             const weekDate = parseISO(weekId);
-            return getISOWeekYear(weekDate) === reportYear;
+            const weekYear = getISOWeekYear(weekDate);
+            if (reportYear === 2025) {
+                return weekYear === 2025;
+            }
+            return getYear(weekDate) === reportYear && weekYear === reportYear;
         }).sort();
         
         const confirmedWeekIds = weekIdsInYear.filter(weekId => weeklyRecords[weekId]?.weekData?.[employee.id]?.confirmed);
@@ -962,8 +966,5 @@ export default function DashboardPage() {
         </div>
       );
 }
-
-    
-    
 
     

@@ -179,7 +179,16 @@ export default function MySchedulePage() {
             setIsProcessing(true);
             const confirmedWeeks: ConfirmedWeek[] = [];
             const sortedWeekIds = Object.keys(weeklyRecords)
-                .filter(weekId => getISOWeekYear(parseISO(weekId)) === selectedYear)
+                .filter(weekId => {
+                    const weekDate = parseISO(weekId);
+                    const weekYear = getISOWeekYear(weekDate);
+                    // Special case for 2025 to include the week of 2024-12-30
+                    if (selectedYear === 2025) {
+                        return weekYear === 2025;
+                    }
+                    // For other years, only include weeks that start in that year
+                    return getYear(weekDate) === selectedYear && weekYear === selectedYear;
+                })
                 .sort();
 
             for (const weekId of sortedWeekIds) {
