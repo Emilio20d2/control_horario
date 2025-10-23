@@ -9,27 +9,22 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { getEmployeeBalancesTool, getEmployeeVacationSummaryTool } from '../tools/employee-tools';
 
-const MessageSchema = z.object({
-  text: z.string(),
-  sender: z.enum(['user', 'bot']),
-});
+export async function messageBotFlow(input: any): Promise<string> {
+    const MessageSchema = z.object({
+        text: z.string(),
+        sender: z.enum(['user', 'bot']),
+    });
 
-const MessageBotInputSchema = z.object({
-  employeeId: z.string().describe('The unique ID of the employee starting the conversation.'),
-  employeeName: z.string().describe('The name of the employee.'),
-  conversationHistory: z.array(MessageSchema).describe('The history of the conversation so far.'),
-});
-export type MessageBotInput = z.infer<typeof MessageBotInputSchema>;
+    const MessageBotInputSchema = z.object({
+        employeeId: z.string().describe('The unique ID of the employee starting the conversation.'),
+        employeeName: z.string().describe('The name of the employee.'),
+        conversationHistory: z.array(MessageSchema).describe('The history of the conversation so far.'),
+    });
 
-const MessageBotOutputSchema = z.string().describe('The plain text response from the bot.');
-export type MessageBotOutput = z.infer<typeof MessageBotOutputSchema>;
-
-
-export async function messageBotFlow(input: MessageBotInput): Promise<MessageBotOutput> {
-  const llmResponse = await ai.generate({
-    model: 'googleai/gemini-1.5-flash-latest',
-    tools: [getEmployeeBalancesTool, getEmployeeVacationSummaryTool],
-    prompt: `Eres Z-Assist, un asistente virtual de RRHH para la app "Control Horario". Tu objetivo es ser amable y ayudar a los empleados.
+    const llmResponse = await ai.generate({
+        model: 'googleai/gemini-1.5-flash-latest',
+        tools: [getEmployeeBalancesTool, getEmployeeVacationSummaryTool],
+        prompt: `Eres Z-Assist, un asistente virtual de RRHH para la app "Control Horario". Tu objetivo es ser amable y ayudar a los empleados.
 
 Tu identidad:
 - Nombre: Z-Assist.
@@ -46,11 +41,11 @@ Tus capacidades:
 Contexto de la Conversación Actual:
 - Estás hablando con: ${input.employeeName} (ID: ${input.employeeId})
 - Historial de la conversación:
-${input.conversationHistory.map(m => `${m.sender === 'user' ? input.employeeName : 'Z-Assist'}: ${m.text}`).join('\n')}
+${input.conversationHistory.map((m: any) => `${m.sender === 'user' ? input.employeeName : 'Z-Assist'}: ${m.text}`).join('\n')}
 
 Responde al último mensaje del usuario de forma natural y útil, usando tus herramientas si es necesario.
 `,
-  });
+    });
 
-  return llmResponse.output!;
+    return llmResponse.output!;
 }
