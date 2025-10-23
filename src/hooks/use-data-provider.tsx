@@ -1,3 +1,4 @@
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type {
@@ -41,7 +42,7 @@ import {
     deleteEmployeeGroup,
     updateEmployeeGroupOrder,
 } from '../lib/services/settingsService';
-import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth } from 'date-fns';
+import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, getISOWeekYear } from 'date-fns';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp } from 'firebase/firestore';
@@ -660,7 +661,7 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
         let totalComputedHours = 0;
     
         const relevantRecords = Object.values(weeklyRecords).filter(
-            record => record.weekData[employeeId] && getYear(parseISO(record.id)) === year && record.weekData[employeeId].confirmed
+            record => record.weekData[employeeId] && getISOWeekYear(parseISO(record.id)) === year && record.weekData[employeeId].confirmed
         );
     
         relevantRecords.forEach(weekRecord => {
@@ -668,7 +669,7 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
             if (employeeData?.days) {
                 Object.entries(employeeData.days).forEach(([dayKey, dayData]) => {
                     const dayDate = parseISO(dayKey);
-                    if (getYear(dayDate) !== year) return;
+                    if (getISOWeekYear(dayDate) !== year) return;
     
                     const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
                     let dailyComputable = 0;
@@ -732,7 +733,7 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
         for (const weekId in weeklyRecords) {
             const record = weeklyRecords[weekId];
             const empData = record?.weekData?.[employeeId];
-            if (empData && getYear(parseISO(weekId)) === year) {
+            if (empData && getISOWeekYear(parseISO(weekId)) === year) {
                 for (const dayStr in empData.days) {
                     if (suspensionAbsenceAbbrs.has(empData.days[dayStr].absence)) {
                         const day = parseISO(dayStr);
@@ -776,9 +777,19 @@ const getProcessedAnnualDataForEmployee = async (employeeId: string, year: numbe
     const yearEnd = new Date(year, 11, 31);
     const weekIdsInYear = new Set<string>();
     let currentDate = yearStart;
+    
+    // Logic to include the last week of the previous year if it belongs to the current ISO year
+    const firstDayOfYear = new Date(year, 0, 1);
+    if (getISOWeek(firstDayOfYear) > 1) { // It means week 1 started in the previous year
+        weekIdsInYear.add(getWeekId(startOfWeek(firstDayOfYear, { weekStartsOn: 1 })));
+    }
+
+
     while(currentDate <= yearEnd) {
-        weekIdsInYear.add(getWeekId(currentDate));
-        currentDate = addDays(currentDate, 1);
+        if(getISOWeekYear(currentDate) === year) {
+            weekIdsInYear.add(getWeekId(currentDate));
+        }
+        currentDate = addDays(currentDate, 7);
     }
     const sortedWeekIds = Array.from(weekIdsInYear).sort();
 
@@ -838,14 +849,14 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
     const yearsWithActivity = new Set<number>();
     Object.keys(weeklyRecords).forEach(weekId => {
         if (weeklyRecords[weekId].weekData[employeeId]) {
-            yearsWithActivity.add(getYear(parseISO(weekId)));
+            yearsWithActivity.add(getISOWeekYear(parseISO(weekId)));
         }
     });
     
     employee.employmentPeriods.forEach(p => {
-        yearsWithActivity.add(getYear(parseISO(p.startDate as string)));
+        yearsWithActivity.add(getISOWeekYear(parseISO(p.startDate as string)));
         if (p.endDate) {
-            yearsWithActivity.add(getYear(parseISO(p.endDate as string)));
+            yearsWithActivity.add(getISOWeekYear(parseISO(p.endDate as string)));
         }
     });
 
@@ -1062,7 +1073,6 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             if (searchStarted) {
                 const weekDate = parseISO(weekId);
                 
-                // Ignorar semanas anteriores a la fecha de auditoría
                 if (isBefore(weekDate, auditStartDate)) {
                     continue;
                 }
