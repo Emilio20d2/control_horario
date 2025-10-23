@@ -679,7 +679,7 @@ export default function VacationsPage() {
                 <CardContent>
                     {loading ? <Skeleton className="h-[600px] w-full" /> : (
                          <div className="overflow-auto h-[70vh] border rounded-lg">
-                             <table className="w-full border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
+                             <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
                                 <thead className="sticky top-0 z-10 bg-card shadow-sm">
                                     <tr>
                                         <th className="p-1 text-left font-semibold border-b border-r sticky left-0 bg-card z-20 overflow-hidden" style={{ width: '1px', padding: 0, overflow: 'hidden' }}>
@@ -692,7 +692,7 @@ export default function VacationsPage() {
                                                 <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
                                                     <div className='flex justify-between items-center h-full px-1'>
                                                         <div className="flex flex-col items-start">
-                                                            <span>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
+                                                            <span className='text-xs'>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
                                                             <div className="flex gap-3 mt-1 text-xs items-center font-normal text-muted-foreground">
                                                                 <Popover>
                                                                     <PopoverTrigger asChild>
@@ -736,22 +736,21 @@ export default function VacationsPage() {
                                                     const cellBg = cellHasContent ? (groupColors[group.id] || '#f0f0f0') : 'transparent';
                                                     
                                                     return (
-                                                        <td key={`${group.id}-${week.key}`} className="border p-1 align-top" style={{ backgroundColor: cellBg }}>
-                                                            <div className="flex flex-col gap-1 relative h-full">
+                                                        <td key={`${group.id}-${week.key}`} className="border p-0.5 align-top" style={{ backgroundColor: cellBg }}>
+                                                            <div className="flex flex-col gap-0.5 relative h-full">
                                                                 {employeesWithAbsenceInWeek.map(item => {
                                                                     if (!item) return null;
                                                                     const substitute = substitutesByWeek[week.key]?.find(s => s.employeeId === item.employee.id);
                                                                     const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
-                                                                    const { turnId } = getTheoreticalHoursAndTurn(item.employee.id, week.start);
-
+                                                                    
                                                                     return (
-                                                                        <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left p-0.5 text-xs truncate rounded-sm">
+                                                                        <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left p-0.5 text-[10px] truncate rounded-sm">
                                                                             <div className="flex items-center gap-1 flex-grow truncate">
                                                                                 <button 
                                                                                     onClick={() => setEditingAbsence({ employee: item.employee, absence: item.absence })}
                                                                                     className={cn("flex-grow text-left truncate", isSpecialAbsence && "text-blue-600 font-semibold")}
                                                                                 >
-                                                                                    {`${item.employee.name} (${item.absence.absenceAbbreviation}) (T.${turnId ? turnId.replace('turn', '') : '?'})`}
+                                                                                    {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
                                                                                 </button>
                                                                                 <Select onValueChange={(substituteId) => handleAssignSubstitute(week.key, item.employee.id, substituteId)}>
                                                                                     <SelectTrigger className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
@@ -765,7 +764,7 @@ export default function VacationsPage() {
                                                                                 </Select>
                                                                             </div>
                                                                             {substitute && (
-                                                                                <div className="text-xs truncate text-red-600 font-semibold ml-1 flex-shrink-0">
+                                                                                <div className="text-[10px] truncate text-red-600 font-semibold ml-1 flex-shrink-0">
                                                                                     Sust: {substitute.substituteName}
                                                                                 </div>
                                                                             )}
