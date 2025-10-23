@@ -1,21 +1,13 @@
 
 'use server';
 
-import { 
-    getDocs, 
-    collection, 
-    query, 
-    where, 
-    Timestamp,
-    getDoc,
-    doc
-} from 'firebase/firestore';
 import { getDbAdmin } from '@/lib/firebase-admin'; // Using admin SDK for server-side logic
 import type { 
     Employee, 
     AbsenceType, 
     WeeklyRecord, 
-    EmploymentPeriod 
+    EmploymentPeriod,
+    ContractType
 } from '@/lib/types';
 import { 
     getYear, 
@@ -54,7 +46,7 @@ export async function getFinalBalancesForEmployee(employeeId: string): Promise<{
         getCollectionData<Employee>('employees'),
         getCollectionData<WeeklyRecord>('weeklyRecords'),
         getCollectionData<AbsenceType>('absenceTypes'),
-        getCollectionData<any>('contractTypes'), // Using any to match the calculator's expectation
+        getCollectionData<ContractType>('contractTypes'),
     ]);
 
     const employee = employees.find(e => e.id === employeeId);
@@ -271,5 +263,3 @@ export async function getVacationSummaryForEmployee(employeeId: string): Promise
         vacationDays2024,
     };
 }
-
-    
