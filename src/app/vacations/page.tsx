@@ -682,8 +682,8 @@ export default function VacationsPage() {
                              <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
                                 <thead className="sticky top-0 z-10 bg-card shadow-sm">
                                     <tr>
-                                        <th className="p-1 text-left font-semibold border-b border-r sticky left-0 bg-card z-20 overflow-hidden" style={{ width: '1px', padding: 0, overflow: 'hidden' }}>
-                                            <div style={{width: '1px', overflow: 'hidden'}}>Grupo</div>
+                                        <th className="p-1 text-left font-semibold border-b border-r sticky left-0 bg-card z-20" style={{ width: '1px', overflow: 'hidden' }}>
+                                            <div className="w-0 opacity-0">Grupo</div>
                                         </th>
                                         {weeksOfYear.map(week => {
                                             const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
@@ -721,8 +721,8 @@ export default function VacationsPage() {
                                         const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
                                         return (
                                             <tr key={group.id}>
-                                                <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ width: '1px', padding: 0, overflow: 'hidden' }}>
-                                                   <div style={{width: '1px', overflow: 'hidden'}}>{group.name}</div>
+                                                <td className="border p-0 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ width: '1px', overflow: 'hidden' }}>
+                                                   <div className="w-0 opacity-0">{group.name}</div>
                                                 </td>
                                                 {weeksOfYear.map(week => {
                                                     const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
@@ -736,22 +736,22 @@ export default function VacationsPage() {
                                                     const cellBg = cellHasContent ? (groupColors[group.id] || '#f0f0f0') : 'transparent';
                                                     
                                                     return (
-                                                        <td key={`${group.id}-${week.key}`} className="border p-0.5 align-top" style={{ backgroundColor: cellBg }}>
-                                                            <div className="flex flex-col gap-0.5 relative h-full">
+                                                        <td key={`${group.id}-${week.key}`} className="border p-0 align-top" style={{ backgroundColor: cellBg }}>
+                                                            <div className="flex flex-col gap-0 relative h-full">
                                                                 {employeesWithAbsenceInWeek.map(item => {
                                                                     if (!item) return null;
                                                                     const substitute = substitutesByWeek[week.key]?.find(s => s.employeeId === item.employee.id);
                                                                     const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
                                                                     
                                                                     return (
-                                                                        <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left p-0.5 text-[10px] truncate rounded-sm">
-                                                                            <div className="flex items-center gap-1 flex-grow truncate">
-                                                                                <button 
-                                                                                    onClick={() => setEditingAbsence({ employee: item.employee, absence: item.absence })}
-                                                                                    className={cn("flex-grow text-left truncate", isSpecialAbsence && "text-blue-600 font-semibold")}
-                                                                                >
-                                                                                    {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
-                                                                                </button>
+                                                                        <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left py-0 px-0.5 text-[10px] truncate rounded-sm">
+                                                                            <button 
+                                                                                onClick={() => setEditingAbsence({ employee: item.employee, absence: item.absence })}
+                                                                                className={cn("flex-grow text-left truncate", isSpecialAbsence && "text-blue-600 font-semibold")}
+                                                                            >
+                                                                                {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
+                                                                            </button>
+                                                                            <div className="flex items-center gap-1 flex-shrink-0">
                                                                                 <Select onValueChange={(substituteId) => handleAssignSubstitute(week.key, item.employee.id, substituteId)}>
                                                                                     <SelectTrigger className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
                                                                                          <Plus className="h-3 w-3" />
@@ -762,12 +762,12 @@ export default function VacationsPage() {
                                                                                         ))}
                                                                                     </SelectContent>
                                                                                 </Select>
+                                                                                {substitute && (
+                                                                                    <div className="text-[10px] truncate text-red-600 font-semibold">
+                                                                                        Sust: {substitute.substituteName}
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
-                                                                            {substitute && (
-                                                                                <div className="text-[10px] truncate text-red-600 font-semibold ml-1 flex-shrink-0">
-                                                                                    Sust: {substitute.substituteName}
-                                                                                </div>
-                                                                            )}
                                                                         </div>
                                                                     )
                                                                 })}
