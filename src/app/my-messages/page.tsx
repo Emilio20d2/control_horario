@@ -15,7 +15,7 @@ import { db } from '@/lib/firebase';
 import type { Message } from '@/lib/types';
 import { format } from 'date-fns';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { generateBotResponse } from '@/ai/flows/message-bot-flow';
+import { generateBotResponse } from './actions';
 
 export default function MyMessagesPage() {
     const { employeeRecord, loading, conversations } = useDataProvider();
