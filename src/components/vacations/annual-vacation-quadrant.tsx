@@ -24,8 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from '../ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { endOfWeek, endOfDay } from 'date-fns';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { generateAnnualReportPDF, generateAnnualDetailedReportPDF, generateAbsenceReportPDF } from '@/lib/report-generators';
 
 interface AutoTableWithUserOptions extends jsPDF.UserOptions {
     didDrawCell?: (data: {
@@ -201,7 +200,7 @@ const QuadrantTable = forwardRef<HTMLDivElement, { isFullscreen?: boolean, selec
                                                         <button
                                                             className='flex flex-row items-center gap-2 text-left text-sm font-semibold'
                                                             onClick={() => {
-                                                                if (absenceData && employeeData && !employeeData.isExternal) {
+                                                                if (absenceData && employeeData && !employeeData.isEventual) {
                                                                     onEditAbsence(employeeData, absenceData, absenceData.periodId);
                                                                 }
                                                             }}
@@ -384,9 +383,9 @@ export function AnnualVacationQuadrant() {
         return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
     }, [weeklyRecords]);
     
-    const allEmployees = useMemo(() => {
+     const allEmployees = useMemo(() => {
         if (loading) return [];
-        
+    
         const mainEmployees = employees
           .filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
           .map(e => {
@@ -394,22 +393,20 @@ export function AnnualVacationQuadrant() {
             const weeklyHours = getEffectiveWeeklyHours(activePeriod || null, new Date());
             return {
                 ...e, 
-                isExternal: false,
                 isEventual: false,
                 workShift: `${weeklyHours.toFixed(2)}h`
             };
         });
         
-        const mainEmployeeNames = new Set(mainEmployees.map(me => me.name.trim().toLowerCase()));
+        const mainEmployeeIds = new Set(mainEmployees.map(me => me.id));
 
         const externalEmployees = holidayEmployees
-            .filter(he => he.active && !mainEmployeeNames.has(he.name.trim().toLowerCase()))
+            .filter(he => he.active && !mainEmployeeIds.has(he.id))
             .map(e => ({
                 id: e.id,
                 name: e.name,
                 groupId: e.groupId,
-                isExternal: true, // Legacy property, may be useful
-                isEventual: true, // Clearer property name
+                isEventual: true,
                 workShift: e.workShift,
                 employmentPeriods: [],
             }));
@@ -479,7 +476,7 @@ export function AnnualVacationQuadrant() {
             absencesByEmployee[emp.id] = [];
             const allAbsenceDays = new Map<string, { typeId: string, typeAbbr: string, periodId?: string, absenceId?: string, isScheduled: boolean }>();
 
-            if (!emp.isExternal) {
+            if (!emp.isEventual) {
                  emp.employmentPeriods.forEach((period: EmploymentPeriod) => {
                     (period.scheduledAbsences ?? [])
                         .filter(a => schedulableAbsenceTypeIds.has(a.absenceTypeId))
@@ -755,7 +752,7 @@ export function AnnualVacationQuadrant() {
                         currentY += maxRowHeight;
                     });
                 }
-            } as AutoTableWithUserOptions);
+            } as any);
         });
     
         doc.save(`cuadrante_ausencias_${selectedYear}.pdf`);
@@ -856,7 +853,7 @@ export function AnnualVacationQuadrant() {
             },
         };
     
-        autoTable(doc, autoTableOptions);
+        autoTable(doc, autoTableOptions as any);
     
         doc.save(`listado_firmas_vacaciones_${selectedYear}.pdf`);
         setIsGenerating(false);
@@ -1063,4 +1060,5 @@ export function AnnualVacationQuadrant() {
     
 
     
+
 
