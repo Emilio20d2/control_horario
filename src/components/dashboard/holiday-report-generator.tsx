@@ -120,7 +120,7 @@ export function HolidayReportGenerator() {
         // Hack para calcular el número total de páginas
         const tempDoc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
         autoTable(tempDoc, { head: [head], body, startY: 25 });
-        const totalPages = tempDoc.internal.getNumberOfPages();
+        const totalPages = (tempDoc as any).internal.getNumberOfPages();
         
         const columnStyles: { [key: number]: any } = { 0: { cellWidth: 'auto' } };
         const otherColumnsCount = head.length - 1;

@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { GripVertical, FileDown, Loader2 } from 'lucide-react';
 import { isAfter } from 'date-fns';
@@ -123,7 +123,7 @@ export function PersonalDataReportGenerator() {
             ...orderedFields.map(fieldId => getEmployeeData(emp, fieldId))
         ]);
 
-        (doc as any).autoTable({
+        autoTable(doc, {
             head: [headers],
             body,
             startY: data.description ? pageMargin + 15 + (doc.getTextDimensions(data.description).h) : pageMargin + 10,

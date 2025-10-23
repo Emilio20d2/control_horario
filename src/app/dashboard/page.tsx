@@ -560,18 +560,18 @@ export default function DashboardPage() {
                 styles: { fontSize: 7, cellPadding: 0.8, cellHeight: 4 },
                 headStyles: { fillColor: [230, 230, 230], textColor: 20, fontStyle: 'bold', cellHeight: 4.5 },
                 didParseCell: (data) => {
-                    if (data.section === 'head' && data.column.index > 1) data.cell.styles.halign = 'center';
-                    if (data.section === 'body' && data.column.index > 1) data.cell.styles.halign = 'right';
-                    if (data.section === 'body' && data.column.index === 6) data.cell.styles.halign = 'center';
+                    if (data.section === 'head' && data.column.index > 1) (data.cell.styles as any).halign = 'center';
+                    if (data.section === 'body' && data.column.index > 1) (data.cell.styles as any).halign = 'right';
+                    if (data.section === 'body' && data.column.index === 6) (data.cell.styles as any).halign = 'center';
                     if (data.section === 'body') {
                         const day = weekDays[data.row.index];
                         const dayData = weekData.days[format(day, 'yyyy-MM-dd')];
                         const holiday = holidays.find(h => isSameDay(h.date, day));
 
                         if (holiday) {
-                            data.cell.styles.fillColor = holiday.type === 'Apertura' ? '#e8f5e9' : '#eeeeee';
+                            (data.cell.styles as any).fillColor = holiday.type === 'Apertura' ? '#e8f5e9' : '#eeeeee';
                         } else if (dayData && dayData.absence !== 'ninguna') {
-                            data.cell.styles.fillColor = '#fff5f5';
+                            (data.cell.styles as any).fillColor = '#fff5f5';
                         }
                     }
                 },

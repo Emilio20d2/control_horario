@@ -119,7 +119,7 @@ export default function ListingsPage() {
     let tempDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     addHeaderFooter(tempDoc, 1, 1);
     autoTable(tempDoc, { head, body, margin: { top: initialY } });
-    const totalPages = tempDoc.internal.getNumberOfPages();
+    const totalPages = (tempDoc as any).internal.getNumberOfPages();
     
     const employeeColWidth = (Math.max(
         doc.getStringUnitWidth('Empleado') * doc.getFontSize() / doc.internal.scaleFactor,
@@ -178,7 +178,7 @@ export default function ListingsPage() {
         },
     });
 
-    const finalPageCount = doc.internal.getNumberOfPages();
+    const finalPageCount = (doc as any).internal.getNumberOfPages();
     if (finalPageCount > totalPages) {
         for (let i = totalPages + 1; i <= finalPageCount; i++) {
             doc.setPage(i);

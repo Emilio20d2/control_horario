@@ -25,7 +25,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { cn } from '@/lib/utils';
 import { endOfWeek, endOfDay } from 'date-fns';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable'; // Import this to apply the plugin
+import autoTable from 'jspdf-autotable';
 
 interface AutoTableWithUserOptions extends jsPDF.UserOptions {
     didDrawCell?: (data: {
@@ -696,7 +696,7 @@ export function AnnualVacationQuadrant() {
                 return `${format(weekInfo.start, 'dd/MM')} - ${format(weekInfo.end, 'dd/MM')}${turnText}\n\n${summary.employeeCount} Empl. / ${summary.hourImpact.toFixed(0)}h`;
             });
     
-            (doc as any).autoTable({
+            autoTable(doc, {
                 head: [headContent],
                 body: [],
                 startY: 25,
@@ -704,7 +704,7 @@ export function AnnualVacationQuadrant() {
                 styles: { fontSize: 8, valign: 'middle', cellPadding: 1, lineColor: 128, lineWidth: 0.1 },
                 headStyles: { fontStyle: 'bold', fillColor: '#d3d3d3', textColor: 0, halign: 'center', minCellHeight: 15 },
                 didDrawPage: (data) => {
-                    const tableHeader = data.table.head[0];
+                    const tableHeader = (data.table as any).head[0];
                     if (!tableHeader) return;
     
                     const maxRowHeight = 120 / sortedGroups.length;
@@ -716,7 +716,7 @@ export function AnnualVacationQuadrant() {
                             const week = chunk[colIndex];
                             if (!week) continue;
     
-                            const cell = data.table.body[0]?.cells?.[colIndex] ?? data.table.columns[colIndex];
+                            const cell = (data.table as any).body[0]?.cells?.[colIndex] ?? (data.table as any).columns[colIndex];
                             if (!cell || typeof cell.x !== 'number' || typeof cell.y !== 'number' || typeof cell.width !== 'number' || typeof cell.height !== 'number') continue;
                             
                             doc.setFillColor(255, 255, 255);
@@ -842,7 +842,7 @@ export function AnnualVacationQuadrant() {
             didParseCell: (data) => {
                 if (data.column.index === 2 && data.section === 'body') {
                     // Set a minimum height for the entire row to ensure the box fits.
-                    data.cell.styles.minCellHeight = 22;
+                    (data.cell.styles as any).minCellHeight = 22;
                 }
             },
             didDrawCell: (data) => {
@@ -856,7 +856,7 @@ export function AnnualVacationQuadrant() {
             },
         };
     
-        (doc as any).autoTable(autoTableOptions);
+        autoTable(doc, autoTableOptions);
     
         doc.save(`listado_firmas_vacaciones_${selectedYear}.pdf`);
         setIsGenerating(false);
@@ -886,7 +886,7 @@ export function AnnualVacationQuadrant() {
             `${data.totalTaken} / ${data.totalAvailable}`
         ]);
     
-        (doc as any).autoTable({
+        autoTable(doc, {
             head: [['Empleado', 'Invierno', 'Verano', 'Balance']],
             body: body,
             startY: 22,
@@ -899,12 +899,12 @@ export function AnnualVacationQuadrant() {
             },
             didDrawCell: (data) => {
                 if (data.section === 'body' && (data.column.index === 1 || data.column.index === 2)) {
-                    if (data.cell.text[0] === 'OK') {
+                    if ((data.cell.text as string[])[0] === 'OK') {
                         data.cell.styles.textColor = [34, 139, 34]; // ForestGreen
                     }
                 }
                  if (data.section === 'body' && data.column.index === 3) {
-                    const balanceText = Array.isArray(data.cell.raw) ? data.cell.raw[0] : data.cell.raw as string;
+                    const balanceText = Array.isArray(data.cell.raw) ? (data.cell.raw as any)[0] : data.cell.raw as string;
                     if(typeof balanceText === 'string') {
                         const [takenStr, availableStr] = balanceText.split(' / ');
                         const taken = Number(takenStr);
@@ -1063,3 +1063,4 @@ export function AnnualVacationQuadrant() {
     
 
     
+

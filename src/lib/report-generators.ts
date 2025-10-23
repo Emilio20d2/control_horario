@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable'; // Import this to apply the plugin
+import autoTable from 'jspdf-autotable';
 import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Employee, WeeklyRecord, AbsenceType, Holiday } from './types';
@@ -181,7 +181,7 @@ export async function generateAnnualReportPDF(employee: Employee, year: number, 
             ];
         });
 
-        (doc as any).autoTable({
+        autoTable(doc, {
             head,
             body,
             startY: balancesYStart,
@@ -191,18 +191,18 @@ export async function generateAnnualReportPDF(employee: Employee, year: number, 
             styles: { fontSize: 7, cellPadding: 0.8, cellHeight: 4 },
             headStyles: { fillColor: [230, 230, 230], textColor: 20, fontStyle: 'bold', cellHeight: 4.5 },
             didParseCell: (data) => {
-                if (data.section === 'head' && data.column.index > 1) data.cell.styles.halign = 'center';
-                if (data.section === 'body' && data.column.index > 1) data.cell.styles.halign = 'right';
-                if (data.section === 'body' && data.column.index === 6) data.cell.styles.halign = 'center';
+                if (data.section === 'head' && data.column.index > 1) (data.cell.styles as any).halign = 'center';
+                if (data.section === 'body' && data.column.index > 1) (data.cell.styles as any).halign = 'right';
+                if (data.section === 'body' && data.column.index === 6) (data.cell.styles as any).halign = 'center';
                 if (data.section === 'body') {
                     const day = weekDays[data.row.index];
                     const dayData = weekData.days[format(day, 'yyyy-MM-dd')];
                     const holiday = holidays.find(h => isSameDay(h.date, day));
 
                     if (holiday) {
-                        data.cell.styles.fillColor = holiday.type === 'Apertura' ? '#e8f5e9' : '#eeeeee';
+                        (data.cell.styles as any).fillColor = holiday.type === 'Apertura' ? '#e8f5e9' : '#eeeeee';
                     } else if (dayData && dayData.absence !== 'ninguna') {
-                        data.cell.styles.fillColor = '#fff5f5';
+                        (data.cell.styles as any).fillColor = '#fff5f5';
                     }
                 }
             },
@@ -303,7 +303,7 @@ export async function generateAnnualDetailedReportPDF(employee: Employee, year: 
         return [weekLabel, concept, weeklyComputableHours !== 0 ? weeklyComputableHours.toFixed(2) : ''];
     });
 
-    (doc as any).autoTable({
+    autoTable(doc, {
         head: [['Semana', 'Concepto', 'Horas que Computan']],
         body: bodyRows,
         startY: currentY + 10,
@@ -398,7 +398,7 @@ export async function generateAbsenceReportPDF(employee: Employee, year: number,
     doc.setFontSize(12).setFont('helvetica', 'bold');
     doc.text('Resumen por Tipo de Ausencia', 14, 30);
     
-    (doc as any).autoTable({
+    autoTable(doc, {
         startY: 33,
         head: [['Tipo de Ausencia', 'Total', 'Límite Anual', 'Exceso']],
         body: summaryBody.map(s => [s.name, s.total, s.limit, s.excess]),
