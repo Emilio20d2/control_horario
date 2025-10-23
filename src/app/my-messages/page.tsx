@@ -101,10 +101,10 @@ export default function MyMessagesPage() {
         try {
             const history = [
                 ...formattedMessages.map(m => {
-                    const senderName = m.senderId === employeeRecord.id ? employeeRecord.name : 'Z-Assist';
+                    const senderName = m.senderId === employeeRecord.id ? 'Usuario' : 'Z-Assist';
                     return `${senderName}: ${m.text}`;
                 }),
-                `${employeeRecord.name}: ${messageText}`
+                `Usuario: ${messageText}`
             ].join('\n');
 
             const botResponse = await generateBotResponse({
