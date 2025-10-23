@@ -141,6 +141,30 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
         <Card>
             <CardContent className="space-y-8 pt-6">
 
+                {!isEmployeeView && (
+                    <>
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-medium">Datos Personales</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">DNI</p>
+                                    <p>{employee.dni || 'No especificado'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Teléfono</p>
+                                    <p>{employee.phone || 'No especificado'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Email</p>
+                                    <p>{employee.email || 'No especificado'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <Separator />
+                    </>
+                )}
+
+
                 <div className="space-y-4">
                     <h3 className="text-lg font-medium">Datos del Contrato</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
