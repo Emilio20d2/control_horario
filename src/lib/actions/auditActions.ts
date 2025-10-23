@@ -14,12 +14,13 @@ interface RecordUpdate {
   isDifference: boolean;
 }
 
-const getEffectiveWeeklyHoursForAudit = (period: EmploymentPeriod, date: Date): number => {
-    if (!period?.workHoursHistory || period.workHoursHistory.length === 0) return 0;
-    const targetDate = startOfDay(date);
-    const history = [...period.workHoursHistory].sort((a,b) => parseISO(b.effectiveDate).getTime() - parseISO(a.effectiveDate).getTime());
-    const effectiveRecord = history.find(record => !isAfter(startOfDay(parseISO(record.effectiveDate)), targetDate));
-    return effectiveRecord?.weeklyHours || 0;
+const getActivePeriodForAudit = (employee: Employee, date: Date): EmploymentPeriod | null => {
+    if (!employee?.employmentPeriods) return null;
+    return employee.employmentPeriods.find(p => {
+        const pStart = startOfDay(parseISO(p.startDate as string));
+        const pEnd = p.endDate ? startOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
+        return !isAfter(pStart, date) && isAfter(pEnd, date);
+    }) || null;
 };
 
 
@@ -60,11 +61,7 @@ export async function runRetroactiveAudit() {
 
                 const weekStartDate = parseISO(weekId);
                 
-                const activePeriod = employee.employmentPeriods.find(p => {
-                    const pStart = startOfDay(parseISO(p.startDate as string));
-                    const pEnd = p.endDate ? startOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
-                    return !isAfter(pStart, weekStartDate) && isAfter(pEnd, weekStartDate);
-                });
+                const activePeriod = getActivePeriodForAudit(employee, weekStartDate);
 
                 if (!activePeriod) continue;
 

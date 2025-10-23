@@ -5,5 +5,3 @@
  * The logic has been moved directly into `src/hooks/use-data-provider.tsx`
  * as a standard TypeScript function to ensure clarity and reliability.
  */
-
-    

@@ -1,4 +1,3 @@
-
 import { getISODay, isAfter, parseISO, startOfDay } from "date-fns";
 import type { AbsenceType, ContractType, DailyData, EmploymentPeriod } from "../types";
 
