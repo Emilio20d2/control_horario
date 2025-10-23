@@ -163,6 +163,17 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
                             <p className="text-sm font-medium text-muted-foreground">Email</p>
                             <p>{employee?.email || 'N/A'}</p>
                         </div>
+                         <div>
+                            <p className="text-sm font-medium text-muted-foreground">Agrupación</p>
+                            {employeeGroup ? (
+                                <p className="flex items-center gap-1">
+                                    <Users className="h-4 w-4" />
+                                    {employeeGroup.name}
+                                </p>
+                            ) : (
+                                <p>Sin agrupación</p>
+                            )}
+                        </div>
                     </div>
                 </div>
 
