@@ -526,7 +526,7 @@ export default function VacationsPage() {
         <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
           <thead className="sticky top-0 z-10 bg-card shadow-sm">
             <tr>
-              <th className="p-0 border-b border-r sticky left-0 bg-card z-20" style={{ width: '1px', overflow: 'hidden' }}>
+              <th className="p-0 border-b border-r sticky left-0 bg-card z-20" style={{ width: '0.1px', overflow: 'hidden' }}>
                  <div className="w-0 opacity-0">Grupo</div>
               </th>
               {weeksOfYear.map(week => {
@@ -565,7 +565,7 @@ export default function VacationsPage() {
               const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
               return (
                 <tr key={group.id}>
-                  <td className="border p-0 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ width: '1px', overflow: 'hidden' }}>
+                  <td className="border p-0 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ width: '0.1px', overflow: 'hidden' }}>
                      <div className="w-0 opacity-0">{group.name}</div>
                   </td>
                   {weeksOfYear.map(week => {
@@ -825,6 +825,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-
-
-
