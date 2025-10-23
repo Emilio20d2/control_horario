@@ -10,7 +10,6 @@ const firebaseConfig = {
   "storageBucket": "shiftmaster-9iefy.appspot.com",
   "apiKey": "AIzaSyBoZTFnt7kh_moxTzuS5zR1LNe86nvuOs4",
   "authDomain": "shiftmaster-9iefy.firebaseapp.com",
-  "measurementId": "",
   "messagingSenderId": "904324719398"
 };
 
@@ -24,6 +23,7 @@ const auth = getAuth(app);
 
 
 export { app, db, auth, firebaseConfig };
+
 
 
 
