@@ -128,7 +128,7 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>Datos del Contrato y Personales</CardTitle>
+                    <CardTitle>Datos del Contrato</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <p className="text-muted-foreground">No se pudo cargar la información del empleado.</p>
@@ -140,29 +140,6 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
     return (
         <Card>
             <CardContent className="space-y-8 pt-6">
-                <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Datos Personales</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground">Nº Empleado</p>
-                            <p>{employee?.employeeNumber || 'N/A'}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground">DNI</p>
-                            <p>{employee?.dni || 'N/A'}</p>
-                        </div>
-                         <div>
-                            <p className="text-sm font-medium text-muted-foreground">Teléfono</p>
-                            <p>{employee?.phone || 'N/A'}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground">Email</p>
-                            <p>{employee?.email || 'N/A'}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <Separator />
 
                 <div className="space-y-4">
                     <h3 className="text-lg font-medium">Datos del Contrato</h3>

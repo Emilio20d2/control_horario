@@ -104,7 +104,7 @@ export default function MyProfilePage() {
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
             <h1 className="text-2xl font-bold tracking-tight font-headline">
-                Mi Ficha Personal
+                {employee.name} <span className="text-lg font-medium text-muted-foreground">({employee.employeeNumber})</span>
             </h1>
 
             <div className="grid grid-cols-2 gap-4">
