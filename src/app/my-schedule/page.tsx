@@ -6,7 +6,7 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getYear, isAfter, parseISO, endOfWeek, eachDayOfInterval, format, isSameDay, getISODay, isBefore } from 'date-fns';
+import { getYear, isAfter, parseISO, endOfWeek, eachDayOfInterval, format, isSameDay, getISODay, isBefore, getISOWeekYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -158,7 +158,7 @@ export default function MySchedulePage() {
 
     const availableYears = useMemo(() => {
         if (!weeklyRecords) return [new Date().getFullYear()];
-        const years = new Set(Object.keys(weeklyRecords).map(id => parseInt(id.split('-')[0], 10)));
+        const years = new Set(Object.keys(weeklyRecords).map(id => getISOWeekYear(parseISO(id))));
         const currentYear = new Date().getFullYear();
         if (!years.has(currentYear)) years.add(currentYear);
         years.add(currentYear + 1);
@@ -182,12 +182,11 @@ export default function MySchedulePage() {
 
             for (const weekId of sortedWeekIds) {
                 const weekStartDate = parseISO(weekId);
-                const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
                 const weekData = weeklyRecords[weekId]?.weekData?.[employee.id];
                 
-                const isInYear = getYear(weekStartDate) === selectedYear || getYear(weekEndDate) === selectedYear;
+                const isoYear = getISOWeekYear(weekStartDate);
 
-                if (weekData?.confirmed && isInYear) {
+                if (weekData?.confirmed && isoYear === selectedYear) {
                     const initialBalances = getEmployeeBalancesForWeek(employee.id, weekId);
                     const impact = await calculateBalancePreview(employee.id, weekData.days, initialBalances, weekData.weeklyHoursOverride, weekData.totalComplementaryHours);
                     if (impact) {
@@ -276,3 +275,5 @@ export default function MySchedulePage() {
         </div>
     );
 }
+
+    

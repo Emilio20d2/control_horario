@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Bar, CartesianGrid, XAxis, BarChart as RechartsBarChart } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getMonth, getYear, parseISO, format, isSameDay, isAfter, startOfDay, startOfWeek, endOfMonth, endOfWeek, parse, isWithinInterval, parseFromISO, subWeeks, getISODay, addDays } from 'date-fns';
+import { getMonth, getYear, parseISO, format, isSameDay, isAfter, startOfDay, startOfWeek, endOfMonth, endOfWeek, parse, isWithinInterval, parseFromISO, subWeeks, getISODay, addDays, getISOWeekYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -107,7 +107,7 @@ export default function DashboardPage() {
     
     const availableYears = useMemo(() => {
         if (!weeklyRecords) return [new Date().getFullYear()];
-        const years = new Set(Object.keys(weeklyRecords).map(id => parseInt(id.split('-')[0])));
+        const years = new Set(Object.keys(weeklyRecords).map(id => getISOWeekYear(parseISO(id))));
         const currentYear = new Date().getFullYear();
         if (!years.has(currentYear)) {
             years.add(currentYear);
@@ -135,7 +135,7 @@ export default function DashboardPage() {
 
     const annualRecordsForAbsences = useMemo(() => {
         return Object.values(weeklyRecords).filter(record => {
-            const yearFromId = parseInt(record.id.split('-')[0], 10);
+            const yearFromId = getISOWeekYear(parseISO(record.id));
             return yearFromId === absenceReportYear;
         });
     }, [weeklyRecords, absenceReportYear]);
@@ -239,7 +239,8 @@ export default function DashboardPage() {
             const empWeekData = record.weekData[employee.id];
             if (empWeekData?.days) {
                 Object.entries(empWeekData.days).forEach(([dateStr, dayData]) => {
-                    if (getYear(parseISO(dateStr)) !== absenceReportYear) return;
+                    const dayDate = parseISO(dateStr);
+                    if (getYear(dayDate) !== absenceReportYear && getISOWeekYear(dayDate) !== absenceReportYear) return;
     
                     const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
                     if (absenceType && dayData.absence !== 'ninguna') {
@@ -380,7 +381,11 @@ export default function DashboardPage() {
         let weekIdsInYear: string[] = [];
         let currentDate = yearStart;
         while (currentDate <= yearEnd) {
-            weekIdsInYear.push(getWeekId(currentDate));
+            const weekId = getWeekId(currentDate);
+            const isoYear = getISOWeekYear(currentDate);
+            if (isoYear === reportYear && !weekIdsInYear.includes(weekId)) {
+                weekIdsInYear.push(weekId);
+            }
             currentDate = addDays(currentDate, 7);
         }
         weekIdsInYear = [...new Set(weekIdsInYear)].sort();
@@ -968,4 +973,6 @@ export default function DashboardPage() {
 }
 
     
+    
+
     
