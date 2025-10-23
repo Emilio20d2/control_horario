@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -190,15 +189,16 @@ export default function VacationsPage() {
     }, [schedulableAbsenceTypes, selectedAbsenceTypeId]);
     
     const { employeesWithAbsences, weeklySummaries, employeesByWeek } = useMemo(() => {
-        const year = selectedYear;
         const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
+        const schedulableAbbrs = new Set(schedulableAbsenceTypes.map(at => at.abbreviation));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
 
         allEmployeesForQuadrant.forEach(emp => {
-            const allAbsenceDays = new Map<string, { typeId: string, typeAbbr: string, periodId?: string, absenceId?: string }>();
-            
+            const allAbsenceDays = new Map<string, { typeId: string; typeAbbr: string; periodId?: string; absenceId?: string; }>();
+
+            // 1. Get from scheduledAbsences
             if (!emp.isEventual && emp.employmentPeriods) {
-                 emp.employmentPeriods.forEach(period => {
+                emp.employmentPeriods.forEach(period => {
                     (period.scheduledAbsences || []).filter(a => schedulableIds.has(a.absenceTypeId))
                         .forEach(absence => {
                             if (!absence.endDate) return;
@@ -206,9 +206,9 @@ export default function VacationsPage() {
                             if (!absenceType) return;
                             eachDayOfInterval({ start: startOfDay(absence.startDate), end: startOfDay(absence.endDate) }).forEach(day => {
                                 if (getISOWeekYear(day) === selectedYear) {
-                                    allAbsenceDays.set(format(day, 'yyyy-MM-dd'), { 
-                                        typeId: absenceType.id, 
-                                        typeAbbr: absenceType.abbreviation, 
+                                    allAbsenceDays.set(format(day, 'yyyy-MM-dd'), {
+                                        typeId: absenceType.id,
+                                        typeAbbr: absenceType.abbreviation,
                                         periodId: period.id,
                                         absenceId: absence.id,
                                     });
@@ -217,6 +217,28 @@ export default function VacationsPage() {
                         });
                 });
             }
+
+            // 2. Get from weeklyRecords for point absences
+            Object.values(weeklyRecords).forEach(record => {
+                const empWeekData = record.weekData[emp.id];
+                if (!empWeekData?.days) return;
+
+                Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                    const day = parseISO(dayStr);
+                    if (getISOWeekYear(day) === selectedYear && dayData.absence && schedulableAbbrs.has(dayData.absence)) {
+                         if (!allAbsenceDays.has(dayStr)) {
+                            const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
+                            if (absenceType) {
+                                allAbsenceDays.set(dayStr, {
+                                    typeId: absenceType.id,
+                                    typeAbbr: absenceType.abbreviation,
+                                    absenceId: `weekly-${dayStr}` // Create a temporary unique ID
+                                });
+                            }
+                         }
+                    }
+                });
+            });
             
             const sortedDays = Array.from(allAbsenceDays.keys()).map(d => parseISO(d)).sort((a,b) => a.getTime() - b.getTime());
             const periods: FormattedAbsence[] = [];
@@ -243,13 +265,13 @@ export default function VacationsPage() {
             employeesWithAbsences[emp.id] = periods;
         });
         
-        const yearStartBoundary = startOfYear(new Date(year, 0, 1));
-        const yearEndBoundary = endOfYear(new Date(year, 11, 31));
+        const yearStartBoundary = startOfYear(new Date(selectedYear, 0, 1));
+        const yearEndBoundary = endOfYear(new Date(selectedYear, 11, 31));
         let weeks = eachWeekOfInterval({ start: yearStartBoundary, end: yearEndBoundary }, { weekStartsOn: 1 });
-        if (getISOWeekYear(subDays(yearStartBoundary, 1)) === year) {
+        if (getISOWeekYear(subDays(yearStartBoundary, 1)) === selectedYear) {
             weeks.unshift(startOfWeek(subDays(yearStartBoundary, 1), { weekStartsOn: 1 }));
         }
-        if (getISOWeekYear(weeks[0]) < year) {
+        if (getISOWeekYear(weeks[0]) < selectedYear) {
              weeks.shift();
         }
         const weeksOfYear = weeks.map(weekStart => ({
@@ -282,10 +304,15 @@ export default function VacationsPage() {
 
         return { employeesWithAbsences, weeklySummaries, employeesByWeek };
 
-    }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId]);
+    }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords]);
     
     const handleUpdateAbsence = async () => {
         if (!editingAbsence || !editedDateRange?.from) return;
+        
+        if (editingAbsence.absence.id.startsWith('weekly-')) {
+            toast({ title: 'No editable', description: 'Las ausencias puntuales registradas en el horario semanal no se pueden editar desde aquí.', variant: 'destructive' });
+            return;
+        }
 
         setIsGenerating(true);
         try {
@@ -314,6 +341,12 @@ export default function VacationsPage() {
     
     const handleDeleteAbsence = async () => {
         if (!editingAbsence) return;
+        
+        if (editingAbsence.absence.id.startsWith('weekly-')) {
+            toast({ title: 'No editable', description: 'Las ausencias puntuales registradas en el horario semanal no se pueden borrar desde aquí.', variant: 'destructive' });
+            return;
+        }
+
         setIsGenerating(true);
         try {
             const { employee, absence } = editingAbsence;
