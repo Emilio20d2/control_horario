@@ -24,7 +24,6 @@ export function HolidayEmployeeManager() {
     const { toast } = useToast();
 
     const [newEmployeeName, setNewEmployeeName] = useState('');
-    const [newEmployeeWorkShift, setNewEmployeeWorkShift] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -48,15 +47,12 @@ export function HolidayEmployeeManager() {
                 if (!activePeriod) {
                     return null;
                 }
-
-                const weeklyHours = getEffectiveWeeklyHours(activePeriod, new Date());
                 
                 return {
                     id: mainEmp.id,
                     name: mainEmp.name,
                     groupId: holidayEmp?.groupId,
                     active: holidayEmp?.active ?? true,
-                    workShift: `${weeklyHours.toFixed(2)}h`,
                     isEventual: false,
                 };
             } else if (holidayEmp) {
@@ -66,7 +62,7 @@ export function HolidayEmployeeManager() {
         }).filter((emp): emp is HolidayEmployee & { isEventual: boolean; workShift?: string } => emp !== null)
           .sort((a, b) => a.name.localeCompare(b.name));
 
-    }, [loading, employees, holidayEmployees, getEffectiveWeeklyHours, employeeGroups]);
+    }, [loading, employees, holidayEmployees]);
 
 
     const handleAddEmployee = async (e: React.FormEvent) => {
@@ -79,11 +75,9 @@ export function HolidayEmployeeManager() {
         try {
             await addHolidayEmployee({
                 name: newEmployeeName.trim(),
-                workShift: newEmployeeWorkShift || null,
             });
             toast({ title: 'Empleado añadido', description: `Se ha añadido a ${newEmployeeName.trim()} a la lista.` });
             setNewEmployeeName('');
-            setNewEmployeeWorkShift('');
         } catch (error) {
             console.error(error);
             toast({ title: 'Error', description: 'No se pudo añadir el empleado.', variant: 'destructive' });
@@ -96,7 +90,6 @@ export function HolidayEmployeeManager() {
         setEditingId(employee.id);
         setEditingEmployee({ 
             name: employee.name,
-            workShift: employee.workShift,
             groupId: employee.groupId,
         });
     };
@@ -111,7 +104,6 @@ export function HolidayEmployeeManager() {
         try {
             await updateHolidayEmployee(editingId, {
                  name: editingEmployee.name.trim(),
-                 workShift: editingEmployee.workShift || null,
                  groupId: editingEmployee.groupId || null,
             });
             toast({ title: 'Empleado actualizado', description: 'Los datos del empleado han sido actualizados.' });
@@ -133,7 +125,6 @@ export function HolidayEmployeeManager() {
                     name: employee.name,
                     active: newActiveState,
                     groupId: employee.groupId,
-                    workShift: employee.workShift
                 });
             } else {
                 await updateHolidayEmployee(employee.id, { active: newActiveState });
@@ -192,21 +183,12 @@ export function HolidayEmployeeManager() {
             </CardHeader>
             <CardContent className="space-y-6">
                 <form onSubmit={handleAddEmployee} className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
-                    <div className="space-y-1">
+                    <div className="space-y-1 col-span-2">
                         <label className="text-xs font-medium">Nombre Completo (Eventual)</label>
                         <Input
-                            placeholder="Nombre del nuevo empleado"
+                            placeholder="Nombre del nuevo empleado eventual"
                             value={newEmployeeName}
                             onChange={(e) => setNewEmployeeName(e.target.value)}
-                            disabled={isAdding}
-                        />
-                    </div>
-                     <div className="space-y-1">
-                        <label className="text-xs font-medium">Jornada (Eventual)</label>
-                        <Input
-                            placeholder="Ej: 40h, 20h Finde"
-                            value={newEmployeeWorkShift}
-                            onChange={(e) => setNewEmployeeWorkShift(e.target.value)}
                             disabled={isAdding}
                         />
                     </div>
