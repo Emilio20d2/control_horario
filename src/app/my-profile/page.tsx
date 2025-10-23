@@ -112,16 +112,11 @@ export default function MyProfilePage() {
                 </Popover>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Detalle de Bolsas de Horas</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <BalanceCard title="B. Ordinaria" value={displayBalances?.ordinary} icon={Briefcase} isLoading={!displayBalances} />
-                    <BalanceCard title="B. Festivos" value={displayBalances?.holiday} icon={Gift} isLoading={!displayBalances} />
-                    <BalanceCard title="B. Libranza" value={displayBalances?.leave} icon={Wallet} isLoading={!displayBalances} />
-                </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <BalanceCard title="B. Ordinaria" value={displayBalances?.ordinary} icon={Briefcase} isLoading={!displayBalances} />
+                <BalanceCard title="B. Festivos" value={displayBalances?.holiday} icon={Gift} isLoading={!displayBalances} />
+                <BalanceCard title="B. Libranza" value={displayBalances?.leave} icon={Wallet} isLoading={!displayBalances} />
+            </div>
             
             <div className="space-y-6">
                 {activePeriod ? (
