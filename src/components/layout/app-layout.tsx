@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -20,6 +21,7 @@ import {
   CalendarCheck,
   PlaneTakeoff,
   HelpCircle,
+  Mail,
 } from 'lucide-react';
 import {
   Sheet,
@@ -91,12 +93,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/employees', label: 'Empleados', icon: Users },
     { href: '/listings', label: 'Listados', icon: ListChecks },
     { href: '/vacations', label: 'Vacaciones', icon: Plane },
+    { href: '/messages', label: 'Mensajes', icon: Mail },
     { href: '/settings', label: 'Ajustes', icon: Settings },
   ];
   
   const employeeMenuItems = [
     { href: '/my-profile', label: 'Mi Ficha', icon: User },
     { href: '/my-schedule', label: 'Mis Horarios', icon: CalendarCheck },
+    { href: '/my-messages', label: 'Mis Mensajes', icon: Mail },
     { href: '/help', label: 'Ayuda', icon: HelpCircle },
   ];
 
