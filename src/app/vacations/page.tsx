@@ -311,6 +311,7 @@ export default function VacationsPage() {
         const substitutesByWeek: Record<string, { employeeId: string, substituteId: string, substituteName: string }[]> = {};
 
         holidayReports.filter(r => r.weekDate && getISOWeekYear(r.weekDate.toDate()) === year).forEach(report => {
+            if (!report.weekId) return;
             if (!substitutesByWeek[report.weekId]) substitutesByWeek[report.weekId] = [];
             const subName = holidayEmployees.find(he => he.id === report.substituteId)?.name || 'Desconocido';
             substitutesByWeek[report.weekId].push({ employeeId: report.employeeId, substituteId: report.substituteId, substituteName: subName });
@@ -736,7 +737,7 @@ export default function VacationsPage() {
                                                     const cellBg = cellHasContent ? (groupColors[group.id] || '#f0f0f0') : 'transparent';
                                                     
                                                     return (
-                                                        <td key={`${group.id}-${week.key}`} className="border p-0 align-top" style={{ backgroundColor: cellBg }}>
+                                                        <td key={`${group.id}-${week.key}`} className="border align-top" style={{ backgroundColor: cellBg, padding: '1px 2px' }}>
                                                             <div className="flex flex-col gap-0 relative h-full">
                                                                 {employeesWithAbsenceInWeek.map(item => {
                                                                     if (!item) return null;
@@ -744,7 +745,7 @@ export default function VacationsPage() {
                                                                     const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
                                                                     
                                                                     return (
-                                                                        <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left py-0 px-0.5 text-[10px] truncate rounded-sm">
+                                                                        <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[10px] leading-tight">
                                                                             <button 
                                                                                 onClick={() => setEditingAbsence({ employee: item.employee, absence: item.absence })}
                                                                                 className={cn("flex-grow text-left truncate", isSpecialAbsence && "text-blue-600 font-semibold")}
@@ -787,3 +788,4 @@ export default function VacationsPage() {
         </div>
     );
 }
+
