@@ -486,10 +486,10 @@ export const generateSignatureReportPDF = (
     year: number,
     allEmployeesForQuadrant: Employee[],
     employeesWithAbsences: Record<string, Ausencia[]>,
-    dataProvider: any,
+    absenceTypes: AbsenceType[],
 ) => {
     const doc = new jsPDF();
-    const vacationType = dataProvider.absenceTypes.find((at: AbsenceType) => at.name === 'Vacaciones');
+    const vacationType = absenceTypes.find((at: AbsenceType) => at.name === 'Vacaciones');
     if (!vacationType) {
         alert('No se encuentra el tipo de ausencia "Vacaciones".');
         return;

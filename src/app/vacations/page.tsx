@@ -806,7 +806,7 @@ export default function VacationsPage() {
                                 <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileDown className="mr-2 h-4 w-4" /> Cuadrante
                                 </Button>
-                                <Button onClick={() => generateSignatureReportPDF(selectedYear, allEmployeesForQuadrant, employeesWithAbsences, dataProvider)} disabled={isGenerating} size="sm" variant="ghost">
+                                <Button onClick={() => generateSignatureReportPDF(selectedYear, allEmployeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileSignature className="mr-2 h-4 w-4" /> Firmas
                                 </Button>
                                 <Button onClick={() => generateSeasonalReportPDF(allEmployeesForQuadrant, selectedYear, dataProvider)} disabled={isGenerating} size="sm" variant="ghost">
@@ -825,5 +825,6 @@ export default function VacationsPage() {
         </div>
     );
 }
+
 
 
