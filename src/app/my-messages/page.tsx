@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizonal, Loader2 } from 'lucide-react';
+import { SendHorizonal, Loader2, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useDataProvider } from '@/hooks/use-data-provider';
@@ -14,6 +14,8 @@ import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
 import type { Message } from '@/lib/types';
 import { format } from 'date-fns';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import Link from 'next/link';
 
 export default function MyMessagesPage() {
     const { employeeRecord, loading, conversations } = useDataProvider();
@@ -111,7 +113,13 @@ export default function MyMessagesPage() {
             <h1 className="text-2xl font-bold tracking-tight font-headline">
                 Mis Mensajes
             </h1>
-            <Card className="flex flex-col flex-grow h-[calc(100vh-12rem)]">
+             <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                    Este servicio de mensajería es exclusivamente para incidencias sobre tu control de horas. Para dudas generales, por favor consulta la <Link href="/help" className="font-bold underline text-primary">Página de Ayuda</Link>.
+                </AlertDescription>
+            </Alert>
+            <Card className="flex flex-col flex-grow h-[calc(100vh-16rem)]">
                 <div className="flex items-center gap-4 p-4 border-b">
                     <Avatar>
                         <AvatarFallback>D</AvatarFallback>
