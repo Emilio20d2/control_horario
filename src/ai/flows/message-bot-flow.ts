@@ -66,7 +66,7 @@ export async function messageBotFlow(input: any): Promise<string> {
     });
 
     const llmResponse = await ai.generate({
-        model: 'googleai/gemini-pro',
+        model: 'googleai/gemini-1.0-pro',
         tools: [getEmployeeBalancesTool, getEmployeeVacationSummaryTool],
         prompt: `Eres Z-Assist, un asistente virtual de RRHH para la app "Control Horario". Tu objetivo es ser amable y ayudar a los empleados.
 
