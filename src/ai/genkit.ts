@@ -1,2 +1,5 @@
-// This file is reserved for Genkit flow side-effects.
-// Currently, all calculation logic has been moved to standard TypeScript functions.
+
+'use server';
+
+// This file is temporarily blank to resolve dependency issues with Genkit.
+// AI functionality is disabled.

@@ -1,7 +1,5 @@
+
 'use server';
 
-import { generateBotResponse as generateBotResponseFlow, type MessageBotInput, type MessageBotOutput } from '@/ai/flows/message-bot-flow';
-
-export async function generateBotResponse(input: MessageBotInput): Promise<MessageBotOutput> {
-  return await generateBotResponseFlow(input);
-}
+// This file is temporarily blank to resolve dependency issues with Genkit.
+// AI functionality is disabled.

@@ -15,7 +15,7 @@ import { db } from '@/lib/firebase';
 import type { Message } from '@/lib/types';
 import { format } from 'date-fns';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { generateBotResponse } from './actions';
+// import { generateBotResponse } from './actions';
 
 export default function MyMessagesPage() {
     const { employeeRecord, loading, conversations } = useDataProvider();
@@ -88,7 +88,8 @@ export default function MyMessagesPage() {
 
         await addDoc(messagesColRef, userMessageData);
 
-        // Call the AI bot for a response
+        // Temporarily disabled AI bot response
+        /*
         try {
             const botResponse = await generateBotResponse({
                 employeeId: employeeRecord.id,
@@ -123,6 +124,7 @@ export default function MyMessagesPage() {
                 timestamp: serverTimestamp()
             });
         }
+        */
     };
     
     if (loading) {
@@ -154,7 +156,7 @@ export default function MyMessagesPage() {
              <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                   Recibirás una respuesta inicial de nuestro asistente virtual, Z-Assist. Si tu consulta necesita atención personalizada, un responsable de Dirección la revisará y te contestará por este mismo chat. Este servicio es para incidencias con el control de horas o la aplicación.
+                   Usa este chat para comunicar a Dirección cualquier incidencia con el control de horas o la aplicación. Tu mensaje será revisado y recibirás una respuesta por este mismo medio.
                 </AlertDescription>
             </Alert>
             <Card className="flex flex-col flex-grow h-[calc(100vh-16rem)]">
