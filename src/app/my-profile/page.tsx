@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -13,7 +14,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator';
 import type { AbsenceType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getFinalBalancesForEmployee, getVacationSummaryForEmployee } from '@/lib/services/employee-data-service';
 
 const BalanceItem = ({ title, value, icon: Icon, isLoading }: { title: string; value: number | undefined; icon: React.ElementType; isLoading: boolean }) => (
     <div className="flex flex-col gap-2">
@@ -37,12 +37,12 @@ const BalanceItem = ({ title, value, icon: Icon, isLoading }: { title: string; v
 export default function MyProfilePage() {
     const { employeeRecord: employee, weeklyRecords, loading: dataLoading, absenceTypes, getEmployeeFinalBalances, calculateEmployeeVacations } = useDataProvider();
     const [displayBalances, setDisplayBalances] = useState<{ ordinary: number; holiday: number; leave: number; total: number; } | null>(null);
-    const [vacationInfo, setVacationInfo] = useState<Awaited<ReturnType<typeof getVacationSummaryForEmployee>> | null>(null);
+    const [vacationInfo, setVacationInfo] = useState<ReturnType<typeof calculateEmployeeVacations> | null>(null);
 
     useEffect(() => {
         if (!dataLoading && employee) {
-            getEmployeeFinalBalances(employee.id).then(setDisplayBalances);
-            calculateEmployeeVacations(employee).then(setVacationInfo);
+            setDisplayBalances(getEmployeeFinalBalances(employee.id));
+            setVacationInfo(calculateEmployeeVacations(employee));
         }
     }, [employee, dataLoading, weeklyRecords, getEmployeeFinalBalances, calculateEmployeeVacations]);
 
