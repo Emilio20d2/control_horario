@@ -374,6 +374,8 @@ export default function VacationsPage() {
     };
     
     const handleDeleteAbsence = async (absence: FormattedAbsence) => {
+        const employee = allEmployeesForQuadrant.find(e => e.id === selectedEmployeeId);
+        if (!employee) return;
         if (absence.id.startsWith('weekly-')) {
             toast({ title: 'No editable', description: 'Las ausencias puntuales registradas en el horario semanal no se pueden borrar desde aquí.', variant: 'destructive' });
             return;
@@ -381,9 +383,6 @@ export default function VacationsPage() {
 
         setIsGenerating(true);
         try {
-            const employee = activeEmployees.find(e => e.id === selectedEmployeeId);
-            if (!employee) throw new Error("Empleado no encontrado");
-
             const period = employee.employmentPeriods.find((p: EmploymentPeriod) => p.id === absence.periodId);
             if (!period) throw new Error("Periodo laboral no encontrado para la ausencia.");
 
@@ -464,20 +463,19 @@ export default function VacationsPage() {
         };
     }, [selectedYear, getWeekId]);
     
-    const handleAssignSubstitute = async () => {
-        if (!currentWeekAndEmployee || !selectedSubstituteId) {
-            toast({ title: "Error", description: "Faltan datos para asignar el sustituto.", variant: "destructive"});
+    const handleAssignSubstitute = async (weekKey: string, employeeId: string, substituteId: string) => {
+        if (!substituteId) {
             return;
         }
 
         setIsGenerating(true);
         try {
-            const report = holidayReports.find(r => r.weekId === currentWeekAndEmployee.weekKey && r.employeeId === currentWeekAndEmployee.employeeId);
+            const report = holidayReports.find(r => r.weekId === weekKey && r.employeeId === employeeId);
             const reportData = {
-                weekId: currentWeekAndEmployee.weekKey,
-                employeeId: currentWeekAndEmployee.employeeId,
-                substituteId: selectedSubstituteId,
-                weekDate: parseISO(currentWeekAndEmployee.weekKey),
+                weekId: weekKey,
+                employeeId: employeeId,
+                substituteId: substituteId,
+                weekDate: parseISO(weekKey),
             };
 
             if (report) {
@@ -493,9 +491,6 @@ export default function VacationsPage() {
             toast({ title: 'Error al asignar', description: 'No se pudo guardar la asignación.', variant: 'destructive' });
         } finally {
             setIsGenerating(false);
-            setAssignSubstituteOpen(false);
-            setCurrentWeekAndEmployee(null);
-            setSelectedSubstituteId('');
         }
     };
 
@@ -643,7 +638,7 @@ export default function VacationsPage() {
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                            <AlertDialogAction onClick={handleDeleteAbsence}>Eliminar</AlertDialogAction>
+                                            <AlertDialogAction onClick={() => handleDeleteAbsence(editingAbsence.absence)}>Eliminar</AlertDialogAction>
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>
@@ -655,34 +650,6 @@ export default function VacationsPage() {
                             </DialogFooter>
                         </>
                     )}
-                </DialogContent>
-            </Dialog>
-
-            <Dialog open={assignSubstituteOpen} onOpenChange={setAssignSubstituteOpen}>
-                <DialogContent>
-                     <DialogHeader>
-                        <DialogTitle>Asignar Sustituto</DialogTitle>
-                        <DialogDescription>
-                            Selecciona un empleado eventual para cubrir la ausencia.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <Select onValueChange={setSelectedSubstituteId}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar empleado eventual..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {eventualEmployees.map(emp => (
-                                <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setAssignSubstituteOpen(false)}>Cancelar</Button>
-                        <Button onClick={handleAssignSubstitute} disabled={isGenerating || !selectedSubstituteId}>
-                             {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Asignar
-                        </Button>
-                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
@@ -786,15 +753,16 @@ export default function VacationsPage() {
                                                                                 >
                                                                                     {`${item.employee.name} (${item.absence.absenceAbbreviation}) (T.${turnId ? turnId.replace('turn', '') : '?'})`}
                                                                                 </button>
-                                                                                <button
-                                                                                    className="h-4 w-4 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0"
-                                                                                    onClick={() => {
-                                                                                        setCurrentWeekAndEmployee({ weekKey: week.key, employeeId: item.employee.id });
-                                                                                        setAssignSubstituteOpen(true);
-                                                                                    }}
-                                                                                >
-                                                                                    <Plus className="h-3 w-3" />
-                                                                                </button>
+                                                                                <Select onValueChange={(substituteId) => handleAssignSubstitute(week.key, item.employee.id, substituteId)}>
+                                                                                    <SelectTrigger className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
+                                                                                         <Plus className="h-3 w-3" />
+                                                                                    </SelectTrigger>
+                                                                                    <SelectContent>
+                                                                                         {eventualEmployees.map(emp => (
+                                                                                            <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                                                                                        ))}
+                                                                                    </SelectContent>
+                                                                                </Select>
                                                                             </div>
                                                                             {substitute && (
                                                                                 <div className="text-xs truncate text-red-600 font-semibold ml-1 flex-shrink-0">
