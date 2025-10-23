@@ -7,7 +7,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmployeeDetails } from '@/components/employees/employee-details';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { isAfter, parseISO, startOfDay, getYear, isWithinInterval, startOfYear, endOfYear, getISOWeekYear } from 'date-fns';
-import { BalanceCard } from '../employees/[id]/page';
 import { Briefcase, Gift, Scale, Wallet, Plane, Info, CalendarX2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -15,6 +14,25 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator';
 import type { AbsenceType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+const BalanceItem = ({ title, value, icon: Icon, isLoading }: { title: string; value: number | undefined; icon: React.ElementType; isLoading: boolean }) => (
+    <div className="flex flex-col gap-2">
+        <div className="flex flex-row items-center justify-between space-y-0">
+            <h3 className="text-sm font-medium">{title}</h3>
+            <Icon className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <div>
+            {isLoading || value === undefined ? (
+                <Skeleton className="h-8 w-24" />
+            ) : (
+                <div className={`text-2xl font-bold ${value < 0 ? 'text-destructive' : ''}`}>
+                    {value.toFixed(2)}h
+                </div>
+            )}
+        </div>
+    </div>
+);
+
 
 export default function MyProfilePage() {
     const { employeeRecord: employee, getEmployeeFinalBalances, weeklyRecords, loading: dataLoading, calculateEmployeeVacations, absenceTypes } = useDataProvider();
@@ -148,14 +166,14 @@ export default function MyProfilePage() {
                 </Popover>
             </div>
 
-            <Card>
-                 <CardHeader>
+            <Card className="col-span-2">
+                <CardHeader>
                     <CardTitle className="text-base">Detalle de Bolsas de Horas</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-3 gap-4">
-                    <BalanceCard title="B. Ordinaria" value={displayBalances?.ordinary} icon={Briefcase} isLoading={!displayBalances} />
-                    <BalanceCard title="B. Festivos" value={displayBalances?.holiday} icon={Gift} isLoading={!displayBalances} />
-                    <BalanceCard title="B. Libranza" value={displayBalances?.leave} icon={Wallet} isLoading={!displayBalances} />
+                    <BalanceItem title="B. Ordinaria" value={displayBalances?.ordinary} icon={Briefcase} isLoading={!displayBalances} />
+                    <BalanceItem title="B. Festivos" value={displayBalances?.holiday} icon={Gift} isLoading={!displayBalances} />
+                    <BalanceItem title="B. Libranza" value={displayBalances?.leave} icon={Wallet} isLoading={!displayBalances} />
                 </CardContent>
             </Card>
 
@@ -192,7 +210,7 @@ export default function MyProfilePage() {
                 </CardContent>
             </Card>
             
-            <div className="space-y-6">
+            <div className="space-y-6 col-span-2">
                 {activePeriod ? (
                     <>
                         <EmployeeDetails employee={employee} period={activePeriod} allPeriods={employee.employmentPeriods} isEmployeeView={true} />
