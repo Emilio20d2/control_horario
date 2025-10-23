@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -377,12 +376,7 @@ export default function DashboardPage() {
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     
         const weekIdsInYear: string[] = Object.keys(weeklyRecords).filter(weekId => {
-            const weekDate = parseISO(weekId);
-            const weekYear = getISOWeekYear(weekDate);
-            if (reportYear === 2025) {
-                return weekYear === 2025;
-            }
-            return getYear(weekDate) === reportYear && weekYear === reportYear;
+            return getISOWeekYear(parseISO(weekId)) === reportYear;
         }).sort();
         
         const confirmedWeekIds = weekIdsInYear.filter(weekId => weeklyRecords[weekId]?.weekData?.[employee.id]?.confirmed);
@@ -966,5 +960,3 @@ export default function DashboardPage() {
         </div>
       );
 }
-
-    

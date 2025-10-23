@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -25,7 +24,12 @@ export async function generateAnnualReportPDF(employee: Employee, year: number, 
     
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     
-    const weekIdsInYear = Object.keys(weeklyRecords).filter(weekId => getISOWeekYear(parseISO(weekId)) === year).sort();
+    const weekIdsInYear = Object.keys(weeklyRecords).filter(weekId => {
+        const weekDate = parseISO(weekId);
+        const isoYear = getISOWeekYear(weekDate);
+        if (year === 2025) return isoYear === 2025;
+        return getYear(weekDate) === year && isoYear === year;
+    }).sort();
     
     const confirmedWeekIds = weekIdsInYear.filter(weekId => weeklyRecords[weekId]?.weekData?.[employee.id]?.confirmed);
 
