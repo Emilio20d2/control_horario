@@ -6,23 +6,63 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizonal, Loader2, Info } from 'lucide-react';
+import { SendHorizonal, Loader2, Info, Calendar as CalendarIcon, Edit, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
-import type { Message } from '@/lib/types';
-import { format } from 'date-fns';
+import type { Message, VacationCampaign } from '@/lib/types';
+import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useIsMobile } from '@/hooks/use-is-mobile';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '@/components/ui/drawer';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
+import { DateRange } from 'react-day-picker';
+import { es } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
+
 
 export default function MyMessagesPage() {
-    const { employeeRecord, loading, conversations } = useDataProvider();
+    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
     const conversationId = employeeRecord?.id;
     const viewportRef = useRef<HTMLDivElement>(null);
+    const isMobile = useIsMobile();
+    const { toast } = useToast();
 
+    // State for vacation request modal
+    const [isRequesting, setIsRequesting] = useState(false);
+    const [requestStep, setRequestStep] = useState(0);
+    const [selectedAbsenceTypeId, setSelectedAbsenceTypeId] = useState('');
+    const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(undefined);
+
+    const activeCampaign = useMemo(() => {
+        const now = new Date();
+        return vacationCampaigns.find(c => 
+            c.isActive &&
+            isWithinInterval(now, {
+                start: startOfDay((c.submissionStartDate as Timestamp).toDate()),
+                end: endOfDay((c.submissionEndDate as Timestamp).toDate())
+            })
+        );
+    }, [vacationCampaigns]);
+
+    const campaignAbsenceTypes = useMemo(() => {
+      if (!activeCampaign) return [];
+      return absenceTypes.filter(at => activeCampaign.allowedAbsenceTypeIds.includes(at.id));
+    }, [activeCampaign, absenceTypes]);
+
+    useEffect(() => {
+        if(isRequesting) {
+            setRequestStep(0);
+            setSelectedAbsenceTypeId('');
+            setSelectedDateRange(undefined);
+        }
+    }, [isRequesting]);
 
     const conversation = useMemo(() => {
         if (!conversationId) return null;
@@ -60,10 +100,10 @@ export default function MyMessagesPage() {
     }, [formattedMessages, messagesLoading]);
 
 
-    // Effect to send initial welcome message
+    // Effect to send initial welcome message for generic chat
     useEffect(() => {
         const sendWelcomeMessage = async () => {
-            if (employeeRecord && conversationId && !messagesLoading && formattedMessages.length === 0) {
+            if (employeeRecord && conversationId && !messagesLoading && formattedMessages.length === 0 && !activeCampaign) {
                 const welcomeText = `¡Hola, ${employeeRecord.name.split(' ')[0]}! Soy Z-Assist, tu asistente virtual. Estoy aquí para ayudarte con tus consultas sobre horarios y vacaciones. ¿En qué puedo ayudarte hoy?`;
                 const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
                 await addDoc(messagesColRef, {
@@ -84,7 +124,7 @@ export default function MyMessagesPage() {
         };
 
         sendWelcomeMessage();
-    }, [employeeRecord, conversationId, messagesLoading, formattedMessages.length]);
+    }, [employeeRecord, conversationId, messagesLoading, formattedMessages.length, activeCampaign]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -93,9 +133,19 @@ export default function MyMessagesPage() {
         const messageText = newMessage;
         setNewMessage('');
 
+        await sendMessage(messageText);
+        
+        // Send auto-reply
+        const autoReplyText = `Hola ${employeeRecord.name.split(' ')[0]}, hemos recibido tu consulta. Un responsable la revisará y te responderá por este mismo medio tan pronto como sea posible. Gracias por tu paciencia.`;
+        await sendBotMessage(autoReplyText, true);
+    };
+
+    const sendMessage = async (text: string) => {
+        if (!conversationId || !employeeRecord) return;
+        
         const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
         const userMessageData = {
-            text: messageText,
+            text: text,
             senderId: employeeRecord.id,
             timestamp: serverTimestamp()
         };
@@ -107,39 +157,63 @@ export default function MyMessagesPage() {
             await setDoc(convDocRef, {
                 employeeId: employeeRecord.id,
                 employeeName: employeeRecord.name,
-                lastMessageText: messageText,
+                lastMessageText: text,
                 lastMessageTimestamp: serverTimestamp(),
                 unreadByAdmin: true,
                 unreadByEmployee: false,
             });
         } else {
-             await setDoc(convDocRef, {
-                lastMessageText: messageText,
+             await updateDoc(convDocRef, {
+                lastMessageText: text,
                 lastMessageTimestamp: serverTimestamp(),
                 unreadByAdmin: true,
                 unreadByEmployee: false,
-            }, { merge: true });
+            });
         }
 
-        // Send user's message
         await addDoc(messagesColRef, userMessageData);
-        
-        // Send auto-reply
-        const autoReplyText = `Hola ${employeeRecord.name.split(' ')[0]}, hemos recibido tu consulta. Un responsable la revisará y te responderá por este mismo medio tan pronto como sea posible. Gracias por tu paciencia.`;
-        const autoReplyData = {
-            text: autoReplyText,
+    };
+
+    const sendBotMessage = async (text: string, unreadByEmployee: boolean) => {
+        if (!conversationId) return;
+        const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
+        const botMessageData = {
+            text,
             senderId: 'admin',
             timestamp: serverTimestamp()
         };
-        await addDoc(messagesColRef, autoReplyData);
+        await addDoc(messagesColRef, botMessageData);
 
-        // Update conversation with bot's last message
+        const convDocRef = doc(db, 'conversations', conversationId);
         await updateDoc(convDocRef, {
-            lastMessageText: autoReplyText,
+            lastMessageText: text,
             lastMessageTimestamp: serverTimestamp(),
-            unreadByEmployee: true, // Mark as unread for the employee to see the auto-reply
+            unreadByEmployee: unreadByEmployee,
         });
-    };
+    }
+
+    const handleSubmitRequest = async () => {
+        const absenceType = campaignAbsenceTypes.find(at => at.id === selectedAbsenceTypeId);
+        if (!selectedDateRange || !selectedDateRange.from || !selectedDateRange.to || !absenceType) {
+            toast({ title: "Datos incompletos", description: "Completa todos los pasos para enviar la solicitud.", variant: "destructive" });
+            return;
+        }
+
+        const fromDate = format(selectedDateRange.from, 'dd/MM/yyyy');
+        const toDate = format(selectedDateRange.to, 'dd/MM/yyyy');
+
+        const requestText = `Solicitud de ${absenceType.name}:
+Desde: ${fromDate}
+Hasta: ${toDate}`;
+
+        await sendMessage(requestText);
+        
+        setIsRequesting(false);
+
+        await sendBotMessage(`Tu solicitud de ${absenceType.name} ha sido enviada para revisión. Recibirás una notificación cuando sea aprobada.`, true);
+
+        toast({ title: "Solicitud enviada", description: "Tu solicitud ha sido enviada correctamente." });
+    }
     
     if (loading) {
         return (
@@ -161,27 +235,106 @@ export default function MyMessagesPage() {
             </div>
         )
     }
+
+    const renderChatHeader = () => {
+        if (activeCampaign) {
+            return (
+                <div className="flex items-start gap-4">
+                    <Avatar className="border-2 border-foreground h-12 w-12"><AvatarFallback>D</AvatarFallback></Avatar>
+                    <div>
+                        <h2 className="text-lg font-bold">{activeCampaign.title}</h2>
+                        <p className="text-sm text-muted-foreground">{activeCampaign.description}</p>
+                    </div>
+                </div>
+            )
+        }
+        return (
+            <div className="flex items-center gap-4">
+                <Avatar className="border-2 border-foreground"><AvatarFallback>D</AvatarFallback></Avatar>
+                <div>
+                    <h2 className="text-lg font-bold">Dirección</h2>
+                    <p className="text-sm text-muted-foreground">Conversación sobre tus incidencias</p>
+                </div>
+            </div>
+        )
+    }
+
+    const RequestDialogContent = () => {
+        const fromDate = activeCampaign ? (activeCampaign.absenceStartDate as Timestamp).toDate() : undefined;
+        const toDate = activeCampaign ? (activeCampaign.absenceEndDate as Timestamp).toDate() : undefined;
+        
+        return (
+            <div className="flex flex-col gap-4">
+                {requestStep === 0 && (
+                    <div className="space-y-4">
+                         <h3 className="font-semibold text-center">Paso 1: Elige el tipo de ausencia</h3>
+                        <Select value={selectedAbsenceTypeId} onValueChange={setSelectedAbsenceTypeId}>
+                            <SelectTrigger><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
+                            <SelectContent>
+                                {campaignAbsenceTypes.map(at => (
+                                    <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={() => setRequestStep(1)} disabled={!selectedAbsenceTypeId}>Siguiente</Button>
+                    </div>
+                )}
+                {requestStep === 1 && (
+                    <div className="space-y-4">
+                        <h3 className="font-semibold text-center">Paso 2: Elige las fechas</h3>
+                        <Calendar
+                            mode="range"
+                            selected={selectedDateRange}
+                            onSelect={setSelectedDateRange}
+                            locale={es}
+                            className="rounded-md border p-0"
+                            fromDate={fromDate}
+                            toDate={toDate}
+                            disabled={{ before: fromDate, after: toDate }}
+                        />
+                         <div className="flex justify-between">
+                            <Button variant="outline" onClick={() => setRequestStep(0)}>Anterior</Button>
+                            <Button onClick={() => setRequestStep(2)} disabled={!selectedDateRange || !selectedDateRange.from || !selectedDateRange.to}>Siguiente</Button>
+                         </div>
+                    </div>
+                )}
+                {requestStep === 2 && selectedDateRange && (
+                    <div className="space-y-4 text-center">
+                         <h3 className="font-semibold">Paso 3: Confirma tu solicitud</h3>
+                         <div className="p-4 rounded-md border bg-muted">
+                            <p><strong>Tipo:</strong> {campaignAbsenceTypes.find(at => at.id === selectedAbsenceTypeId)?.name}</p>
+                            <p><strong>Desde:</strong> {selectedDateRange.from ? format(selectedDateRange.from, 'PPP', {locale: es}) : ''}</p>
+                            <p><strong>Hasta:</strong> {selectedDateRange.to ? format(selectedDateRange.to, 'PPP', {locale: es}) : ''}</p>
+                         </div>
+                         <div className="flex justify-between">
+                            <Button variant="outline" onClick={() => setRequestStep(1)}>Anterior</Button>
+                            <Button onClick={handleSubmitRequest}>Confirmar y Enviar</Button>
+                         </div>
+                    </div>
+                )}
+            </div>
+        )
+    }
     
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6 h-full">
-            <h1 className="text-2xl font-bold tracking-tight font-headline">
-                Mis Mensajes
-            </h1>
-             <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                   Usa este chat para comunicar a Dirección cualquier incidencia con el control de horas o la aplicación. Tu mensaje será revisado y recibirás una respuesta por este mismo medio.
-                </AlertDescription>
-            </Alert>
+            <div className="flex-shrink-0">
+                <h1 className="text-2xl font-bold tracking-tight font-headline">
+                    Mis Mensajes
+                </h1>
+                {!activeCampaign && (
+                    <Alert className="mt-4">
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>
+                        Usa este chat para comunicar a Dirección cualquier incidencia con el control de horas o la aplicación. Tu mensaje será revisado y recibirás una respuesta por este mismo medio.
+                        </AlertDescription>
+                    </Alert>
+                )}
+            </div>
+            
             <Card className="flex flex-col flex-grow h-[calc(100vh-16rem)]">
-                <div className="flex items-center gap-4 p-4 border-b">
-                    <Avatar className="border-2 border-foreground">
-                        <AvatarFallback>D</AvatarFallback>
-                    </Avatar>
-                    <div>
-                        <h2 className="text-lg font-bold">Dirección</h2>
-                        <p className="text-sm text-muted-foreground">Conversación sobre tus incidencias</p>
-                    </div>
+                <div className="p-4 border-b">
+                    {renderChatHeader()}
                 </div>
                 <ScrollArea className="flex-1 p-4 space-y-4" viewportRef={viewportRef}>
                      {messagesLoading ? (
@@ -196,7 +349,7 @@ export default function MyMessagesPage() {
                                     'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg',
                                     message.senderId === employeeRecord.id ? 'bg-primary text-primary-foreground' : 'bg-muted'
                                 )}>
-                                    <p>{message.text}</p>
+                                    <p className="whitespace-pre-wrap">{message.text}</p>
                                     {message.timestamp && (
                                          <p className="text-xs opacity-70 mt-1 text-right">
                                              {format(message.timestamp, 'HH:mm')}
@@ -208,19 +361,57 @@ export default function MyMessagesPage() {
                      )}
                 </ScrollArea>
                 <div className="p-4 border-t bg-background">
-                     <form onSubmit={handleSendMessage} className="relative">
-                        <Input 
-                            placeholder="Escribe tu mensaje..." 
-                            className="pr-12 h-10" 
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                        />
-                        <Button type="submit" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-8 w-8">
-                            <SendHorizonal className="h-4 w-4" />
+                     {activeCampaign ? (
+                        <Button className="w-full" onClick={() => setIsRequesting(true)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Hacer una nueva solicitud
                         </Button>
-                    </form>
+                     ) : (
+                        <form onSubmit={handleSendMessage} className="relative">
+                            <Input 
+                                placeholder="Escribe tu mensaje..." 
+                                className="pr-12 h-10" 
+                                value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)}
+                            />
+                            <Button type="submit" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-8 w-8">
+                                <SendHorizonal className="h-4 w-4" />
+                            </Button>
+                        </form>
+                     )}
                 </div>
             </Card>
+
+            {isMobile ? (
+                 <Drawer open={isRequesting} onOpenChange={setIsRequesting}>
+                    <DrawerContent>
+                        <DrawerHeader className="text-left">
+                            <DrawerTitle>{activeCampaign?.title}</DrawerTitle>
+                             <DrawerDescription>
+                                Solicitud de ausencias para el periodo del {activeCampaign ? format((activeCampaign.absenceStartDate as Timestamp).toDate(), 'dd/MM') : ''} al {activeCampaign ? format((activeCampaign.absenceEndDate as Timestamp).toDate(), 'dd/MM/yyyy') : ''}.
+                            </DrawerDescription>
+                        </DrawerHeader>
+                        <div className="p-4"><RequestDialogContent /></div>
+                        <DrawerFooter className="pt-2">
+                            <DrawerClose asChild><Button variant="outline">Cancelar</Button></DrawerClose>
+                        </DrawerFooter>
+                    </DrawerContent>
+                </Drawer>
+            ) : (
+                <Dialog open={isRequesting} onOpenChange={setIsRequesting}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>{activeCampaign?.title}</DialogTitle>
+                            <DialogDescription>
+                                Solicitud de ausencias para el periodo del {activeCampaign ? format((activeCampaign.absenceStartDate as Timestamp).toDate(), 'dd/MM') : ''} al {activeCampaign ? format((activeCampaign.absenceEndDate as Timestamp).toDate(), 'dd/MM/yyyy') : ''}.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <RequestDialogContent />
+                    </DialogContent>
+                </Dialog>
+            )}
+
         </div>
     );
 }
+
