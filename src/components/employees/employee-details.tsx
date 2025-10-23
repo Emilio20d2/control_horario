@@ -139,13 +139,7 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Datos del Contrato y Personales</CardTitle>
-                <CardDescription>
-                    Información detallada del contrato, calendario vigente y datos personales.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8">
+            <CardContent className="space-y-8 pt-6">
                 <div className="space-y-4">
                     <h3 className="text-lg font-medium">Datos Personales</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
