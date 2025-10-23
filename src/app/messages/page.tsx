@@ -1,78 +1,117 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizonal, ArrowLeft } from 'lucide-react';
+import { SendHorizonal, ArrowLeft, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-is-mobile';
-
-// Mock data - replace with actual data from your backend
-const conversations = [
-    { id: '1', name: 'Alba Piñeiro Perez', lastMessage: 'Hola, tengo una duda sobre mis horas de la semana pasada.', unread: 2, avatarFallback: 'AP' },
-    { id: '2', name: 'Alberto Biel Gaudes', lastMessage: 'Perfecto, gracias por la aclaración.', unread: 0, avatarFallback: 'AB' },
-    { id: '3', name: 'Ana Gomez Alaman', lastMessage: 'Quería saber si es posible cambiar el turno del viernes.', unread: 1, avatarFallback: 'AG' },
-    { id: '4', name: 'Carla Lopez', lastMessage: 'Recibido, gracias.', unread: 0, avatarFallback: 'CL' },
-];
-
-const messagesData: Record<string, { id: string; text: string; sender: 'me' | 'them'; timestamp: string }[]> = {
-    '1': [
-        { id: 'm1', text: 'Hola, tengo una duda sobre mis horas de la semana pasada.', sender: 'them', timestamp: '10:30' },
-        { id: 'm2', text: 'Claro, Alba. Dime cuál es tu consulta.', sender: 'me', timestamp: '10:32' },
-    ],
-    '2': [
-        { id: 'm3', text: 'Hola, ¿está todo correcto con mi fichaje del lunes?', sender: 'them', timestamp: 'Ayer' },
-        { id: 'm4', text: 'Sí, Alberto, lo hemos revisado y está todo en orden. No te preocupes.', sender: 'me', timestamp: 'Ayer' },
-        { id: 'm5', text: 'Perfecto, gracias por la aclaración.', sender: 'them', timestamp: 'Ayer' },
-    ],
-    '3': [
-        { id: 'm6', text: 'Quería saber si es posible cambiar el turno del viernes.', sender: 'them', timestamp: 'Hace 2 días' },
-    ],
-    '4': [],
-};
+import { useDataProvider } from '@/hooks/use-data-provider';
+import { useCollection, useCollectionData } from 'react-firebase-hooks/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Conversation, Message } from '@/lib/types';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export default function MessagesPage() {
-    const [selectedConversationId, setSelectedConversationId] = useState<string | null>('1');
+    const { employees, loading: dataLoading } = useDataProvider();
+    const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+    const [newMessage, setNewMessage] = useState('');
     const isMobile = useIsMobile();
 
+    const [conversationsSnapshot, conversationsLoading] = useCollection(
+        query(collection(db, 'conversations'), orderBy('lastMessageTimestamp', 'desc'))
+    );
+
+    const conversations = useMemo(() => {
+        if (!conversationsSnapshot) return [];
+        return conversationsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
+    }, [conversationsSnapshot]);
+
+    const [messagesSnapshot, messagesLoading] = useCollection(
+        selectedConversationId ? query(collection(db, 'conversations', selectedConversationId, 'messages'), orderBy('timestamp', 'asc')) : null
+    );
+
+    const messages = useMemo(() => {
+        if (!messagesSnapshot) return [];
+        return messagesSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                timestamp: data.timestamp?.toDate() // Convert Firestore Timestamp to Date
+            } as Message;
+        });
+    }, [messagesSnapshot]);
+
     const selectedConversation = conversations.find(c => c.id === selectedConversationId);
-    const messages = selectedConversationId ? messagesData[selectedConversationId] : [];
+
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newMessage.trim() || !selectedConversationId) return;
+
+        const messageText = newMessage;
+        setNewMessage('');
+
+        const messagesColRef = collection(db, 'conversations', selectedConversationId, 'messages');
+        await addDoc(messagesColRef, {
+            text: messageText,
+            senderId: 'admin',
+            timestamp: serverTimestamp()
+        });
+
+        const conversationDocRef = doc(db, 'conversations', selectedConversationId);
+        await updateDoc(conversationDocRef, {
+            lastMessageText: messageText,
+            lastMessageTimestamp: serverTimestamp(),
+            unreadByEmployee: true,
+        });
+    };
 
     const ConversationList = () => (
         <Card className="flex flex-col h-[calc(100vh-8rem)]">
             <div className="p-4 border-b">
                 <h2 className="text-xl font-bold font-headline">Bandeja de Entrada</h2>
             </div>
-            <ScrollArea className="flex-1">
-                <div className="flex flex-col">
-                    {conversations.map((conv) => (
-                        <button
-                            key={conv.id}
-                            className={cn(
-                                'flex items-center gap-4 p-4 text-left w-full border-b transition-colors',
-                                selectedConversationId === conv.id ? 'bg-muted' : 'hover:bg-muted/50'
-                            )}
-                            onClick={() => setSelectedConversationId(conv.id)}
-                        >
-                            <Avatar>
-                                <AvatarFallback>{conv.avatarFallback}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 truncate">
-                                <p className="font-semibold">{conv.name}</p>
-                                <p className="text-sm text-muted-foreground truncate">{conv.lastMessage}</p>
-                            </div>
-                            {conv.unread > 0 && (
-                                <div className="bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                                    {conv.unread}
-                                </div>
-                            )}
-                        </button>
-                    ))}
+             {conversationsLoading || dataLoading ? (
+                <div className="flex items-center justify-center flex-1">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
-            </ScrollArea>
+             ) : (
+                <ScrollArea className="flex-1">
+                    <div className="flex flex-col">
+                        {conversations.map((conv) => {
+                            const employee = employees.find(e => e.id === conv.employeeId);
+                            const fallback = employee?.name.split(' ').map(n => n[0]).join('') || 'U';
+                            return (
+                                <button
+                                    key={conv.id}
+                                    className={cn(
+                                        'flex items-center gap-4 p-4 text-left w-full border-b transition-colors',
+                                        selectedConversationId === conv.id ? 'bg-muted' : 'hover:bg-muted/50'
+                                    )}
+                                    onClick={() => setSelectedConversationId(conv.id)}
+                                >
+                                    <Avatar>
+                                        <AvatarFallback>{fallback}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 truncate">
+                                        <p className="font-semibold">{conv.employeeName}</p>
+                                        <p className="text-sm text-muted-foreground truncate">{conv.lastMessageText}</p>
+                                    </div>
+                                    {conv.unreadByAdmin && (
+                                        <div className="bg-primary text-primary-foreground text-xs rounded-full h-2.5 w-2.5" />
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </ScrollArea>
+             )}
         </Card>
     );
     
@@ -87,35 +126,54 @@ export default function MessagesPage() {
                             </Button>
                         )}
                         <Avatar>
-                             <AvatarFallback>{selectedConversation.avatarFallback}</AvatarFallback>
+                             <AvatarFallback>{selectedConversation.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                         </Avatar>
-                        <h2 className="text-xl font-bold font-headline">{selectedConversation.name}</h2>
+                        <h2 className="text-xl font-bold font-headline">{selectedConversation.employeeName}</h2>
                     </div>
                     <ScrollArea className="flex-1 p-4 space-y-4">
-                        {messages.map(message => (
-                            <div key={message.id} className={cn('flex items-end gap-2', message.sender === 'me' ? 'justify-end' : 'justify-start')}>
-                                <div className={cn(
-                                    'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg',
-                                    message.sender === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                                )}>
-                                    <p>{message.text}</p>
-                                    <p className="text-xs opacity-70 mt-1 text-right">{message.timestamp}</p>
-                                </div>
+                        {messagesLoading ? (
+                             <div className="flex items-center justify-center flex-1 h-full">
+                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                             </div>
-                        ))}
+                        ) : (
+                            messages.map(message => (
+                                <div key={message.id} className={cn('flex items-end gap-2', message.senderId === 'admin' ? 'justify-end' : 'justify-start')}>
+                                    <div className={cn(
+                                        'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg',
+                                        message.senderId === 'admin' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                                    )}>
+                                        <p>{message.text}</p>
+                                        {message.timestamp && (
+                                            <p className="text-xs opacity-70 mt-1 text-right">
+                                                {format(message.timestamp, 'HH:mm')}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </ScrollArea>
                     <div className="p-4 border-t">
-                        <div className="relative">
-                            <Input placeholder="Escribe tu mensaje..." className="pr-12 h-10" />
+                        <form onSubmit={handleSendMessage} className="relative">
+                            <Input
+                                placeholder="Escribe tu mensaje..."
+                                className="pr-12 h-10"
+                                value={newMessage}
+                                onChange={e => setNewMessage(e.target.value)}
+                            />
                             <Button type="submit" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-8 w-8">
                                 <SendHorizonal className="h-4 w-4" />
                             </Button>
-                        </div>
+                        </form>
                     </div>
                 </>
             ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                    <p className="text-muted-foreground">Selecciona una conversación para ver los mensajes.</p>
+                     {conversationsLoading || dataLoading ? (
+                         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                     ) : (
+                        <p className="text-muted-foreground">Selecciona una conversación para ver los mensajes.</p>
+                     )}
                 </div>
             )}
         </Card>

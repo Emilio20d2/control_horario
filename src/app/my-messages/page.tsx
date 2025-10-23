@@ -1,38 +1,95 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizonal } from 'lucide-react';
+import { SendHorizonal, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-
-
-const initialMessages: { id: string; text: string; sender: 'me' | 'them'; timestamp: string }[] = [
-    { id: 'm1', text: 'Hola, tengo una duda sobre mis horas de la semana pasada.', sender: 'me', timestamp: '10:30' },
-    { id: 'm2', text: 'Claro, Alba. Dime cuál es tu consulta.', sender: 'them', timestamp: '10:32' },
-];
+import { useDataProvider } from '@/hooks/use-data-provider';
+import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc } from 'firebase/firestore';
+import { useCollectionData } from 'react-firebase-hooks/firestore';
+import { db } from '@/lib/firebase';
+import type { Message } from '@/lib/types';
+import { format } from 'date-fns';
 
 export default function MyMessagesPage() {
-    const [messages, setMessages] = useState(initialMessages);
+    const { employeeRecord, loading } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
+    const conversationId = employeeRecord?.id;
 
-    const handleSendMessage = (e: React.FormEvent) => {
+    const [messages, messagesLoading] = useCollectionData(
+        conversationId ? query(collection(db, 'conversations', conversationId, 'messages'), orderBy('timestamp', 'asc')) : null
+    );
+
+    const formattedMessages = useMemo(() => {
+        if (!messages) return [];
+        return messages.map(doc => {
+            const data = doc;
+            return {
+                id: doc.id,
+                ...data,
+                timestamp: data.timestamp?.toDate() // Convert Firestore Timestamp to Date
+            } as Message;
+        });
+    }, [messages]);
+
+    const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (newMessage.trim() === '') return;
-
-        const message = {
-            id: `m${messages.length + 1}`,
-            text: newMessage,
-            sender: 'me' as const,
-            timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-        };
-
-        setMessages(prev => [...prev, message]);
+        if (newMessage.trim() === '' || !conversationId || !employeeRecord) return;
+        
+        const messageText = newMessage;
         setNewMessage('');
+
+        const convDocRef = doc(db, 'conversations', conversationId);
+        const convDoc = await getDoc(convDocRef);
+
+        if (!convDoc.exists()) {
+            await setDoc(convDocRef, {
+                employeeId: employeeRecord.id,
+                employeeName: employeeRecord.name,
+                lastMessageText: messageText,
+                lastMessageTimestamp: serverTimestamp(),
+                unreadByAdmin: true,
+            });
+        } else {
+             await setDoc(convDocRef, {
+                lastMessageText: messageText,
+                lastMessageTimestamp: serverTimestamp(),
+                unreadByAdmin: true,
+            }, { merge: true });
+        }
+
+        const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
+        await addDoc(messagesColRef, {
+            text: messageText,
+            senderId: employeeRecord.id,
+            timestamp: serverTimestamp()
+        });
     };
+    
+    if (loading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        )
+    }
+
+    if (!employeeRecord) {
+        return (
+            <div className="flex flex-col gap-6 p-4 md:p-6 h-full">
+                 <h1 className="text-2xl font-bold tracking-tight font-headline">
+                    Mis Mensajes
+                </h1>
+                <Card className="flex flex-col flex-grow items-center justify-center">
+                    <p className="text-muted-foreground">No se ha podido encontrar tu ficha de empleado.</p>
+                </Card>
+            </div>
+        )
+    }
     
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6 h-full">
@@ -50,18 +107,28 @@ export default function MyMessagesPage() {
                     </div>
                 </div>
                 <ScrollArea className="flex-1 p-4 space-y-4">
-                     {messages.map(message => (
-                        <div key={message.id} className={cn('flex items-end gap-2', message.sender === 'me' ? 'justify-end' : 'justify-start')}>
-                             {message.sender === 'them' && <Avatar className="h-8 w-8"><AvatarFallback>D</AvatarFallback></Avatar>}
-                            <div className={cn(
-                                'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg',
-                                message.sender === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                            )}>
-                                <p>{message.text}</p>
-                                <p className="text-xs opacity-70 mt-1 text-right">{message.timestamp}</p>
-                            </div>
+                     {messagesLoading ? (
+                        <div className="flex h-full items-center justify-center">
+                            <Loader2 className="h-8 w-8 animate-spin" />
                         </div>
-                    ))}
+                     ) : (
+                        formattedMessages.map(message => (
+                            <div key={message.id} className={cn('flex items-end gap-2', message.senderId === employeeRecord.id ? 'justify-end' : 'justify-start')}>
+                                {message.senderId !== employeeRecord.id && <Avatar className="h-8 w-8"><AvatarFallback>D</AvatarFallback></Avatar>}
+                                <div className={cn(
+                                    'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg',
+                                    message.senderId === employeeRecord.id ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                                )}>
+                                    <p>{message.text}</p>
+                                    {message.timestamp && (
+                                         <p className="text-xs opacity-70 mt-1 text-right">
+                                             {format(message.timestamp, 'HH:mm')}
+                                         </p>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                     )}
                 </ScrollArea>
                 <div className="p-4 border-t bg-background">
                      <form onSubmit={handleSendMessage} className="relative">

@@ -269,3 +269,19 @@ export interface Ausencia {
     periodId?: string;
   }
 
+export interface Conversation {
+    id: string;
+    employeeId: string;
+    employeeName: string;
+    lastMessageText: string;
+    lastMessageTimestamp: Timestamp;
+    unreadByAdmin: boolean;
+    unreadByEmployee: boolean;
+}
+
+export interface Message {
+    id: string;
+    text: string;
+    senderId: string;
+    timestamp: Date;
+}
