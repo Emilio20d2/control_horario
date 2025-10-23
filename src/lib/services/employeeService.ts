@@ -1,4 +1,3 @@
-
 'use client';
 
 import { addDocument, updateDocument, deleteDocument, setDocument } from './firestoreService';
@@ -6,27 +5,14 @@ import type { Employee, EmployeeFormData, WorkHoursRecord, ScheduledAbsence, Emp
 import { isAfter, parseISO, startOfDay, addDays, subDays, format, eachDayOfInterval, startOfWeek } from 'date-fns';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { createUser } from './userService';
 
-export const createEmployee = async (formData: EmployeeFormData): Promise<string> => {
-    const { name, employeeNumber, dni, phone, email, role, startDate, isTransfer, vacationDaysUsedInAnotherCenter, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours, vacationDays2024 } = formData;
+export const createEmployee = async (formData: EmployeeFormData & { authId: string | null }): Promise<string> => {
+    const { name, employeeNumber, dni, phone, email, role, startDate, isTransfer, vacationDaysUsedInAnotherCenter, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours, vacationDays2024, authId } = formData;
     
     if (!employeeNumber) {
         throw new Error("El número de empleado es obligatorio para crear un nuevo empleado.");
     }
 
-    // 1. Create user in Firebase Auth if email is provided
-    let authId = null;
-    if (email) {
-        const tempPassword = "password123";
-        const userResult = await createUser({ email, password: tempPassword, employeeId: employeeNumber });
-        if (userResult.success) {
-            authId = userResult.uid;
-        } else {
-            throw new Error(userResult.error || 'Failed to create authentication user.');
-        }
-    }
-    
     const newEmployee: Omit<Employee, 'id'> = {
         name,
         employeeNumber: employeeNumber,
@@ -65,7 +51,6 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
     // Now update the user document in 'users' collection with the correct employeeId
     if (authId) {
         await setDocument('users', authId, { email, employeeId: employeeNumber, role: role || 'employee' });
-        await updateDocument('employees', employeeNumber, { authId: authId });
     }
 
     return employeeNumber;
@@ -192,7 +177,6 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
             await setDocument('users', currentEmployee.authId, { email: currentEmployee.email, employeeId: id, role });
         }
     } else if (email && role) {
-        // This logic will be fully implemented with user registration.
         console.log(`Role update for ${email} to '${role}' was provided, but no authId is linked. This should be handled during user registration.`);
     }
 };
@@ -330,3 +314,5 @@ export const deleteScheduledAbsence = async (
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
+
+    

@@ -49,6 +49,7 @@ import { useState } from 'react';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { getFinalBalancesForEmployee } from '@/lib/services/employee-data-service';
+import { createUserAccount } from '@/lib/actions/userActions';
 
 
 const dayScheduleSchema = z.object({
@@ -145,7 +146,6 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
   const getInitialValues = () => {
     const userForEmployee = employee?.authId ? users.find(u => u.id === employee.authId) : undefined;
     
-    // Hardcoded rule for superadmin
     const role = employee?.email === 'emiliogp@inditex.com' ? 'admin' : userForEmployee?.role || 'employee';
 
     if (employee && employee.employmentPeriods?.length > 0) {
@@ -223,19 +223,10 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-        const dataToSave: EmployeeFormData = {
-            ...values,
-            role: values.role,
-            initialOrdinaryHours: values.initialOrdinaryHours ?? 0,
-            initialHolidayHours: values.initialHolidayHours ?? 0,
-            initialLeaveHours: values.initialLeaveHours ?? 0,
-            vacationDays2024: values.vacationDays2024 ?? 0,
-            vacationDaysUsedInAnotherCenter: values.vacationDaysUsedInAnotherCenter ?? 0,
-        };
-
         if (employee) {
+            // Update existing employee
             const finalBalances = await getFinalBalancesForEmployee(employee.id);
-            await updateEmployee(employee.id, employee, dataToSave, finalBalances);
+            await updateEmployee(employee.id, employee, values, finalBalances);
             toast({
                 title: "Empleado Actualizado",
                 description: `Los datos de ${values.name} han sido guardados.`,
@@ -243,7 +234,28 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             await refreshUsers();
             router.push(`/employees/${employee.id}`);
         } else {
-            const newEmployeeId = await createEmployee(dataToSave);
+            // Create new employee
+            let authId: string | null = null;
+            if (values.email) {
+                const userResult = await createUserAccount({ email: values.email });
+                if (userResult.success && userResult.uid) {
+                    authId = userResult.uid;
+                } else {
+                    throw new Error(userResult.error || 'Failed to create authentication user.');
+                }
+            }
+
+            const dataToSave: EmployeeFormData & { authId: string | null } = {
+                ...values,
+                authId: authId,
+                initialOrdinaryHours: values.initialOrdinaryHours ?? 0,
+                initialHolidayHours: values.initialHolidayHours ?? 0,
+                initialLeaveHours: values.initialLeaveHours ?? 0,
+                vacationDays2024: values.vacationDays2024 ?? 0,
+                vacationDaysUsedInAnotherCenter: values.vacationDaysUsedInAnotherCenter ?? 0,
+            };
+
+            await createEmployee(dataToSave);
             toast({
                 title: "Empleado Creado",
                 description: `Se ha creado el empleado ${values.name}.`,
@@ -799,3 +811,4 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     </Card>
   );
 }
+    
