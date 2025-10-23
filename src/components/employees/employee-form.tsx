@@ -229,7 +229,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     try {
         const dataToSave: EmployeeFormData = {
             ...values,
-            groupId: values.groupId === 'none' ? undefined : values.groupId,
+            groupId: values.groupId === 'none' ? null : values.groupId,
             role: values.role,
             initialOrdinaryHours: values.initialOrdinaryHours ?? 0,
             initialHolidayHours: values.initialHolidayHours ?? 0,
