@@ -605,7 +605,7 @@ export default function VacationsPage() {
                      <DialogHeader>
                         <DialogTitle>Asignar Sustituto</DialogTitle>
                         <DialogDescription>
-                            Selecciona un empleado eventual para cubrir las ausencias de este grupo en la semana seleccionada.
+                            Selecciona un empleado eventual para cubrir la ausencia.
                         </DialogDescription>
                     </DialogHeader>
                     <Select onValueChange={setSelectedSubstituteId}>
@@ -659,7 +659,7 @@ export default function VacationsPage() {
                                     <tr>
                                         <th className="p-1 text-left font-semibold border-b border-r sticky left-0 bg-card z-20" style={{ width: '150px' }}>Grupo</th>
                                         {weeksOfYear.map(week => (
-                                            <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '200px' }}>
+                                            <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
                                                 <div className='flex flex-col items-center justify-center h-full'>
                                                     <span>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
                                                     <div className="flex gap-3 mt-1 text-xs items-center font-normal text-muted-foreground">
@@ -703,7 +703,7 @@ export default function VacationsPage() {
                                                     const cellBg = cellHasContent ? (groupColors[group.id] || '#f0f0f0') : 'transparent';
                                                     
                                                     return (
-                                                        <td key={`${group.id}-${week.key}`} className="border p-1 align-top" style={{ backgroundColor: cellHasContent ? cellBg : 'transparent', width: '200px' }}>
+                                                        <td key={`${group.id}-${week.key}`} className="border p-1 align-top" style={{ backgroundColor: cellBg, width: '400px' }}>
                                                             <div className="flex flex-col gap-1 relative h-full">
                                                                 {employeesWithAbsenceInWeek.map(item => {
                                                                     if (!item) return null;
@@ -711,16 +711,16 @@ export default function VacationsPage() {
                                                                     const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
 
                                                                     return (
-                                                                        <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left p-0.5 text-xs truncate rounded-sm bg-background/50">
+                                                                        <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left p-0.5 text-xs truncate rounded-sm">
                                                                              <button 
                                                                                 onClick={() => setEditingAbsence({ employee: item.employee, absence: item.absence })}
                                                                                 className={cn("flex-grow text-left truncate", isSpecialAbsence && "text-blue-600 font-semibold")}
                                                                             >
                                                                                 {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
                                                                             </button>
-                                                                            <div className="flex items-center flex-shrink-0">
+                                                                            <div className="flex items-center flex-shrink-0 gap-1">
                                                                                 <button
-                                                                                    className="h-4 w-4 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0"
+                                                                                    className="h-4 w-4 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600"
                                                                                     onClick={() => {
                                                                                         setCurrentWeekAndEmployee({ weekKey: week.key, employeeId: item.employee.id });
                                                                                         setAssignSubstituteOpen(true);
@@ -729,7 +729,7 @@ export default function VacationsPage() {
                                                                                     <Plus className="h-3 w-3" />
                                                                                 </button>
                                                                                 {substitute && (
-                                                                                    <div className="text-xs truncate text-red-600 font-semibold ml-1">
+                                                                                    <div className="text-xs truncate text-red-600 font-semibold">
                                                                                         Sust: {substitute.substituteName}
                                                                                     </div>
                                                                                 )}
@@ -753,4 +753,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-
