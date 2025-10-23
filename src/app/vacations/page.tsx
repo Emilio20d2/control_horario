@@ -191,31 +191,14 @@ export default function VacationsPage() {
     
     const { employeesWithAbsences, weeklySummaries, employeesByWeek } = useMemo(() => {
         const year = selectedYear;
-        const yearStartBoundary = startOfYear(new Date(year, 0, 1));
-        const yearEndBoundary = endOfYear(new Date(year, 11, 31));
-        let weeks = eachWeekOfInterval({ start: yearStartBoundary, end: yearEndBoundary }, { weekStartsOn: 1 });
-        // Handle week 53 from previous year if it belongs to the selected year
-        if (getISOWeekYear(subDays(yearStartBoundary, 1)) === year) {
-            weeks.unshift(startOfWeek(subDays(yearStartBoundary, 1), { weekStartsOn: 1 }));
-        }
-        // Ensure the first week is correct if it starts in the previous year but belongs to the current ISO year
-        if (getISOWeekYear(weeks[0]) < year) {
-             weeks.shift();
-        }
-        const weeksOfYear = weeks.map(weekStart => ({
-            start: weekStart,
-            end: endOfWeek(weekStart, { weekStartsOn: 1 }),
-            key: getWeekId(weekStart)
-        }));
-
         const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
 
         allEmployeesForQuadrant.forEach(emp => {
             const allAbsenceDays = new Map<string, { typeId: string, typeAbbr: string, periodId?: string, absenceId?: string }>();
             
-            if (!emp.isEventual) {
-                emp.employmentPeriods.forEach(period => {
+            if (!emp.isEventual && emp.employmentPeriods) {
+                 emp.employmentPeriods.forEach(period => {
                     (period.scheduledAbsences || []).filter(a => schedulableIds.has(a.absenceTypeId))
                         .forEach(absence => {
                             if (!absence.endDate) return;
@@ -259,6 +242,21 @@ export default function VacationsPage() {
             }
             employeesWithAbsences[emp.id] = periods;
         });
+        
+        const yearStartBoundary = startOfYear(new Date(year, 0, 1));
+        const yearEndBoundary = endOfYear(new Date(year, 11, 31));
+        let weeks = eachWeekOfInterval({ start: yearStartBoundary, end: yearEndBoundary }, { weekStartsOn: 1 });
+        if (getISOWeekYear(subDays(yearStartBoundary, 1)) === year) {
+            weeks.unshift(startOfWeek(subDays(yearStartBoundary, 1), { weekStartsOn: 1 }));
+        }
+        if (getISOWeekYear(weeks[0]) < year) {
+             weeks.shift();
+        }
+        const weeksOfYear = weeks.map(weekStart => ({
+            start: weekStart,
+            end: endOfWeek(weekStart, { weekStartsOn: 1 }),
+            key: getWeekId(weekStart)
+        }));
 
         const weeklySummaries: Record<string, { employeeCount: number; hourImpact: number }> = {};
         const employeesByWeek: Record<string, { employeeId: string; employeeName: string; groupId?: string | null; absenceAbbreviation: string }[]> = {};
