@@ -80,6 +80,7 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { cn, generateGroupColors } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
