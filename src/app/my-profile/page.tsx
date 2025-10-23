@@ -29,13 +29,11 @@ export default function MyProfilePage() {
         return (
             <div className="flex flex-col gap-6 p-4 md:p-6">
                 <Skeleton className="h-8 w-48" />
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <Skeleton className="h-28 w-full" />
-                    <Skeleton className="h-28 w-full" />
-                    <Skeleton className="h-28 w-full" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Skeleton className="h-28 w-full" />
                     <Skeleton className="h-28 w-full" />
                 </div>
+                <Skeleton className="h-48 w-full" />
                 <Skeleton className="h-96 w-full" />
             </div>
         );
@@ -55,10 +53,7 @@ export default function MyProfilePage() {
                 Mi Ficha Personal
             </h1>
 
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <BalanceCard title="B. Ordinaria" value={displayBalances?.ordinary} icon={Briefcase} isLoading={!displayBalances} />
-                <BalanceCard title="B. Festivos" value={displayBalances?.holiday} icon={Gift} isLoading={!displayBalances} />
-                <BalanceCard title="B. Libranza" value={displayBalances?.leave} icon={Wallet} isLoading={!displayBalances} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <Card className="flex-1 min-w-[200px]">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Balance Total</CardTitle>
@@ -116,6 +111,17 @@ export default function MyProfilePage() {
                     </PopoverContent>
                 </Popover>
             </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Detalle de Bolsas de Horas</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <BalanceCard title="B. Ordinaria" value={displayBalances?.ordinary} icon={Briefcase} isLoading={!displayBalances} />
+                    <BalanceCard title="B. Festivos" value={displayBalances?.holiday} icon={Gift} isLoading={!displayBalances} />
+                    <BalanceCard title="B. Libranza" value={displayBalances?.leave} icon={Wallet} isLoading={!displayBalances} />
+                </CardContent>
+            </Card>
             
             <div className="space-y-6">
                 {activePeriod ? (
