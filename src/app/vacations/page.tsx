@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
-import type { Employee, EmploymentPeriod, Ausencia } from '@/lib/types';
+import type { Employee, EmploymentPeriod, Ausencia, VacationCampaign } from '@/lib/types';
 import {
   format,
   isAfter,
@@ -87,9 +87,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn, generateGroupColors } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { generateAbsenceReportPDF, generateQuadrantReportPDF, generateSignatureReportPDF, generateSeasonalReportPDF } from '@/lib/report-generators';
+import { generateQuadrantReportPDF, generateSignatureReportPDF, generateRequestStatusReportPDF } from '@/lib/report-generators';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Timestamp } from 'firebase/firestore';
 
 
 interface FormattedAbsence extends Ausencia {}
@@ -107,12 +108,12 @@ export default function VacationsPage() {
         employeeGroups,
         holidayEmployees,
         getEffectiveWeeklyHours,
-        calculateSeasonalVacationStatus,
-        calculateEmployeeVacations,
         holidayReports,
         addHolidayReport,
         updateHolidayReport,
         getTheoreticalHoursAndTurn,
+        vacationCampaigns,
+        conversations,
     } = dataProvider;
     const { toast } = useToast();
     
@@ -132,10 +133,23 @@ export default function VacationsPage() {
     
     // State for substitute assignment
     const [isFullScreen, setIsFullScreen] = useState(false);
+
+    // State for status report
+    const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
     
     const activeEmployees = useMemo(() => {
         return employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
     }, [employees]);
+
+    const activeCampaigns = useMemo(() => {
+        return vacationCampaigns.filter(c => c.isActive);
+    }, [vacationCampaigns]);
+
+    useEffect(() => {
+        if (activeCampaigns.length > 0 && !selectedCampaignId) {
+            setSelectedCampaignId(activeCampaigns[0].id);
+        }
+    }, [activeCampaigns, selectedCampaignId]);
     
     const eventualEmployees = useMemo(() => {
         return holidayEmployees.filter(he => he.workShift === 'Eventual' && he.active);
@@ -517,6 +531,15 @@ export default function VacationsPage() {
         }
     };
 
+    const handleGenerateStatusReport = () => {
+        const campaign = activeCampaigns.find(c => c.id === selectedCampaignId);
+        if (!campaign) {
+            toast({ title: 'Error', description: 'Por favor, selecciona una campaña válida.', variant: 'destructive' });
+            return;
+        }
+        generateRequestStatusReportPDF(campaign, allEmployeesForQuadrant, conversations, absenceTypes);
+    };
+
     const specialAbsenceAbbreviations = new Set(['EXD', 'PNR']);
 
     const selectedEmployeeAbsences = employeesWithAbsences[selectedEmployeeId]?.filter(a => getYear(a.startDate) === selectedYear || getYear(a.endDate) === selectedYear) || [];
@@ -809,9 +832,23 @@ export default function VacationsPage() {
                                 <Button onClick={() => generateSignatureReportPDF(selectedYear, allEmployeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileSignature className="mr-2 h-4 w-4" /> Firmas
                                 </Button>
-                                <Button onClick={() => generateSeasonalReportPDF(allEmployeesForQuadrant, selectedYear, dataProvider)} disabled={isGenerating} size="sm" variant="ghost">
-                                    <SunSnow className="mr-2 h-4 w-4" /> Check
-                                </Button>
+                                {activeCampaigns.length > 0 && (
+                                    <>
+                                        <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
+                                            <SelectTrigger className="h-8 w-48 text-xs">
+                                                <SelectValue placeholder="Seleccionar campaña..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {activeCampaigns.map(c => (
+                                                    <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Button onClick={handleGenerateStatusReport} disabled={isGenerating || !selectedCampaignId} size="sm" variant="ghost">
+                                            <SunSnow className="mr-2 h-4 w-4" /> Estado Solicitudes
+                                        </Button>
+                                    </>
+                                )}
                                 <Button onClick={() => setIsFullScreen(true)} size="sm" variant="ghost">
                                     <Expand className="mr-2 h-4 w-4" /> Pantalla Completa
                                 </Button>
