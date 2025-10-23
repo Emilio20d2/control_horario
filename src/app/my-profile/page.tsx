@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -14,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator';
 import type { AbsenceType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { getFinalBalancesForEmployee, getVacationSummaryForEmployee } from '@/lib/services/employee-data-service';
 
 const BalanceItem = ({ title, value, icon: Icon, isLoading }: { title: string; value: number | undefined; icon: React.ElementType; isLoading: boolean }) => (
     <div className="flex flex-col gap-2">
@@ -35,15 +35,16 @@ const BalanceItem = ({ title, value, icon: Icon, isLoading }: { title: string; v
 
 
 export default function MyProfilePage() {
-    const { employeeRecord: employee, getEmployeeFinalBalances, weeklyRecords, loading: dataLoading, calculateEmployeeVacations, absenceTypes } = useDataProvider();
+    const { employeeRecord: employee, weeklyRecords, loading: dataLoading, absenceTypes } = useDataProvider();
     const [displayBalances, setDisplayBalances] = useState<{ ordinary: number; holiday: number; leave: number; total: number; } | null>(null);
+    const [vacationInfo, setVacationInfo] = useState<Awaited<ReturnType<typeof getVacationSummaryForEmployee>> | null>(null);
 
     useEffect(() => {
         if (!dataLoading && employee) {
-            const balances = getEmployeeFinalBalances(employee.id);
-            setDisplayBalances(balances);
+            getFinalBalancesForEmployee(employee.id).then(setDisplayBalances);
+            getVacationSummaryForEmployee(employee.id).then(setVacationInfo);
         }
-    }, [employee, dataLoading, getEmployeeFinalBalances, weeklyRecords]);
+    }, [employee, dataLoading, weeklyRecords]);
 
     const absenceSummary = useMemo(() => {
         if (!employee || !weeklyRecords || absenceTypes.length === 0) return [];
@@ -79,7 +80,7 @@ export default function MyProfilePage() {
     
     }, [employee, weeklyRecords, absenceTypes]);
     
-    if (dataLoading || !employee) {
+    if (dataLoading || !employee || !vacationInfo) {
         return (
             <div className="flex flex-col gap-6 p-4 md:p-6">
                 <Skeleton className="h-8 w-48" />
@@ -99,7 +100,6 @@ export default function MyProfilePage() {
         return isAfter(endDate, startOfDay(new Date()));
     });
     
-    const vacationInfo = calculateEmployeeVacations(employee);
 
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">

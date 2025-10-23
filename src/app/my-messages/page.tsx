@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -92,8 +91,9 @@ export default function MyMessagesPage() {
         // Call the AI bot for a response
         try {
             const botResponse = await generateBotResponse({
+                employeeId: employeeRecord.id,
                 employeeName: employeeRecord.name,
-                messages: [
+                conversationHistory: [
                     ...formattedMessages.map(m => ({ text: m.text, sender: m.senderId === employeeRecord.id ? 'user' : 'bot' })),
                     { text: messageText, sender: 'user' }
                 ]
@@ -208,4 +208,3 @@ export default function MyMessagesPage() {
         </div>
     );
 }
-

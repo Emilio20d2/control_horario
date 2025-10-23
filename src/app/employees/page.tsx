@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import Link from 'next/link';
@@ -31,10 +29,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { EmployeeCard } from '@/components/employees/employee-card';
+import { getFinalBalancesForEmployee, getVacationSummaryForEmployee } from '@/lib/services/employee-data-service';
 
 
 export default function EmployeesPage() {
-    const { employees, loading, weeklyRecords, getEmployeeFinalBalances, calculateEmployeeVacations } = useDataProvider();
+    const { employees, loading, weeklyRecords, calculateEmployeeVacations } = useDataProvider();
     const [balances, setBalances] = useState<Record<string, { ordinary: number; holiday: number; leave: number; total: number; }>>({});
     const [balancesLoading, setBalancesLoading] = useState(true);
     const isMobile = useIsMobile();
@@ -56,13 +55,19 @@ export default function EmployeesPage() {
         if (!loading) {
             setBalancesLoading(true);
             const newBalances: Record<string, { ordinary: number; holiday: number; leave: number; total: number; }> = {};
-            activeEmployees.forEach(emp => {
-                newBalances[emp.id] = getEmployeeFinalBalances(emp.id);
+            const promises = activeEmployees.map(emp => 
+                getFinalBalancesForEmployee(emp.id).then(b => ({ id: emp.id, balances: b }))
+            );
+            
+            Promise.all(promises).then(results => {
+                results.forEach(res => {
+                    newBalances[res.id] = res.balances;
+                });
+                setBalances(newBalances);
+                setBalancesLoading(false);
             });
-            setBalances(newBalances);
-            setBalancesLoading(false);
         }
-    }, [loading, employees, weeklyRecords, activeEmployees, getEmployeeFinalBalances]);
+    }, [loading, employees, weeklyRecords, activeEmployees]);
 
     const BalanceCell = ({ value }: { value: number | undefined }) => (
         <TableCell className="text-center">

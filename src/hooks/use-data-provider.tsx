@@ -1,5 +1,3 @@
-
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -52,6 +50,7 @@ import prefilledData from '@/lib/prefilled_data.json';
 import { calculateBalancePreview } from '../lib/calculators/balance-calculator';
 import { useAuth } from './useAuth';
 import { db } from '@/lib/firebase';
+import { getFinalBalancesForEmployee, getVacationSummaryForEmployee } from '@/lib/services/employee-data-service';
 
 interface DataContextType {
   employees: Employee[];

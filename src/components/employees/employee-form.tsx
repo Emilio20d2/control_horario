@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -50,6 +48,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
+import { getFinalBalancesForEmployee } from '@/lib/services/employee-data-service';
 
 
 const dayScheduleSchema = z.object({
@@ -138,7 +137,7 @@ const generateDefaultShift = (hours: number, days: string[]) => {
 export function EmployeeForm({ employee }: EmployeeFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { contractTypes, getEmployeeFinalBalances, users, appUser, refreshUsers, employeeGroups } = useDataProvider();
+  const { contractTypes, users, appUser, refreshUsers, employeeGroups } = useDataProvider();
   const { reauthenticateWithPassword } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const [password, setPassword] = useState('');
@@ -235,7 +234,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         };
 
         if (employee) {
-            const finalBalances = getEmployeeFinalBalances(employee.id);
+            const finalBalances = await getFinalBalancesForEmployee(employee.id);
             await updateEmployee(employee.id, employee, dataToSave, finalBalances);
             toast({
                 title: "Empleado Actualizado",
@@ -800,5 +799,3 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     </Card>
   );
 }
-
-    
