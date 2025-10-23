@@ -153,7 +153,7 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
 export default function MySchedulePage() {
     const { employeeRecord: employee, loading, weeklyRecords, getEmployeeBalancesForWeek, calculateBalancePreview, getWeekId } = useDataProvider();
     const [processedWeeks, setProcessedWeeks] = useState<ConfirmedWeek[]>([]);
-    const [selectedYear, setSelectedYear] = useState<number>(2025);
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [isProcessing, setIsProcessing] = useState(true);
 
     const availableYears = useMemo(() => {

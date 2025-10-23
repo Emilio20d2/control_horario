@@ -240,7 +240,7 @@ export default function DashboardPage() {
             if (empWeekData?.days) {
                 Object.entries(empWeekData.days).forEach(([dateStr, dayData]) => {
                     const dayDate = parseISO(dateStr);
-                    if (getYear(dayDate) !== absenceReportYear && getISOWeekYear(dayDate) !== absenceReportYear) return;
+                    if (getISOWeekYear(dayDate) !== absenceReportYear) return;
     
                     const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
                     if (absenceType && dayData.absence !== 'ninguna') {
@@ -376,15 +376,11 @@ export default function DashboardPage() {
     
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     
-        const yearStart = new Date(reportYear, 0, 1);
-        const yearEnd = new Date(reportYear, 11, 31);
         let weekIdsInYear: string[] = [];
-        let currentDate = yearStart;
-        while (currentDate <= yearEnd) {
-            const weekId = getWeekId(currentDate);
-            const isoYear = getISOWeekYear(currentDate);
-            if (isoYear === reportYear && !weekIdsInYear.includes(weekId)) {
-                weekIdsInYear.push(weekId);
+        let currentDate = new Date(reportYear, 0, 1);
+        while (getISOWeekYear(currentDate) <= reportYear) {
+            if (getISOWeekYear(currentDate) === reportYear) {
+                weekIdsInYear.push(getWeekId(currentDate));
             }
             currentDate = addDays(currentDate, 7);
         }
@@ -685,7 +681,7 @@ export default function DashboardPage() {
         const totalComputedHours = calculateCurrentAnnualComputedHours(employee.id, detailedReportYear);
 
         const firstActivePeriodThisYear = employee.employmentPeriods
-            .filter(p => getYear(parseISO(p.startDate as string)) <= detailedReportYear && (!p.endDate || getYear(parseISO(p.endDate as string)) >= detailedReportYear))
+            .filter(p => getISOWeekYear(parseISO(p.startDate as string)) <= detailedReportYear && (!p.endDate || getISOWeekYear(parseISO(p.endDate as string)) >= detailedReportYear))
             .sort((a, b) => (parseISO(a.startDate as string)).getTime() - (parseISO(b.startDate as string)).getTime())[0];
             
         const firstActiveDateThisYear = firstActivePeriodThisYear ? new Date(Math.max(parseISO(firstActivePeriodThisYear.startDate as string).getTime(), new Date(detailedReportYear, 0, 1).getTime())) : new Date(detailedReportYear, 0, 1);

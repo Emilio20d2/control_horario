@@ -1,8 +1,9 @@
+
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek } from 'date-fns';
+import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Employee, WeeklyRecord, AbsenceType, Holiday } from './types';
 
@@ -23,16 +24,8 @@ export async function generateAnnualReportPDF(employee: Employee, year: number, 
     const { getEmployeeBalancesForWeek, calculateBalancePreview, getActivePeriod, getEffectiveWeeklyHours, absenceTypes, holidays, getWeekId } = dataProvider;
     
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-    const yearStart = new Date(year, 0, 1);
-    const yearEnd = new Date(year, 11, 31);
     
-    let weekIdsInYear: string[] = [];
-    let currentDate = yearStart;
-    while (currentDate <= yearEnd) {
-        weekIdsInYear.push(getWeekId(currentDate));
-        currentDate = addDays(currentDate, 7);
-    }
-    weekIdsInYear = [...new Set(weekIdsInYear)].sort();
+    const weekIdsInYear = Object.keys(weeklyRecords).filter(weekId => getISOWeekYear(parseISO(weekId)) === year).sort();
     
     const confirmedWeekIds = weekIdsInYear.filter(weekId => weeklyRecords[weekId]?.weekData?.[employee.id]?.confirmed);
 
@@ -325,7 +318,7 @@ export async function generateAnnualDetailedReportPDF(employee: Employee, year: 
 export async function generateAbsenceReportPDF(employee: Employee, year: number, weeklyRecords: Record<string, WeeklyRecord>, absenceTypes: AbsenceType[]) {
     if (!employee) throw new Error("Empleado no válido.");
 
-    const annualRecordsForAbsences = Object.values(weeklyRecords).filter(record => parseInt(record.id.split('-')[0], 10) === year);
+    const annualRecordsForAbsences = Object.values(weeklyRecords).filter(record => getISOWeekYear(parseISO(record.id)) === year);
     let totalSuspensionDays = 0;
     const absenceRecords: { date: string; type: AbsenceType | undefined; amount: number }[] = [];
 
@@ -333,7 +326,7 @@ export async function generateAbsenceReportPDF(employee: Employee, year: number,
         const empWeekData = record.weekData[employee.id];
         if (empWeekData?.days) {
             Object.entries(empWeekData.days).forEach(([dateStr, dayData]) => {
-                if (getYear(parseISO(dateStr)) !== year) return;
+                if (getISOWeekYear(parseISO(dateStr)) !== year) return;
 
                 const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
                 if (absenceType && dayData.absence !== 'ninguna') {
