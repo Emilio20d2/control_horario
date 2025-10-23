@@ -162,7 +162,7 @@ export function VacationCampaignManager() {
           <TableBody>
             {loading ? (
               <TableRow><TableCell colSpan={5} className="text-center"><Loader2 className="animate-spin mx-auto" /></TableCell></TableRow>
-            ) : vacationCampaigns.length === 0 ? (
+            ) : !vacationCampaigns || vacationCampaigns.length === 0 ? (
               <TableRow><TableCell colSpan={5} className="text-center h-24">No hay campañas creadas.</TableCell></TableRow>
             ) : (
               vacationCampaigns.map(campaign => (
