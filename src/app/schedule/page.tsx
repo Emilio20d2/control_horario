@@ -1,10 +1,9 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { format, eachDayOfInterval, getYear, isBefore, addWeeks, startOfWeek, endOfWeek, isSameDay, addDays, isAfter, parseISO, startOfDay, getISODay, differenceInWeeks, isWithinInterval, getISOWeek, subWeeks, endOfDay } from 'date-fns';
+import { format, eachDayOfInterval, getYear, isBefore, addWeeks, startOfWeek, endOfWeek, isSameDay, addDays, isAfter, parseISO, startOfDay, getISODay, differenceInWeeks, isWithinInterval, getISOWeek, subWeeks, endOfDay, getISOWeekYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -121,19 +120,27 @@ export default function SchedulePage() {
         const employee = employees.find(e => e.id === selectedEmployeeId);
         if (!employee) return;
         
-        let firstMondayOfYear = startOfWeek(new Date(selectedYear, 0, 4), { weekStartsOn: 1 });
-        if (getISOWeek(firstMondayOfYear) > 1) {
-            firstMondayOfYear = subWeeks(firstMondayOfYear, 1);
+        let weeksOfYear = [];
+        if (selectedYear === 2025) {
+            // Hardcoded start for 2025
+            const start2025 = new Date('2024-12-30');
+            const end2025 = endOfWeek(new Date('2025-12-28'));
+            let current = start2025;
+            while (current <= end2025) {
+                weeksOfYear.push(current);
+                current = addWeeks(current, 1);
+            }
+        } else {
+            let firstMondayOfYear = startOfWeek(new Date(selectedYear, 0, 4), { weekStartsOn: 1 });
+            if (getISOWeek(firstMondayOfYear) > 1) {
+                firstMondayOfYear = subWeeks(firstMondayOfYear, 1);
+            }
+            weeksOfYear = Array.from({ length: 53 }).map((_, i) => addWeeks(firstMondayOfYear, i))
+                .filter(d => {
+                    const yearOfWeek = getISOWeekYear(d);
+                    return yearOfWeek === selectedYear;
+                });
         }
-        const weeksOfYear = Array.from({ length: 53 }).map((_, i) => addWeeks(firstMondayOfYear, i))
-          .filter(d => {
-              const yearOfWeek = getYear(addDays(d, 3));
-              const isoWeek = getISOWeek(d);
-              if (yearOfWeek === selectedYear) return true;
-              if (getYear(d) === selectedYear - 1 && isoWeek >= 52 && getYear(endOfWeek(d, {weekStartsOn: 1})) === selectedYear) return true;
-              if (getYear(d) === selectedYear + 1 && isoWeek === 1 && getYear(startOfWeek(d, {weekStartsOn: 1})) === selectedYear) return true;
-              return false;
-          });
 
 
         const newProcessedData: Record<string, DailyEmployeeData | null> = {};
@@ -193,21 +200,27 @@ export default function SchedulePage() {
         const employee = employees.find(e => e.id === selectedEmployeeId);
         if (!employee) return <div className="text-center p-8">Empleado no encontrado.</div>;
     
-        let firstMondayOfYear = startOfWeek(new Date(selectedYear, 0, 4), { weekStartsOn: 1 });
-        if (getISOWeek(firstMondayOfYear) > 1) {
-            firstMondayOfYear = subWeeks(firstMondayOfYear, 1);
+        let weeksOfYear = [];
+        if (selectedYear === 2025) {
+            // Hardcoded start for 2025
+            const start2025 = new Date('2024-12-30');
+            const end2025 = endOfWeek(new Date('2025-12-28'));
+            let current = start2025;
+            while (current <= end2025) {
+                weeksOfYear.push(current);
+                current = addWeeks(current, 1);
+            }
+        } else {
+            let firstMondayOfYear = startOfWeek(new Date(selectedYear, 0, 4), { weekStartsOn: 1 });
+            if (getISOWeek(firstMondayOfYear) > 1) {
+                firstMondayOfYear = subWeeks(firstMondayOfYear, 1);
+            }
+            weeksOfYear = Array.from({ length: 53 }).map((_, i) => addWeeks(firstMondayOfYear, i))
+                .filter(d => {
+                    const yearOfWeek = getISOWeekYear(d);
+                    return yearOfWeek === selectedYear;
+                });
         }
-
-        const weeksOfYear = Array.from({ length: 53 }).map((_, i) => addWeeks(firstMondayOfYear, i))
-            .filter(d => {
-                const yearOfWeek = getYear(addDays(d, 3));
-                const isoWeek = getISOWeek(d);
-                if (yearOfWeek === selectedYear) return true;
-                if (getYear(d) === selectedYear - 1 && isoWeek >= 52 && getYear(endOfWeek(d, {weekStartsOn: 1})) === selectedYear) return true;
-                if (getYear(d) === selectedYear + 1 && isoWeek === 1 && getYear(startOfWeek(d, {weekStartsOn: 1})) === selectedYear) return true;
-
-                return false;
-            });
     
         return (
             <Card className="rounded-none border-0 border-t bg-card">

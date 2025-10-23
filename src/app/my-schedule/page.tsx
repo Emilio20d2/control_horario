@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -181,13 +180,13 @@ export default function MySchedulePage() {
             const sortedWeekIds = Object.keys(weeklyRecords)
                 .filter(weekId => {
                     const weekDate = parseISO(weekId);
-                    const weekYear = getISOWeekYear(weekDate);
-                    // Special case for 2025 to include the week of 2024-12-30
+                    const isoYear = getISOWeekYear(weekDate);
+                    // Special case for 2025: include the week of 2024-12-30
                     if (selectedYear === 2025) {
-                        return weekYear === 2025;
+                        return isoYear === 2025;
                     }
-                    // For other years, only include weeks that start in that year
-                    return getYear(weekDate) === selectedYear && weekYear === selectedYear;
+                    // For other years, use standard year matching but based on ISO year for consistency
+                    return getYear(weekDate) === selectedYear && isoYear === selectedYear;
                 })
                 .sort();
 

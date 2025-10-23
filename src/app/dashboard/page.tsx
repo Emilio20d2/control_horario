@@ -134,8 +134,12 @@ export default function DashboardPage() {
 
     const annualRecordsForAbsences = useMemo(() => {
         return Object.values(weeklyRecords).filter(record => {
-            const yearFromId = getISOWeekYear(parseISO(record.id));
-            return yearFromId === absenceReportYear;
+            const weekDate = parseISO(record.id);
+            const isoYear = getISOWeekYear(weekDate);
+            if (absenceReportYear === 2025) {
+                return isoYear === 2025;
+            }
+            return getYear(weekDate) === absenceReportYear && isoYear === absenceReportYear;
         });
     }, [weeklyRecords, absenceReportYear]);
 
@@ -239,7 +243,17 @@ export default function DashboardPage() {
             if (empWeekData?.days) {
                 Object.entries(empWeekData.days).forEach(([dateStr, dayData]) => {
                     const dayDate = parseISO(dateStr);
-                    if (getISOWeekYear(dayDate) !== absenceReportYear) return;
+                    const weekDate = parseISO(record.id);
+                    const isoYear = getISOWeekYear(weekDate);
+                    
+                    let isCorrectYear = false;
+                    if (absenceReportYear === 2025) {
+                        isCorrectYear = isoYear === 2025;
+                    } else {
+                        isCorrectYear = getYear(dayDate) === absenceReportYear && isoYear === absenceReportYear;
+                    }
+
+                    if (!isCorrectYear) return;
     
                     const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
                     if (absenceType && dayData.absence !== 'ninguna') {
@@ -376,7 +390,12 @@ export default function DashboardPage() {
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     
         const weekIdsInYear: string[] = Object.keys(weeklyRecords).filter(weekId => {
-            return getISOWeekYear(parseISO(weekId)) === reportYear;
+            const weekDate = parseISO(weekId);
+            const isoYear = getISOWeekYear(weekDate);
+            if (reportYear === 2025) {
+                return isoYear === 2025;
+            }
+            return getYear(weekDate) === reportYear && isoYear === reportYear;
         }).sort();
         
         const confirmedWeekIds = weekIdsInYear.filter(weekId => weeklyRecords[weekId]?.weekData?.[employee.id]?.confirmed);
