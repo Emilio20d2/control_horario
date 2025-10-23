@@ -76,7 +76,7 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
                     <span className="text-sm font-mono font-medium text-muted-foreground">{weekLabel}</span>
                 </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col md:grid md:grid-cols-3 gap-4 px-0 sm:px-6 pt-0">
+            <CardContent className="flex flex-col md:grid md:grid-cols-3 gap-4 px-0 sm:px-0 pt-0">
                  <div className="md:col-span-2 overflow-x-auto">
                     <Table>
                         <TableHeader>
@@ -84,7 +84,7 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
                                 <TableHead className="w-[40px]">Día</TableHead>
                                 <TableHead className="w-[70px]">Fecha</TableHead>
                                 <TableHead className="text-right">Trab.</TableHead>
-                                <TableHead>Ausencia</TableHead>
+                                <TableHead>Aus.</TableHead>
                                 <TableHead className="text-right">H. Aus.</TableHead>
                                 <TableHead className="text-right">H. Lib.</TableHead>
                                 <TableHead className="text-center">P. Doble</TableHead>
@@ -121,7 +121,7 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
                         </TableBody>
                     </Table>
                 </div>
-                 <div className="space-y-2 border rounded-md p-3 bg-muted/20 mx-4 sm:mx-0">
+                 <div className="space-y-2 border rounded-md p-3 bg-muted/20 mx-4 sm:mx-0 md:mx-4">
                      <div className="grid grid-cols-4 gap-2 text-xs font-bold text-muted-foreground">
                         <span className="col-span-1">Bolsa</span>
                         <span className="text-right col-span-1">Inicial</span>
@@ -282,5 +282,7 @@ export default function MySchedulePage() {
         </div>
     );
 }
+
+    
 
     
