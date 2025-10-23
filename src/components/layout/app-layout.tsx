@@ -110,8 +110,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const MainNav = ({className}: {className?: string}) => (
     <nav className={className}>
         {menuItems.map((item) => {
-            const isDashboard = item.href === '/dashboard';
-            const isActive = isDashboard 
+             const isActive = (item.href === '/dashboard' || item.href === '/my-profile' || item.href === '/help') 
                 ? pathname === item.href
                 : pathname.startsWith(item.href);
 
