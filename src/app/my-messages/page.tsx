@@ -16,7 +16,6 @@ import { db } from '@/lib/firebase';
 import type { Message } from '@/lib/types';
 import { format } from 'date-fns';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { generateBotResponse } from './actions';
 
 export default function MyMessagesPage() {
     const { employeeRecord, loading, conversations } = useDataProvider();
@@ -96,53 +95,24 @@ export default function MyMessagesPage() {
             }, { merge: true });
         }
 
+        // Send user's message
         await addDoc(messagesColRef, userMessageData);
+        
+        // Send auto-reply
+        const autoReplyText = `Hola ${employeeRecord.name.split(' ')[0]}, hemos recibido tu consulta. Un responsable la revisará y te responderá por este mismo medio tan pronto como sea posible. Gracias por tu paciencia.`;
+        const autoReplyData = {
+            text: autoReplyText,
+            senderId: 'admin',
+            timestamp: serverTimestamp()
+        };
+        await addDoc(messagesColRef, autoReplyData);
 
-        try {
-            const historyString = [...formattedMessages, { senderId: employeeRecord.id, text: messageText }]
-                .map(m => {
-                    const senderName = m.senderId === employeeRecord.id ? 'Usuario' : 'Z-Assist';
-                    return `${senderName}: ${m.text}`;
-                })
-                .join('\n');
-
-            const botResponse = await generateBotResponse({
-                employeeId: employeeRecord.id,
-                employeeName: employeeRecord.name,
-                formattedHistory: historyString
-            });
-            
-            if (botResponse) {
-                const botMessageData = {
-                    text: botResponse,
-                    senderId: 'admin', // Bot responds as admin
-                    timestamp: serverTimestamp()
-                };
-                await addDoc(messagesColRef, botMessageData);
-                // Update conversation with bot's last message
-                await updateDoc(convDocRef, {
-                    lastMessageText: botResponse,
-                    lastMessageTimestamp: serverTimestamp(),
-                    unreadByEmployee: true, // Mark as unread for the employee to see
-                    unreadByAdmin: false, // Bot's own message is considered "read" by admin
-                });
-            }
-        } catch (error) {
-            console.error("Error getting bot response:", error);
-            const errorMessage = "He tenido un problema y no puedo responder ahora mismo. Un responsable revisará tu mensaje pronto.";
-            
-            // Send a fallback message
-            await addDoc(messagesColRef, {
-                text: errorMessage,
-                senderId: 'admin',
-                timestamp: serverTimestamp()
-            });
-             await updateDoc(convDocRef, {
-                lastMessageText: errorMessage,
-                lastMessageTimestamp: serverTimestamp(),
-                unreadByEmployee: true, 
-            });
-        }
+        // Update conversation with bot's last message
+        await updateDoc(convDocRef, {
+            lastMessageText: autoReplyText,
+            lastMessageTimestamp: serverTimestamp(),
+            unreadByEmployee: true, // Mark as unread for the employee to see the auto-reply
+        });
     };
     
     if (loading) {

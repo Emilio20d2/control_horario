@@ -1,11 +1,8 @@
 
 'use server';
 
-import { messageBotFlow } from "@/ai/flows/message-bot-flow";
-
-export async function generateBotResponse(input: any): Promise<string> {
-    // Let the error propagate to the client component to be handled there.
-    // This allows for more specific error messages if needed in the future.
-    const response = await messageBotFlow(input);
-    return response;
-}
+/**
+ * @fileOverview This file is no longer in use.
+ * The AI bot functionality has been replaced with a hardcoded auto-response
+ * directly in the client component.
+ */
