@@ -156,7 +156,15 @@ export default function VacationsPage() {
     }, [weeklyRecords]);
     
     const allEmployeesForQuadrant = useMemo(() => {
-        const mainEmployees = employees.map(e => ({...e, isEventual: false}));
+        const mainEmployees = employees.map(e => {
+            const holidayInfo = holidayEmployees.find(he => he.id === e.id);
+            return {
+                ...e,
+                groupId: e.groupId || holidayInfo?.groupId, // Prioritize main groupId, fallback to holiday one
+                isEventual: false
+            };
+        });
+
         const mainEmployeeIds = new Set(mainEmployees.map(me => me.id));
         const externalEmployees = holidayEmployees
             .filter(he => he.active && !mainEmployeeIds.has(he.id))
@@ -174,6 +182,7 @@ export default function VacationsPage() {
             return holidayEmp ? holidayEmp.active : true;
         }).sort((a,b) => a.name.localeCompare(b.name));
     }, [employees, holidayEmployees]);
+
 
     const schedulableAbsenceTypes = useMemo(() => {
         return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
@@ -265,13 +274,16 @@ export default function VacationsPage() {
             employeesWithAbsences[emp.id] = periods;
         });
         
-        const yearStartBoundary = startOfYear(new Date(selectedYear, 0, 1));
-        const yearEndBoundary = endOfYear(new Date(selectedYear, 11, 31));
+        const year = selectedYear;
+        const yearStartBoundary = startOfYear(new Date(year, 0, 1));
+        const yearEndBoundary = endOfYear(new Date(year, 11, 31));
         let weeks = eachWeekOfInterval({ start: yearStartBoundary, end: yearEndBoundary }, { weekStartsOn: 1 });
-        if (getISOWeekYear(subDays(yearStartBoundary, 1)) === selectedYear) {
+        // Handle week 53 from previous year if it belongs to the selected year
+        if (getISOWeekYear(subDays(yearStartBoundary, 1)) === year) {
             weeks.unshift(startOfWeek(subDays(yearStartBoundary, 1), { weekStartsOn: 1 }));
         }
-        if (getISOWeekYear(weeks[0]) < selectedYear) {
+        // Ensure first week belongs to the selected year
+        if (getISOWeekYear(weeks[0]) < year) {
              weeks.shift();
         }
         const weeksOfYear = weeks.map(weekStart => ({
@@ -279,6 +291,7 @@ export default function VacationsPage() {
             end: endOfWeek(weekStart, { weekStartsOn: 1 }),
             key: getWeekId(weekStart)
         }));
+
 
         const weeklySummaries: Record<string, { employeeCount: number; hourImpact: number }> = {};
         const employeesByWeek: Record<string, { employeeId: string; employeeName: string; groupId?: string | null; absenceAbbreviation: string }[]> = {};
