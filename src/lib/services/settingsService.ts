@@ -4,7 +4,7 @@
 
 import { addDoc, collection, deleteDoc, doc, updateDoc, Timestamp, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { AbsenceType, Holiday, AnnualConfiguration, ContractType, HolidayFormData, HolidayEmployee, EmployeeGroup } from '../types';
+import type { AbsenceType, Holiday, AnnualConfiguration, ContractType, HolidayFormData, HolidayEmployee, EmployeeGroup, VacationCampaign } from '../types';
 
 
 export const createAbsenceType = async (data: Omit<AbsenceType, 'id'>): Promise<string> => {
@@ -169,4 +169,21 @@ export const updateEmployeeGroupOrder = async (groups: EmployeeGroup[]): Promise
         batch.update(docRef, { order: group.order });
     });
     await batch.commit();
+}
+
+
+// --- Vacation Campaign Service Functions ---
+export const createVacationCampaign = async (data: Omit<VacationCampaign, 'id'>): Promise<string> => {
+    const docRef = await addDoc(collection(db, 'vacationCampaigns'), data);
+    return docRef.id;
+}
+
+export const updateVacationCampaign = async (id: string, data: Partial<Omit<VacationCampaign, 'id'>>): Promise<void> => {
+    const docRef = doc(db, 'vacationCampaigns', id);
+    await updateDoc(docRef, data);
+}
+
+export const deleteVacationCampaign = async (id: string): Promise<void> => {
+    const docRef = doc(db, 'vacationCampaigns', id);
+    await deleteDoc(docRef);
 }

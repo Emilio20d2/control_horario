@@ -283,3 +283,15 @@ export interface Message {
     senderId: string;
     timestamp: Date;
 }
+
+export interface VacationCampaign {
+    id: string;
+    title: string;
+    description: string;
+    submissionStartDate: Date | Timestamp;
+    submissionEndDate: Date | Timestamp;
+    absenceStartDate: Date | Timestamp;
+    absenceEndDate: Date | Timestamp;
+    allowedAbsenceTypeIds: string[];
+    isActive: boolean;
+}

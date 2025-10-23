@@ -26,7 +26,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { PlusCircle, Trash2, Edit, Loader2, Users, Check, X, Building } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, Loader2, Users, Check, X, Building, BotMessageSquare } from 'lucide-react';
 import { format, getYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -44,6 +44,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import type { EmployeeGroup } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { VacationCampaignManager } from '@/components/settings/vacation-campaign-manager';
 
 
 export default function SettingsPage() {
@@ -173,11 +174,12 @@ export default function SettingsPage() {
 
       <div className="px-4 md:px-6 pb-4">
         <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="w-full justify-start h-auto sm:h-10 grid sm:w-full grid-cols-2 md:grid-cols-5 overflow-x-auto whitespace-nowrap">
+            <TabsList className="w-full justify-start h-auto sm:h-10 grid sm:w-full grid-cols-3 md:grid-cols-6 overflow-x-auto whitespace-nowrap">
                 <TabsTrigger value="holidays">Días Festivos</TabsTrigger>
                 <TabsTrigger value="annual">Conf. Anual</TabsTrigger>
                 <TabsTrigger value="absences">Tipos Ausencia</TabsTrigger>
                 <TabsTrigger value="contracts">Tipos Contrato</TabsTrigger>
+                <TabsTrigger value="campaigns">Campañas</TabsTrigger>
                 <TabsTrigger value="utils">Utilidades</TabsTrigger>
             </TabsList>
 
@@ -445,6 +447,10 @@ export default function SettingsPage() {
                     )}
                     </CardContent>
                 </Card>
+            </TabsContent>
+
+            <TabsContent value="campaigns">
+                <VacationCampaignManager />
             </TabsContent>
 
             <TabsContent value="utils">
