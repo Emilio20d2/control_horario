@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -15,7 +16,7 @@ import { db } from '@/lib/firebase';
 import type { Message } from '@/lib/types';
 import { format } from 'date-fns';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-// import { generateBotResponse } from './actions';
+import { generateBotResponse } from './actions';
 
 export default function MyMessagesPage() {
     const { employeeRecord, loading, conversations } = useDataProvider();
@@ -88,8 +89,6 @@ export default function MyMessagesPage() {
 
         await addDoc(messagesColRef, userMessageData);
 
-        // Temporarily disabled AI bot response
-        /*
         try {
             const botResponse = await generateBotResponse({
                 employeeId: employeeRecord.id,
@@ -124,7 +123,6 @@ export default function MyMessagesPage() {
                 timestamp: serverTimestamp()
             });
         }
-        */
     };
     
     if (loading) {

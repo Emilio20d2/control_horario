@@ -1,5 +1,17 @@
 
 'use server';
 
-// This file is temporarily blank to resolve dependency issues with Genkit.
-// AI functionality is disabled.
+import { genkit } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
+import { firebaseConfig } from '@/lib/firebase';
+
+export const ai = genkit({
+  plugins: [
+    googleAI({
+      apiKey: firebaseConfig.apiKey,
+    }),
+  ],
+  logLevel: 'debug',
+  enableTracingAndMetrics: true,
+});
+
