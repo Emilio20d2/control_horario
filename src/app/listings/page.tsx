@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -21,7 +19,13 @@ import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HolidayEmployeeManager } from '@/components/settings/holiday-employee-manager';
 import { Textarea } from '@/components/ui/textarea';
-import { PersonalDataReportGenerator } from '@/components/listings/personal-data-report-generator';
+import dynamic from 'next/dynamic';
+
+const PersonalDataReportGenerator = dynamic(
+  () => import('@/components/listings/personal-data-report-generator').then(mod => mod.PersonalDataReportGenerator),
+  { ssr: false, loading: () => <Loader2 className="h-8 w-8 animate-spin" /> }
+);
+
 
 const columnSchema = z.object({
   name: z.string().min(1, 'El nombre de la columna es obligatorio.'),

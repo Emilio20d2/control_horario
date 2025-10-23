@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -12,13 +11,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
-import { format, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { format, parseISO, isAfter } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { GripVertical, FileDown, Loader2 } from 'lucide-react';
-import { isAfter } from 'date-fns';
 import { Textarea } from '../ui/textarea';
 
 const availableFields = [
