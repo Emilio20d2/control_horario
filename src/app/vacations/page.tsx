@@ -28,6 +28,8 @@ import {
   Trash2,
   Info,
   Plus,
+  Expand,
+  X,
 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -138,6 +140,7 @@ export default function VacationsPage() {
     const [assignSubstituteOpen, setAssignSubstituteOpen] = useState(false);
     const [currentWeekAndEmployee, setCurrentWeekAndEmployee] = useState<{ weekKey: string, employeeId: string } | null>(null);
     const [selectedSubstituteId, setSelectedSubstituteId] = useState('');
+    const [isFullScreen, setIsFullScreen] = useState(false);
     
     const activeEmployees = useMemo(() => {
         return employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
@@ -499,6 +502,123 @@ export default function VacationsPage() {
 
     const selectedEmployeeAbsences = employeesWithAbsences[selectedEmployeeId]?.filter(a => getYear(a.startDate) === selectedYear || getYear(a.endDate) === selectedYear) || [];
 
+    const renderQuadrant = () => (
+      <div className="overflow-auto h-[70vh] border rounded-lg">
+        <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
+          <thead className="sticky top-0 z-10 bg-card shadow-sm">
+            <tr>
+              <th className="p-0 border-b border-r sticky left-0 bg-card z-20" style={{ width: '1px', overflow: 'hidden' }}>
+                <div className="w-0 opacity-0">Grupo</div>
+              </th>
+              {weeksOfYear.map(week => {
+                const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
+
+                return (
+                  <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
+                    <div className='flex justify-between items-center h-full px-1'>
+                      <div className="flex flex-col items-start">
+                        <span className='text-xs'>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
+                        <div className="flex gap-3 mt-1 text-xs items-center font-normal text-muted-foreground">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className='flex items-center gap-1 cursor-pointer'><Users className="h-3 w-3" />{weeklySummaries[week.key]?.employeeCount ?? 0}</button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-2">
+                              <div className="space-y-1">
+                                <p className="font-bold text-sm">Personal Ausente</p>
+                                {employeesByWeek[week.key]?.map(e => <p key={e.employeeId} className="text-xs">{e.employeeName} ({e.absenceAbbreviation})</p>)}
+                                {employeesByWeek[week.key]?.length === 0 && <p className="text-xs text-muted-foreground">Nadie.</p>}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                          <div className='flex items-center gap-1'><Clock className="h-3 w-3" />{weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
+                        </div>
+                      </div>
+                      <Badge variant="secondary">{turnId ? `T.${turnId.replace('turn', '')}` : 'N/A'}</Badge>
+                    </div>
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {employeeGroups.map(group => {
+              const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
+              return (
+                <tr key={group.id}>
+                  <td className="border p-0 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ width: '1px', overflow: 'hidden' }}>
+                    <div className="w-0 opacity-0">{group.name}</div>
+                  </td>
+                  {weeksOfYear.map(week => {
+                    const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
+                      const absence = employeesWithAbsences[emp.id]?.find(a =>
+                        isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
+                      );
+                      return absence ? { employee: emp, absence } : null;
+                    }).filter(Boolean);
+
+                    const cellHasContent = employeesWithAbsenceInWeek.length > 0;
+                    const cellBg = cellHasContent ? (groupColors[group.id] || '#f0f0f0') : 'transparent';
+
+                    return (
+                      <td key={`${group.id}-${week.key}`} className="border align-top py-0 px-0.5" style={{ backgroundColor: cellBg }}>
+                        <div className="flex flex-col gap-0 relative h-full">
+                          {employeesWithAbsenceInWeek.map(item => {
+                            if (!item) return null;
+                            const substitute = substitutesByWeek[week.key]?.find(s => s.employeeId === item.employee.id);
+                            const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
+
+                            return (
+                              <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[10px] leading-tight py-0">
+                                <span className={cn("flex-grow text-left truncate", isSpecialAbsence && "text-blue-600 font-semibold")}>
+                                  {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
+                                </span>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
+                                        <Plus className="h-3 w-3" />
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-56 p-1">
+                                      <div className="flex flex-col">
+                                        {eventualEmployees.map(emp => (
+                                          <Button
+                                            key={emp.id}
+                                            variant="ghost"
+                                            className="w-full justify-start text-xs h-8"
+                                            onClick={() => {
+                                                handleAssignSubstitute(week.key, item.employee.id, emp.id);
+                                                (document.querySelector('[data-radix-popover-trigger]') as HTMLElement)?.click();
+                                            }}
+                                          >
+                                            {emp.name}
+                                          </Button>
+                                        ))}
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+
+                                  {substitute && (
+                                    <div className="text-[10px] truncate text-red-600 font-semibold">
+                                      Sust: {substitute.substituteName}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
 
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
@@ -654,6 +774,20 @@ export default function VacationsPage() {
                 </DialogContent>
             </Dialog>
 
+            <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
+              <DialogContent className="max-w-none w-screen h-screen p-4 flex flex-col">
+                <div className="flex justify-between items-center flex-shrink-0">
+                    <h2 className="text-lg font-bold">Cuadrante Anual (Pantalla Completa)</h2>
+                    <Button variant="ghost" size="icon" onClick={() => setIsFullScreen(false)}>
+                        <X className="h-6 w-6" />
+                    </Button>
+                </div>
+                <div className="flex-grow overflow-auto">
+                    {renderQuadrant()}
+                </div>
+              </DialogContent>
+            </Dialog>
+
             <Card>
                 <CardHeader>
                     <div className="flex justify-between items-start">
@@ -673,129 +807,17 @@ export default function VacationsPage() {
                                 <Button onClick={() => generateSeasonalReportPDF(allEmployeesForQuadrant, selectedYear, dataProvider)} disabled={isGenerating} size="sm" variant="ghost">
                                     <SunSnow className="mr-2 h-4 w-4" /> Check
                                 </Button>
+                                <Button onClick={() => setIsFullScreen(true)} size="sm" variant="ghost">
+                                    <Expand className="mr-2 h-4 w-4" /> Pantalla Completa
+                                </Button>
                             </div>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {loading ? <Skeleton className="h-[600px] w-full" /> : (
-                         <div className="overflow-auto h-[70vh] border rounded-lg">
-                             <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
-                                <thead className="sticky top-0 z-10 bg-card shadow-sm">
-                                    <tr>
-                                        <th className="p-0 border-b border-r sticky left-0 bg-card z-20" style={{ width: '1px', overflow: 'hidden' }}>
-                                            <div className="w-0 opacity-0">Grupo</div>
-                                        </th>
-                                        {weeksOfYear.map(week => {
-                                            const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
-
-                                            return (
-                                                <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
-                                                    <div className='flex justify-between items-center h-full px-1'>
-                                                        <div className="flex flex-col items-start">
-                                                            <span className='text-xs'>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
-                                                            <div className="flex gap-3 mt-1 text-xs items-center font-normal text-muted-foreground">
-                                                                <Popover>
-                                                                    <PopoverTrigger asChild>
-                                                                        <button className='flex items-center gap-1 cursor-pointer'><Users className="h-3 w-3"/>{weeklySummaries[week.key]?.employeeCount ?? 0}</button>
-                                                                    </PopoverTrigger>
-                                                                    <PopoverContent className="w-64 p-2">
-                                                                        <div className="space-y-1">
-                                                                            <p className="font-bold text-sm">Personal Ausente</p>
-                                                                            {employeesByWeek[week.key]?.map(e => <p key={e.employeeId} className="text-xs">{e.employeeName} ({e.absenceAbbreviation})</p>)}
-                                                                            {employeesByWeek[week.key]?.length === 0 && <p className="text-xs text-muted-foreground">Nadie.</p>}
-                                                                        </div>
-                                                                    </PopoverContent>
-                                                                </Popover>
-                                                                <div className='flex items-center gap-1'><Clock className="h-3 w-3"/>{weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
-                                                            </div>
-                                                        </div>
-                                                        <Badge variant="secondary">{turnId ? `T.${turnId.replace('turn', '')}`: 'N/A'}</Badge>
-                                                    </div>
-                                                </th>
-                                            )
-                                        })}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {employeeGroups.map(group => {
-                                        const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-                                        return (
-                                            <tr key={group.id}>
-                                                <td className="border p-0 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ width: '1px', overflow: 'hidden' }}>
-                                                   <div className="w-0 opacity-0">{group.name}</div>
-                                                </td>
-                                                {weeksOfYear.map(week => {
-                                                    const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
-                                                        const absence = employeesWithAbsences[emp.id]?.find(a => 
-                                                            isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
-                                                        );
-                                                        return absence ? { employee: emp, absence } : null;
-                                                    }).filter(Boolean);
-
-                                                    const cellHasContent = employeesWithAbsenceInWeek.length > 0;
-                                                    const cellBg = cellHasContent ? (groupColors[group.id] || '#f0f0f0') : 'transparent';
-                                                    
-                                                    return (
-                                                        <td key={`${group.id}-${week.key}`} className="border align-top py-0 px-0.5" style={{ backgroundColor: cellBg }}>
-                                                            <div className="flex flex-col gap-0 relative h-full">
-                                                                {employeesWithAbsenceInWeek.map(item => {
-                                                                    if (!item) return null;
-                                                                    const substitute = substitutesByWeek[week.key]?.find(s => s.employeeId === item.employee.id);
-                                                                    const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
-                                                                    
-                                                                    return (
-                                                                        <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[10px] leading-tight py-0">
-                                                                            <span className={cn("flex-grow text-left truncate", isSpecialAbsence && "text-blue-600 font-semibold")}>
-                                                                                 {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
-                                                                            </span>
-                                                                             <div className="flex items-center gap-1 flex-shrink-0">
-                                                                                <Popover>
-                                                                                    <PopoverTrigger asChild>
-                                                                                        <Button variant="ghost" size="icon" className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
-                                                                                            <Plus className="h-3 w-3" />
-                                                                                        </Button>
-                                                                                    </PopoverTrigger>
-                                                                                    <PopoverContent className="w-56 p-1">
-                                                                                        <div className="flex flex-col">
-                                                                                            {eventualEmployees.map(emp => (
-                                                                                                <Button
-                                                                                                    key={emp.id}
-                                                                                                    variant="ghost"
-                                                                                                    className="w-full justify-start text-xs h-8"
-                                                                                                    onClick={() => handleAssignSubstitute(week.key, item.employee.id, emp.id)}
-                                                                                                >
-                                                                                                    {emp.name}
-                                                                                                </Button>
-                                                                                            ))}
-                                                                                        </div>
-                                                                                    </PopoverContent>
-                                                                                </Popover>
-
-                                                                                {substitute && (
-                                                                                    <div className="text-[10px] truncate text-red-600 font-semibold">
-                                                                                        Sust: {substitute.substituteName}
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    )
-                                                                })}
-                                                            </div>
-                                                        </td>
-                                                    );
-                                                })}
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                    {loading ? <Skeleton className="h-[600px] w-full" /> : renderQuadrant()}
                 </CardContent>
             </Card>
         </div>
     );
 }
-
-    
