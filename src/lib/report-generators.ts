@@ -588,7 +588,7 @@ export const generateRequestStatusReportPDF = (
             status,
             details,
         };
-    });
+    }).sort((a, b) => a.name.localeCompare(b.name));
 
     const head = [['Empleado', 'Estado', 'Detalles de la Solicitud']];
     const body = reportData.map(d => [d.name, d.status, d.details]);
