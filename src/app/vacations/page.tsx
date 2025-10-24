@@ -875,7 +875,7 @@ export default function VacationsPage() {
                     <CardTitle>Programador vacaciones</CardTitle>
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1 border rounded-md p-1">
-                                <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, employeesForQuadrant, employeesByWeek, weeklySummaries)} disabled={isGenerating} size="sm" variant="ghost">
+                                <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, employeesForQuadrant, employeesByWeek, weeklySummaries, substitutesByWeek, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileDown className="mr-2 h-4 w-4" /> Cuadrante
                                 </Button>
                                 <Button onClick={() => generateSignatureReportPDF(selectedYear, employeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost">

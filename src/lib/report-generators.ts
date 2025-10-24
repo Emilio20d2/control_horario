@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -424,7 +425,7 @@ export const generateQuadrantReportPDF = (
     allEmployeesForQuadrant: any[],
     employeesByWeek: Record<string, { employeeId: string; employeeName: string; absenceAbbreviation: string }[]>,
     weeklySummaries: Record<string, { employeeCount: number; hourImpact: number; }>,
-    substitutesByWeek: Record<string, { employeeId: string, substituteId: string, substituteName: string }[]>,
+    substitutesByWeek: Record<string, { employeeId: string, substituteId: string, substituteName: string }[]> | undefined,
     getTheoreticalHoursAndTurn: (employeeId: string, date: Date) => { turnId: string | null },
     specialAbsenceAbbreviations: Set<string>,
 ) => {
@@ -432,6 +433,7 @@ export const generateQuadrantReportPDF = (
     const pageMargin = 10;
     const headerHeight = 20;
     const weeksPerPage = 5;
+    const safeSubstitutesByWeek = substitutesByWeek || {};
 
     const totalPages = Math.ceil(weeksOfYear.length / weeksPerPage);
 
@@ -451,7 +453,7 @@ export const generateQuadrantReportPDF = (
                 const row = [{ content: '', styles: { cellWidth: 0.1 } }]; // Hidden group column
                 weeksForPage.forEach(week => {
                     const absence = employeesByWeek[week.key]?.find(e => e.employeeId === emp.id);
-                    const substitute = substitutesByWeek[week.key]?.find(s => s.employeeId === emp.id);
+                    const substitute = safeSubstitutesByWeek[week.key]?.find(s => s.employeeId === emp.id);
                     
                     let content = '';
                     if (absence) {
@@ -481,8 +483,8 @@ export const generateQuadrantReportPDF = (
                 [{ content: '', styles: { cellWidth: 0.1 } }, ...weeksForPage.map(week => {
                     const summary = weeklySummaries[week.key];
                     const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
-                    return `${format(week.start, 'dd/MM', { locale: es })} - ${format(week.end, 'dd/MM', { locale: es })}\n` +
-                           `Sem: ${getISOWeek(week.start)} | Turno: ${turnId ? `T.${turnId.replace('turn', '')}` : 'N/A'}\n` +
+                    return `Sem: ${getISOWeek(week.start)} | ${format(week.start, 'dd/MM', { locale: es })} - ${format(week.end, 'dd/MM', { locale: es })}\n` +
+                           `Turno: ${turnId ? `T.${turnId.replace('turn', '')}` : 'N/A'}\n` +
                            `Nº Ausentes: ${summary?.employeeCount ?? 0} | Nºh: ${summary?.hourImpact.toFixed(0) ?? 0}`;
                 })]
             ],
@@ -495,7 +497,7 @@ export const generateQuadrantReportPDF = (
             didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index > 0) {
                     const lines = data.cell.text;
-                    let y = data.cell.y + data.cell.padding('top');
+                    let y = data.cell.y + data.cell.padding('top') + 2;
                     if (lines) {
                         lines.forEach((line: string) => {
                             let text = line;
