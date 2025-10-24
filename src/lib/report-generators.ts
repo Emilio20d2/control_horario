@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -420,9 +421,12 @@ export const generateQuadrantReportPDF = (
     weeksOfYear: any[],
     holidays: Holiday[],
     employeeGroups: EmployeeGroup[],
-    allEmployeesForQuadrant: Employee[],
+    allEmployeesForQuadrant: any[],
     employeesByWeek: Record<string, { employeeId: string; employeeName: string; absenceAbbreviation: string }[]>,
-    weeklySummaries: Record<string, { employeeCount: number; hourImpact: number; }>
+    weeklySummaries: Record<string, { employeeCount: number; hourImpact: number; }>,
+    substitutesByWeek: Record<string, { employeeId: string, substituteId: string, substituteName: string }[]>,
+    getTheoreticalHoursAndTurn: (employeeId: string, date: Date) => { turnId: string | null },
+    specialAbsenceAbbreviations: Set<string>,
 ) => {
     const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a3' });
     const pageMargin = 10;
@@ -441,23 +445,26 @@ export const generateQuadrantReportPDF = (
         const endWeekIndex = Math.min(startWeekIndex + weeksPerPage, weeksOfYear.length);
         const weeksForPage = weeksOfYear.slice(startWeekIndex, endWeekIndex);
 
-        const headers = [{ content: '', styles: { cellWidth: 0.1 } }, ...weeksForPage.map(week => `${format(week.start, 'dd/MM', { locale: es })}\n${getISOWeek(week.start)}`)];
-
-        const body = employeeGroups.map(group => {
+        const tableBody = employeeGroups.flatMap(group => {
             const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-            const rowData = [{ content: '', styles: { cellWidth: 0.1 } }];
-
-            weeksForPage.forEach(week => {
-                const absentEmployees = groupEmployees
-                    .filter(emp => employeesByWeek[week.key]?.some(e => e.employeeId === emp.id))
-                    .map(emp => {
-                        const absence = employeesByWeek[week.key].find(e => e.employeeId === emp.id);
-                        return `${emp.name} (${absence.absenceAbbreviation})`;
-                    })
-                    .join('\n');
-                rowData.push(absentEmployees);
+            return groupEmployees.map(emp => {
+                const row = [{ content: '', styles: { cellWidth: 0.1 } }]; // Hidden group column
+                weeksForPage.forEach(week => {
+                    const absence = employeesByWeek[week.key]?.find(e => e.employeeId === emp.id);
+                    const substitute = substitutesByWeek[week.key]?.find(s => s.employeeId === emp.id);
+                    
+                    let content = '';
+                    if (absence) {
+                        const isSpecialAbsence = specialAbsenceAbbreviations.has(absence.absenceAbbreviation);
+                        content += `[EMP:${isSpecialAbsence ? 'blue' : 'black'}]${emp.name} (${absence.absenceAbbreviation})\n`;
+                    }
+                    if (substitute) {
+                        content += `[SUB:red]Sust: ${substitute.substituteName}`;
+                    }
+                    row.push(content);
+                });
+                return row;
             });
-            return rowData;
         });
 
         const availableWidth = doc.internal.pageSize.width - (pageMargin * 2) - 0.1;
@@ -469,19 +476,53 @@ export const generateQuadrantReportPDF = (
         }
 
         autoTable(doc, {
-            head: [headers],
-            body: body,
             startY: headerHeight,
+            head: [
+                [{ content: '', styles: { cellWidth: 0.1 } }, ...weeksForPage.map(week => {
+                    const summary = weeklySummaries[week.key];
+                    const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
+                    return `${format(week.start, 'dd/MM', { locale: es })} - ${format(week.end, 'dd/MM', { locale: es })}\n` +
+                           `Sem: ${getISOWeek(week.start)} | Turno: ${turnId ? `T.${turnId.replace('turn', '')}` : 'N/A'}\n` +
+                           `Nº Ausentes: ${summary?.employeeCount ?? 0} | Nºh: ${summary?.hourImpact.toFixed(0) ?? 0}`;
+                })]
+            ],
+            body: tableBody,
             theme: 'grid',
-            styles: { fontSize: 8, cellPadding: 1, valign: 'top' },
-            headStyles: { fillColor: [220, 220, 220], textColor: 20, halign: 'center', fontSize: 7, minCellHeight: 10 },
+            styles: { fontSize: 9, cellPadding: 1.5, valign: 'top' },
+            headStyles: { halign: 'center', fontSize: 7, fontStyle: 'bold', fillColor: [230, 230, 230], textColor: 20 },
             columnStyles: columnStyles,
-            margin: { left: pageMargin, right: pageMargin }
+            margin: { left: pageMargin, right: pageMargin },
+            didDrawCell: (data) => {
+                if (data.section === 'body' && data.column.index > 0) {
+                    const lines = data.cell.text;
+                    let y = data.cell.y + data.cell.padding('top');
+                    if (lines) {
+                        lines.forEach((line: string) => {
+                            let text = line;
+                            let color = [0, 0, 0]; // Black
+                            if (line.startsWith('[EMP:blue]')) {
+                                color = [0, 0, 255]; // Blue
+                                text = line.replace('[EMP:blue]', '');
+                            } else if (line.startsWith('[EMP:black]')) {
+                                text = line.replace('[EMP:black]', '');
+                            } else if (line.startsWith('[SUB:red]')) {
+                                color = [255, 0, 0]; // Red
+                                text = line.replace('[SUB:red]', '');
+                            }
+                            doc.setTextColor(color[0], color[1], color[2]);
+                            doc.text(text, data.cell.x + data.cell.padding('left'), y);
+                            y += doc.getLineHeight() * 0.85; // Adjust line height factor as needed
+                        });
+                    }
+                    data.cell.text = []; // Clear original text to prevent it from being drawn
+                }
+            },
         });
     }
     
     doc.save(`cuadrante_anual_${year}.pdf`);
 };
+
 
 export const generateSignatureReportPDF = (
     year: number,
