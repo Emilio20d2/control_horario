@@ -230,8 +230,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     const unsubs: (() => void)[] = [];
 
-    const safeFormat = (date: Date | Timestamp) => {
-        const d = (date as Timestamp)?.toDate ? (date as Timestamp).toDate() : date;
+    const safeFormat = (date: Date | Timestamp | string | null | undefined): string | null => {
+        if (!date) return null;
+        const d = (date as Timestamp)?.toDate ? (date as Timestamp).toDate() : (typeof date === 'string' ? parseISO(date) : date);
         return isValid(d) ? format(d, 'yyyy-MM-dd') : null;
     }
 

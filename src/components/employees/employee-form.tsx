@@ -102,20 +102,20 @@ const formSchema = z.object({
   newWeeklySchedule: weeklyScheduleSchema.optional(),
 
 }).refine(data => {
-    if(data.newWeeklyWorkHours && data.newWeeklyWorkHours > 0 && !data.newWeeklyWorkHoursDate) {
+    if(data.newWeeklyWorkHours && data.newWeeklyWorkHours > 0 && (!data.newWeeklyWorkHoursDate || !data.newWeeklyWorkHoursDate.match(/^\d{4}-\d{2}-\d{2}$/))) {
         return false;
     }
     return true;
 }, {
-    message: "Debe proporcionar una fecha de efectividad para la nueva jornada.",
+    message: "Debe proporcionar una fecha de efectividad válida para la nueva jornada.",
     path: ["newWeeklyWorkHoursDate"]
 }).refine(data => {
-    if (data.newContractType && !data.newContractTypeDate) {
+    if (data.newContractType && (!data.newContractTypeDate || !data.newContractTypeDate.match(/^\d{4}-\d{2}-\d{2}$/))) {
         return false;
     }
     return true;
 }, {
-    message: "Debe proporcionar una fecha de efectividad para el nuevo contrato.",
+    message: "Debe proporcionar una fecha de efectividad válida para el nuevo contrato.",
     path: ["newContractTypeDate"],
 });
 
@@ -156,6 +156,17 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             return dateB.getTime() - dateA.getTime();
         })[0];
         
+        if (!period) {
+             return {
+                name: '', employeeNumber: '', dni: '', phone: '', email: '', role: 'employee',
+                startDate: new Date().toISOString().split('T')[0], endDate: null, isTransfer: false, vacationDaysUsedInAnotherCenter: undefined,
+                contractType: '', initialWeeklyWorkHours: 40, annualComputedHours: 0,
+                initialOrdinaryHours: undefined, initialHolidayHours: undefined, initialLeaveHours: undefined, vacationDays2024: undefined,
+                weeklySchedules: [], newWeeklyWorkHours: undefined, newWeeklyWorkHoursDate: undefined,
+                newContractType: undefined, newContractTypeDate: undefined, newWeeklySchedule: undefined,
+            };
+        }
+
         const startDateObj = period.startDate instanceof Date ? period.startDate : parseISO(period.startDate as string);
         const startDateString = isValid(startDateObj) ? format(startDateObj, 'yyyy-MM-dd') : '';
 
@@ -523,9 +534,9 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         <FormItem>
                             <FormLabel>Horas Computadas Anuales</FormLabel>
                             <FormControl>
-                                <InputStepper {...field} step={0.25} value={field.value ?? 0} disabled={!!employee} />
+                                <InputStepper {...field} step={0.25} value={field.value ?? 0} disabled={!!employee && !isFirstPeriod} />
                             </FormControl>
-                            <FormDescription>Horas ya trabajadas si el contrato empezó a mitad de año.</FormDescription>
+                             <FormDescription>Horas ya trabajadas si el contrato empezó a mitad de año.</FormDescription>
                             <FormMessage />
                         </FormItem>
                         )}
