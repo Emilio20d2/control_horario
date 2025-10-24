@@ -495,24 +495,26 @@ export const generateQuadrantReportPDF = (
             margin: { left: pageMargin, right: pageMargin },
             didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index > 0) {
-                    const cellContent: { employee: any; absence: any; substitute: any; }[] = (data.cell.raw as any[] | null) || [];
+                    const cellContent: any = data.cell.raw;
                     let y = data.cell.y + data.cell.padding('top') + 1;
                     data.cell.text = []; // Clear original text
 
-                    cellContent.forEach(item => {
-                        const isSpecial = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
-                        const employeeColor: [number, number, number] = isSpecial ? [0, 0, 255] : [0, 0, 0];
-                        
-                        doc.setTextColor(employeeColor[0], employeeColor[1], employeeColor[2]);
-                        doc.text(`${item.employee.name} (${item.absence.absenceAbbreviation})`, data.cell.x + data.cell.padding('left'), y);
-                        y += doc.getLineHeight() * 0.9;
-                        
-                        if (item.substitute) {
-                            doc.setTextColor(255, 0, 0); // Red
-                            doc.text(`Sust: ${item.substitute.substituteName}`, data.cell.x + data.cell.padding('left'), y);
+                    if (Array.isArray(cellContent)) {
+                        cellContent.forEach(item => {
+                            const isSpecial = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
+                            const employeeColor: [number, number, number] = isSpecial ? [0, 0, 255] : [0, 0, 0];
+                            
+                            doc.setTextColor(employeeColor[0], employeeColor[1], employeeColor[2]);
+                            doc.text(`${item.employee.name} (${item.absence.absenceAbbreviation})`, data.cell.x + data.cell.padding('left'), y);
                             y += doc.getLineHeight() * 0.9;
-                        }
-                    });
+                            
+                            if (item.substitute) {
+                                doc.setTextColor(0, 0, 0); // Reset to black before "Sust:"
+                                doc.text(`Sust: ${item.substitute.substituteName}`, data.cell.x + data.cell.padding('left'), y);
+                                y += doc.getLineHeight() * 0.9;
+                            }
+                        });
+                    }
                 }
             },
         });
@@ -646,3 +648,4 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
