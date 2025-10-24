@@ -67,8 +67,17 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
         throw new Error("No se encontró un periodo laboral para actualizar.");
     }
     
-    const endDateValue = endDate ? (endDate instanceof Date && isValid(endDate) ? format(endDate, 'yyyy-MM-dd') : endDate) : null;
+    // This logic ensures that if endDate is an invalid date or null/undefined, it's set to null.
+    // Otherwise, it's formatted correctly.
+    let endDateValue: string | null = null;
+    if (endDate) {
+        const parsedEndDate = endDate instanceof Date ? endDate : parseISO(endDate);
+        if (isValid(parsedEndDate)) {
+            endDateValue = format(parsedEndDate, 'yyyy-MM-dd');
+        }
+    }
     periodToUpdate.endDate = endDateValue;
+
     periodToUpdate.annualComputedHours = annualComputedHours ?? periodToUpdate.annualComputedHours ?? 0;
 
     if (updatedPeriods.length === 1) { // Only update these for the very first period
