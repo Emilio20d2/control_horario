@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -43,7 +44,7 @@ import { createEmployee, updateEmployee, deleteEmployee } from '@/lib/services/e
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { InputStepper } from '../ui/input-stepper';
-import { parseISO } from 'date-fns';
+import { parseISO, format } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 import { Label } from '../ui/label';
@@ -151,6 +152,11 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     if (employee && employee.employmentPeriods?.length > 0) {
         const period = [...employee.employmentPeriods].sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
         
+        // Ensure startDate is a string in 'yyyy-MM-dd' format
+        const startDateString = typeof period.startDate === 'string' 
+            ? period.startDate 
+            : format(period.startDate, 'yyyy-MM-dd');
+        
         return {
             name: employee.name,
             employeeNumber: employee.employeeNumber,
@@ -158,7 +164,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             phone: employee.phone,
             email: employee.email,
             role: role,
-            startDate: period.startDate as string,
+            startDate: startDateString,
             endDate: period.endDate as string | null,
             isTransfer: period.isTransfer || false,
             vacationDaysUsedInAnotherCenter: period.vacationDaysUsedInAnotherCenter,
