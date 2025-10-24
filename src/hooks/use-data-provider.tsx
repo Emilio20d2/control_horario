@@ -47,6 +47,8 @@ import {
     createVacationCampaign,
     updateVacationCampaign,
     deleteVacationCampaign,
+    addHolidayReport,
+    updateHolidayReport
 } from '../lib/services/settingsService';
 import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, getISOWeekYear, isValid } from 'date-fns';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
@@ -1128,18 +1130,6 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         return finalData;
 
     }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, getEffectiveWeeklyHours, holidays, absenceTypes, contractTypes, prefilledRecords]);
-
-    const addHolidayReport = async (report: Omit<HolidayReport, 'id'>): Promise<string> => {
-        const docId = `${report.weekId}_${report.employeeId}`;
-        const docRef = doc(db, 'holidayReports', docId);
-        await setDocument(docId, report, { merge: true });
-        return docId;
-    }
-
-    const updateHolidayReport = async (reportId: string, data: Partial<Omit<HolidayReport, 'id'>>) => {
-        const docRef = doc(db, 'holidayReports', reportId);
-        await updateDoc(docRef, data);
-    }
 
     const findNextUnconfirmedWeek = (startDate: Date): string | null => {
         const auditStartDate = startOfDay(new Date('2025-01-27'));

@@ -138,8 +138,24 @@ export default function VacationsPage() {
     // State for status report
     const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
     
-    // Visual state for substitutes
-    const [substitutes, setSubstitutes] = useState<Record<string, Record<string, string>>>({}); // { [weekKey]: { [employeeId]: substituteName } }
+    // State for substitutes
+    const [substitutes, setSubstitutes] = useState<Record<string, Record<string, {substituteId: string, substituteName: string}>>>({}); // { [weekKey]: { [employeeId]: { substituteId, substituteName } } }
+
+    useEffect(() => {
+        if (holidayReports.length > 0) {
+            const newSubs: Record<string, Record<string, {substituteId: string, substituteName: string}>> = {};
+            holidayReports.forEach(report => {
+                if (!newSubs[report.weekId]) {
+                    newSubs[report.weekId] = {};
+                }
+                newSubs[report.weekId][report.employeeId] = {
+                    substituteId: report.substituteId,
+                    substituteName: report.substituteName
+                };
+            });
+            setSubstitutes(newSubs);
+        }
+    }, [holidayReports]);
 
     const activeEmployees = useMemo(() => {
         return employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
@@ -528,14 +544,34 @@ export default function VacationsPage() {
         generateRequestStatusReportPDF(campaign, allEmployeesForQuadrant, conversations, absenceTypes);
     };
 
-    const handleSelectSubstitute = (weekKey: string, employeeId: string, substituteName: string) => {
-        setSubstitutes(prev => ({
-            ...prev,
-            [weekKey]: {
-                ...prev[weekKey],
-                [employeeId]: substituteName,
-            }
-        }));
+    const handleSelectSubstitute = async (weekKey: string, employeeId: string, substitute: {id: string, name: string}) => {
+        const weekDate = parseISO(weekKey);
+        
+        try {
+            await addHolidayReport({
+                weekId: weekKey,
+                weekDate: Timestamp.fromDate(weekDate),
+                employeeId,
+                substituteId: substitute.id,
+                substituteName: substitute.name,
+            });
+    
+            setSubstitutes(prev => ({
+                ...prev,
+                [weekKey]: {
+                    ...prev[weekKey],
+                    [employeeId]: {
+                        substituteId: substitute.id,
+                        substituteName: substitute.name,
+                    },
+                }
+            }));
+            
+            toast({ title: 'Sustituto Asignado', description: `${substitute.name} asignado a ${allEmployeesForQuadrant.find(e => e.id === employeeId)?.name}.` });
+        } catch(e) {
+            console.error(e);
+            toast({ title: 'Error', description: 'No se pudo asignar el sustituto.', variant: 'destructive'});
+        }
     };
 
     const specialAbsenceAbbreviations = new Set(['EXD', 'PNR']);
@@ -545,7 +581,7 @@ export default function VacationsPage() {
           <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
             <thead className="sticky top-0 z-10 bg-card shadow-sm">
               <tr>
-                <th className="p-1 border-b border-r font-semibold text-sm sticky left-0 bg-card z-20" style={{ width: '0.0025px' }}></th>
+                <th className="p-1 border-b border-r font-semibold text-sm sticky left-0 bg-card z-20" style={{ width: '35px' }}></th>
                 {weeksOfYear.map(week => {
                   const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
   
@@ -582,7 +618,9 @@ export default function VacationsPage() {
                 const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
                 return (
                   <tr key={group.id}>
-                    <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ backgroundColor: groupColors[group.id] || '#f0f0f0', width: '0.0025px' }}></td>
+                    <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ backgroundColor: groupColors[group.id] || '#f0f0f0', width: '35px' }}>
+                       <div className="-rotate-90 origin-center-left whitespace-nowrap" style={{ marginLeft: '12px' }}>{group.name}</div>
+                    </td>
                     {weeksOfYear.map(week => {
                       const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
                         const absence = (employeesWithAbsences[emp.id] || []).find(a =>
@@ -612,9 +650,9 @@ export default function VacationsPage() {
                                     )}>
                                         {item.employee.name} ({item.absence.absenceAbbreviation})
                                     </button>
-                                    <div className="flex-shrink-0">
+                                     <div className="flex-shrink-0">
                                       {selectedSubstitute ? (
-                                          <span className="text-red-600 font-semibold">{selectedSubstitute}</span>
+                                          <span className="text-red-600 font-semibold">{selectedSubstitute.substituteName}</span>
                                       ) : (
                                           <Popover>
                                               <PopoverTrigger asChild>
@@ -623,7 +661,7 @@ export default function VacationsPage() {
                                               <PopoverContent className="w-48 p-1">
                                                   <div className="flex flex-col">
                                                       {substituteEmployees.map(sub => (
-                                                          <button key={sub.id} onClick={() => handleSelectSubstitute(week.key, item.employee.id, sub.name)} className="text-sm text-left p-1 rounded-sm hover:bg-accent">
+                                                          <button key={sub.id} onClick={() => handleSelectSubstitute(week.key, item.employee.id, sub)} className="text-sm text-left p-1 rounded-sm hover:bg-accent">
                                                               {sub.name}
                                                           </button>
                                                       ))}
@@ -810,7 +848,7 @@ export default function VacationsPage() {
                     <CardTitle>Programador vacaciones</CardTitle>
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1 border rounded-md p-1">
-                                <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, {}, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost">
+                                <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, substitutes, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileDown className="mr-2 h-4 w-4" /> Cuadrante
                                 </Button>
                                 <Button onClick={() => generateSignatureReportPDF(selectedYear, allEmployeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost">
@@ -846,4 +884,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-

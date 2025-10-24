@@ -251,6 +251,7 @@ export interface HolidayReport {
     weekDate: Timestamp;
     employeeId: string;
     substituteId: string;
+    substituteName: string;
 }
 
 export interface EmployeeGroup {
