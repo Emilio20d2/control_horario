@@ -122,6 +122,7 @@ export default function VacationsPage() {
     
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isFullScreen, setIsFullScreen] = useState(false);
     
     // State for planner
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
@@ -133,9 +134,7 @@ export default function VacationsPage() {
     const [editingAbsence, setEditingAbsence] = useState<{ employee: any; absence: FormattedAbsence; } | null>(null);
     const [editedDateRange, setEditedDateRange] = useState<DateRange | undefined>(undefined);
     const [editCalendarMonth, setEditCalendarMonth] = useState<Date>(new Date());
-    
-    const [isFullScreen, setIsFullScreen] = useState(false);
-    
+        
     // State for status report
     const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
     
@@ -488,7 +487,6 @@ export default function VacationsPage() {
         opening: { backgroundColor: '#a7f3d0' }, 
         other: { backgroundColor: '#fecaca' }, 
         employeeAbsence: { backgroundColor: '#dbeafe' },
-        request: { backgroundColor: '#FEF08A' },
     };
     const editModifiersStyles = { ...plannerModifiersStyles };
 
@@ -584,9 +582,7 @@ export default function VacationsPage() {
   
                       const cellHasContent = employeesWithAbsenceInWeek.length > 0;
                        const cellBg = cellHasContent
-                          ? employeesWithAbsenceInWeek.some(item => item?.absence.isRequest)
-                              ? plannerModifiersStyles.request.backgroundColor
-                              : (groupColors[group.id] || '#f0f0f0')
+                          ? (groupColors[group.id] || '#f0f0f0')
                           : 'transparent';
   
                       return (
@@ -597,7 +593,7 @@ export default function VacationsPage() {
                               const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
   
                               return (
-                                  <button key={item.employee.id} onClick={() => !item.absence.isRequest && setEditingAbsence({employee: item.employee, absence: item.absence})} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[11px] leading-tight py-0 hover:bg-black/5">
+                                  <button key={item.employee.id} onClick={() => setEditingAbsence({employee: item.employee, absence: item.absence})} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[11px] leading-tight py-0 hover:bg-black/5">
                                       <span className={cn(
                                           "flex-grow text-left truncate",
                                           isSpecialAbsence ? "text-blue-600" : "text-black"
@@ -819,12 +815,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-
-
-
-
-
-
-
-
-    
