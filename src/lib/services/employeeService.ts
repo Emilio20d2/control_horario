@@ -1,3 +1,4 @@
+
 'use client';
 
 import { addDocument, updateDocument, deleteDocument, setDocument } from './firestoreService';
@@ -137,14 +138,16 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
     // Update existing schedule from `weeklySchedules` array (it's the most recent one)
     if (weeklySchedules && weeklySchedules.length > 0) {
         const scheduleToUpdate = weeklySchedules[0];
-        const existingScheduleIndex = targetPeriodForSchedules.weeklySchedulesHistory.findIndex(
-            s => s.effectiveDate === scheduleToUpdate.effectiveDate
-        );
-        if (existingScheduleIndex > -1) {
-            targetPeriodForSchedules.weeklySchedulesHistory[existingScheduleIndex] = scheduleToUpdate;
-        } else {
-            // This case shouldn't happen if form is setup correctly, but as a fallback
-            targetPeriodForSchedules.weeklySchedulesHistory.push(scheduleToUpdate);
+        if(scheduleToUpdate.effectiveDate) { // FIX: Ensure date exists
+            const existingScheduleIndex = targetPeriodForSchedules.weeklySchedulesHistory.findIndex(
+                s => s.effectiveDate === scheduleToUpdate.effectiveDate
+            );
+            if (existingScheduleIndex > -1) {
+                targetPeriodForSchedules.weeklySchedulesHistory[existingScheduleIndex] = scheduleToUpdate;
+            } else {
+                // This case shouldn't happen if form is setup correctly, but as a fallback
+                targetPeriodForSchedules.weeklySchedulesHistory.push(scheduleToUpdate);
+            }
         }
     }
 
