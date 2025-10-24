@@ -207,9 +207,7 @@ export default function VacationsPage() {
     }, [absenceTypes]);
 
     const allEmployeesForQuadrant = useMemo(() => {
-        // 1. Get active main employees and map them
-        const activeMainEmployees = employees
-            .filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
+        return employees
             .map(e => {
                 const holidayInfo = holidayEmployees.find(he => he.id === e.id);
                 return {
@@ -218,24 +216,8 @@ export default function VacationsPage() {
                     active: holidayInfo ? holidayInfo.active : true,
                     isEventual: false,
                 };
-            });
-    
-        // 2. Get eventual employees that are not already in the main list
-        const mainEmployeeIds = new Set(activeMainEmployees.map(e => e.id));
-        const eventualsToAdd = holidayEmployees
-            .filter(he => he.active && !mainEmployeeIds.has(he.id))
-            .map(he => ({
-                id: he.id,
-                name: he.name,
-                employmentPeriods: [], // Eventual employees don't have periods
-                groupId: he.groupId,
-                active: he.active,
-                isEventual: true,
-            }));
-    
-        // 3. Combine, filter, and sort
-        return [...activeMainEmployees, ...eventualsToAdd]
-            .filter(e => e.active)
+            })
+            .filter(e => e.active && e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
             .sort((a,b) => {
                 const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
                 const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
@@ -936,3 +918,4 @@ export default function VacationsPage() {
         </div>
     );
 }
+
