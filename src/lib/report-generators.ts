@@ -1,5 +1,3 @@
-
-
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -449,25 +447,18 @@ export const generateQuadrantReportPDF = (
 
         const tableBody = employeeGroups.map(group => {
             const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-            const rowData: any[] = [{ content: '', styles: { fillColor: group.color, lineWidth: 0 } }]; 
+            const rowData: any[] = [{ content: '', styles: { fillColor: group.color, lineWidth: 0.1, lineColor: [0, 0, 0] } }];
 
             weeksForPage.forEach(week => {
                 const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
                     const absenceInWeek = employeesByWeek[week.key]?.find(e => e.employeeId === emp.id);
-                    return absenceInWeek ? { employee: emp, absence: absenceInWeek } : null;
+                    return absenceInWeek ? { employee: emp, absence: absenceInWeek, substitute: safeSubstitutesByWeek[week.key]?.[emp.id] } : null;
                 }).filter(Boolean);
 
-                const cellContent = employeesWithAbsenceInWeek.map(item => {
-                    if (!item) return '';
-                    const substitute = safeSubstitutesByWeek[week.key]?.[item.employee.id];
-                    let text = item.employee.name;
-                    if(substitute) {
-                        text += `\n${substitute.substituteName}`;
-                    }
-                    return text;
-                }).join('\n');
-                
-                rowData.push({ content: cellContent, styles: { fillColor: employeesWithAbsenceInWeek.length > 0 ? group.color : '#ffffff' } });
+                rowData.push({
+                    content: employeesWithAbsenceInWeek,
+                    styles: { fillColor: employeesWithAbsenceInWeek.length > 0 ? group.color : '#ffffff', lineWidth: 0.1, lineColor: [0, 0, 0] }
+                });
             });
             return rowData;
         });
@@ -480,7 +471,6 @@ export const generateQuadrantReportPDF = (
                    `Turno: ${turnId ? `T.${turnId.replace('turn', '')}` : 'N/A'}\n` +
                    `Nº Ausentes: ${summary?.employeeCount ?? 0} | Nºh: ${summary?.hourImpact.toFixed(0) ?? 0}`;
         })];
-
 
         const availableWidth = doc.internal.pageSize.width - (pageMargin * 2) - 0.0025;
         const weekColumnWidth = availableWidth / weeksForPage.length;
@@ -495,10 +485,33 @@ export const generateQuadrantReportPDF = (
             head: [tableHeader],
             body: tableBody,
             theme: 'grid',
-            styles: { fontSize: 8, cellPadding: 2, valign: 'top', lineColor: [0,0,0], lineWidth: 0.1 },
+            styles: { fontSize: 8, cellPadding: 1, valign: 'middle', lineColor: [0,0,0], lineWidth: 0.1 },
             headStyles: { halign: 'center', fontSize: 8, fontStyle: 'bold', fillColor: [230, 230, 230], textColor: 20 },
             columnStyles: columnStyles,
             margin: { left: pageMargin, right: pageMargin },
+            didDrawCell: (data) => {
+                if (data.section === 'body' && data.column.index > 0) {
+                    const cellContent = data.cell.raw;
+                    data.cell.text = []; // Clear original text
+                    
+                    if (Array.isArray(cellContent) && cellContent.length > 0) {
+                        let y = data.cell.y + data.cell.padding('top') + 1;
+                        const x = data.cell.x + data.cell.padding('left');
+                        const rightX = data.cell.x + data.cell.width - data.cell.padding('right');
+
+                        cellContent.forEach(item => {
+                            const employeeText = `${item.employee.name} (${item.absence.absenceAbbreviation})`;
+                            
+                            doc.text(employeeText, x, y);
+
+                            if (item.substitute) {
+                                doc.text(item.substitute.substituteName, rightX, y, { align: 'right' });
+                            }
+                            y += doc.getLineHeight() * 0.5; // Adjust spacing for next line
+                        });
+                    }
+                }
+            },
         });
     }
     
@@ -630,6 +643,7 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
 
