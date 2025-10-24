@@ -463,8 +463,9 @@ export const generateQuadrantReportPDF = (
                 employeesWithAbsenceInWeek.forEach(item => {
                     const substitute = safeSubstitutesByWeek[week.key]?.[item.employee.id];
                     const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
+                    const empColor = isSpecialAbsence ? 'blue' : 'black';
 
-                    cellContent += `[EMP:${isSpecialAbsence ? 'blue' : 'black'}]${item.employee.name} (${item.absence.absenceAbbreviation})\n`;
+                    cellContent += `[EMP:${empColor}]${item.employee.name} (${item.absence.absenceAbbreviation})\n`;
                     if (substitute) {
                         cellContent += `[SUB:red]Sust: ${substitute.substituteName}\n`;
                     }
@@ -507,13 +508,13 @@ export const generateQuadrantReportPDF = (
                 }
 
                 if (data.section === 'body' && data.column.index > 0) {
-                    const originalText = data.cell.text; // Store original text
+                    const originalText = data.cell.text;
                     data.cell.text = []; // Clear the text so autotable doesn't draw it
 
                     let y = data.cell.y + data.cell.padding('top') + 3; 
-                    if (originalText) {
-                        const lines = Array.isArray(originalText) ? originalText : [originalText];
-                        lines.forEach((line: string) => {
+                    if (originalText && originalText.length > 0) {
+                        const lines = Array.isArray(originalText) ? originalText : [originalText.toString()];
+                        lines[0].split('\n').forEach((line: string) => {
                             let text = line;
                             let color: [number, number, number] = [0, 0, 0]; // Black
                             if (line.startsWith('[EMP:blue]')) {
@@ -658,3 +659,4 @@ export const generateRequestStatusReportPDF = (
     const safeTitle = campaign.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     doc.save(`informe_estado_${safeTitle}.pdf`);
 };
+
