@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -447,17 +448,24 @@ export const generateQuadrantReportPDF = (
 
         const tableBody = employeeGroups.map(group => {
             const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-            const rowData: any[] = [{ content: '', styles: { fillColor: group.color, lineWidth: 0.1, lineColor: [0, 0, 0] } }];
+            const rowData: any[] = [{ content: '', styles: { fillColor: group.color, lineWidth: 0.1, lineColor: [0,0,0] } }];
 
             weeksForPage.forEach(week => {
-                const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
+                const cellItems = groupEmployees.map(emp => {
                     const absenceInWeek = employeesByWeek[week.key]?.find(e => e.employeeId === emp.id);
-                    return absenceInWeek ? { employee: emp, absence: absenceInWeek, substitute: safeSubstitutesByWeek[week.key]?.[emp.id] } : null;
+                    if (!absenceInWeek) return null;
+                    
+                    const substituteInfo = safeSubstitutesByWeek[week.key]?.[emp.id];
+                    let text = `${absenceInWeek.employeeName} (${absenceInWeek.absenceAbbreviation})`;
+                    if (substituteInfo) {
+                        text += `|${substituteInfo.substituteName}`;
+                    }
+                    return text;
                 }).filter(Boolean);
 
                 rowData.push({
-                    content: employeesWithAbsenceInWeek,
-                    styles: { fillColor: employeesWithAbsenceInWeek.length > 0 ? group.color : '#ffffff', lineWidth: 0.1, lineColor: [0, 0, 0] }
+                    content: cellItems.join('\n'),
+                    styles: { fillColor: cellItems.length > 0 ? group.color : '#ffffff', lineWidth: 0.1, lineColor: [0,0,0] }
                 });
             });
             return rowData;
@@ -491,25 +499,25 @@ export const generateQuadrantReportPDF = (
             margin: { left: pageMargin, right: pageMargin },
             didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index > 0) {
-                    const cellContent = data.cell.raw;
-                    data.cell.text = []; // Clear original text
+                    const rawContent = data.cell.raw as string;
+                    if (!rawContent) return;
                     
-                    if (Array.isArray(cellContent) && cellContent.length > 0) {
-                        let y = data.cell.y + data.cell.padding('top') + 1;
-                        const x = data.cell.x + data.cell.padding('left');
-                        const rightX = data.cell.x + data.cell.width - data.cell.padding('right');
+                    data.cell.text = []; // Clear original text
 
-                        cellContent.forEach(item => {
-                            const employeeText = `${item.employee.name} (${item.absence.absenceAbbreviation})`;
-                            
-                            doc.text(employeeText, x, y);
+                    const lines = rawContent.split('\n');
+                    let y = data.cell.y + data.cell.padding('top') + 1.5;
 
-                            if (item.substitute) {
-                                doc.text(item.substitute.substituteName, rightX, y, { align: 'right' });
-                            }
-                            y += doc.getLineHeight() * 0.5; // Adjust spacing for next line
-                        });
-                    }
+                    lines.forEach(line => {
+                        const [employeePart, substitutePart] = line.split('|');
+                        
+                        doc.setTextColor(0, 0, 0); // Default black
+                        doc.text(employeePart, data.cell.x + data.cell.padding('left'), y, { baseline: 'middle' });
+
+                        if (substitutePart) {
+                            doc.text(substitutePart, data.cell.x + data.cell.width - data.cell.padding('right'), y, { align: 'right', baseline: 'middle' });
+                        }
+                        y += doc.getLineHeight() * 0.6; 
+                    });
                 }
             },
         });
@@ -643,6 +651,7 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
 
