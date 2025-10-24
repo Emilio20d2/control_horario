@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
-import type { Employee, EmploymentPeriod, Ausencia, VacationCampaign, Conversation } from '@/lib/types';
+import type { Employee, EmploymentPeriod, Ausencia, VacationCampaign, Conversation, HolidayEmployee } from '@/lib/types';
 import {
   format,
   isAfter,
@@ -155,7 +155,6 @@ export default function VacationsPage() {
     }, [activeCampaigns, selectedCampaignId]);
     
     const substituteEmployees = useMemo(() => {
-        // This list contains ONLY eventual employees who are active.
         const mainEmployeeIds = new Set(employees.map(e => e.id));
         return holidayEmployees.filter(he => he.active && !mainEmployeeIds.has(he.id));
     }, [holidayEmployees, employees]);
@@ -209,28 +208,30 @@ export default function VacationsPage() {
     }, [absenceTypes]);
 
     const employeesForQuadrant = useMemo(() => {
-        return employees
-            .filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
-            .map(e => {
-                const holidayInfo = holidayEmployees.find(he => he.id === e.id);
-                return {
-                    ...e,
-                    groupId: holidayInfo?.groupId,
-                    active: holidayInfo ? holidayInfo.active : true,
-                    isEventual: false,
-                };
-            })
+        const mainEmployeesActive = employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
+
+        const employeeMap = new Map<string, any>();
+
+        // Process main employees first
+        mainEmployeesActive.forEach(emp => {
+            const holidayInfo = holidayEmployees.find(he => he.id === emp.id);
+            employeeMap.set(emp.id, {
+                ...emp,
+                groupId: holidayInfo?.groupId,
+                active: holidayInfo ? holidayInfo.active : true,
+                isEventual: false,
+            });
+        });
+        
+        return Array.from(employeeMap.values())
             .filter(e => e.active)
             .sort((a,b) => {
                 const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
                 const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
-                if (groupA !== groupB) {
-                    return groupA - groupB;
-                }
+                if (groupA !== groupB) return groupA - groupB;
                 return a.name.localeCompare(b.name);
             });
     }, [employees, holidayEmployees, employeeGroups]);
-
 
      useEffect(() => {
         if (schedulableAbsenceTypes.length > 0 && !selectedAbsenceTypeId) {
@@ -241,7 +242,20 @@ export default function VacationsPage() {
         }
     }, [schedulableAbsenceTypes, selectedAbsenceTypeId]);
     
-    const { employeesWithAbsences, weeklySummaries, employeesByWeek, substitutesByWeek } = useMemo(() => {
+    const { employeesWithAbsences, weeklySummaries, employeesByWeek, substitutesByWeek, unifiedEmployees } = useMemo(() => {
+        // Build a unified list of all people (main and eventual)
+        const allPeople = new Map<string, {id: string, name: string, isEventual: boolean, groupId?: string | null}>();
+        employees.forEach(e => allPeople.set(e.id, {id: e.id, name: e.name, isEventual: false}));
+        holidayEmployees.forEach(he => {
+            if (!allPeople.has(he.id)) {
+                allPeople.set(he.id, {id: he.id, name: he.name, isEventual: true, groupId: he.groupId});
+            } else {
+                 const existing = allPeople.get(he.id)!;
+                 existing.groupId = he.groupId;
+            }
+        });
+        const unifiedList = Array.from(allPeople.values());
+
         const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
         const schedulableAbbrs = new Set(schedulableAbsenceTypes.map(at => at.abbreviation));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
@@ -381,7 +395,7 @@ export default function VacationsPage() {
         holidayReports.filter(r => r.weekDate && getISOWeekYear(r.weekDate.toDate()) === year).forEach(report => {
             if (!report.weekId) return;
             if (!substitutesByWeek[report.weekId]) substitutesByWeek[report.weekId] = [];
-            const subName = holidayEmployees.find(he => he.id === report.substituteId)?.name || 'Desconocido';
+            const subName = unifiedList.find(he => he.id === report.substituteId)?.name || 'Desconocido';
             substitutesByWeek[report.weekId].push({ employeeId: report.employeeId, substituteId: report.substituteId, substituteName: subName });
         });
         
@@ -405,9 +419,9 @@ export default function VacationsPage() {
             });
         });
 
-        return { employeesWithAbsences, weeklySummaries, employeesByWeek, substitutesByWeek };
+        return { employeesWithAbsences, weeklySummaries, employeesByWeek, substitutesByWeek, unifiedEmployees: unifiedList };
 
-    }, [employeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords, holidayReports, holidayEmployees, conversations]);
+    }, [employeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords, holidayReports, holidayEmployees, conversations, employees]);
     
      useEffect(() => {
         if (!loading) {
@@ -922,5 +936,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-
-    
