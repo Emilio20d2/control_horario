@@ -138,15 +138,26 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
     // Update existing schedule from `weeklySchedules` array (it's the most recent one)
     if (weeklySchedules && weeklySchedules.length > 0) {
         const scheduleToUpdate = weeklySchedules[0];
-        if(scheduleToUpdate.effectiveDate) { // FIX: Ensure date exists
+        
+        // **BUG FIX:** Ensure effectiveDate is a string before comparison.
+        const effectiveDateString = typeof scheduleToUpdate.effectiveDate === 'string'
+            ? scheduleToUpdate.effectiveDate
+            : format(scheduleToUpdate.effectiveDate, 'yyyy-MM-dd');
+
+        if(effectiveDateString) {
             const existingScheduleIndex = targetPeriodForSchedules.weeklySchedulesHistory.findIndex(
-                s => s.effectiveDate === scheduleToUpdate.effectiveDate
+                s => s.effectiveDate === effectiveDateString
             );
             if (existingScheduleIndex > -1) {
-                targetPeriodForSchedules.weeklySchedulesHistory[existingScheduleIndex] = scheduleToUpdate;
+                targetPeriodForSchedules.weeklySchedulesHistory[existingScheduleIndex] = {
+                    ...scheduleToUpdate,
+                    effectiveDate: effectiveDateString, // Ensure it's stored as a string
+                };
             } else {
-                // This case shouldn't happen if form is setup correctly, but as a fallback
-                targetPeriodForSchedules.weeklySchedulesHistory.push(scheduleToUpdate);
+                targetPeriodForSchedules.weeklySchedulesHistory.push({
+                    ...scheduleToUpdate,
+                    effectiveDate: effectiveDateString,
+                });
             }
         }
     }
