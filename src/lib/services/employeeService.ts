@@ -156,7 +156,7 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
         targetPeriodForSchedules.weeklySchedulesHistory.push(newWeeklySchedule);
     }
     
-    targetPeriodForSchedules.weeklySchedulesHistory.sort((a, b) => parseISO(a.effectiveDate).getTime() - parseISO(b.effectiveDate).getTime());
+    targetPeriodForSchedules.weeklySchedulesHistory.sort((a, b) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
 
     const finalData = {
         name,
@@ -176,11 +176,12 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
         const userDoc = await getDoc(userRef);
         if (userDoc.exists()) {
             await updateDocument('users', currentEmployee.authId, { role });
-        } else {
-            await setDocument('users', currentEmployee.authId, { email: currentEmployee.email, employeeId: id, role });
+        } else if (email) { // Only create if email exists
+            await setDocument('users', currentEmployee.authId, { email: email, employeeId: id, role });
         }
-    } else if (email && role) {
-        console.log(`Role update for ${email} to '${role}' was provided, but no authId is linked. This should be handled during user registration.`);
+    } else if (email && role && currentEmployee.authId) {
+        // This handles creating the user doc if it was missing but authId exists
+        await setDocument('users', currentEmployee.authId, { email: email, employeeId: id, role });
     }
 };
 
@@ -317,5 +318,3 @@ export const deleteScheduledAbsence = async (
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
-
-    
