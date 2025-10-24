@@ -150,24 +150,28 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     const role = employee?.email === 'emiliogp@inditex.com' ? 'admin' : userForEmployee?.role || 'employee';
 
     if (employee && employee.employmentPeriods?.length > 0) {
-        const period = [...employee.employmentPeriods].sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
+        const period = [...employee.employmentPeriods].sort((a,b) => {
+            const dateA = a.startDate instanceof Date ? a.startDate : parseISO(a.startDate as string);
+            const dateB = b.startDate instanceof Date ? b.startDate : parseISO(b.startDate as string);
+            return dateB.getTime() - dateA.getTime();
+        })[0];
         
-        const startDateString = typeof period.startDate === 'string' 
-            ? period.startDate 
-            : format(period.startDate, 'yyyy-MM-dd');
-        
-        const endDateValue = period.endDate
-          ? (period.endDate instanceof Date && isValid(period.endDate) 
-              ? format(period.endDate, 'yyyy-MM-dd')
-              : (typeof period.endDate === 'string' ? period.endDate : null))
-          : null;
+        const startDateObj = period.startDate instanceof Date ? period.startDate : parseISO(period.startDate as string);
+        const startDateString = isValid(startDateObj) ? format(startDateObj, 'yyyy-MM-dd') : '';
 
+        let endDateValue: string | null = null;
+        if (period.endDate) {
+            const endDateObj = period.endDate instanceof Date ? period.endDate : parseISO(period.endDate as string);
+            if (isValid(endDateObj)) {
+                endDateValue = format(endDateObj, 'yyyy-MM-dd');
+            }
+        }
 
         const weeklySchedulesHistoryFormatted = (period.weeklySchedulesHistory || []).map(schedule => {
-            const effectiveDateAsDate = schedule.effectiveDate instanceof Date ? schedule.effectiveDate : parseISO(schedule.effectiveDate as string);
+            const effectiveDateObj = schedule.effectiveDate instanceof Date ? schedule.effectiveDate : parseISO(schedule.effectiveDate as string);
             return {
                 ...schedule,
-                effectiveDate: isValid(effectiveDateAsDate) ? format(effectiveDateAsDate, 'yyyy-MM-dd') : '',
+                effectiveDate: isValid(effectiveDateObj) ? format(effectiveDateObj, 'yyyy-MM-dd') : '',
             };
         });
 
