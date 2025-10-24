@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -429,7 +430,7 @@ export const generateQuadrantReportPDF = (
 ) => {
     const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a3' });
     const pageMargin = 10;
-    const headerHeight = 25; // Increased header height for more content
+    const headerHeight = 25;
     const weeksPerPage = 5;
     const safeSubstitutesByWeek = substitutesByWeek || {};
 
@@ -447,20 +448,19 @@ export const generateQuadrantReportPDF = (
 
         const tableBody = employeeGroups.map(group => {
             const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-            const rowData = [{ content: group.name, styles: { fontStyle: 'bold', halign: 'center' } }];
+            const rowData = [{ content: '', styles: { fontStyle: 'bold', halign: 'center' } }]; // Blank content for group name
 
             weeksForPage.forEach(week => {
                 const employeesWithAbsenceInWeek = groupEmployees
                     .map(emp => {
-                        const absence = employeesByWeek[week.key]?.find(e => e.employeeId === emp.id);
+                        const absence = (employeesByWeek[week.key] || []).find(e => e.employeeId === emp.id);
                         return absence ? { employee: emp, absence } : null;
                     })
-                    .filter(item => item !== null);
+                    .filter((item): item is { employee: any, absence: any } => item !== null);
                 
                 let cellContent = '';
                 employeesWithAbsenceInWeek.forEach(item => {
-                    if (!item) return;
-                    const substitute = safeSubstitutesByWeek[week.key]?.find(s => s.employeeId === item.employee.id);
+                    const substitute = (safeSubstitutesByWeek[week.key] || []).find(s => s.employeeId === item.employee.id);
                     const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
 
                     cellContent += `[EMP:${isSpecialAbsence ? 'blue' : 'black'}]${item.employee.name} (${item.absence.absenceAbbreviation})\n`;
@@ -472,36 +472,43 @@ export const generateQuadrantReportPDF = (
             });
             return rowData;
         });
+        
+        const groupColumnLabel = 'Grupo'; // Label for the header
+        const tableHeader = [groupColumnLabel, ...weeksForPage.map(week => {
+            const summary = weeklySummaries[week.key];
+            const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
+            return `Sem: ${getISOWeek(week.start)} | ${format(week.start, 'dd/MM', { locale: es })} - ${format(week.end, 'dd/MM', { locale: es })}\n` +
+                   `Turno: ${turnId ? `T.${turnId.replace('turn', '')}` : 'N/A'}\n` +
+                   `Nº Ausentes: ${summary?.employeeCount ?? 0} | Nºh: ${summary?.hourImpact.toFixed(0) ?? 0}`;
+        })];
 
-        const availableWidth = doc.internal.pageSize.width - (pageMargin * 2) - 40; // 40 for group column
+
+        const availableWidth = doc.internal.pageSize.width - (pageMargin * 2) - 0.0025; // Minus group column
         const weekColumnWidth = availableWidth / weeksForPage.length;
 
-        const columnStyles = { 0: { cellWidth: 40 } };
+        const columnStyles = { 0: { cellWidth: 0.0025 } };
         for (let i = 0; i < weeksForPage.length; i++) {
             columnStyles[i + 1] = { cellWidth: weekColumnWidth };
         }
 
         autoTable(doc, {
             startY: headerHeight,
-            head: [
-                ['Grupo', ...weeksForPage.map(week => {
-                    const summary = weeklySummaries[week.key];
-                    const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
-                    return `Sem: ${getISOWeek(week.start)} | ${format(week.start, 'dd/MM', { locale: es })} - ${format(week.end, 'dd/MM', { locale: es })}\n` +
-                           `Turno: ${turnId ? `T.${turnId.replace('turn', '')}` : 'N/A'}\n` +
-                           `Nº Ausentes: ${summary?.employeeCount ?? 0} | Nºh: ${summary?.hourImpact.toFixed(0) ?? 0}`;
-                })]
-            ],
+            head: [tableHeader],
             body: tableBody,
             theme: 'grid',
-            styles: { fontSize: 11, cellPadding: 2, valign: 'top' }, // Increased font size
+            styles: { fontSize: 11, cellPadding: 2, valign: 'top' },
             headStyles: { halign: 'center', fontSize: 8, fontStyle: 'bold', fillColor: [230, 230, 230], textColor: 20 },
             columnStyles: columnStyles,
             margin: { left: pageMargin, right: pageMargin },
             didDrawCell: (data) => {
+                // Remove group names from first column cells
+                if (data.section === 'body' && data.column.index === 0) {
+                     data.cell.text = [];
+                }
+
                 if (data.section === 'body' && data.column.index > 0) {
                     const lines = data.cell.text;
-                    let y = data.cell.y + data.cell.padding('top') + 3; // Adjust initial Y for bigger font
+                    let y = data.cell.y + data.cell.padding('top') + 3; 
                     if (lines) {
                         lines.forEach((line: string) => {
                             let text = line;
@@ -517,7 +524,7 @@ export const generateQuadrantReportPDF = (
                             }
                             doc.setTextColor(color[0], color[1], color[2]);
                             doc.text(text, data.cell.x + data.cell.padding('left'), y);
-                            y += doc.getLineHeight() * 0.9; // Adjust line height factor for bigger font
+                            y += doc.getLineHeight() * 0.9;
                         });
                     }
                     data.cell.text = []; // Clear original text to prevent it from being drawn
