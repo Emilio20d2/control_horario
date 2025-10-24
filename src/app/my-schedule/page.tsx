@@ -233,7 +233,7 @@ export default function MySchedulePage() {
     if (!employee) {
         return (
              <div className="flex flex-col gap-6 p-4 md:p-6">
-                <h1 className="text-2xl font-bold tracking-tight font-headline">Mis Horarios Confirmados</h1>
+                <h1 className="text-2xl font-bold tracking-tight font-headline">Mis Presencias Confirmadas</h1>
                  <Card>
                     <CardHeader>
                         <CardTitle className="text-destructive">Error</CardTitle>
@@ -249,7 +249,7 @@ export default function MySchedulePage() {
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-2xl font-bold tracking-tight font-headline">Mis Horarios Confirmados</h1>
+                <h1 className="text-2xl font-bold tracking-tight font-headline">Mis Presencias Confirmadas</h1>
                 <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                         <SelectValue placeholder="Seleccionar año..." />

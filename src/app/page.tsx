@@ -28,9 +28,12 @@ export default function Home() {
       } else {
         router.replace('/my-profile');
       }
+    } else {
+        // Fallback for cases where appUser might not be set but user is.
+        // This can happen if the user document is missing in Firestore.
+        // Default to login to avoid getting stuck.
+        router.replace('/login');
     }
-    // If user is logged in but appUser is not yet available, the effect
-    // will re-run when dataLoading becomes false.
     
   }, [user, appUser, authLoading, dataLoading, router]);
 

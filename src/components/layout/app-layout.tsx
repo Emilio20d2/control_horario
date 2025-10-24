@@ -105,7 +105,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   
   const employeeMenuItems = [
     { href: '/my-profile', label: 'Mi Ficha', icon: User },
-    { href: '/my-schedule', label: 'Mis Horarios', icon: CalendarCheck },
+    { href: '/my-schedule', label: 'Mis Presencias', icon: CalendarCheck },
     { href: '/my-messages', label: 'Mis Mensajes', icon: Mail, notification: unreadMessageCount > 0 },
     { href: '/help', label: 'Ayuda', icon: HelpCircle },
   ];

@@ -22,8 +22,8 @@ export default function HelpPage() {
                 <div className="flex items-start gap-4">
                     <MailQuestion className="h-8 w-8 text-primary mt-1" />
                     <div>
-                        <CardTitle>Comunicación y Diferencias de Horas</CardTitle>
-                        <CardDescription>Cómo reportar una posible incidencia en tu cómputo de horas.</CardDescription>
+                        <CardTitle>Comunicar una Incidencia (Diferencia de Horas)</CardTitle>
+                        <CardDescription>Cómo reportar una posible incidencia en tu cómputo de horas a través de la mensajería.</CardDescription>
                     </div>
                 </div>
             </CardHeader>
