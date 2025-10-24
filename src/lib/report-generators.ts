@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -455,8 +456,8 @@ export const generateQuadrantReportPDF = (
                     const absenceInWeek = employeesByWeek[week.key]?.find(e => e.employeeId === emp.id);
                     if (!absenceInWeek) return null;
                     
-                    const substituteInfo = safeSubstitutesByWeek[week.key]?.[emp.id];
                     let text = `${absenceInWeek.employeeName} (${absenceInWeek.absenceAbbreviation})`;
+                    const substituteInfo = safeSubstitutesByWeek[week.key]?.[emp.id];
                     if (substituteInfo) {
                         text += `|${substituteInfo.substituteName}`;
                     }
@@ -483,7 +484,7 @@ export const generateQuadrantReportPDF = (
         const availableWidth = doc.internal.pageSize.width - (pageMargin * 2) - 0.0025;
         const weekColumnWidth = availableWidth / weeksForPage.length;
 
-        const columnStyles = { 0: { cellWidth: 0.0025 } };
+        const columnStyles: { [key: number]: any } = { 0: { cellWidth: 0.0025 } };
         for (let i = 0; i < weeksForPage.length; i++) {
             columnStyles[i + 1] = { cellWidth: weekColumnWidth };
         }
@@ -493,14 +494,14 @@ export const generateQuadrantReportPDF = (
             head: [tableHeader],
             body: tableBody,
             theme: 'grid',
-            styles: { fontSize: 8, cellPadding: 1, valign: 'middle', lineColor: [0,0,0], lineWidth: 0.1 },
+            styles: { fontSize: 8, cellPadding: 1, valign: 'top', lineColor: [0,0,0], lineWidth: 0.1 },
             headStyles: { halign: 'center', fontSize: 8, fontStyle: 'bold', fillColor: [230, 230, 230], textColor: 20 },
             columnStyles: columnStyles,
             margin: { left: pageMargin, right: pageMargin },
             didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index > 0) {
                     const rawContent = data.cell.raw as string;
-                    if (!rawContent) return;
+                    if (!rawContent || typeof rawContent !== 'string') return;
                     
                     data.cell.text = []; // Clear original text
 
@@ -651,6 +652,7 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
 
