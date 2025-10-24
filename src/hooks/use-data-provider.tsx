@@ -321,7 +321,8 @@ useEffect(() => {
         const userEmployeeRecord = employees.find(e => e.authId === authUser.uid);
         
         getDocumentById<AppUser>('users', authUser.uid).then(userRecord => {
-            const isHardcodedAdmin = authUser.email === 'emiliogp@inditex.com';
+            const adminEmails = ['emiliogp@inditex.com', 'rebecapa@inditex.com'];
+            const isHardcodedAdmin = adminEmails.includes(authUser.email?.toLowerCase() || '');
             const trueRole = (userRecord?.role === 'admin' || isHardcodedAdmin) ? 'admin' : 'employee';
             
             const newRole = trueRole === 'admin' ? viewMode : 'employee';
@@ -334,7 +335,8 @@ useEffect(() => {
                 trueRole: trueRole,
             });
         }).catch(() => {
-             const isHardcodedAdmin = authUser.email === 'emiliogp@inditex.com';
+             const adminEmails = ['emiliogp@inditex.com', 'rebecapa@inditex.com'];
+             const isHardcodedAdmin = adminEmails.includes(authUser.email?.toLowerCase() || '');
              const trueRole = isHardcodedAdmin ? 'admin' : 'employee';
              const newRole = trueRole === 'admin' ? viewMode : 'employee';
              setAppUser({
