@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -154,8 +155,9 @@ export default function VacationsPage() {
     }, [activeCampaigns, selectedCampaignId]);
     
     const substituteEmployees = useMemo(() => {
-        return holidayEmployees.filter(he => he.active);
-    }, [holidayEmployees]);
+        const fixedEmployeeIds = new Set(employees.map(e => e.id));
+        return holidayEmployees.filter(he => he.active && !fixedEmployeeIds.has(he.id));
+    }, [holidayEmployees, employees]);
     
     const groupColors = useMemo(() => generateGroupColors(employeeGroups.map(g => g.id)), [employeeGroups]);
 
