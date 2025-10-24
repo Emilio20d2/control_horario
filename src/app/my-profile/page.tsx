@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -123,49 +124,44 @@ export default function MyProfilePage() {
                         )}
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Vacaciones</CardTitle>
-                        <Plane className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="relative">
-                            <div className={cn(
-                                "text-2xl font-bold",
-                                vacationInfo.vacationDaysTaken > vacationInfo.vacationDaysAvailable ? "text-destructive" : "",
-                                vacationInfo.vacationDaysTaken === vacationInfo.vacationDaysAvailable && "text-green-600"
-                            )}>
-                                {vacationInfo.vacationDaysTaken} / {vacationInfo.vacationDaysAvailable}
-                                <span className="text-sm text-muted-foreground ml-1">días</span>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Card className="cursor-pointer">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Vacaciones</CardTitle>
+                                <Plane className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className={cn(
+                                    "text-2xl font-bold",
+                                    vacationInfo.vacationDaysTaken > vacationInfo.vacationDaysAvailable ? "text-destructive" : "",
+                                    vacationInfo.vacationDaysTaken === vacationInfo.vacationDaysAvailable && "text-green-600"
+                                )}>
+                                    {vacationInfo.vacationDaysTaken} / {vacationInfo.vacationDaysAvailable}
+                                    <span className="text-sm text-muted-foreground ml-1">días</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80">
+                        <div className="grid gap-4">
+                            <div className="space-y-2">
+                                <h4 className="font-medium leading-none">Cálculo de Días Disponibles</h4>
+                                <p className="text-sm text-muted-foreground">
+                                    Desglose de cómo se calcula tu total de vacaciones.
+                                </p>
                             </div>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <button className="absolute bottom-0 right-0">
-                                        <Info className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                                    </button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80">
-                                    <div className="grid gap-4">
-                                        <div className="space-y-2">
-                                            <h4 className="font-medium leading-none">Cálculo de Días Disponibles</h4>
-                                            <p className="text-sm text-muted-foreground">
-                                                Desglose de cómo se calcula tu total de vacaciones.
-                                            </p>
-                                        </div>
-                                        <div className="space-y-2 text-sm">
-                                            <div className="flex justify-between"><span>Días base prorrateados:</span> <span className="font-mono font-medium">{vacationInfo.proratedDays.toFixed(2)}</span></div>
-                                            {vacationInfo.vacationDays2024 > 0 && <div className="flex justify-between"><span>Días de 2024:</span> <span className="font-mono font-medium text-blue-600">+ {vacationInfo.vacationDays2024.toFixed(2)}</span></div>}
-                                            {vacationInfo.carryOverDays > 0 && <div className="flex justify-between"><span>Arrastrados año anterior:</span> <span className="font-mono font-medium text-blue-600">+ {vacationInfo.carryOverDays.toFixed(2)}</span></div>}
-                                            {vacationInfo.suspensionDeduction > 0 && <div className="flex justify-between"><span>Descuento por suspensión:</span> <span className="font-mono font-medium text-red-600">- {vacationInfo.suspensionDeduction.toFixed(2)}</span></div>}
-                                            <Separator />
-                                            <div className="flex justify-between font-bold"><span>Total Días Disponibles:</span> <span className="font-mono">{vacationInfo.vacationDaysAvailable}</span></div>
-                                        </div>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between"><span>Días base prorrateados:</span> <span className="font-mono font-medium">{vacationInfo.proratedDays.toFixed(2)}</span></div>
+                                {vacationInfo.vacationDays2024 > 0 && <div className="flex justify-between"><span>Días de 2024:</span> <span className="font-mono font-medium text-blue-600">+ {vacationInfo.vacationDays2024.toFixed(2)}</span></div>}
+                                {vacationInfo.carryOverDays > 0 && <div className="flex justify-between"><span>Arrastrados año anterior:</span> <span className="font-mono font-medium text-blue-600">+ {vacationInfo.carryOverDays.toFixed(2)}</span></div>}
+                                {vacationInfo.suspensionDeduction > 0 && <div className="flex justify-between"><span>Descuento por suspensión:</span> <span className="font-mono font-medium text-red-600">- {vacationInfo.suspensionDeduction.toFixed(2)}</span></div>}
+                                <Separator />
+                                <div className="flex justify-between font-bold"><span>Total Días Disponibles:</span> <span className="font-mono">{vacationInfo.vacationDaysAvailable}</span></div>
+                            </div>
                         </div>
-                    </CardContent>
-                </Card>
+                    </PopoverContent>
+                </Popover>
             </div>
 
             <Card className="col-span-2">
