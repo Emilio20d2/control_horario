@@ -669,7 +669,7 @@ export default function VacationsPage() {
                     const cellHasContent = employeesWithAbsenceInWeek.length > 0;
                      const cellBg = cellHasContent
                         ? employeesWithAbsenceInWeek.some(item => item?.absence.isRequest)
-                            ? plannerModifiersStyles.request
+                            ? plannerModifiersStyles.request.backgroundColor
                             : (groupColors[group.id] || '#f0f0f0')
                         : 'transparent';
 
@@ -936,5 +936,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-
-    
