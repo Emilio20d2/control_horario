@@ -284,7 +284,7 @@ export default function VacationsPage() {
             // 2. Get from conversations (pending requests)
             const conversation = conversations.find(c => c.employeeId === emp.id);
             if (conversation?.lastMessageText?.startsWith('Solicitud de')) {
-                const requestRegex = /Solicitud de (.*?):\nDesde: (.*?)\nHasta: (.*)/gm;
+                const requestRegex = /Solicitud de (.*?):\nDesde: (.*?) - Hasta: (.*)/gm;
                 let match;
                 while ((match = requestRegex.exec(conversation.lastMessageText)) !== null) {
                     const absenceName = match[1].trim();
@@ -952,6 +952,7 @@ export default function VacationsPage() {
         </div>
     );
 }
+
 
 
 
