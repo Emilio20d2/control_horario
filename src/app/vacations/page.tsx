@@ -586,7 +586,7 @@ export default function VacationsPage() {
                           : 'transparent';
   
                       return (
-                        <td key={`${group.id}-${week.key}`} className="border align-top py-0 px-0.5" style={{ backgroundColor: cellBg }}>
+                        <td key={`${group.id}-${week.key}`} className="border align-top py-1 px-0.5" style={{ backgroundColor: cellBg }}>
                           <div className="flex flex-col gap-0.5 relative h-full">
                             {employeesWithAbsenceInWeek.map(item => {
                               if (!item) return null;
