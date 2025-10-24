@@ -1,5 +1,3 @@
-
-
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -449,10 +447,29 @@ export const generateQuadrantReportPDF = (
 
         const tableBody = employeeGroups.map(group => {
             const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-            const rowData: any[] = [{ content: '', styles: { fontStyle: 'bold', halign: 'center' } }]; 
+            const rowData: any[] = [{ content: '', styles: { fillColor: group.color } }]; 
 
             weeksForPage.forEach(week => {
-                rowData.push(''); // Empty cell
+                const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
+                    const absenceInWeek = employeesByWeek[week.key]?.find(e => e.employeeId === emp.id);
+                    return absenceInWeek ? { employee: emp, absence: absenceInWeek } : null;
+                }).filter(Boolean);
+
+                const cellContent = employeesWithAbsenceInWeek.map(item => {
+                    if (!item) return '';
+                    const { employee, absence } = item;
+                    let employeeLine = '';
+                    
+                    const isSpecial = specialAbsenceAbbreviations.has(absence.absenceAbbreviation);
+                    employeeLine = `[EMP:${isSpecial ? 'blue' : 'black'}]${employee.name} (${absence.absenceAbbreviation})`;
+                    
+                    const substitute = safeSubstitutesByWeek[week.key]?.[employee.id];
+                    const substituteLine = substitute ? `[SUB:red]Sust: ${substitute.substituteName}` : '';
+                    
+                    return [employeeLine, substituteLine].filter(Boolean).join('\n');
+                }).join('\n');
+                
+                rowData.push({ content: cellContent, styles: { fillColor: employeesWithAbsenceInWeek.length > 0 ? group.color : '#ffffff' } });
             });
             return rowData;
         });
@@ -480,24 +497,21 @@ export const generateQuadrantReportPDF = (
             head: [tableHeader],
             body: tableBody,
             theme: 'grid',
-            styles: { fontSize: 11, cellPadding: 2, valign: 'top' },
+            styles: { fontSize: 8, cellPadding: 2, valign: 'top' },
             headStyles: { halign: 'center', fontSize: 8, fontStyle: 'bold', fillColor: [230, 230, 230], textColor: 20 },
             columnStyles: columnStyles,
             margin: { left: pageMargin, right: pageMargin },
             didDrawCell: (data) => {
-                if (data.section === 'body' && data.column.index === 0) {
-                     data.cell.text = [];
-                }
+                if (data.section === 'body') {
+                    // Clear the original text content
+                    data.cell.text = [];
 
-                if (data.section === 'body' && data.column.index > 0) {
-                    const originalText = data.cell.text;
-                    data.cell.text = []; // Clear the text so autotable doesn't draw it
-
-                    let y = data.cell.y + data.cell.padding('top') + 3; 
-                    if (originalText && originalText.length > 0) {
-                        const lines = Array.isArray(originalText) ? originalText : [originalText.toString()];
-                        lines[0].split('\n').forEach((line: string) => {
-                            let text = line;
+                    let y = data.cell.y + data.cell.padding('top') + 1;
+                    const cellContent = tableBody[data.row.index][data.column.index].content;
+                    
+                    if(cellContent) {
+                        cellContent.split('\n').forEach((line: string) => {
+                             let text = line;
                             let color: [number, number, number] = [0, 0, 0]; // Black
                             if (line.startsWith('[EMP:blue]')) {
                                 color = [0, 0, 255]; // Blue
@@ -602,13 +616,13 @@ export const generateRequestStatusReportPDF = (
         let details = '';
 
         if (lastMessageTimestamp && (lastMessageTimestamp as Timestamp).toDate() > submissionStart) {
-            const requestRegex = /Solicitud de (.*?):\nDesde: (.*?)\nHasta: (.*)/s;
+            const requestRegex = /Confirmación de solicitud de (.*?) para los periodos: (.*)/s;
             const match = lastMessage.match(requestRegex);
 
             if (match) {
                 status = 'Solicitud Realizada';
-                const [, type, from, to] = match;
-                details = `${type} | ${from} - ${to}`;
+                const [, type, periods] = match;
+                details = `${type} | ${periods}`;
             }
         }
         
@@ -642,5 +656,7 @@ export const generateRequestStatusReportPDF = (
     doc.save(`informe_estado_${safeTitle}.pdf`);
 };
 
+
+    
 
     
