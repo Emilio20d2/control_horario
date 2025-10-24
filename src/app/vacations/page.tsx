@@ -610,7 +610,7 @@ export default function VacationsPage() {
     const selectedEmployeeAbsences = employeesWithAbsences[selectedEmployeeId]?.filter(a => getYear(a.startDate) === selectedYear || getYear(a.endDate) === selectedYear) || [];
 
     const renderQuadrant = () => (
-      <div className="overflow-auto h-[70vh] border rounded-lg">
+      <div className="overflow-auto h-full border rounded-lg">
         <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
           <thead className="sticky top-0 z-10 bg-card shadow-sm">
             <tr>
