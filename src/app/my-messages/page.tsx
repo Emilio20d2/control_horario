@@ -40,6 +40,7 @@ export default function MyMessagesPage() {
     const [requestStep, setRequestStep] = useState(0);
     const [selectedAbsenceTypeId, setSelectedAbsenceTypeId] = useState('');
     const [selectedDateRanges, setSelectedDateRanges] = useState<DateRange[]>([]);
+    const [currentRange, setCurrentRange] = useState<DateRange | undefined>(undefined);
 
     const activeCampaign = useMemo(() => {
         const now = new Date();
@@ -62,6 +63,7 @@ export default function MyMessagesPage() {
             setRequestStep(0);
             setSelectedAbsenceTypeId('');
             setSelectedDateRanges([]);
+            setCurrentRange(undefined);
         }
     }, [isRequesting]);
 
@@ -289,8 +291,10 @@ export default function MyMessagesPage() {
         const toDate = activeCampaign ? (activeCampaign.absenceEndDate as Timestamp).toDate() : undefined;
         
         const handleSelectRange = (range: DateRange | undefined) => {
+            setCurrentRange(range);
             if (range?.from && range.to) {
                 setSelectedDateRanges(prev => [...prev, range]);
+                setCurrentRange(undefined);
             }
         }
 
@@ -319,6 +323,7 @@ export default function MyMessagesPage() {
                         <h3 className="font-semibold text-center">Paso 2: Elige los periodos</h3>
                         <Calendar
                             mode="range"
+                            selected={currentRange}
                             onSelect={handleSelectRange}
                             locale={es}
                             className="rounded-md border p-0"
