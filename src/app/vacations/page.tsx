@@ -622,7 +622,7 @@ export default function VacationsPage() {
                 const { turnId } = employeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(employeesForQuadrant[0].id, week.start) : { turnId: null };
 
                 return (
-                  <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '300px' }}>
+                  <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
                     <div className='flex justify-between items-center h-full px-1'>
                       <div className="flex flex-col items-start">
                         <span className='text-xs'>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
@@ -681,7 +681,7 @@ export default function VacationsPage() {
                             const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
 
                             return (
-                                <button key={item.employee.id} onClick={() => !item.absence.isRequest && setEditingAbsence(item)} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[9px] leading-tight py-0 hover:bg-black/5">
+                                <button key={item.employee.id} onClick={() => !item.absence.isRequest && setEditingAbsence(item)} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-xs leading-tight py-0 hover:bg-black/5">
                                     <span className={cn(
                                         "flex-grow text-left truncate",
                                         isSpecialAbsence ? "text-blue-600" : "text-black"
@@ -697,7 +697,7 @@ export default function VacationsPage() {
                                         </button>
                                     )}
                                     {substitute && (
-                                        <div className="text-[10px] truncate text-red-600 font-semibold">
+                                        <div className="text-xs truncate text-red-600 font-semibold">
                                             Sust: {substitute.substituteName}
                                         </div>
                                     )}
@@ -940,10 +940,11 @@ export default function VacationsPage() {
                         </div>
                 </CardHeader>
                 <CardContent>
-                    {loading ? <Skeleton className="h-full w-full" /> : renderQuadrant()}
+                    {loading ? <Skeleton className="h-[70vh] w-full" /> : renderQuadrant()}
                 </CardContent>
             </Card>
         </div>
     );
 }
+
 
