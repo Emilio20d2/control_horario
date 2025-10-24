@@ -86,6 +86,7 @@ const formSchema = z.object({
   newContractTypeDate: z.string().optional(),
   
   initialWeeklyWorkHours: z.coerce.number().positive({ message: 'La jornada semanal debe ser un número positivo.'}),
+  annualComputedHours: z.coerce.number().default(0),
   
   newWeeklyWorkHours: z.coerce.number().optional(),
   newWeeklyWorkHoursDate: z.string().optional(),
@@ -155,9 +156,11 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             ? period.startDate 
             : format(period.startDate, 'yyyy-MM-dd');
         
-        const endDateValue = period.endDate instanceof Date && isValid(period.endDate) 
-            ? format(period.endDate, 'yyyy-MM-dd')
-            : (typeof period.endDate === 'string' ? period.endDate : null);
+        const endDateValue = period.endDate
+          ? (period.endDate instanceof Date && isValid(period.endDate) 
+              ? format(period.endDate, 'yyyy-MM-dd')
+              : (typeof period.endDate === 'string' ? period.endDate : null))
+          : null;
 
 
         const weeklySchedulesHistoryFormatted = (period.weeklySchedulesHistory || []).map(schedule => {
@@ -181,6 +184,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             vacationDaysUsedInAnotherCenter: period.vacationDaysUsedInAnotherCenter,
             contractType: period.contractType,
             initialWeeklyWorkHours: period.workHoursHistory?.[0]?.weeklyHours || 0,
+            annualComputedHours: period.annualComputedHours ?? 0,
             initialOrdinaryHours: period.initialOrdinaryHours,
             initialHolidayHours: period.initialHolidayHours,
             initialLeaveHours: period.initialLeaveHours,
@@ -208,6 +212,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         vacationDaysUsedInAnotherCenter: undefined,
         contractType: '',
         initialWeeklyWorkHours: 40,
+        annualComputedHours: 0,
         initialOrdinaryHours: undefined,
         initialHolidayHours: undefined,
         initialLeaveHours: undefined,
@@ -265,7 +270,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             const dataToSave: EmployeeFormData & { authId: string | null } = {
                 ...values,
                 authId: authId,
-                annualComputedHours: 0,
+                annualComputedHours: values.annualComputedHours ?? 0,
                 initialOrdinaryHours: values.initialOrdinaryHours ?? 0,
                 initialHolidayHours: values.initialHolidayHours ?? 0,
                 initialLeaveHours: values.initialLeaveHours ?? 0,
@@ -505,6 +510,20 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                                 {!!employee && <FormDescription>La jornada se gestiona en las modificaciones de contrato.</FormDescription>}
                                 <FormMessage />
                             </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="annualComputedHours"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Horas Computadas Anuales</FormLabel>
+                            <FormControl>
+                                <InputStepper {...field} step={0.25} value={field.value ?? 0} disabled={!!employee} />
+                            </FormControl>
+                            <FormDescription>Horas ya trabajadas si el contrato empezó a mitad de año.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
                         )}
                     />
                     <FormField

@@ -58,7 +58,7 @@ export const createEmployee = async (formData: EmployeeFormData & { authId: stri
 };
 
 export const updateEmployee = async (id: string, currentEmployee: Employee, formData: EmployeeFormData, finalBalances: { ordinary: number; holiday: number; leave: number; total: number; }): Promise<void> => {
-    const { name, employeeNumber, dni, phone, email, role, newWeeklyWorkHours, newWeeklyWorkHoursDate, endDate, newContractType, newContractTypeDate, newWeeklySchedule, weeklySchedules, isTransfer, vacationDays2024, vacationDaysUsedInAnotherCenter } = formData;
+    const { name, employeeNumber, dni, phone, email, role, newWeeklyWorkHours, newWeeklyWorkHoursDate, endDate, newContractType, newContractTypeDate, newWeeklySchedule, weeklySchedules, isTransfer, vacationDays2024, vacationDaysUsedInAnotherCenter, annualComputedHours } = formData;
 
     const updatedPeriods = [...(currentEmployee.employmentPeriods || [])];
     const periodToUpdate = updatedPeriods.sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
@@ -69,6 +69,7 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
     
     const endDateValue = endDate ? (endDate instanceof Date && isValid(endDate) ? format(endDate, 'yyyy-MM-dd') : endDate) : null;
     periodToUpdate.endDate = endDateValue;
+    periodToUpdate.annualComputedHours = annualComputedHours ?? periodToUpdate.annualComputedHours ?? 0;
 
     if (updatedPeriods.length === 1) { // Only update these for the very first period
         periodToUpdate.isTransfer = isTransfer;
