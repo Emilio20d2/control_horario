@@ -49,7 +49,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
-import { getFinalBalancesForEmployee } from '@/lib/services/employee-data-service';
 import { createUserAccount } from '@/lib/actions/userActions';
 
 
@@ -139,7 +138,7 @@ const generateDefaultShift = (hours: number, days: string[]) => {
 export function EmployeeForm({ employee }: EmployeeFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { contractTypes, users, appUser, refreshUsers, employeeGroups } = useDataProvider();
+  const { contractTypes, users, appUser, refreshUsers, employeeGroups, getEmployeeFinalBalances } = useDataProvider();
   const { reauthenticateWithPassword } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const [password, setPassword] = useState('');
@@ -262,7 +261,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     try {
         if (employee) {
             // Update existing employee
-            const finalBalances = await getFinalBalancesForEmployee(employee.id);
+            const finalBalances = getEmployeeFinalBalances(employee.id);
             await updateEmployee(employee.id, employee, values, finalBalances);
             toast({
                 title: "Empleado Actualizado",
@@ -863,6 +862,3 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     </Card>
   );
 }
-    
-
-    
