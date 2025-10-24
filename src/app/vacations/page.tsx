@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -113,7 +112,6 @@ export default function VacationsPage() {
         getEffectiveWeeklyHours,
         holidayReports,
         addHolidayReport,
-        updateHolidayReport,
         getTheoreticalHoursAndTurn,
         vacationCampaigns,
         conversations,
@@ -209,39 +207,46 @@ export default function VacationsPage() {
     const { employeesForQuadrant, substituteEmployees, unifiedEmployees } = useMemo(() => {
         const mainEmployeesActive = employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
         const mainEmployeeIds = new Set(mainEmployeesActive.map(e => e.id));
-
-        const unifiedMap = new Map<string, any>();
-
+    
+        const employeeMap = new Map<string, any>();
+    
+        // Add main employees to the map
         mainEmployeesActive.forEach(emp => {
             const holidayInfo = holidayEmployees.find(he => he.id === emp.id);
-            unifiedMap.set(emp.id, {
+            employeeMap.set(emp.id, {
                 ...emp,
-                groupId: holidayInfo?.groupId,
-                active: holidayInfo ? holidayInfo.active : true,
                 isEventual: false,
+                groupId: holidayInfo?.groupId ?? null,
+                activeForQuadrant: holidayInfo ? holidayInfo.active : true, // A main employee is active for quadrant unless explicitly disabled
             });
         });
-
+    
+        // Add holiday employees who are NOT main employees
         holidayEmployees.forEach(he => {
-            if (!unifiedMap.has(he.id)) {
-                 unifiedMap.set(he.id, { ...he, isEventual: true });
+            if (!employeeMap.has(he.id)) {
+                employeeMap.set(he.id, {
+                    ...he,
+                    isEventual: true,
+                    activeForQuadrant: he.active,
+                });
             }
         });
-
-        const allPeople = Array.from(unifiedMap.values());
-        
-        const quadrantEmps = allPeople.filter(p => !p.isEventual && p.active)
+    
+        const allPeople = Array.from(employeeMap.values());
+    
+        const quadrantEmps = allPeople
+            .filter(p => !p.isEventual && p.activeForQuadrant)
             .sort((a,b) => {
                 const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
                 const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
                 if (groupA !== groupB) return groupA - groupB;
                 return a.name.localeCompare(b.name);
             });
-        
-        const subs = holidayEmployees
-            .filter(he => he.active && !mainEmployeeIds.has(he.id))
-            .sort((a,b) => a.name.localeCompare(b.name));
-
+    
+        const subs = allPeople
+            .filter(p => p.isEventual && p.activeForQuadrant)
+            .sort((a, b) => a.name.localeCompare(b.name));
+    
         return { employeesForQuadrant: quadrantEmps, substituteEmployees: subs, unifiedEmployees: allPeople };
     }, [employees, holidayEmployees, employeeGroups]);
     
@@ -908,5 +913,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-
-
