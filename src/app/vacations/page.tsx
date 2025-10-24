@@ -918,7 +918,7 @@ export default function VacationsPage() {
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        <Button onClick={handleGenerateStatusReport} disabled={isGenerating || !selectedCampaignId} size="sm" variant="ghost">
+                                        <Button onClick={handleGenerateStatusReport} disabled={isGenerating || !selectedCampaignId} size="sm" variant="ghost" className="text-xs">
                                             <SunSnow className="mr-2 h-4 w-4" /> Estado Solicitudes
                                         </Button>
                                     </>
@@ -936,3 +936,5 @@ export default function VacationsPage() {
         </div>
     );
 }
+
+    
