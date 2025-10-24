@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -459,8 +460,12 @@ export const generateQuadrantReportPDF = (
                 const cellContent = employeesWithAbsenceInWeek.map(item => {
                     if (!item) return '';
                     const substitute = safeSubstitutesByWeek[week.key]?.[item.employee.id];
-                    return { employee: item.employee, absence: item.absence, substitute };
-                });
+                    let text = item.employee.name;
+                    if(substitute) {
+                        text += `\n${substitute.substituteName}`;
+                    }
+                    return text;
+                }).join('\n');
                 
                 rowData.push({ content: cellContent, styles: { fillColor: employeesWithAbsenceInWeek.length > 0 ? group.color : '#ffffff' } });
             });
@@ -494,34 +499,6 @@ export const generateQuadrantReportPDF = (
             headStyles: { halign: 'center', fontSize: 8, fontStyle: 'bold', fillColor: [230, 230, 230], textColor: 20 },
             columnStyles: columnStyles,
             margin: { left: pageMargin, right: pageMargin },
-            didDrawCell: (data) => {
-                if (data.section === 'body' && data.column.index > 0) {
-                    const cellContent: any[] = data.cell.raw as any[];
-                    let y = data.cell.y + data.cell.padding('top') + 1;
-                    data.cell.text = []; // Clear original text
-
-                    if (Array.isArray(cellContent)) {
-                        cellContent.forEach(item => {
-                            if (typeof item === 'object' && item !== null && item.employee) {
-                                const isSpecial = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
-                                const employeeColor: [number, number, number] = isSpecial ? [0, 0, 255] : [0, 0, 0];
-                                
-                                doc.setTextColor(employeeColor[0], employeeColor[1], employeeColor[2]);
-                                doc.text(`${item.employee.name} (${item.absence.absenceAbbreviation})`, data.cell.x + data.cell.padding('left'), y);
-                                y += doc.getLineHeight() * 0.9;
-                                
-                                if (item.substitute) {
-                                    doc.setTextColor(255, 0, 0); // Rojo para sustituto
-                                    const substituteText = `${item.substitute.substituteName}`;
-                                    const textWidth = doc.getStringUnitWidth(substituteText) * doc.getFontSize() / doc.internal.scaleFactor;
-                                    const xPos = data.cell.x + data.cell.width - data.cell.padding('right') - textWidth;
-                                    doc.text(substituteText, xPos, y - doc.getLineHeight() * 0.9);
-                                }
-                            }
-                        });
-                    }
-                }
-            },
         });
     }
     
@@ -653,6 +630,7 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
 
