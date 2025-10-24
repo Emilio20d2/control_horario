@@ -1,5 +1,3 @@
-
-
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -423,7 +421,7 @@ export const generateQuadrantReportPDF = (
     holidays: Holiday[],
     employeeGroups: EmployeeGroup[],
     allEmployeesForQuadrant: Employee[],
-    employeesByWeek: Record<string, { employeeId: string; employeeName: string; }[]>,
+    employeesByWeek: Record<string, { employeeId: string; employeeName: string; absenceAbbreviation: string }[]>,
     weeklySummaries: Record<string, { employeeCount: number; hourImpact: number; }>
 ) => {
     const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a3' });
@@ -440,13 +438,13 @@ export const generateQuadrantReportPDF = (
     const drawPage = (weeksToDraw: any[], pageNum: number, totalPages: number) => {
         addPageHeader(doc, pageNum, totalPages);
         
-        const cellWidth = (doc.internal.pageSize.width - (pageMargin * 2) - 0.1) / weeksToDraw.length;
+        const cellWidth = 300;
         
-        const headers = ['Grupo', ...weeksToDraw.map(week => `${format(week.start, 'dd/MM', { locale: es })}\n${getISOWeek(week.start)}`)];
+        const headers = [{content: '', styles: {cellWidth: 0.1}}, ...weeksToDraw.map(week => `${format(week.start, 'dd/MM', { locale: es })}\n${getISOWeek(week.start)}`)];
 
         const body = employeeGroups.map(group => {
             const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-            const rowData = [{content: group.name, styles: { textColor: [255,255,255]}}];
+            const rowData = [{content: '', styles: {cellWidth: 0.1}}];
 
             weeksToDraw.forEach(week => {
                 const absentEmployees = groupEmployees
@@ -466,12 +464,12 @@ export const generateQuadrantReportPDF = (
             body: body,
             startY: headerHeight,
             theme: 'grid',
-            styles: { fontSize: 7, cellPadding: 1, valign: 'top' },
+            styles: { fontSize: 8, cellPadding: 1, valign: 'top' }, // Aumentado el tamaño de fuente
             headStyles: { fillColor: [220, 220, 220], textColor: 20, halign: 'center', fontSize: 6 },
             columnStyles: {
-                0: { cellWidth: 0.1 },
+                 0: { cellWidth: 0.1 },
                  ...weeksToDraw.reduce((acc, _, index) => {
-                    acc[index + 1] = { cellWidth: cellWidth };
+                    acc[index + 1] = { cellWidth: 300 }; // Ancho fijo de 300px
                     return acc;
                 }, {})
             },
@@ -479,7 +477,7 @@ export const generateQuadrantReportPDF = (
         });
     };
     
-    const weeksPerPage = 5;
+    const weeksPerPage = 1; 
     const totalPages = Math.ceil(weeksOfYear.length / weeksPerPage);
 
     for (let i = 0; i < totalPages; i++) {
@@ -612,4 +610,3 @@ export const generateRequestStatusReportPDF = (
     const safeTitle = campaign.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     doc.save(`informe_estado_${safeTitle}.pdf`);
 };
-
