@@ -25,7 +25,6 @@ export function HolidayEmployeeManager() {
     const { toast } = useToast();
 
     const [newEmployeeName, setNewEmployeeName] = useState('');
-    const [newEmployeeId, setNewEmployeeId] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -66,19 +65,17 @@ export function HolidayEmployeeManager() {
 
     const handleAddEmployee = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newEmployeeName.trim() || !newEmployeeId.trim()) {
-            toast({ title: 'Datos incompletos', description: 'El nombre y el ID del empleado son obligatorios.', variant: 'destructive' });
+        if (!newEmployeeName.trim()) {
+            toast({ title: 'Datos incompletos', description: 'El nombre del empleado es obligatorio.', variant: 'destructive' });
             return;
         }
         setIsAdding(true);
         try {
             await addHolidayEmployee({
-                id: newEmployeeId.trim(),
                 name: newEmployeeName.trim(),
             });
             toast({ title: 'Empleado añadido', description: `Se ha añadido a ${newEmployeeName.trim()} a la lista.` });
             setNewEmployeeName('');
-            setNewEmployeeId('');
         } catch (error) {
             console.error(error);
             toast({ title: 'Error', description: 'No se pudo añadir el empleado. Es posible que el ID ya exista.', variant: 'destructive' });
@@ -182,7 +179,7 @@ export function HolidayEmployeeManager() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <form onSubmit={handleAddEmployee} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <form onSubmit={handleAddEmployee} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                     <div className="space-y-1">
                         <Label htmlFor="new-emp-name">Nombre Completo (Eventual)</Label>
                         <Input
@@ -190,16 +187,6 @@ export function HolidayEmployeeManager() {
                             placeholder="Nombre del nuevo empleado"
                             value={newEmployeeName}
                             onChange={(e) => setNewEmployeeName(e.target.value)}
-                            disabled={isAdding}
-                        />
-                    </div>
-                     <div className="space-y-1">
-                        <Label htmlFor="new-emp-id">Nº Empleado / ID</Label>
-                        <Input
-                            id="new-emp-id"
-                            placeholder="ID único del empleado"
-                            value={newEmployeeId}
-                            onChange={(e) => setNewEmployeeId(e.target.value)}
                             disabled={isAdding}
                         />
                     </div>

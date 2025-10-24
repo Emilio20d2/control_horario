@@ -97,18 +97,18 @@ export const deleteContractType = async (id: string): Promise<void> => {
 
 export const addHolidayEmployee = async (data: Partial<Omit<HolidayEmployee, 'id'>> & { id?: string }): Promise<string> => {
     const { id, ...rest } = data;
-    if (!id) throw new Error("Employee ID is required to add a holiday employee.");
-
+    
+    const docRef = id ? doc(db, 'holidayEmployees', id) : doc(collection(db, 'holidayEmployees'));
+    
     const dataToSave = { 
         name: rest.name,
         active: rest.active !== undefined ? rest.active : true,
         groupId: rest.groupId || null,
         workShift: rest.workShift || null,
     };
-
-    const docRef = doc(db, 'holidayEmployees', id);
+    
     await setDoc(docRef, dataToSave);
-    return id;
+    return docRef.id;
 };
 
 export const updateHolidayEmployee = async (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>): Promise<void> => {
