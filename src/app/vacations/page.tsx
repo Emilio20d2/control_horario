@@ -208,7 +208,7 @@ export default function VacationsPage() {
     }, [absenceTypes]);
 
     const employeesForQuadrant = useMemo(() => {
-        return employees
+        const fixedEmployees = employees
             .map(e => {
                 const holidayInfo = holidayEmployees.find(he => he.id === e.id);
                 return {
@@ -218,8 +218,9 @@ export default function VacationsPage() {
                     isEventual: false,
                 };
             })
-            .filter(e => e.active && e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
-            .sort((a,b) => {
+            .filter(e => e.active && e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
+
+        return fixedEmployees.sort((a,b) => {
                 const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
                 const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
                 if (groupA !== groupB) {
@@ -228,6 +229,7 @@ export default function VacationsPage() {
                 return a.name.localeCompare(b.name);
             });
     }, [employees, holidayEmployees, employeeGroups]);
+
 
      useEffect(() => {
         if (schedulableAbsenceTypes.length > 0 && !selectedAbsenceTypeId) {
