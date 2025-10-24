@@ -246,7 +246,7 @@ export interface HolidayEmployee {
 export type HolidayReportAssignment = 'doublePay' | 'dayOff' | 'ninguna';
 
 export interface HolidayReport {
-    id: string;
+    id: string; // weekId_employeeId
     weekId: string;
     weekDate: Timestamp;
     employeeId: string;

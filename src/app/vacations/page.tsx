@@ -32,6 +32,7 @@ import {
   Expand,
   X,
   Edit,
+  UserX,
 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -117,6 +118,7 @@ export default function VacationsPage() {
         getTheoreticalHoursAndTurn,
         vacationCampaigns,
         conversations,
+        deleteHolidayReport,
     } = dataProvider;
     const { toast } = useToast();
     
@@ -139,16 +141,17 @@ export default function VacationsPage() {
     const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
     
     // State for substitutes
-    const [substitutes, setSubstitutes] = useState<Record<string, Record<string, {substituteId: string, substituteName: string}>>>({}); // { [weekKey]: { [employeeId]: { substituteId, substituteName } } }
+    const [substitutes, setSubstitutes] = useState<Record<string, Record<string, {reportId: string, substituteId: string, substituteName: string}>>>({}); // { [weekKey]: { [employeeId]: { reportId, substituteId, substituteName } } }
 
     useEffect(() => {
         if (holidayReports.length > 0) {
-            const newSubs: Record<string, Record<string, {substituteId: string, substituteName: string}>> = {};
+            const newSubs: Record<string, Record<string, {reportId: string, substituteId: string, substituteName: string}>> = {};
             holidayReports.forEach(report => {
                 if (!newSubs[report.weekId]) {
                     newSubs[report.weekId] = {};
                 }
                 newSubs[report.weekId][report.employeeId] = {
+                    reportId: report.id,
                     substituteId: report.substituteId,
                     substituteName: report.substituteName
                 };
@@ -544,33 +547,28 @@ export default function VacationsPage() {
         generateRequestStatusReportPDF(campaign, allEmployeesForQuadrant, conversations, absenceTypes);
     };
 
-    const handleSelectSubstitute = async (weekKey: string, employeeId: string, substitute: {id: string, name: string}) => {
-        const weekDate = parseISO(weekKey);
-        
+    const handleSelectSubstitute = async (weekKey: string, employeeId: string, substitute: {id: string, name: string} | null) => {
+        const existingReport = substitutes[weekKey]?.[employeeId];
+
         try {
-            await addHolidayReport({
-                weekId: weekKey,
-                weekDate: Timestamp.fromDate(weekDate),
-                employeeId,
-                substituteId: substitute.id,
-                substituteName: substitute.name,
-            });
-    
-            setSubstitutes(prev => ({
-                ...prev,
-                [weekKey]: {
-                    ...prev[weekKey],
-                    [employeeId]: {
-                        substituteId: substitute.id,
-                        substituteName: substitute.name,
-                    },
-                }
-            }));
-            
-            toast({ title: 'Sustituto Asignado', description: `${substitute.name} asignado a ${allEmployeesForQuadrant.find(e => e.id === employeeId)?.name}.` });
-        } catch(e) {
+            if (substitute) { // Adding or updating
+                await addHolidayReport({
+                    id: existingReport?.reportId,
+                    weekId: weekKey,
+                    weekDate: Timestamp.fromDate(parseISO(weekKey)),
+                    employeeId,
+                    substituteId: substitute.id,
+                    substituteName: substitute.name,
+                });
+                toast({ title: 'Sustituto Asignado', description: `${substitute.name} asignado.` });
+            } else if (existingReport) { // Removing
+                await deleteHolidayReport(existingReport.reportId);
+                toast({ title: 'Sustitución Eliminada', variant: 'destructive' });
+            }
+            refreshData(); // To get the latest holidayReports
+        } catch (e) {
             console.error(e);
-            toast({ title: 'Error', description: 'No se pudo asignar el sustituto.', variant: 'destructive'});
+            toast({ title: 'Error', description: 'No se pudo actualizar el sustituto.', variant: 'destructive'});
         }
     };
 
@@ -581,7 +579,7 @@ export default function VacationsPage() {
           <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
             <thead className="sticky top-0 z-10 bg-card shadow-sm">
               <tr>
-                <th className="p-1 border-b border-r font-semibold text-sm sticky left-0 bg-card z-20" style={{ width: '35px' }}></th>
+                <th className="p-1 border-b border-r font-semibold text-sm sticky left-0 bg-card z-20" style={{ width: '0.0025px' }}></th>
                 {weeksOfYear.map(week => {
                   const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
   
@@ -618,8 +616,7 @@ export default function VacationsPage() {
                 const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
                 return (
                   <tr key={group.id}>
-                    <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ backgroundColor: groupColors[group.id] || '#f0f0f0', width: '35px' }}>
-                       <div className="-rotate-90 origin-center-left whitespace-nowrap" style={{ marginLeft: '12px' }}>{group.name}</div>
+                    <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ backgroundColor: groupColors[group.id] || '#f0f0f0', width: '0.0025px' }}>
                     </td>
                     {weeksOfYear.map(week => {
                       const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
@@ -651,24 +648,34 @@ export default function VacationsPage() {
                                         {item.employee.name} ({item.absence.absenceAbbreviation})
                                     </button>
                                      <div className="flex-shrink-0">
-                                      {selectedSubstitute ? (
-                                          <span className="text-red-600 font-semibold">{selectedSubstitute.substituteName}</span>
-                                      ) : (
-                                          <Popover>
-                                              <PopoverTrigger asChild>
-                                                  <button className="p-0.5 rounded-full hover:bg-slate-200"><Plus className="h-3 w-3" /></button>
-                                              </PopoverTrigger>
-                                              <PopoverContent className="w-48 p-1">
-                                                  <div className="flex flex-col">
-                                                      {substituteEmployees.map(sub => (
-                                                          <button key={sub.id} onClick={() => handleSelectSubstitute(week.key, item.employee.id, sub)} className="text-sm text-left p-1 rounded-sm hover:bg-accent">
-                                                              {sub.name}
-                                                          </button>
-                                                      ))}
-                                                  </div>
-                                              </PopoverContent>
-                                          </Popover>
-                                      )}
+                                      <Popover>
+                                          <PopoverTrigger asChild>
+                                               <button className="p-0.5 rounded-full hover:bg-slate-200">
+                                                    {selectedSubstitute ? (
+                                                        <span className="text-red-600 font-semibold">{selectedSubstitute.substituteName}</span>
+                                                    ) : (
+                                                        <Plus className="h-3 w-3" />
+                                                    )}
+                                               </button>
+                                          </PopoverTrigger>
+                                          <PopoverContent className="w-48 p-1">
+                                              <div className="flex flex-col">
+                                                  {substituteEmployees.map(sub => (
+                                                      <button key={sub.id} onClick={() => handleSelectSubstitute(week.key, item.employee.id, sub)} className="text-sm text-left p-1 rounded-sm hover:bg-accent">
+                                                          {sub.name}
+                                                      </button>
+                                                  ))}
+                                                  {selectedSubstitute && (
+                                                      <>
+                                                        <hr className="my-1"/>
+                                                        <button onClick={() => handleSelectSubstitute(week.key, item.employee.id, null)} className="flex items-center gap-2 text-sm text-left p-1 rounded-sm text-destructive hover:bg-destructive/10">
+                                                          <UserX className="h-4 w-4" /> Quitar Sustituto
+                                                        </button>
+                                                      </>
+                                                  )}
+                                              </div>
+                                          </PopoverContent>
+                                      </Popover>
                                     </div>
                                 </div>
                               )

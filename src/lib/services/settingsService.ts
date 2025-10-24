@@ -140,17 +140,28 @@ export const seedHolidayEmployees = async (employeeNames: string[]): Promise<voi
     await batch.commit();
 };
 
-export const addHolidayReport = async (report: Omit<HolidayReport, 'id'>): Promise<string> => {
-    const docId = `${report.weekId}_${report.employeeId}`;
+export const addHolidayReport = async (report: Partial<Omit<HolidayReport, 'id'>> & { id?: string }): Promise<void> => {
+    const docId = report.id || `${report.weekId}_${report.employeeId}`;
     const docRef = doc(db, 'holidayReports', docId);
-    await setDoc(docRef, report, { merge: true });
-    return docId;
-}
+    // Explicitly define the object to save to avoid sending undefined fields
+    const dataToSave = {
+        weekId: report.weekId,
+        weekDate: report.weekDate,
+        employeeId: report.employeeId,
+        substituteId: report.substituteId,
+        substituteName: report.substituteName,
+    };
+    await setDoc(docRef, dataToSave, { merge: true });
+};
 
 export const updateHolidayReport = async (reportId: string, data: Partial<Omit<HolidayReport, 'id'>>) => {
     const docRef = doc(db, 'holidayReports', reportId);
     await updateDoc(docRef, data);
 }
+
+export const deleteHolidayReport = async (reportId: string): Promise<void> => {
+    await deleteDoc(doc(db, 'holidayReports', reportId));
+};
 
 // --- Employee Group Service Functions ---
 export const createEmployeeGroup = async (data: Omit<EmployeeGroup, 'id'>): Promise<string> => {

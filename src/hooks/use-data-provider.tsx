@@ -48,7 +48,8 @@ import {
     updateVacationCampaign,
     deleteVacationCampaign,
     addHolidayReport,
-    updateHolidayReport
+    updateHolidayReport,
+    deleteHolidayReport,
 } from '../lib/services/settingsService';
 import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, getISOWeekYear, isValid } from 'date-fns';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
@@ -124,8 +125,9 @@ deleteContractType: (id: string) => Promise<void>;
   addHolidayEmployee: (data: Partial<Omit<HolidayEmployee, 'id'>>) => Promise<string>;
   updateHolidayEmployee: (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>) => Promise<void>;
   deleteHolidayEmployee: (id: string) => Promise<void>;
-  addHolidayReport: (report: Omit<HolidayReport, 'id'>) => Promise<string>;
+  addHolidayReport: (report: Omit<HolidayReport, 'id'>) => Promise<void>;
   updateHolidayReport: (reportId: string, data: Partial<Omit<HolidayReport, 'id'>>) => Promise<void>;
+  deleteHolidayReport: (reportId: string) => Promise<void>;
   createEmployeeGroup: (data: Omit<EmployeeGroup, 'id'>) => Promise<string>;
   updateEmployeeGroup: (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => Promise<void>;
   deleteEmployeeGroup: (id: string) => Promise<void>;
@@ -191,8 +193,9 @@ deleteContractType: async () => {},
   addHolidayEmployee: async (data) => '',
   updateHolidayEmployee: async (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>) => {},
   deleteHolidayEmployee: async (id: string) => {},
-  addHolidayReport: async (report: Omit<HolidayReport, 'id'>) => '',
+  addHolidayReport: async (report: Omit<HolidayReport, 'id'>) => {},
   updateHolidayReport: async (reportId: string, data: Partial<Omit<HolidayReport, 'id'>>) => {},
+  deleteHolidayReport: async (reportId: string) => {},
   createEmployeeGroup: async (data: Omit<EmployeeGroup, 'id'>) => '',
   updateEmployeeGroup: async (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => {},
   deleteEmployeeGroup: async (id: string) => {},
@@ -1215,8 +1218,9 @@ createAnnualConfig: createAnnualConfigService,
     addHolidayEmployee: addHolidayEmployee as (data: Partial<Omit<HolidayEmployee, 'id'>>) => Promise<string>,
     updateHolidayEmployee,
     deleteHolidayEmployee,
-    addHolidayReport,
+    addHolidayReport: addHolidayReport as (report: Omit<HolidayReport, 'id'>) => Promise<void>,
     updateHolidayReport,
+    deleteHolidayReport,
     createEmployeeGroup,
     updateEmployeeGroup,
 deleteEmployeeGroup,
