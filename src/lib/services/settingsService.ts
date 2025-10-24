@@ -145,6 +145,17 @@ export const seedHolidayEmployees = async (employeeNames: string[]): Promise<voi
     await batch.commit();
 };
 
+export const addHolidayReport = async (report: Omit<HolidayReport, 'id'>): Promise<string> => {
+    const docId = `${report.weekId}_${report.employeeId}`;
+    const docRef = doc(db, 'holidayReports', docId);
+    await setDoc(docRef, report, { merge: true });
+    return docId;
+}
+
+export const updateHolidayReport = async (reportId: string, data: Partial<Omit<HolidayReport, 'id'>>) => {
+    const docRef = doc(db, 'holidayReports', reportId);
+    await updateDoc(docRef, data);
+}
 
 // --- Employee Group Service Functions ---
 export const createEmployeeGroup = async (data: Omit<EmployeeGroup, 'id'>): Promise<string> => {

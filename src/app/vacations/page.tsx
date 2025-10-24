@@ -238,7 +238,8 @@ export default function VacationsPage() {
                 return a.name.localeCompare(b.name);
             });
         
-        const subs = allPeople.filter(p => p.isEventual && p.active)
+        const subs = holidayEmployees
+            .filter(he => he.active && !mainEmployeeIds.has(he.id))
             .sort((a,b) => a.name.localeCompare(b.name));
 
         return { employeesForQuadrant: quadrantEmps, substituteEmployees: subs, unifiedEmployees: allPeople };
@@ -572,19 +573,13 @@ export default function VacationsPage() {
         setIsGenerating(true);
         try {
             const { weekKey, employee } = assignmentContext;
-            const report = holidayReports.find(r => r.weekId === weekKey && r.employeeId === employee.id);
-            const reportData = {
+            
+            await addHolidayReport({
                 weekId: weekKey,
                 employeeId: employee.id,
                 substituteId: selectedSubstituteId,
                 weekDate: parseISO(weekKey),
-            };
-    
-            if (report) {
-                await updateHolidayReport(report.id, reportData);
-            } else {
-                await addHolidayReport(reportData);
-            }
+            });
     
             toast({ title: "Sustituto Asignado", description: "Se ha guardado el empleado eventual para esta semana." });
             refreshData();
@@ -862,7 +857,7 @@ export default function VacationsPage() {
 
 
             <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
-              <DialogContent className="max-w-none w-screen h-screen p-0 m-0 sm:max-w-none:translate-x-0 sm:max-w-none:translate-y-0 sm:max-w-none:left-0 sm:max-w-none:top-0">
+              <DialogContent className="max-w-none w-screen h-screen p-0 m-0 sm:max-w-none">
                  <Button variant="ghost" size="icon" onClick={() => setIsFullScreen(false)} className="absolute top-2 right-2 z-20 bg-background/50 border hover:bg-background">
                     <X className="h-6 w-6" />
                 </Button>
@@ -913,4 +908,5 @@ export default function VacationsPage() {
         </div>
     );
 }
+
 
