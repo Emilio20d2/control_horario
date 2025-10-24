@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { addDocument, updateDocument, deleteDocument, setDocument } from './firestoreService';
@@ -30,7 +29,7 @@ export const createEmployee = async (formData: EmployeeFormData & { authId: stri
                 endDate: null,
                 isTransfer: isTransfer || false,
                 vacationDaysUsedInAnotherCenter: vacationDaysUsedInAnotherCenter ?? 0,
-                annualComputedHours,
+                annualComputedHours: annualComputedHours ?? 0,
                 initialOrdinaryHours: initialOrdinaryHours ?? 0,
                 initialHolidayHours: initialHolidayHours ?? 0,
                 initialLeaveHours: initialLeaveHours ?? 0,
@@ -100,7 +99,6 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
     } else {
         // Only update these if there is no contract change
         periodToUpdate.contractType = formData.contractType;
-        periodToUpdate.annualComputedHours = formData.annualComputedHours;
         // Preserve original initial hours on simple edit
         periodToUpdate.initialOrdinaryHours = periodToUpdate.initialOrdinaryHours ?? formData.initialOrdinaryHours ?? 0;
         periodToUpdate.initialHolidayHours = periodToUpdate.initialHolidayHours ?? formData.initialHolidayHours ?? 0;
@@ -204,7 +202,7 @@ export const addEmploymentPeriod = async (employeeId: string, currentEmployee: E
         contractType,
         startDate,
         endDate: null,
-        annualComputedHours,
+        annualComputedHours: annualComputedHours ?? 0,
         initialOrdinaryHours: initialOrdinaryHours ?? 0,
         initialHolidayHours: initialHolidayHours ?? 0,
         initialLeaveHours: initialLeaveHours ?? 0,
@@ -328,4 +326,3 @@ export const deleteScheduledAbsence = async (
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
-

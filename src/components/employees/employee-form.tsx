@@ -90,7 +90,6 @@ const formSchema = z.object({
   newWeeklyWorkHours: z.coerce.number().optional(),
   newWeeklyWorkHoursDate: z.string().optional(),
 
-  annualComputedHours: z.coerce.number().default(0),
   
   initialOrdinaryHours: z.coerce.number().optional(),
   initialHolidayHours: z.coerce.number().optional(),
@@ -182,7 +181,6 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             vacationDaysUsedInAnotherCenter: period.vacationDaysUsedInAnotherCenter,
             contractType: period.contractType,
             initialWeeklyWorkHours: period.workHoursHistory?.[0]?.weeklyHours || 0,
-            annualComputedHours: period.annualComputedHours,
             initialOrdinaryHours: period.initialOrdinaryHours,
             initialHolidayHours: period.initialHolidayHours,
             initialLeaveHours: period.initialLeaveHours,
@@ -210,7 +208,6 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         vacationDaysUsedInAnotherCenter: undefined,
         contractType: '',
         initialWeeklyWorkHours: 40,
-        annualComputedHours: 0,
         initialOrdinaryHours: undefined,
         initialHolidayHours: undefined,
         initialLeaveHours: undefined,
@@ -268,6 +265,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             const dataToSave: EmployeeFormData & { authId: string | null } = {
                 ...values,
                 authId: authId,
+                annualComputedHours: 0,
                 initialOrdinaryHours: values.initialOrdinaryHours ?? 0,
                 initialHolidayHours: values.initialHolidayHours ?? 0,
                 initialLeaveHours: values.initialLeaveHours ?? 0,
