@@ -138,6 +138,9 @@ export default function VacationsPage() {
     // State for status report
     const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
     
+    // Visual state for substitutes
+    const [substitutes, setSubstitutes] = useState<Record<string, Record<string, string>>>({}); // { [weekKey]: { [employeeId]: substituteName } }
+
     const activeEmployees = useMemo(() => {
         return employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
     }, [employees]);
@@ -525,9 +528,17 @@ export default function VacationsPage() {
         generateRequestStatusReportPDF(campaign, allEmployeesForQuadrant, conversations, absenceTypes);
     };
 
-    const specialAbsenceAbbreviations = new Set(['EXD', 'PNR']);
+    const handleSelectSubstitute = (weekKey: string, employeeId: string, substituteName: string) => {
+        setSubstitutes(prev => ({
+            ...prev,
+            [weekKey]: {
+                ...prev[weekKey],
+                [employeeId]: substituteName,
+            }
+        }));
+    };
 
-    const selectedEmployeeAbsences = employeesWithAbsences[selectedEmployeeId]?.filter(a => getYear(a.startDate) === selectedYear || getYear(a.endDate) === selectedYear) || [];
+    const specialAbsenceAbbreviations = new Set(['EXD', 'PNR']);
 
     const renderQuadrant = () => (
         <div className="overflow-auto h-full border rounded-lg">
@@ -591,16 +602,37 @@ export default function VacationsPage() {
                             {employeesWithAbsenceInWeek.map(item => {
                               if (!item) return null;
                               const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
-  
+                              const selectedSubstitute = substitutes[week.key]?.[item.employee.id];
+
                               return (
-                                  <button key={item.employee.id} onClick={() => setEditingAbsence({employee: item.employee, absence: item.absence})} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[11px] leading-tight py-0 hover:bg-black/5">
-                                      <span className={cn(
-                                          "flex-grow text-left truncate",
-                                          isSpecialAbsence ? "text-blue-600" : "text-black"
-                                      )}>
-                                          {item.employee.name} ({item.absence.absenceAbbreviation})
-                                      </span>
-                                  </button>
+                                <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[11px] leading-tight hover:bg-black/5">
+                                    <button onClick={() => setEditingAbsence({employee: item.employee, absence: item.absence})} className={cn(
+                                        "flex-grow text-left truncate",
+                                        isSpecialAbsence ? "text-blue-600" : "text-black"
+                                    )}>
+                                        {item.employee.name} ({item.absence.absenceAbbreviation})
+                                    </button>
+                                    <div className="flex-shrink-0">
+                                      {selectedSubstitute ? (
+                                          <span className="text-red-600 font-semibold">{selectedSubstitute}</span>
+                                      ) : (
+                                          <Popover>
+                                              <PopoverTrigger asChild>
+                                                  <button className="p-0.5 rounded-full hover:bg-slate-200"><Plus className="h-3 w-3" /></button>
+                                              </PopoverTrigger>
+                                              <PopoverContent className="w-48 p-1">
+                                                  <div className="flex flex-col">
+                                                      {substituteEmployees.map(sub => (
+                                                          <button key={sub.id} onClick={() => handleSelectSubstitute(week.key, item.employee.id, sub.name)} className="text-sm text-left p-1 rounded-sm hover:bg-accent">
+                                                              {sub.name}
+                                                          </button>
+                                                      ))}
+                                                  </div>
+                                              </PopoverContent>
+                                          </Popover>
+                                      )}
+                                    </div>
+                                </div>
                               )
                             })}
                           </div>
@@ -681,39 +713,38 @@ export default function VacationsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {selectedEmployeeAbsences.length > 0 ? (
-                                        selectedEmployeeAbsences.map(absence => (
-                                            <TableRow key={absence.id}>
-                                                <TableCell>{absenceTypes.find(at => at.id === absence.absenceTypeId)?.name || 'Desconocido'}</TableCell>
-                                                <TableCell>{format(absence.startDate, 'dd/MM/yyyy')}</TableCell>
-                                                <TableCell>{format(absence.endDate, 'dd/MM/yyyy')}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon" disabled={isGenerating || absence.id.startsWith('weekly-')} onClick={() => setEditingAbsence({ employee: allEmployeesForQuadrant.find(e => e.id === selectedEmployeeId)!, absence })}>
-                                                        <Edit className="h-4 w-4"/>
-                                                    </Button>
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon" disabled={isGenerating || absence.id.startsWith('weekly-')}>
-                                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                                            </Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    Esta acción eliminará la ausencia. Si alguna semana dentro de este periodo ya está confirmada, la eliminación fallará.
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleDeleteAbsence(absence)}>Sí, eliminar</AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
+                                    {employeesWithAbsences[selectedEmployeeId]?.filter(a => getYear(a.startDate) === selectedYear || getYear(a.endDate) === selectedYear).map(absence => (
+                                        <TableRow key={absence.id}>
+                                            <TableCell>{absenceTypes.find(at => at.id === absence.absenceTypeId)?.name || 'Desconocido'}</TableCell>
+                                            <TableCell>{format(absence.startDate, 'dd/MM/yyyy')}</TableCell>
+                                            <TableCell>{format(absence.endDate, 'dd/MM/yyyy')}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="ghost" size="icon" disabled={isGenerating || absence.id.startsWith('weekly-')} onClick={() => setEditingAbsence({ employee: allEmployeesForQuadrant.find(e => e.id === selectedEmployeeId)!, absence })}>
+                                                    <Edit className="h-4 w-4"/>
+                                                </Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" disabled={isGenerating || absence.id.startsWith('weekly-')}>
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                Esta acción eliminará la ausencia. Si alguna semana dentro de este periodo ya está confirmada, la eliminación fallará.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDeleteAbsence(absence)}>Sí, eliminar</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {(!employeesWithAbsences[selectedEmployeeId] || employeesWithAbsences[selectedEmployeeId].length === 0) && (
                                         <TableRow>
                                             <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
                                                 No hay ausencias programadas para este empleado en {selectedYear}.
@@ -815,3 +846,4 @@ export default function VacationsPage() {
         </div>
     );
 }
+
