@@ -14,7 +14,7 @@ import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDo
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
 import type { Message, VacationCampaign } from '@/lib/types';
-import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay, parseISO, eachDayOfInterval } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '@/components/ui/drawer';
@@ -27,7 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 
 
 export default function MyMessagesPage() {
-    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes } = useDataProvider();
+    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, holidays } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
     const conversationId = employeeRecord?.id;
     const viewportRef = useRef<HTMLDivElement>(null);
@@ -257,6 +257,22 @@ export default function MyMessagesPage() {
             </div>
         )
     }
+    
+    const openingHolidays = holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date);
+    const otherHolidays = holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date);
+    const employeeAbsenceDays = employeeRecord?.employmentPeriods.flatMap(p => p.scheduledAbsences || []).flatMap(a => a.endDate ? eachDayOfInterval({start: a.startDate, end: a.endDate}) : [a.startDate]) || [];
+
+    const requestDialogModifiers = { 
+        opening: openingHolidays, 
+        other: otherHolidays,
+        employeeAbsence: employeeAbsenceDays,
+    };
+    const requestDialogModifiersStyles = { 
+        opening: { backgroundColor: '#a7f3d0' }, 
+        other: { backgroundColor: '#fecaca' },
+        employeeAbsence: { backgroundColor: '#dbeafe' },
+    };
+
 
     const RequestDialogContent = () => {
         const fromDate = activeCampaign ? (activeCampaign.absenceStartDate as Timestamp).toDate() : undefined;
@@ -299,6 +315,8 @@ export default function MyMessagesPage() {
                             fromDate={fromDate}
                             toDate={toDate}
                             disabled={{ before: fromDate, after: toDate }}
+                            modifiers={requestDialogModifiers}
+                            modifiersStyles={requestDialogModifiersStyles}
                         />
                          <div className="space-y-2">
                              <h4 className="font-semibold text-sm">Periodos Seleccionados:</h4>
