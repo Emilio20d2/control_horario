@@ -449,7 +449,7 @@ export const generateQuadrantReportPDF = (
 
         const tableBody = employeeGroups.map(group => {
             const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-            const rowData = [{ content: '', styles: { fontStyle: 'bold', halign: 'center' } }]; 
+            const rowData: any[] = [{ content: '', styles: { fontStyle: 'bold', halign: 'center' } }]; 
 
             weeksForPage.forEach(week => {
                 const employeesWithAbsenceInWeek = groupEmployees
@@ -507,9 +507,12 @@ export const generateQuadrantReportPDF = (
                 }
 
                 if (data.section === 'body' && data.column.index > 0) {
-                    const lines = data.cell.text;
+                    const originalText = data.cell.text; // Store original text
+                    data.cell.text = []; // Clear the text so autotable doesn't draw it
+
                     let y = data.cell.y + data.cell.padding('top') + 3; 
-                    if (lines) {
+                    if (originalText) {
+                        const lines = Array.isArray(originalText) ? originalText : [originalText];
                         lines.forEach((line: string) => {
                             let text = line;
                             let color: [number, number, number] = [0, 0, 0]; // Black
@@ -527,7 +530,6 @@ export const generateQuadrantReportPDF = (
                             y += doc.getLineHeight() * 0.9;
                         });
                     }
-                    data.cell.text = []; 
                 }
             },
         });
