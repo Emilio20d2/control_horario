@@ -291,6 +291,8 @@ useEffect(() => {
     if (authLoading) return;
 
     if (authUser) {
+        const userEmployeeRecord = employees.find(e => e.authId === authUser.uid);
+        
         getDocumentById<AppUser>('users', authUser.uid).then(userRecord => {
             const isHardcodedAdmin = authUser.email === 'emiliogp@inditex.com';
             const trueRole = (userRecord?.role === 'admin' || isHardcodedAdmin) ? 'admin' : 'employee';
@@ -300,7 +302,7 @@ useEffect(() => {
             setAppUser({
                 id: authUser.uid,
                 email: authUser.email!,
-                employeeId: userRecord?.employeeId || employeeRecord?.id || '',
+                employeeId: userRecord?.employeeId || userEmployeeRecord?.id || '',
                 role: newRole,
                 trueRole: trueRole,
             });
@@ -311,7 +313,7 @@ useEffect(() => {
              setAppUser({
                 id: authUser.uid,
                 email: authUser.email!,
-                employeeId: '',
+                employeeId: userEmployeeRecord?.id || '',
                 role: newRole,
                 trueRole: trueRole,
              });
@@ -319,7 +321,7 @@ useEffect(() => {
     } else {
         setAppUser(null);
     }
-}, [authLoading, authUser, viewMode, employeeRecord]);
+}, [authLoading, authUser, viewMode, employees]);
 
 const unreadMessageCount = useMemo(() => {
     if (!appUser) return 0;
@@ -537,7 +539,7 @@ const getEffectiveWeeklyHours = (period: EmploymentPeriod | null, date: Date): n
     const history = [...period.workHoursHistory].sort((a,b) => parseISO(b.effectiveDate).getTime() - parseISO(a.effectiveDate).getTime());
     const effectiveRecord = history.find(record => !isAfter(startOfDay(parseISO(record.effectiveDate)), targetDate));
     return effectiveRecord?.weeklyHours || 0;
-  };
+};
 
 const calculateBalancePreviewCallback = useCallback((employeeId: string, weekData: Record<string, DailyData>, initialBalances: { ordinary: number, holiday: number, leave: number }, weeklyHoursOverride?: number | null, totalComplementaryHours?: number | null) => {
     const employee = getEmployeeById(employeeId);
