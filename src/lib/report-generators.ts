@@ -457,17 +457,9 @@ export const generateQuadrantReportPDF = (
 
                 const cellContent = employeesWithAbsenceInWeek.map(item => {
                     if (!item) return '';
-                    const { employee, absence } = item;
-                    let employeeLine = '';
-                    
-                    const isSpecial = specialAbsenceAbbreviations.has(absence.absenceAbbreviation);
-                    employeeLine = `[EMP:${isSpecial ? 'blue' : 'black'}]${employee.name} (${absence.absenceAbbreviation})`;
-                    
-                    const substitute = safeSubstitutesByWeek[week.key]?.[employee.id];
-                    const substituteLine = substitute ? `[SUB:red]Sust: ${substitute.substituteName}` : '';
-                    
-                    return [employeeLine, substituteLine].filter(Boolean).join('\n');
-                }).join('\n');
+                    const substitute = safeSubstitutesByWeek[week.key]?.[item.employee.id];
+                    return { employee: item.employee, absence: item.absence, substitute };
+                });
                 
                 rowData.push({ content: cellContent, styles: { fillColor: employeesWithAbsenceInWeek.length > 0 ? group.color : '#ffffff' } });
             });
@@ -502,31 +494,25 @@ export const generateQuadrantReportPDF = (
             columnStyles: columnStyles,
             margin: { left: pageMargin, right: pageMargin },
             didDrawCell: (data) => {
-                if (data.section === 'body') {
-                    // Clear the original text content
-                    data.cell.text = [];
-
+                if (data.section === 'body' && data.column.index > 0) {
+                    const cellContent: { employee: any; absence: any; substitute: any; }[] = (data.cell.raw as any[] | null) || [];
                     let y = data.cell.y + data.cell.padding('top') + 1;
-                    const cellContent = tableBody[data.row.index][data.column.index].content;
-                    
-                    if(cellContent) {
-                        cellContent.split('\n').forEach((line: string) => {
-                             let text = line;
-                            let color: [number, number, number] = [0, 0, 0]; // Black
-                            if (line.startsWith('[EMP:blue]')) {
-                                color = [0, 0, 255]; // Blue
-                                text = line.replace('[EMP:blue]', '');
-                            } else if (line.startsWith('[EMP:black]')) {
-                                text = line.replace('[EMP:black]', '');
-                            } else if (line.startsWith('[SUB:red]')) {
-                                color = [255, 0, 0]; // Red
-                                text = line.replace('[SUB:red]', '');
-                            }
-                            doc.setTextColor(color[0], color[1], color[2]);
-                            doc.text(text, data.cell.x + data.cell.padding('left'), y);
+                    data.cell.text = []; // Clear original text
+
+                    cellContent.forEach(item => {
+                        const isSpecial = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
+                        const employeeColor: [number, number, number] = isSpecial ? [0, 0, 255] : [0, 0, 0];
+                        
+                        doc.setTextColor(employeeColor[0], employeeColor[1], employeeColor[2]);
+                        doc.text(`${item.employee.name} (${item.absence.absenceAbbreviation})`, data.cell.x + data.cell.padding('left'), y);
+                        y += doc.getLineHeight() * 0.9;
+                        
+                        if (item.substitute) {
+                            doc.setTextColor(255, 0, 0); // Red
+                            doc.text(`Sust: ${item.substitute.substituteName}`, data.cell.x + data.cell.padding('left'), y);
                             y += doc.getLineHeight() * 0.9;
-                        });
-                    }
+                        }
+                    });
                 }
             },
         });
