@@ -134,13 +134,8 @@ export default function VacationsPage() {
     const [editedDateRange, setEditedDateRange] = useState<DateRange | undefined>(undefined);
     const [editCalendarMonth, setEditCalendarMonth] = useState<Date>(new Date());
     
-    // State for substitute assignment
     const [isFullScreen, setIsFullScreen] = useState(false);
-    const [isAssigning, setIsAssigning] = useState(false);
-    const [assignmentContext, setAssignmentContext] = useState<{ weekKey: string; employeeId: string; } | null>(null);
-    const [selectedSubstituteId, setSelectedSubstituteId] = useState<string | null>(null);
-
-
+    
     // State for status report
     const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
     
@@ -567,39 +562,6 @@ export default function VacationsPage() {
         };
     }, [selectedYear, getWeekId]);
     
-    const handleAssignSubstitute = async () => {
-        if (!assignmentContext || !selectedSubstituteId) return;
-        
-        setIsGenerating(true);
-        try {
-            const { weekKey, employeeId } = assignmentContext;
-            
-            await addHolidayReport({
-                weekId: weekKey,
-                employeeId: employeeId,
-                substituteId: selectedSubstituteId,
-                weekDate: parseISO(weekKey),
-            });
-    
-            toast({ title: "Sustituto Asignado", description: "Se ha guardado el empleado eventual para esta semana." });
-            refreshData();
-        } catch (error) {
-            console.error("Error al asignar sustituto:", error);
-            toast({ title: 'Error al asignar', description: 'No se pudo guardar la asignación de empleado sustituto.', variant: 'destructive' });
-        } finally {
-            setIsGenerating(false);
-            setIsAssigning(false);
-            setAssignmentContext(null);
-            setSelectedSubstituteId(null);
-        }
-    };
-
-    const handleOpenAssignDialog = (weekKey: string, employeeId: string) => {
-        setAssignmentContext({ weekKey, employeeId });
-        setIsAssigning(true);
-        setSelectedSubstituteId(null);
-    };
-
     const handleGenerateStatusReport = () => {
         const campaign = activeCampaigns.find(c => c.id === selectedCampaignId);
         if (!campaign) {
@@ -614,110 +576,96 @@ export default function VacationsPage() {
     const selectedEmployeeAbsences = employeesWithAbsences[selectedEmployeeId]?.filter(a => getYear(a.startDate) === selectedYear || getYear(a.endDate) === selectedYear) || [];
 
     const renderQuadrant = () => (
-      <div className="overflow-auto h-full border rounded-lg">
-        <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
-          <thead className="sticky top-0 z-10 bg-card shadow-sm">
-            <tr>
-              <th className="p-0 border-b border-r sticky left-0 bg-card z-20" style={{ width: '0.0025px', overflow: 'hidden' }}>
-                 <div className="w-0 opacity-0">Grupo</div>
-              </th>
-              {weeksOfYear.map(week => {
-                const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
-
-                return (
-                  <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
-                    <div className='flex justify-between items-center h-full px-1'>
-                      <div className="flex flex-col items-start">
-                        <span className='text-xs'>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
-                        <div className="flex gap-3 mt-1 text-xs items-center font-normal text-muted-foreground">
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button className='flex items-center gap-1 cursor-pointer'><Users className="h-3 w-3" />{weeklySummaries[week.key]?.employeeCount ?? 0}</button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-64 p-2">
-                              <div className="space-y-1">
-                                <p className="font-bold text-sm">Personal Ausente</p>
-                                {employeesByWeek[week.key]?.map(e => <p key={e.employeeId} className="text-xs">{e.employeeName} ({e.absenceAbbreviation})</p>)}
-                                {employeesByWeek[week.key]?.length === 0 && <p className="text-xs text-muted-foreground">Nadie.</p>}
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                          <div className='flex items-center gap-1'><Clock className="h-3 w-3" />{weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
+        <div className="overflow-auto h-full border rounded-lg">
+          <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
+            <thead className="sticky top-0 z-10 bg-card shadow-sm">
+              <tr>
+                <th className="p-0 border-b border-r sticky left-0 bg-card z-20" style={{ width: '0.0025px', overflow: 'hidden' }}>
+                   <div className="w-0 opacity-0">Grupo</div>
+                </th>
+                {weeksOfYear.map(week => {
+                  const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
+  
+                  return (
+                    <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
+                      <div className='flex justify-between items-center h-full px-1'>
+                        <div className="flex flex-col items-start">
+                          <span className='text-xs'>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
+                          <div className="flex gap-3 mt-1 text-xs items-center font-normal text-muted-foreground">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button className='flex items-center gap-1 cursor-pointer'><Users className="h-3 w-3" />{weeklySummaries[week.key]?.employeeCount ?? 0}</button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-64 p-2">
+                                <div className="space-y-1">
+                                  <p className="font-bold text-sm">Personal Ausente</p>
+                                  {employeesByWeek[week.key]?.map(e => <p key={e.employeeId} className="text-xs">{e.employeeName} ({e.absenceAbbreviation})</p>)}
+                                  {employeesByWeek[week.key]?.length === 0 && <p className="text-xs text-muted-foreground">Nadie.</p>}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                            <div className='flex items-center gap-1'><Clock className="h-3 w-3" />{weeklySummaries[week.key]?.hourImpact.toFixed(0) ?? 0}h</div>
+                          </div>
                         </div>
+                        <Badge variant="secondary">{turnId ? `T.${turnId.replace('turn', '')}` : 'N/A'}</Badge>
                       </div>
-                      <Badge variant="secondary">{turnId ? `T.${turnId.replace('turn', '')}` : 'N/A'}</Badge>
-                    </div>
-                  </th>
-                )
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {employeeGroups.map(group => {
-              const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-              return (
-                <tr key={group.id}>
-                  <td className="border p-0 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ width: '0.0025px', overflow: 'hidden' }}>
-                     <div className="w-0 opacity-0">{group.name}</div>
-                  </td>
-                  {weeksOfYear.map(week => {
-                    const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
-                      const absence = (employeesWithAbsences[emp.id] || []).find(a =>
-                        isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
+                    </th>
+                  )
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {employeeGroups.map(group => {
+                const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
+                return (
+                  <tr key={group.id}>
+                    <td className="border p-0 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ width: '0.0025px', overflow: 'hidden' }}>
+                       <div className="w-0 opacity-0">{group.name}</div>
+                    </td>
+                    {weeksOfYear.map(week => {
+                      const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
+                        const absence = (employeesWithAbsences[emp.id] || []).find(a =>
+                          isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
+                        );
+                        return absence ? { employee: emp, absence } : null;
+                      }).filter((item): item is { employee: Employee, absence: FormattedAbsence } => item !== null);
+  
+                      const cellHasContent = employeesWithAbsenceInWeek.length > 0;
+                       const cellBg = cellHasContent
+                          ? employeesWithAbsenceInWeek.some(item => item?.absence.isRequest)
+                              ? plannerModifiersStyles.request.backgroundColor
+                              : (groupColors[group.id] || '#f0f0f0')
+                          : 'transparent';
+  
+                      return (
+                        <td key={`${group.id}-${week.key}`} className="border align-top py-0 px-0.5" style={{ backgroundColor: cellBg }}>
+                          <div className="flex flex-col gap-0.5 relative h-full">
+                            {employeesWithAbsenceInWeek.map(item => {
+                              if (!item) return null;
+                              const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
+  
+                              return (
+                                  <button key={item.employee.id} onClick={() => !item.absence.isRequest && setEditingAbsence({employee: item.employee, absence: item.absence})} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[11px] leading-tight py-0 hover:bg-black/5">
+                                      <span className={cn(
+                                          "flex-grow text-left truncate",
+                                          isSpecialAbsence ? "text-blue-600" : "text-black"
+                                      )}>
+                                          {item.employee.name} ({item.absence.absenceAbbreviation})
+                                      </span>
+                                  </button>
+                              )
+                            })}
+                          </div>
+                        </td>
                       );
-                      return absence ? { employee: emp, absence } : null;
-                    }).filter((item): item is { employee: Employee, absence: FormattedAbsence } => item !== null);
-
-                    const cellHasContent = employeesWithAbsenceInWeek.length > 0;
-                     const cellBg = cellHasContent
-                        ? employeesWithAbsenceInWeek.some(item => item?.absence.isRequest)
-                            ? plannerModifiersStyles.request.backgroundColor
-                            : (groupColors[group.id] || '#f0f0f0')
-                        : 'transparent';
-
-                    return (
-                      <td key={`${group.id}-${week.key}`} className="border align-top py-0 px-0.5" style={{ backgroundColor: cellBg }}>
-                        <div className="flex flex-col gap-0.5 relative h-full">
-                          {employeesWithAbsenceInWeek.map(item => {
-                            if (!item) return null;
-                            const substitute = substitutesByWeek[week.key]?.find(s => s.employeeId === item.employee.id);
-                            const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
-
-                            return (
-                                <button key={item.employee.id} onClick={() => !item.absence.isRequest && setEditingAbsence({employee: item.employee, absence: item.absence})} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[11px] leading-tight py-0 hover:bg-black/5">
-                                    <span className={cn(
-                                        "flex-grow text-left truncate",
-                                        isSpecialAbsence ? "text-blue-600" : "text-black"
-                                    )}>
-                                        {item.employee.name} ({item.absence.absenceAbbreviation})
-                                    </span>
-                                    {substitute && (
-                                        <span className="text-[10px] truncate text-red-600 font-semibold flex-shrink-0 ml-1">
-                                            S: {substitute.substituteName}
-                                        </span>
-                                    )}
-                                    {!item.absence.isRequest && (
-                                        <button 
-                                            className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0 ml-auto"
-                                            onClick={(e) => { e.stopPropagation(); handleOpenAssignDialog(week.key, item.employee.id); }}
-                                        >
-                                            <Plus className="h-3 w-3" />
-                                        </button>
-                                    )}
-                                </button>
-                            )
-                          })}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      );
 
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
@@ -833,38 +781,6 @@ export default function VacationsPage() {
                 </CardContent>
             </Card>
 
-            <Dialog open={isAssigning} onOpenChange={setIsAssigning}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Asignar Sustituto</DialogTitle>
-                        {assignmentContext && (
-                            <DialogDescription>
-                                Selecciona un empleado eventual para sustituir a <strong>{allEmployeesForQuadrant.find(e => e.id === assignmentContext.employeeId)?.name}</strong> en la semana del <strong>{format(parseISO(assignmentContext.weekKey), 'dd/MM/yyyy')}</strong>.
-                            </DialogDescription>
-                        )}
-                    </DialogHeader>
-                    <div className="py-4 space-y-2 max-h-60 overflow-y-auto">
-                        {substituteEmployees.map(sub => (
-                            <Button
-                                key={sub.id}
-                                variant={selectedSubstituteId === sub.id ? 'default' : 'outline'}
-                                className="w-full justify-start"
-                                onClick={() => setSelectedSubstituteId(sub.id)}
-                            >
-                                {sub.name}
-                            </Button>
-                        ))}
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsAssigning(false)}>Cancelar</Button>
-                        <Button onClick={handleAssignSubstitute} disabled={!selectedSubstituteId || isGenerating}>
-                            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Asignar Sustituto
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
             <Dialog open={!!editingAbsence} onOpenChange={(open) => !open && setEditingAbsence(null)}>
                 <DialogContent>
                     <DialogHeader>
@@ -952,6 +868,7 @@ export default function VacationsPage() {
         </div>
     );
 }
+
 
 
 
