@@ -1,4 +1,5 @@
 
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -47,7 +48,7 @@ import {
     updateVacationCampaign,
     deleteVacationCampaign,
 } from '../lib/services/settingsService';
-import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, getISOWeekYear } from 'date-fns';
+import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, getISOWeekYear, isValid } from 'date-fns';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp, collection, orderBy, query } from 'firebase/firestore';
@@ -229,6 +230,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     const unsubs: (() => void)[] = [];
 
+    const safeFormat = (date: Date | Timestamp) => {
+        const d = (date as Timestamp)?.toDate ? (date as Timestamp).toDate() : date;
+        return isValid(d) ? format(d, 'yyyy-MM-dd') : null;
+    }
+
     const setupSubscription = <T extends { id: string }>(collectionName: string, setter: React.Dispatch<React.SetStateAction<T[]>>, processor?: (data: any[]) => T[]) => {
         const { unsubscribe, ready } = onCollectionUpdate<T>(collectionName, (data) => {
             const processedData = processor ? processor(data) : data;
@@ -239,7 +245,27 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     };
     
     const promises = [
-        setupSubscription<Employee>('employees', setEmployees, (data) => data.map(emp => ({...emp, employmentPeriods: emp.employmentPeriods.map(p => ({...p, startDate: (p.startDate as any)?.toDate ? (p.startDate as any).toDate() : p.startDate, endDate: p.endDate ? ((p.endDate as any)?.toDate ? (p.endDate as any).toDate() : p.endDate) : null, scheduledAbsences: (p.scheduledAbsences || []).map(a => ({...a, startDate: (a.startDate as any)?.toDate ? (a.startDate as any).toDate() : parseISO(a.startDate as string), endDate: a.endDate ? ((a.endDate as any)?.toDate ? (a.endDate as any).toDate() : parseISO(a.endDate as string)) : null,})),}))})).sort((a,b) => a.name.localeCompare(b.name))),
+        setupSubscription<Employee>('employees', setEmployees, (data) => data.map(emp => ({
+            ...emp, 
+            employmentPeriods: emp.employmentPeriods.map(p => ({
+                ...p, 
+                startDate: safeFormat(p.startDate), 
+                endDate: p.endDate ? safeFormat(p.endDate) : null, 
+                scheduledAbsences: (p.scheduledAbsences || []).map(a => ({
+                    ...a, 
+                    startDate: (a.startDate as any)?.toDate ? (a.startDate as any).toDate() : parseISO(a.startDate as string), 
+                    endDate: a.endDate ? ((a.endDate as any)?.toDate ? (a.endDate as any).toDate() : parseISO(a.endDate as string)) : null,
+                })),
+                workHoursHistory: (p.workHoursHistory || []).map(wh => ({
+                    ...wh,
+                    effectiveDate: safeFormat(wh.effectiveDate as any)
+                })),
+                weeklySchedulesHistory: (p.weeklySchedulesHistory || []).map(ws => ({
+                    ...ws,
+                    effectiveDate: safeFormat(ws.effectiveDate as any)
+                }))
+            }))
+        })).sort((a,b) => a.name.localeCompare(b.name))),
         setupSubscription<AbsenceType>('absenceTypes', setAbsenceTypes, data => data.sort((a,b) => a.name.localeCompare(b.name))),
         setupSubscription<Holiday>('holidays', setHolidays, data => data.map(h => ({ ...h, date: (h.date as Timestamp).toDate() })).sort((a,b) => a.date.getTime() - b.date.getTime())),
         setupSubscription<ContractType>('contractTypes', setContractTypes),
@@ -504,7 +530,7 @@ useEffect(() => {
         }
     }
     
-    details.sort((a, b) => a.weekId.localeCompare(b.id));
+    details.sort((a, b) => a.weekId.localeCompare(b.weekId));
     setUnconfirmedWeeksDetails(details);
 
 }, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
@@ -536,8 +562,8 @@ const getEffectiveWeeklyHours = (period: EmploymentPeriod | null, date: Date): n
       return 0;
     }
     const targetDate = startOfDay(date);
-    const history = [...period.workHoursHistory].sort((a,b) => parseISO(b.effectiveDate).getTime() - parseISO(a.effectiveDate).getTime());
-    const effectiveRecord = history.find(record => !isAfter(startOfDay(parseISO(record.effectiveDate)), targetDate));
+    const history = [...period.workHoursHistory].sort((a,b) => parseISO(b.effectiveDate as string).getTime() - parseISO(a.effectiveDate as string).getTime());
+    const effectiveRecord = history.find(record => !isAfter(startOfDay(parseISO(record.effectiveDate as string)), targetDate));
     return effectiveRecord?.weeklyHours || 0;
 };
 
@@ -660,8 +686,8 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
     }
 
     const schedule = [...activePeriod.weeklySchedulesHistory]
-        .sort((a, b) => parseISO(b.effectiveDate).getTime() - parseISO(a.effectiveDate).getTime())
-        .find(s => !isAfter(startOfDay(parseISO(s.effectiveDate)), startOfDay(dateInWeek)));
+        .sort((a, b) => parseISO(b.effectiveDate as string).getTime() - parseISO(a.effectiveDate as string).getTime())
+        .find(s => !isAfter(startOfDay(parseISO(s.effectiveDate as string)), startOfDay(dateInWeek)));
     
     if (!schedule) return defaultReturn;
     
