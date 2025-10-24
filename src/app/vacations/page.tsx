@@ -31,6 +31,7 @@ import {
   Plus,
   Expand,
   X,
+  Edit,
 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -206,6 +207,8 @@ export default function VacationsPage() {
     }, [absenceTypes]);
     
     const { employeesForQuadrant, substituteEmployees, unifiedEmployees } = useMemo(() => {
+        if (loading) return { employeesForQuadrant: [], substituteEmployees: [], unifiedEmployees: [] };
+
         const mainEmployeesActive = employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
         
         const mainEmployeesMap = new Map();
@@ -221,7 +224,7 @@ export default function VacationsPage() {
 
         const eventuals = holidayEmployees
             .filter(he => !mainEmployeesMap.has(he.id) && he.active)
-            .map(he => ({...he, isEventual: true, activeForQuadrant: he.active}));
+            .map(he => ({...he, id: he.id, name: he.name, isEventual: true, activeForQuadrant: he.active}));
 
         const quadrantEmps = Array.from(mainEmployeesMap.values())
             .filter(p => p.activeForQuadrant)
@@ -239,7 +242,7 @@ export default function VacationsPage() {
             substituteEmployees: eventuals, 
             unifiedEmployees: allPeople 
         };
-    }, [employees, holidayEmployees, employeeGroups]);
+    }, [employees, holidayEmployees, employeeGroups, loading]);
     
 
      useEffect(() => {
@@ -681,7 +684,7 @@ export default function VacationsPage() {
                             const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
 
                             return (
-                                <button key={item.employee.id} onClick={() => !item.absence.isRequest && setEditingAbsence(item)} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-xs leading-tight py-0 hover:bg-black/5">
+                                <button key={item.employee.id} onClick={() => !item.absence.isRequest && setEditingAbsence(item)} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-sm leading-tight py-0 hover:bg-black/5">
                                     <span className={cn(
                                         "flex-grow text-left truncate",
                                         isSpecialAbsence ? "text-blue-600" : "text-black"
@@ -790,6 +793,9 @@ export default function VacationsPage() {
                                                 <TableCell>{format(absence.startDate, 'dd/MM/yyyy')}</TableCell>
                                                 <TableCell>{format(absence.endDate, 'dd/MM/yyyy')}</TableCell>
                                                 <TableCell className="text-right">
+                                                    <Button variant="ghost" size="icon" disabled={isGenerating || absence.id.startsWith('weekly-')} onClick={() => setEditingAbsence({ employee: employeesForQuadrant.find(e => e.id === selectedEmployeeId)!, absence })}>
+                                                        <Edit className="h-4 w-4"/>
+                                                    </Button>
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
                                                             <Button variant="ghost" size="icon" disabled={isGenerating || absence.id.startsWith('weekly-')}>
@@ -895,7 +901,7 @@ export default function VacationsPage() {
 
 
             <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
-              <DialogContent className="max-w-none w-screen h-screen p-0 m-0 sm:max-w-none sm:max-w-none:translate-x-0 sm:max-w-none:translate-y-0">
+              <DialogContent className="max-w-none w-screen h-full p-0 m-0 sm:max-w-none sm:max-w-none:translate-x-0 sm:max-w-none:translate-y-0">
                  <Button variant="ghost" size="icon" onClick={() => setIsFullScreen(false)} className="absolute top-2 right-2 z-20 bg-background/50 border hover:bg-background">
                     <X className="h-6 w-6" />
                 </Button>
@@ -940,11 +946,12 @@ export default function VacationsPage() {
                         </div>
                 </CardHeader>
                 <CardContent>
-                    {loading ? <Skeleton className="h-[70vh] w-full" /> : renderQuadrant()}
+                    {loading ? <Skeleton className="h-full w-full" /> : renderQuadrant()}
                 </CardContent>
             </Card>
         </div>
     );
 }
+
 
 

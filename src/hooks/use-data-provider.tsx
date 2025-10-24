@@ -1130,12 +1130,15 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, getEffectiveWeeklyHours, holidays, absenceTypes, contractTypes, prefilledRecords]);
 
     const addHolidayReport = async (report: Omit<HolidayReport, 'id'>): Promise<string> => {
-        const docRef = await addDoc(collection(db, 'holidayReports'), report);
-        return docRef.id;
+        const docId = `${report.weekId}_${report.employeeId}`;
+        const docRef = doc(db, 'holidayReports', docId);
+        await setDoc(docRef, report, { merge: true });
+        return docId;
     }
 
     const updateHolidayReport = async (reportId: string, data: Partial<Omit<HolidayReport, 'id'>>) => {
-        await setDocument('holidayReports', reportId, data, { merge: true });
+        const docRef = doc(db, 'holidayReports', reportId);
+        await updateDoc(docRef, data);
     }
 
     const findNextUnconfirmedWeek = (startDate: Date): string | null => {
