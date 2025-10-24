@@ -1,5 +1,3 @@
-
-
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -431,7 +429,7 @@ export const generateQuadrantReportPDF = (
 ) => {
     const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a3' });
     const pageMargin = 10;
-    const headerHeight = 20;
+    const headerHeight = 25; // Increased header height for more content
     const weeksPerPage = 5;
     const safeSubstitutesByWeek = substitutesByWeek || {};
 
@@ -447,32 +445,38 @@ export const generateQuadrantReportPDF = (
         const endWeekIndex = Math.min(startWeekIndex + weeksPerPage, weeksOfYear.length);
         const weeksForPage = weeksOfYear.slice(startWeekIndex, endWeekIndex);
 
-        const tableBody = employeeGroups.flatMap(group => {
+        const tableBody = employeeGroups.map(group => {
             const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-            return groupEmployees.map(emp => {
-                const row = [{ content: '', styles: { cellWidth: 0.1 } }]; // Hidden group column
-                weeksForPage.forEach(week => {
-                    const absence = employeesByWeek[week.key]?.find(e => e.employeeId === emp.id);
-                    const substitute = safeSubstitutesByWeek[week.key]?.find(s => s.employeeId === emp.id);
-                    
-                    let content = '';
-                    if (absence) {
-                        const isSpecialAbsence = specialAbsenceAbbreviations.has(absence.absenceAbbreviation);
-                        content += `[EMP:${isSpecialAbsence ? 'blue' : 'black'}]${emp.name} (${absence.absenceAbbreviation})\n`;
-                    }
+            const rowData = [{ content: group.name, styles: { fontStyle: 'bold', halign: 'center' } }];
+
+            weeksForPage.forEach(week => {
+                const employeesWithAbsenceInWeek = groupEmployees
+                    .map(emp => {
+                        const absence = employeesByWeek[week.key]?.find(e => e.employeeId === emp.id);
+                        return absence ? { employee: emp, absence } : null;
+                    })
+                    .filter(item => item !== null);
+                
+                let cellContent = '';
+                employeesWithAbsenceInWeek.forEach(item => {
+                    if (!item) return;
+                    const substitute = safeSubstitutesByWeek[week.key]?.find(s => s.employeeId === item.employee.id);
+                    const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
+
+                    cellContent += `[EMP:${isSpecialAbsence ? 'blue' : 'black'}]${item.employee.name} (${item.absence.absenceAbbreviation})\n`;
                     if (substitute) {
-                        content += `[SUB:red]Sust: ${substitute.substituteName}`;
+                        cellContent += `[SUB:red]Sust: ${substitute.substituteName}\n`;
                     }
-                    row.push(content);
                 });
-                return row;
+                rowData.push(cellContent.trim());
             });
+            return rowData;
         });
 
-        const availableWidth = doc.internal.pageSize.width - (pageMargin * 2) - 0.1;
+        const availableWidth = doc.internal.pageSize.width - (pageMargin * 2) - 40; // 40 for group column
         const weekColumnWidth = availableWidth / weeksForPage.length;
 
-        const columnStyles = { 0: { cellWidth: 0.1 } };
+        const columnStyles = { 0: { cellWidth: 40 } };
         for (let i = 0; i < weeksForPage.length; i++) {
             columnStyles[i + 1] = { cellWidth: weekColumnWidth };
         }
@@ -480,7 +484,7 @@ export const generateQuadrantReportPDF = (
         autoTable(doc, {
             startY: headerHeight,
             head: [
-                [{ content: '', styles: { cellWidth: 0.1 } }, ...weeksForPage.map(week => {
+                ['Grupo', ...weeksForPage.map(week => {
                     const summary = weeklySummaries[week.key];
                     const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
                     return `Sem: ${getISOWeek(week.start)} | ${format(week.start, 'dd/MM', { locale: es })} - ${format(week.end, 'dd/MM', { locale: es })}\n` +
@@ -490,18 +494,18 @@ export const generateQuadrantReportPDF = (
             ],
             body: tableBody,
             theme: 'grid',
-            styles: { fontSize: 9, cellPadding: 1.5, valign: 'top' },
-            headStyles: { halign: 'center', fontSize: 7, fontStyle: 'bold', fillColor: [230, 230, 230], textColor: 20 },
+            styles: { fontSize: 11, cellPadding: 2, valign: 'top' }, // Increased font size
+            headStyles: { halign: 'center', fontSize: 8, fontStyle: 'bold', fillColor: [230, 230, 230], textColor: 20 },
             columnStyles: columnStyles,
             margin: { left: pageMargin, right: pageMargin },
             didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index > 0) {
                     const lines = data.cell.text;
-                    let y = data.cell.y + data.cell.padding('top') + 2;
+                    let y = data.cell.y + data.cell.padding('top') + 3; // Adjust initial Y for bigger font
                     if (lines) {
                         lines.forEach((line: string) => {
                             let text = line;
-                            let color = [0, 0, 0]; // Black
+                            let color: [number, number, number] = [0, 0, 0]; // Black
                             if (line.startsWith('[EMP:blue]')) {
                                 color = [0, 0, 255]; // Blue
                                 text = line.replace('[EMP:blue]', '');
@@ -513,7 +517,7 @@ export const generateQuadrantReportPDF = (
                             }
                             doc.setTextColor(color[0], color[1], color[2]);
                             doc.text(text, data.cell.x + data.cell.padding('left'), y);
-                            y += doc.getLineHeight() * 0.85; // Adjust line height factor as needed
+                            y += doc.getLineHeight() * 0.9; // Adjust line height factor for bigger font
                         });
                     }
                     data.cell.text = []; // Clear original text to prevent it from being drawn
