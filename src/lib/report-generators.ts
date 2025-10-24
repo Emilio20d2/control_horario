@@ -476,7 +476,7 @@ export const generateQuadrantReportPDF = (
         })];
 
 
-        const availableWidth = doc.internal.pageSize.width - (pageMargin * 2) - 0.0025; // Minus group column
+        const availableWidth = doc.internal.pageSize.width - (pageMargin * 2) - 0.0025;
         const weekColumnWidth = availableWidth / weeksForPage.length;
 
         const columnStyles = { 0: { cellWidth: 0.0025 } };
@@ -489,7 +489,7 @@ export const generateQuadrantReportPDF = (
             head: [tableHeader],
             body: tableBody,
             theme: 'grid',
-            styles: { fontSize: 8, cellPadding: 2, valign: 'top' },
+            styles: { fontSize: 8, cellPadding: 2, valign: 'top', lineColor: [0,0,0], lineWidth: 0.1 },
             headStyles: { halign: 'center', fontSize: 8, fontStyle: 'bold', fillColor: [230, 230, 230], textColor: 20 },
             columnStyles: columnStyles,
             margin: { left: pageMargin, right: pageMargin },
@@ -497,7 +497,7 @@ export const generateQuadrantReportPDF = (
                 if (data.section === 'body' && data.column.index > 0) {
                     const cellContent: any = data.cell.raw;
                     let y = data.cell.y + data.cell.padding('top') + 1;
-                    data.cell.text = []; // Clear original text
+                    data.cell.text = []; // Limpiar el contenido original de la celda
 
                     if (Array.isArray(cellContent)) {
                         cellContent.forEach(item => {
@@ -509,9 +509,11 @@ export const generateQuadrantReportPDF = (
                             y += doc.getLineHeight() * 0.9;
                             
                             if (item.substitute) {
-                                doc.setTextColor(0, 0, 0); // Reset to black before "Sust:"
-                                doc.text(`Sust: ${item.substitute.substituteName}`, data.cell.x + data.cell.padding('left'), y);
-                                y += doc.getLineHeight() * 0.9;
+                                doc.setTextColor(255, 0, 0); // Rojo para sustituto
+                                const substituteText = `${item.substitute.substituteName}`;
+                                const textWidth = doc.getStringUnitWidth(substituteText) * doc.getFontSize() / doc.internal.scaleFactor;
+                                const xPos = data.cell.x + data.cell.width - data.cell.padding('right') - textWidth;
+                                doc.text(substituteText, xPos, y - doc.getLineHeight() * 0.9);
                             }
                         });
                     }
@@ -648,4 +650,5 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
