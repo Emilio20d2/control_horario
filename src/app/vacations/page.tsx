@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -620,7 +621,7 @@ export default function VacationsPage() {
                 const { turnId } = employeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(employeesForQuadrant[0].id, week.start) : { turnId: null };
 
                 return (
-                  <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
+                  <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '300px' }}>
                     <div className='flex justify-between items-center h-full px-1'>
                       <div className="flex flex-col items-start">
                         <span className='text-xs'>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
