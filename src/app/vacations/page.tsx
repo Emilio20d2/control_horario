@@ -138,6 +138,7 @@ export default function VacationsPage() {
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [isAssigning, setIsAssigning] = useState(false);
     const [assignmentContext, setAssignmentContext] = useState<{ weekKey: string; employee: Employee; } | null>(null);
+    const [selectedSubstituteId, setSelectedSubstituteId] = useState<string | null>(null);
 
 
     // State for status report
@@ -204,34 +205,43 @@ export default function VacationsPage() {
     const schedulableAbsenceTypes = useMemo(() => {
         return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
     }, [absenceTypes]);
-
-    const { employeesForQuadrant, substituteEmployees } = useMemo(() => {
+    
+    const { employeesForQuadrant, substituteEmployees, unifiedEmployees } = useMemo(() => {
         const mainEmployeesActive = employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
+        const mainEmployeeIds = new Set(mainEmployeesActive.map(e => e.id));
 
-        const employeeMap = new Map<string, any>();
+        const unifiedMap = new Map<string, any>();
+
         mainEmployeesActive.forEach(emp => {
             const holidayInfo = holidayEmployees.find(he => he.id === emp.id);
-            employeeMap.set(emp.id, {
+            unifiedMap.set(emp.id, {
                 ...emp,
                 groupId: holidayInfo?.groupId,
                 active: holidayInfo ? holidayInfo.active : true,
                 isEventual: false,
             });
         });
+
+        holidayEmployees.forEach(he => {
+            if (!unifiedMap.has(he.id)) {
+                 unifiedMap.set(he.id, { ...he, isEventual: true });
+            }
+        });
+
+        const allPeople = Array.from(unifiedMap.values());
         
-        const quadrantEmployees = Array.from(employeeMap.values())
-            .filter(e => e.active)
+        const quadrantEmps = allPeople.filter(p => !p.isEventual && p.active)
             .sort((a,b) => {
                 const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
                 const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
                 if (groupA !== groupB) return groupA - groupB;
                 return a.name.localeCompare(b.name);
             });
+        
+        const subs = allPeople.filter(p => p.isEventual && p.active)
+            .sort((a,b) => a.name.localeCompare(b.name));
 
-        const mainEmployeeIds = new Set(mainEmployeesActive.map(e => e.id));
-        const subs = holidayEmployees.filter(he => he.active && !mainEmployeeIds.has(he.id));
-
-        return { employeesForQuadrant: quadrantEmployees, substituteEmployees: subs };
+        return { employeesForQuadrant: quadrantEmps, substituteEmployees: subs, unifiedEmployees: allPeople };
     }, [employees, holidayEmployees, employeeGroups]);
     
 
@@ -244,13 +254,7 @@ export default function VacationsPage() {
         }
     }, [schedulableAbsenceTypes, selectedAbsenceTypeId]);
     
-    const { employeesWithAbsences, weeklySummaries, employeesByWeek, substitutesByWeek, unifiedEmployees } = useMemo(() => {
-        // Build a unified list of all people (main and eventual)
-        const unifiedList = [
-            ...employees.map(e => ({id: e.id, name: e.name, isEventual: false})),
-            ...holidayEmployees.filter(he => !employees.some(e => e.id === he.id)).map(he => ({id: he.id, name: he.name, isEventual: true}))
-        ];
-
+    const { employeesWithAbsences, weeklySummaries, employeesByWeek, substitutesByWeek } = useMemo(() => {
         const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
         const schedulableAbbrs = new Set(schedulableAbsenceTypes.map(at => at.abbreviation));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
@@ -280,7 +284,7 @@ export default function VacationsPage() {
             // 2. Get from conversations (pending requests)
             const conversation = conversations.find(c => c.employeeId === emp.id);
             if (conversation?.lastMessageText?.startsWith('Solicitud de')) {
-                const requestRegex = /Solicitud de (.*?):\nDesde: (.*?)\n-\nHasta: (.*)/gm;
+                const requestRegex = /Solicitud de (.*?):\nDesde: (.*?)\nHasta: (.*)/gm;
                 let match;
                 while ((match = requestRegex.exec(conversation.lastMessageText)) !== null) {
                     const absenceName = match[1].trim();
@@ -390,7 +394,7 @@ export default function VacationsPage() {
         holidayReports.filter(r => r.weekDate && getISOWeekYear(r.weekDate.toDate()) === year).forEach(report => {
             if (!report.weekId) return;
             if (!substitutesByWeek[report.weekId]) substitutesByWeek[report.weekId] = [];
-            const subName = unifiedList.find(he => he.id === report.substituteId)?.name || 'Desconocido';
+            const subName = unifiedEmployees.find(he => he.id === report.substituteId)?.name || 'Desconocido';
             substitutesByWeek[report.weekId].push({ employeeId: report.employeeId, substituteId: report.substituteId, substituteName: subName });
         });
         
@@ -414,9 +418,9 @@ export default function VacationsPage() {
             });
         });
 
-        return { employeesWithAbsences, weeklySummaries, employeesByWeek, substitutesByWeek, unifiedEmployees: unifiedList };
+        return { employeesWithAbsences, weeklySummaries, employeesByWeek, substitutesByWeek };
 
-    }, [employeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords, holidayReports, holidayEmployees, conversations, employees]);
+    }, [employeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords, holidayReports, conversations, employees, unifiedEmployees]);
     
      useEffect(() => {
         if (!loading) {
@@ -562,23 +566,23 @@ export default function VacationsPage() {
         };
     }, [selectedYear, getWeekId]);
     
-    const handleAssignSubstitute = async (weekKey: string, employeeId: string, substituteId: string) => {
+    const handleAssignSubstitute = async () => {
+        if (!assignmentContext || !selectedSubstituteId) return;
+        
         setIsGenerating(true);
         try {
-            const report = holidayReports.find(r => r.weekId === weekKey && r.employeeId === employeeId);
+            const { weekKey, employee } = assignmentContext;
+            const report = holidayReports.find(r => r.weekId === weekKey && r.employeeId === employee.id);
             const reportData = {
                 weekId: weekKey,
-                employeeId: employeeId,
-                substituteId: substituteId,
+                employeeId: employee.id,
+                substituteId: selectedSubstituteId,
                 weekDate: parseISO(weekKey),
             };
     
             if (report) {
-                // If a report exists, it means we are updating the substitute.
-                // An update should not fail if the logic is correct.
                 await updateHolidayReport(report.id, reportData);
             } else {
-                // If no report exists, create a new one.
                 await addHolidayReport(reportData);
             }
     
@@ -589,12 +593,16 @@ export default function VacationsPage() {
             toast({ title: 'Error al asignar', description: 'No se pudo guardar la asignación del empleado sustituto.', variant: 'destructive' });
         } finally {
             setIsGenerating(false);
+            setIsAssigning(false);
+            setAssignmentContext(null);
+            setSelectedSubstituteId(null);
         }
     };
 
     const handleOpenAssignDialog = (weekKey: string, employee: Employee) => {
         setAssignmentContext({ weekKey, employee });
         setIsAssigning(true);
+        setSelectedSubstituteId(null);
     };
 
     const handleGenerateStatusReport = () => {
@@ -834,26 +842,27 @@ export default function VacationsPage() {
                         {substituteEmployees.map(sub => (
                             <Button
                                 key={sub.id}
-                                variant="outline"
+                                variant={selectedSubstituteId === sub.id ? 'default' : 'outline'}
                                 className="w-full justify-start"
-                                onClick={async () => {
-                                    if (assignmentContext) {
-                                        await handleAssignSubstitute(assignmentContext.weekKey, assignmentContext.employee.id, sub.id);
-                                        setIsAssigning(false);
-                                        setAssignmentContext(null);
-                                    }
-                                }}
+                                onClick={() => setSelectedSubstituteId(sub.id)}
                             >
                                 {sub.name}
                             </Button>
                         ))}
                     </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAssigning(false)}>Cancelar</Button>
+                        <Button onClick={handleAssignSubstitute} disabled={!selectedSubstituteId || isGenerating}>
+                            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Asignar Sustituto
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
 
             <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
-              <DialogContent className="max-w-none w-screen h-screen p-0 m-0 relative">
+              <DialogContent className="max-w-none w-screen h-screen p-0 m-0 sm:max-w-none:translate-x-0 sm:max-w-none:translate-y-0 sm:max-w-none:left-0 sm:max-w-none:top-0">
                  <Button variant="ghost" size="icon" onClick={() => setIsFullScreen(false)} className="absolute top-2 right-2 z-20 bg-background/50 border hover:bg-background">
                     <X className="h-6 w-6" />
                 </Button>
