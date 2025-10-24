@@ -68,7 +68,6 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
         throw new Error("No se encontró un periodo laboral para actualizar.");
     }
     
-    // RADICAL FIX: Ensure endDate is a string or null before assigning
     const endDateValue = endDate ? (endDate instanceof Date && isValid(endDate) ? format(endDate, 'yyyy-MM-dd') : endDate) : null;
     periodToUpdate.endDate = endDateValue;
 
@@ -78,9 +77,12 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
         periodToUpdate.vacationDaysUsedInAnotherCenter = vacationDaysUsedInAnotherCenter ?? periodToUpdate.vacationDaysUsedInAnotherCenter ?? 0;
     }
 
-    // Handle contract type change - ONLY if fields are valid
+    // --- RADICAL FIX ---
+    // Handle contract type change - ONLY if fields are valid and provided.
     if (newContractType && newContractTypeDate && newContractTypeDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const changeDate = parseISO(newContractTypeDate);
+        
+        // This check prevents all downstream errors from invalid dates.
         if (isValid(changeDate)) {
             periodToUpdate.endDate = format(subDays(changeDate, 1), 'yyyy-MM-dd');
 
@@ -109,6 +111,7 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
         periodToUpdate.initialHolidayHours = periodToUpdate.initialHolidayHours ?? formData.initialHolidayHours ?? 0;
         periodToUpdate.initialLeaveHours = periodToUpdate.initialLeaveHours ?? formData.initialLeaveHours ?? 0;
     }
+    // --- END OF RADICAL FIX ---
 
     if (newWeeklyWorkHours && newWeeklyWorkHours > 0 && newWeeklyWorkHoursDate) {
         const newRecord: WorkHoursRecord = {
@@ -331,3 +334,4 @@ export const deleteScheduledAbsence = async (
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
+
