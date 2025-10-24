@@ -155,8 +155,9 @@ export default function VacationsPage() {
     }, [activeCampaigns, selectedCampaignId]);
     
     const substituteEmployees = useMemo(() => {
-        const fixedEmployeeIds = new Set(employees.map(e => e.id));
-        return holidayEmployees.filter(he => he.active && !fixedEmployeeIds.has(he.id));
+        // This list contains ONLY eventual employees who are active.
+        const mainEmployeeIds = new Set(employees.map(e => e.id));
+        return holidayEmployees.filter(he => he.active && !mainEmployeeIds.has(he.id));
     }, [holidayEmployees, employees]);
     
     const groupColors = useMemo(() => generateGroupColors(employeeGroups.map(g => g.id)), [employeeGroups]);
@@ -208,7 +209,8 @@ export default function VacationsPage() {
     }, [absenceTypes]);
 
     const employeesForQuadrant = useMemo(() => {
-        const fixedEmployees = employees
+        return employees
+            .filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
             .map(e => {
                 const holidayInfo = holidayEmployees.find(he => he.id === e.id);
                 return {
@@ -218,9 +220,8 @@ export default function VacationsPage() {
                     isEventual: false,
                 };
             })
-            .filter(e => e.active && e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
-
-        return fixedEmployees.sort((a,b) => {
+            .filter(e => e.active)
+            .sort((a,b) => {
                 const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
                 const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
                 if (groupA !== groupB) {
