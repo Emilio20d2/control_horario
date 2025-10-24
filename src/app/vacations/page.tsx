@@ -206,48 +206,38 @@ export default function VacationsPage() {
     
     const { employeesForQuadrant, substituteEmployees, unifiedEmployees } = useMemo(() => {
         const mainEmployeesActive = employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
-        const mainEmployeeIds = new Set(mainEmployeesActive.map(e => e.id));
-    
-        const employeeMap = new Map<string, any>();
-    
-        // Add main employees to the map
+        
+        const mainEmployeesMap = new Map();
         mainEmployeesActive.forEach(emp => {
             const holidayInfo = holidayEmployees.find(he => he.id === emp.id);
-            employeeMap.set(emp.id, {
+            mainEmployeesMap.set(emp.id, {
                 ...emp,
                 isEventual: false,
                 groupId: holidayInfo?.groupId ?? null,
-                activeForQuadrant: holidayInfo ? holidayInfo.active : true, // A main employee is active for quadrant unless explicitly disabled
+                activeForQuadrant: holidayInfo ? holidayInfo.active : true,
             });
         });
-    
-        // Add holiday employees who are NOT main employees
-        holidayEmployees.forEach(he => {
-            if (!employeeMap.has(he.id)) {
-                employeeMap.set(he.id, {
-                    ...he,
-                    isEventual: true,
-                    activeForQuadrant: he.active,
-                });
-            }
-        });
-    
-        const allPeople = Array.from(employeeMap.values());
-    
-        const quadrantEmps = allPeople
-            .filter(p => !p.isEventual && p.activeForQuadrant)
+
+        const eventuals = holidayEmployees
+            .filter(he => !mainEmployeesMap.has(he.id) && he.active)
+            .map(he => ({...he, isEventual: true, activeForQuadrant: he.active}));
+
+        const quadrantEmps = Array.from(mainEmployeesMap.values())
+            .filter(p => p.activeForQuadrant)
             .sort((a,b) => {
                 const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
                 const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
                 if (groupA !== groupB) return groupA - groupB;
                 return a.name.localeCompare(b.name);
             });
-    
-        const subs = allPeople
-            .filter(p => p.isEventual && p.activeForQuadrant)
-            .sort((a, b) => a.name.localeCompare(b.name));
-    
-        return { employeesForQuadrant: quadrantEmps, substituteEmployees: subs, unifiedEmployees: allPeople };
+        
+        const allPeople = [...quadrantEmps, ...eventuals];
+
+        return { 
+            employeesForQuadrant: quadrantEmps, 
+            substituteEmployees: eventuals, 
+            unifiedEmployees: allPeople 
+        };
     }, [employees, holidayEmployees, employeeGroups]);
     
 
@@ -426,7 +416,7 @@ export default function VacationsPage() {
 
         return { employeesWithAbsences, weeklySummaries, employeesByWeek, substitutesByWeek };
 
-    }, [employeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords, holidayReports, conversations, employees, unifiedEmployees]);
+    }, [employeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords, holidayReports, conversations, unifiedEmployees]);
     
      useEffect(() => {
         if (!loading) {
@@ -589,8 +579,8 @@ export default function VacationsPage() {
             toast({ title: "Sustituto Asignado", description: "Se ha guardado el empleado eventual para esta semana." });
             refreshData();
         } catch (error) {
-            console.error(error);
-            toast({ title: 'Error al asignar', description: 'No se pudo guardar la asignación del empleado sustituto.', variant: 'destructive' });
+            console.error("Error al asignar sustituto:", error);
+            toast({ title: 'Error al asignar', description: 'No se pudo guardar la asignación de empleado sustituto.', variant: 'destructive' });
         } finally {
             setIsGenerating(false);
             setIsAssigning(false);
@@ -913,3 +903,5 @@ export default function VacationsPage() {
         </div>
     );
 }
+
+    
