@@ -31,6 +31,7 @@ export default function MyMessagesPage() {
     const [newMessage, setNewMessage] = useState('');
     const conversationId = employeeRecord?.id;
     const viewportRef = useRef<HTMLDivElement>(null);
+    const autoReplyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const isMobile = useIsMobile();
     const { toast } = useToast();
 
@@ -135,9 +136,14 @@ export default function MyMessagesPage() {
 
         await sendMessage(messageText);
         
-        // Send auto-reply
-        const autoReplyText = `Hola ${employeeRecord.name.split(' ')[0]}, hemos recibido tu consulta. Un responsable la revisará y te responderá por este mismo medio tan pronto como sea posible. Gracias por tu paciencia.`;
-        await sendBotMessage(autoReplyText, true);
+        if (autoReplyTimeoutRef.current) {
+            clearTimeout(autoReplyTimeoutRef.current);
+        }
+
+        autoReplyTimeoutRef.current = setTimeout(() => {
+            const autoReplyText = `Hola ${employeeRecord.name.split(' ')[0]}, hemos recibido tu consulta. Un responsable la revisará y te responderá por este mismo medio tan pronto como sea posible. Gracias por tu paciencia.`;
+            sendBotMessage(autoReplyText, true);
+        }, 60000); // 1 minute delay
     };
 
     const sendMessage = async (text: string) => {
