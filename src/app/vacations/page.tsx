@@ -154,8 +154,9 @@ export default function VacationsPage() {
         }
     }, [activeCampaigns, selectedCampaignId]);
     
-    const eventualEmployees = useMemo(() => {
-        return holidayEmployees.filter(he => he.workShift === 'Eventual' && he.active);
+    // This is the definitive list of employees for the substitution popover.
+    const substituteEmployees = useMemo(() => {
+        return holidayEmployees.filter(he => he.active);
     }, [holidayEmployees]);
     
     const groupColors = useMemo(() => generateGroupColors(employeeGroups.map(g => g.id)), [employeeGroups]);
@@ -206,7 +207,7 @@ export default function VacationsPage() {
         return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
     }, [absenceTypes]);
 
-    const allEmployeesForQuadrant = useMemo(() => {
+    const employeesForQuadrant = useMemo(() => {
         return employees
             .map(e => {
                 const holidayInfo = holidayEmployees.find(he => he.id === e.id);
@@ -242,7 +243,7 @@ export default function VacationsPage() {
         const schedulableAbbrs = new Set(schedulableAbsenceTypes.map(at => at.abbreviation));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
 
-        allEmployeesForQuadrant.forEach(emp => {
+        employeesForQuadrant.forEach(emp => {
             const allAbsenceDays = new Map<string, { typeId: string; typeAbbr: string; periodId?: string; absenceId?: string; isRequest?: boolean }>();
 
             // 1. Get from scheduledAbsences (confirmed)
@@ -386,7 +387,7 @@ export default function VacationsPage() {
             weeklySummaries[week.key] = { employeeCount: 0, hourImpact: 0 };
             employeesByWeek[week.key] = [];
             
-            allEmployeesForQuadrant.forEach(emp => {
+            employeesForQuadrant.forEach(emp => {
                 const empAbsences = employeesWithAbsences[emp.id];
                 const absenceThisWeek = empAbsences?.find(a => 
                     isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end) && getYear(a.startDate) === selectedYear
@@ -403,7 +404,7 @@ export default function VacationsPage() {
 
         return { employeesWithAbsences, weeklySummaries, employeesByWeek, substitutesByWeek };
 
-    }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords, holidayReports, holidayEmployees, conversations]);
+    }, [employeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords, holidayReports, holidayEmployees, conversations]);
     
      useEffect(() => {
         if (!loading) {
@@ -455,7 +456,7 @@ export default function VacationsPage() {
     };
     
     const handleDeleteAbsence = async (absence: FormattedAbsence) => {
-        const employee = allEmployeesForQuadrant.find(e => e.id === selectedEmployeeId);
+        const employee = employeesForQuadrant.find(e => e.id === selectedEmployeeId);
         if (!employee) return;
         if (absence.id.startsWith('weekly-')) {
             toast({ title: 'No editable', description: 'Las ausencias puntuales registradas en el horario semanal no se pueden borrar desde aquí.', variant: 'destructive' });
@@ -586,7 +587,7 @@ export default function VacationsPage() {
             toast({ title: 'Error', description: 'Por favor, selecciona una campaña válida.', variant: 'destructive' });
             return;
         }
-        generateRequestStatusReportPDF(campaign, allEmployeesForQuadrant, conversations, absenceTypes);
+        generateRequestStatusReportPDF(campaign, employeesForQuadrant, conversations, absenceTypes);
     };
 
     const specialAbsenceAbbreviations = new Set(['EXD', 'PNR']);
@@ -602,7 +603,7 @@ export default function VacationsPage() {
                  <div className="w-0 opacity-0">Grupo</div>
               </th>
               {weeksOfYear.map(week => {
-                const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
+                const { turnId } = employeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(employeesForQuadrant[0].id, week.start) : { turnId: null };
 
                 return (
                   <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
@@ -634,7 +635,7 @@ export default function VacationsPage() {
           </thead>
           <tbody>
             {employeeGroups.map(group => {
-              const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
+              const groupEmployees = employeesForQuadrant.filter(e => e.groupId === group.id);
               return (
                 <tr key={group.id}>
                   <td className="border p-0 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ width: '0.1px', overflow: 'hidden' }}>
@@ -673,7 +674,7 @@ export default function VacationsPage() {
                                             </PopoverTrigger>
                                             <PopoverContent className="w-56 p-1">
                                                 <div className="flex flex-col">
-                                                    {eventualEmployees.map(emp => (
+                                                    {substituteEmployees.map(emp => (
                                                         <Button
                                                             key={emp.id}
                                                             variant="ghost"
@@ -882,10 +883,10 @@ export default function VacationsPage() {
                     <CardTitle>Programador vacaciones</CardTitle>
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1 border rounded-md p-1">
-                                <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries)} disabled={isGenerating} size="sm" variant="ghost">
+                                <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, employeesForQuadrant, employeesByWeek, weeklySummaries)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileDown className="mr-2 h-4 w-4" /> Cuadrante
                                 </Button>
-                                <Button onClick={() => generateSignatureReportPDF(selectedYear, allEmployeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost">
+                                <Button onClick={() => generateSignatureReportPDF(selectedYear, employeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileSignature className="mr-2 h-4 w-4" /> Firmas
                                 </Button>
                                 {activeCampaigns.length > 0 && (
@@ -918,4 +919,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-
