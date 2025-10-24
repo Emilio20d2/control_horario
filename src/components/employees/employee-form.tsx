@@ -152,11 +152,17 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     if (employee && employee.employmentPeriods?.length > 0) {
         const period = [...employee.employmentPeriods].sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
         
-        // Ensure startDate is a string in 'yyyy-MM-dd' format
         const startDateString = typeof period.startDate === 'string' 
             ? period.startDate 
             : format(period.startDate, 'yyyy-MM-dd');
         
+        const weeklySchedulesHistoryFormatted = (period.weeklySchedulesHistory || []).map(schedule => ({
+            ...schedule,
+            effectiveDate: typeof schedule.effectiveDate === 'string' 
+                ? schedule.effectiveDate 
+                : format(schedule.effectiveDate, 'yyyy-MM-dd'),
+        }));
+
         return {
             name: employee.name,
             employeeNumber: employee.employeeNumber,
@@ -175,7 +181,9 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             initialHolidayHours: period.initialHolidayHours,
             initialLeaveHours: period.initialLeaveHours,
             vacationDays2024: period.vacationDays2024,
-            weeklySchedules: period.weeklySchedulesHistory ? [...period.weeklySchedulesHistory].sort((a, b) => parseISO(b.effectiveDate).getTime() - parseISO(a.effectiveDate).getTime()) : [],
+            weeklySchedules: weeklySchedulesHistoryFormatted.length > 0 
+                ? [...weeklySchedulesHistoryFormatted].sort((a, b) => new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime())
+                : [],
             newWeeklyWorkHours: undefined,
             newWeeklyWorkHoursDate: undefined,
             newContractType: undefined,
@@ -817,4 +825,6 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     </Card>
   );
 }
+    
+
     
