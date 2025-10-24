@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { addDocument, updateDocument, deleteDocument, setDocument } from './firestoreService';
@@ -77,23 +78,25 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
     // Handle contract type change
     if (newContractType && newContractTypeDate) {
         const changeDate = parseISO(newContractTypeDate);
-        periodToUpdate.endDate = format(subDays(changeDate, 1), 'yyyy-MM-dd');
+        if (!isNaN(changeDate.getTime())) { // Radical fix: only proceed if the date is valid
+            periodToUpdate.endDate = format(subDays(changeDate, 1), 'yyyy-MM-dd');
 
-        const newPeriod: EmploymentPeriod = {
-            id: `period_${Date.now()}`,
-            contractType: newContractType,
-            startDate: newContractTypeDate,
-            endDate: null,
-            annualComputedHours: 0,
-            initialOrdinaryHours: finalBalances.ordinary,
-            initialHolidayHours: finalBalances.holiday,
-            initialLeaveHours: finalBalances.leave,
-            vacationDays2024: 0, // Reset for new periods
-            workHoursHistory: periodToUpdate.workHoursHistory ? [periodToUpdate.workHoursHistory[periodToUpdate.workHoursHistory.length - 1]] : [],
-            weeklySchedulesHistory: periodToUpdate.weeklySchedulesHistory,
-            scheduledAbsences: [],
-        };
-        updatedPeriods.push(newPeriod);
+            const newPeriod: EmploymentPeriod = {
+                id: `period_${Date.now()}`,
+                contractType: newContractType,
+                startDate: newContractTypeDate,
+                endDate: null,
+                annualComputedHours: 0,
+                initialOrdinaryHours: finalBalances.ordinary,
+                initialHolidayHours: finalBalances.holiday,
+                initialLeaveHours: finalBalances.leave,
+                vacationDays2024: 0, // Reset for new periods
+                workHoursHistory: periodToUpdate.workHoursHistory ? [periodToUpdate.workHoursHistory[periodToUpdate.workHoursHistory.length - 1]] : [],
+                weeklySchedulesHistory: periodToUpdate.weeklySchedulesHistory,
+                scheduledAbsences: [],
+            };
+            updatedPeriods.push(newPeriod);
+        }
     } else {
         // Only update these if there is no contract change
         periodToUpdate.contractType = formData.contractType;
@@ -138,16 +141,9 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
     // Update existing schedule from `weeklySchedules` array (it's the most recent one)
     if (weeklySchedules && weeklySchedules.length > 0) {
         const scheduleToUpdate = weeklySchedules[0];
-        
-        // Radical Fix: Ensure effectiveDate is a string before comparison.
         const effectiveDateString = scheduleToUpdate.effectiveDate;
-        if (typeof effectiveDateString !== 'string' || !effectiveDateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            // This case should not happen with the form fix, but as a safeguard:
-            console.error("Radical Fix Triggered: effectiveDate for current schedule is not a valid string.", scheduleToUpdate);
-            // Optionally throw an error or handle it gracefully
-        }
 
-        if(effectiveDateString) {
+        if(effectiveDateString && typeof effectiveDateString === 'string' && effectiveDateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
             const existingScheduleIndex = targetPeriodForSchedules.weeklySchedulesHistory.findIndex(
                 s => s.effectiveDate === effectiveDateString
             );
