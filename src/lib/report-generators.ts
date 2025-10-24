@@ -427,26 +427,27 @@ export const generateQuadrantReportPDF = (
     const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a3' });
     const pageMargin = 10;
     const headerHeight = 20;
+    const weeksPerPage = 5;
 
-    const addPageHeader = (doc: jsPDF, pageNum: number, totalPages: number) => {
-        doc.setFontSize(14).setFont('helvetica', 'bold');
-        doc.text(`Cuadrante Anual de Ausencias - ${year}`, pageMargin, 15);
-        doc.setFontSize(10);
-        doc.text(`Página ${pageNum}/${totalPages}`, doc.internal.pageSize.width - pageMargin, 15, { align: 'right' });
-    };
+    const totalPages = Math.ceil(weeksOfYear.length / weeksPerPage);
 
-    const drawPage = (weeksToDraw: any[], pageNum: number, totalPages: number) => {
-        addPageHeader(doc, pageNum, totalPages);
+    for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+        if (pageIndex > 0) doc.addPage();
         
-        const cellWidth = 300;
-        
-        const headers = [{content: '', styles: {cellWidth: 0.1}}, ...weeksToDraw.map(week => `${format(week.start, 'dd/MM', { locale: es })}\n${getISOWeek(week.start)}`)];
+        const pageNum = pageIndex + 1;
+        addHeaderFooter(doc, `Cuadrante Anual de Ausencias - ${year}`, pageNum, totalPages);
+
+        const startWeekIndex = pageIndex * weeksPerPage;
+        const endWeekIndex = Math.min(startWeekIndex + weeksPerPage, weeksOfYear.length);
+        const weeksForPage = weeksOfYear.slice(startWeekIndex, endWeekIndex);
+
+        const headers = [{ content: '', styles: { cellWidth: 0.1 } }, ...weeksForPage.map(week => `${format(week.start, 'dd/MM', { locale: es })}\n${getISOWeek(week.start)}`)];
 
         const body = employeeGroups.map(group => {
             const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-            const rowData = [{content: '', styles: {cellWidth: 0.1}}];
+            const rowData = [{ content: '', styles: { cellWidth: 0.1 } }];
 
-            weeksToDraw.forEach(week => {
+            weeksForPage.forEach(week => {
                 const absentEmployees = groupEmployees
                     .filter(emp => employeesByWeek[week.key]?.some(e => e.employeeId === emp.id))
                     .map(emp => {
@@ -459,33 +460,24 @@ export const generateQuadrantReportPDF = (
             return rowData;
         });
 
+        const availableWidth = doc.internal.pageSize.width - (pageMargin * 2) - 0.1;
+        const weekColumnWidth = availableWidth / weeksForPage.length;
+
+        const columnStyles = { 0: { cellWidth: 0.1 } };
+        for (let i = 0; i < weeksForPage.length; i++) {
+            columnStyles[i + 1] = { cellWidth: weekColumnWidth };
+        }
+
         autoTable(doc, {
             head: [headers],
             body: body,
             startY: headerHeight,
             theme: 'grid',
-            styles: { fontSize: 8, cellPadding: 1, valign: 'top' }, // Aumentado el tamaño de fuente
-            headStyles: { fillColor: [220, 220, 220], textColor: 20, halign: 'center', fontSize: 6 },
-            columnStyles: {
-                 0: { cellWidth: 0.1 },
-                 ...weeksToDraw.reduce((acc, _, index) => {
-                    acc[index + 1] = { cellWidth: 300 }; // Ancho fijo de 300px
-                    return acc;
-                }, {})
-            },
+            styles: { fontSize: 8, cellPadding: 1, valign: 'top' },
+            headStyles: { fillColor: [220, 220, 220], textColor: 20, halign: 'center', fontSize: 7, minCellHeight: 10 },
+            columnStyles: columnStyles,
             margin: { left: pageMargin, right: pageMargin }
         });
-    };
-    
-    const weeksPerPage = 1; 
-    const totalPages = Math.ceil(weeksOfYear.length / weeksPerPage);
-
-    for (let i = 0; i < totalPages; i++) {
-        if (i > 0) doc.addPage();
-        const startWeekIndex = i * weeksPerPage;
-        const endWeekIndex = startWeekIndex + weeksPerPage;
-        const weeksForPage = weeksOfYear.slice(startWeekIndex, endWeekIndex);
-        drawPage(weeksForPage, i + 1, totalPages);
     }
     
     doc.save(`cuadrante_anual_${year}.pdf`);
