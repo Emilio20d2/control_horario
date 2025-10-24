@@ -452,25 +452,7 @@ export const generateQuadrantReportPDF = (
             const rowData: any[] = [{ content: '', styles: { fontStyle: 'bold', halign: 'center' } }]; 
 
             weeksForPage.forEach(week => {
-                const employeesWithAbsenceInWeek = groupEmployees
-                    .map(emp => {
-                        const absence = (employeesByWeek[week.key] || []).find(e => e.employeeId === emp.id);
-                        return absence ? { employee: emp, absence } : null;
-                    })
-                    .filter((item): item is { employee: any, absence: any } => item !== null);
-                
-                let cellContent = '';
-                employeesWithAbsenceInWeek.forEach(item => {
-                    const substitute = safeSubstitutesByWeek[week.key]?.[item.employee.id];
-                    const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
-                    const empColor = isSpecialAbsence ? 'blue' : 'black';
-
-                    cellContent += `[EMP:${empColor}]${item.employee.name} (${item.absence.absenceAbbreviation})\n`;
-                    if (substitute) {
-                        cellContent += `[SUB:red]Sust: ${substitute.substituteName}\n`;
-                    }
-                });
-                rowData.push(cellContent.trim());
+                rowData.push(''); // Empty cell
             });
             return rowData;
         });
@@ -660,3 +642,5 @@ export const generateRequestStatusReportPDF = (
     doc.save(`informe_estado_${safeTitle}.pdf`);
 };
 
+
+    
