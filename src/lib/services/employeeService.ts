@@ -4,7 +4,7 @@
 
 import { addDocument, updateDocument, deleteDocument, setDocument } from './firestoreService';
 import type { Employee, EmployeeFormData, WorkHoursRecord, ScheduledAbsence, EmploymentPeriod, WeeklyScheduleData, WeeklyRecord } from '../types';
-import { isAfter, parseISO, startOfDay, addDays, subDays, format, eachDayOfInterval, startOfWeek } from 'date-fns';
+import { isAfter, parseISO, startOfDay, addDays, subDays, format, eachDayOfInterval, startOfWeek, isValid } from 'date-fns';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -68,17 +68,20 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
         throw new Error("No se encontró un periodo laboral para actualizar.");
     }
     
-    periodToUpdate.endDate = endDate || null;
+    // RADICAL FIX: Ensure endDate is a string or null before assigning
+    const endDateValue = endDate ? (endDate instanceof Date && isValid(endDate) ? format(endDate, 'yyyy-MM-dd') : endDate) : null;
+    periodToUpdate.endDate = endDateValue;
+
     if (updatedPeriods.length === 1) { // Only update these for the very first period
         periodToUpdate.isTransfer = isTransfer;
         periodToUpdate.vacationDays2024 = vacationDays2024 ?? periodToUpdate.vacationDays2024 ?? 0;
         periodToUpdate.vacationDaysUsedInAnotherCenter = vacationDaysUsedInAnotherCenter ?? periodToUpdate.vacationDaysUsedInAnotherCenter ?? 0;
     }
 
-    // Handle contract type change
-    if (newContractType && newContractTypeDate) {
+    // Handle contract type change - ONLY if fields are valid
+    if (newContractType && newContractTypeDate && newContractTypeDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const changeDate = parseISO(newContractTypeDate);
-        if (!isNaN(changeDate.getTime())) { // Radical fix: only proceed if the date is valid
+        if (isValid(changeDate)) {
             periodToUpdate.endDate = format(subDays(changeDate, 1), 'yyyy-MM-dd');
 
             const newPeriod: EmploymentPeriod = {
@@ -162,7 +165,7 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
     }
 
     // Add a brand new schedule if provided
-    if (newWeeklySchedule && newWeeklySchedule.effectiveDate) {
+    if (newWeeklySchedule && newWeeklySchedule.effectiveDate && newWeeklySchedule.effectiveDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
         targetPeriodForSchedules.weeklySchedulesHistory.push(newWeeklySchedule);
     }
     

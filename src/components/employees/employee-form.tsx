@@ -44,7 +44,7 @@ import { createEmployee, updateEmployee, deleteEmployee } from '@/lib/services/e
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { InputStepper } from '../ui/input-stepper';
-import { parseISO, format } from 'date-fns';
+import { parseISO, format, isValid } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 import { Label } from '../ui/label';
@@ -156,10 +156,18 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             ? period.startDate 
             : format(period.startDate, 'yyyy-MM-dd');
         
-        const weeklySchedulesHistoryFormatted = (period.weeklySchedulesHistory || []).map(schedule => ({
-            ...schedule,
-            effectiveDate: format(schedule.effectiveDate instanceof Date ? schedule.effectiveDate : parseISO(schedule.effectiveDate as string), 'yyyy-MM-dd'),
-        }));
+        const endDateValue = period.endDate instanceof Date && isValid(period.endDate) 
+            ? format(period.endDate, 'yyyy-MM-dd')
+            : (typeof period.endDate === 'string' ? period.endDate : null);
+
+
+        const weeklySchedulesHistoryFormatted = (period.weeklySchedulesHistory || []).map(schedule => {
+            const effectiveDateAsDate = schedule.effectiveDate instanceof Date ? schedule.effectiveDate : parseISO(schedule.effectiveDate as string);
+            return {
+                ...schedule,
+                effectiveDate: isValid(effectiveDateAsDate) ? format(effectiveDateAsDate, 'yyyy-MM-dd') : '',
+            };
+        });
 
         return {
             name: employee.name,
@@ -169,7 +177,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             email: employee.email,
             role: role,
             startDate: startDateString,
-            endDate: period.endDate as string | null,
+            endDate: endDateValue,
             isTransfer: period.isTransfer || false,
             vacationDaysUsedInAnotherCenter: period.vacationDaysUsedInAnotherCenter,
             contractType: period.contractType,
