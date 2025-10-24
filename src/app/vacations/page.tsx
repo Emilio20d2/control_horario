@@ -529,6 +529,7 @@ export default function VacationsPage() {
     const employeeAbsenceDays = employeesWithAbsences[selectedEmployeeId]?.flatMap(p => eachDayOfInterval({ start: p.startDate, end: p.endDate })) || [];
 
     const plannerModifiers = { opening: openingHolidays, other: otherHolidays, employeeAbsence: employeeAbsenceDays };
+    const editModifiers = { opening: openingHolidays, other: otherHolidays };
     const plannerModifiersStyles = { 
         opening: { backgroundColor: '#a7f3d0' }, 
         other: { backgroundColor: '#fecaca' }, 
@@ -680,7 +681,7 @@ export default function VacationsPage() {
                             const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
 
                             return (
-                                <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[9px] leading-tight py-0">
+                                <button key={item.employee.id} onClick={() => !item.absence.isRequest && setEditingAbsence(item)} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[9px] leading-tight py-0 hover:bg-black/5">
                                     <span className={cn(
                                         "flex-grow text-left truncate",
                                         isSpecialAbsence ? "text-blue-600" : "text-black"
@@ -690,7 +691,7 @@ export default function VacationsPage() {
                                     {item.absence.isRequest ? <Info className="h-3 w-3 text-yellow-600" /> : (
                                         <button 
                                             className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0"
-                                            onClick={() => handleOpenAssignDialog(week.key, item.employee)}
+                                            onClick={(e) => { e.stopPropagation(); handleOpenAssignDialog(week.key, item.employee); }}
                                         >
                                             <Plus className="h-3 w-3" />
                                         </button>
@@ -700,7 +701,7 @@ export default function VacationsPage() {
                                             Sust: {substitute.substituteName}
                                         </div>
                                     )}
-                                </div>
+                                </button>
                             )
                           })}
                         </div>
@@ -858,6 +859,40 @@ export default function VacationsPage() {
                 </DialogContent>
             </Dialog>
 
+            <Dialog open={!!editingAbsence} onOpenChange={(open) => !open && setEditingAbsence(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Editar Ausencia Programada</DialogTitle>
+                        {editingAbsence && (
+                            <DialogDescription>
+                                Modificando la ausencia de <strong>{editingAbsence.employee.name}</strong> del tipo <strong>{absenceTypes.find(at => at.id === editingAbsence.absence.absenceTypeId)?.name}</strong>.
+                            </DialogDescription>
+                        )}
+                    </DialogHeader>
+                    <div className="py-4 flex justify-center">
+                        <Calendar
+                            mode="range"
+                            selected={editedDateRange}
+                            onSelect={setEditedDateRange}
+                            locale={es}
+                            disabled={isGenerating}
+                            className="rounded-md border"
+                            modifiers={editModifiers}
+                            modifiersStyles={editModifiersStyles}
+                            month={editCalendarMonth}
+                            onMonthChange={setEditCalendarMonth}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingAbsence(null)}>Cancelar</Button>
+                        <Button onClick={handleUpdateAbsence} disabled={isGenerating || !editedDateRange?.from}>
+                            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Guardar Cambios
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
 
             <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
               <DialogContent className="max-w-none w-screen h-screen p-0 m-0 sm:max-w-none sm:max-w-none:translate-x-0 sm:max-w-none:translate-y-0">
@@ -905,9 +940,10 @@ export default function VacationsPage() {
                         </div>
                 </CardHeader>
                 <CardContent>
-                    {loading ? <Skeleton className="h-[600px] w-full" /> : renderQuadrant()}
+                    {loading ? <Skeleton className="h-full w-full" /> : renderQuadrant()}
                 </CardContent>
             </Card>
         </div>
     );
 }
+
