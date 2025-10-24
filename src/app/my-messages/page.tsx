@@ -252,7 +252,11 @@ export default function MyMessagesPage() {
                 <Avatar className="border-2 border-foreground"><AvatarFallback>D</AvatarFallback></Avatar>
                 <div>
                     <h2 className="text-lg font-bold">Dirección</h2>
-                    <p className="text-sm text-muted-foreground">Conversación sobre tus incidencias</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        Este servicio de mensajería es exclusivamente para incidencias relacionadas con el control de horas semanales o con esta aplicación.
+                        {'\n'}Pronto recibirás una contestación por este chat.
+                        {'\n'}Para cualquier otra consulta, ponte en contacto directamente con Dirección.
+                    </p>
                 </div>
             </div>
         )
