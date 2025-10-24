@@ -51,7 +51,7 @@ import {
 import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, getISOWeekYear, isValid } from 'date-fns';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
-import { Timestamp, collection, orderBy, query } from 'firebase/firestore';
+import { Timestamp, collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
 import { calculateBalancePreview } from '../lib/calculators/balance-calculator';
 import { useAuth } from './useAuth';
@@ -424,17 +424,17 @@ const unreadMessageCount = useMemo(() => {
     const yearDayMap = new Map<string, 'V' | 'S'>();
 
     emp.employmentPeriods?.forEach(period => {
-        period.scheduledAbsences?.forEach(absence => {
-            if (!absence.endDate) return;
-            const absenceCode = suspensionTypeIds.has(absence.absenceTypeId) ? 'S' : (absence.absenceTypeId === vacationType.id ? 'V' : null);
-            if (!absenceCode) return;
-            eachDayOfInterval({ start: startOfDay(absence.startDate), end: endOfDay(absence.endDate) }).forEach(day => {
-                if (getYear(day) === currentYear) {
-                    const dayKey = format(day, 'yyyy-MM-dd');
-                    if (!yearDayMap.has(dayKey) || absenceCode === 'S') yearDayMap.set(dayKey, absenceCode);
-                }
-            });
+      period.scheduledAbsences?.forEach(absence => {
+        if (!absence.endDate) return;
+        const absenceCode = suspensionTypeIds.has(absence.absenceTypeId) ? 'S' : (absence.absenceTypeId === vacationType.id ? 'V' : null);
+        if (!absenceCode) return;
+        eachDayOfInterval({ start: startOfDay(absence.startDate), end: endOfDay(absence.endDate) }).forEach(day => {
+            if (getYear(day) === currentYear) {
+                const dayKey = format(day, 'yyyy-MM-dd');
+                if (!yearDayMap.has(dayKey) || absenceCode === 'S') yearDayMap.set(dayKey, absenceCode);
+            }
         });
+      });
     });
 
     Object.values(weeklyRecords).forEach(record => {
@@ -1132,7 +1132,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     const addHolidayReport = async (report: Omit<HolidayReport, 'id'>): Promise<string> => {
         const docId = `${report.weekId}_${report.employeeId}`;
         const docRef = doc(db, 'holidayReports', docId);
-        await setDoc(docRef, report, { merge: true });
+        await setDocument(docId, report, { merge: true });
         return docId;
     }
 
