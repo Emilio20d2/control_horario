@@ -13,8 +13,8 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
-import type { Message, VacationCampaign } from '@/lib/types';
-import { format, isWithinInterval, startOfDay, endOfDay, parseISO, eachDayOfInterval } from 'date-fns';
+import type { Message, VacationCampaign, Employee } from '@/lib/types';
+import { format, isWithinInterval, startOfDay, endOfDay, parseISO, eachDayOfInterval, isAfter } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '@/components/ui/drawer';
@@ -24,10 +24,11 @@ import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { addScheduledAbsence } from '@/lib/services/employeeService';
 
 
 export default function MyMessagesPage() {
-    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, holidays } = useDataProvider();
+    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, holidays, refreshData } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
     const conversationId = employeeRecord?.id;
     const viewportRef = useRef<HTMLDivElement>(null);
@@ -202,24 +203,43 @@ export default function MyMessagesPage() {
 
     const handleSubmitRequest = async () => {
         const absenceType = campaignAbsenceTypes.find(at => at.id === selectedAbsenceTypeId);
-        if (selectedDateRanges.length === 0 || !absenceType) {
+        if (!employeeRecord || selectedDateRanges.length === 0 || !absenceType) {
             toast({ title: "Datos incompletos", description: "Selecciona al menos un periodo de fechas para enviar la solicitud.", variant: "destructive" });
             return;
         }
 
-        const formattedRanges = selectedDateRanges.map(range => 
-            `Desde: ${format(range.from!, 'dd/MM/yyyy')} - Hasta: ${format(range.to!, 'dd/MM/yyyy')}`
-        ).join('\n');
-        
-        const requestText = `Solicitud de ${absenceType.name}:\n${formattedRanges}`;
+        const activePeriod = employeeRecord.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
+        if (!activePeriod) {
+            toast({ title: 'Error', description: 'No tienes un periodo laboral activo para solicitar ausencias.', variant: 'destructive' });
+            return;
+        }
 
-        await sendMessage(requestText);
-        
-        setIsRequesting(false);
+        setIsRequesting(false); // Close dialog immediately
 
-        await sendBotMessage(`Tu solicitud de ${absenceType.name} ha sido enviada para revisión. Recibirás una notificación cuando sea aprobada.`, true);
+        try {
+            for (const range of selectedDateRanges) {
+                if (range.from && range.to) {
+                    await addScheduledAbsence(employeeRecord.id, activePeriod.id, {
+                        absenceTypeId: absenceType.id,
+                        startDate: format(range.from, 'yyyy-MM-dd'),
+                        endDate: format(range.to, 'yyyy-MM-dd'),
+                    }, employeeRecord as Employee);
+                }
+            }
+            
+            await refreshData();
+            
+            toast({ title: "Solicitud de Ausencia Guardada", description: "Tus periodos de ausencia se han guardado correctamente." });
 
-        toast({ title: "Solicitud enviada", description: "Tu solicitud ha sido enviada correctamente." });
+            const formattedRanges = selectedDateRanges.map(range => 
+                `del ${format(range.from!, 'dd/MM/yyyy')} al ${format(range.to!, 'dd/MM/yyyy')}`
+            ).join(', ');
+            await sendMessage(`Confirmación de solicitud de ${absenceType.name} para los periodos: ${formattedRanges}.`);
+
+        } catch (error) {
+            console.error("Error saving scheduled absences:", error);
+            toast({ title: "Error al guardar la solicitud", description: "No se pudieron guardar tus ausencias. Inténtalo de nuevo.", variant: "destructive" });
+        }
     }
     
     if (loading) {
@@ -481,3 +501,5 @@ export default function MyMessagesPage() {
         </div>
     );
 }
+
+    

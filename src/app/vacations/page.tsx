@@ -249,7 +249,7 @@ export default function VacationsPage() {
         }
     }, [schedulableAbsenceTypes, selectedAbsenceTypeId]);
     
-    const { employeesWithAbsences, weeklySummaries, employeesByWeek, substitutesByWeek } = useMemo(() => {
+    const { employeesWithAbsences, weeklySummaries, employeesByWeek } = useMemo(() => {
         const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
         const schedulableAbbrs = new Set(schedulableAbsenceTypes.map(at => at.abbreviation));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
@@ -276,41 +276,6 @@ export default function VacationsPage() {
                     });
             });
             
-            // 2. Get from conversations (pending requests)
-            const conversation = conversations.find(c => c.employeeId === emp.id);
-            if (conversation?.lastMessageText?.startsWith('Solicitud de')) {
-                const requestRegex = /Solicitud de (.*?):\nDesde: (.*?) - Hasta: (.*)/gm;
-                let match;
-                while ((match = requestRegex.exec(conversation.lastMessageText)) !== null) {
-                    const absenceName = match[1].trim();
-                    const fromDateStr = match[2].trim();
-                    const toDateStr = match[3].trim();
-                    const absenceType = absenceTypes.find(at => at.name === absenceName);
-                    
-                    if (absenceType) {
-                        try {
-                            const fromDate = parse(fromDateStr, 'dd/MM/yyyy', new Date());
-                            const toDate = parse(toDateStr, 'dd/MM/yyyy', new Date());
-                            
-                            eachDayOfInterval({ start: fromDate, end: toDate }).forEach(day => {
-                                const dayKey = format(day, 'yyyy-MM-dd');
-                                if (!allAbsenceDays.has(dayKey)) { // Don't overwrite confirmed absences
-                                     allAbsenceDays.set(dayKey, {
-                                        typeId: absenceType.id,
-                                        typeAbbr: absenceType.abbreviation,
-                                        isRequest: true,
-                                        absenceId: `request-${conversation.id}-${dayKey}`,
-                                    });
-                                }
-                            });
-                        } catch (e) {
-                            console.error("Error parsing date from request:", e);
-                        }
-                    }
-                }
-            }
-
-
             // 2. Get from weeklyRecords for point absences
             Object.values(weeklyRecords).forEach(record => {
                 const empWeekData = record.weekData[emp.id];
@@ -384,16 +349,7 @@ export default function VacationsPage() {
 
         const weeklySummaries: Record<string, { employeeCount: number; hourImpact: number }> = {};
         const employeesByWeek: Record<string, { employeeId: string; employeeName: string; groupId?: string | null; absenceAbbreviation: string }[]> = {};
-        const substitutesByWeek: Record<string, { employeeId: string, substituteId: string, substituteName: string }[]> = {};
-
-        holidayReports.filter(r => r.weekDate && getISOWeekYear(r.weekDate.toDate()) === year).forEach(report => {
-            if (!report.weekId) return;
-            if (!substitutesByWeek[report.weekId]) substitutesByWeek[report.weekId] = [];
-            const subName = substituteEmployees.find(he => he.id === report.substituteId)?.name || 'Desconocido';
-            substitutesByWeek[report.weekId].push({ employeeId: report.employeeId, substituteId: report.substituteId, substituteName: subName });
-        });
         
-
         weekInfo.forEach(week => {
             weeklySummaries[week.key] = { employeeCount: 0, hourImpact: 0 };
             employeesByWeek[week.key] = [];
@@ -413,7 +369,7 @@ export default function VacationsPage() {
             });
         });
 
-        return { employeesWithAbsences, weeklySummaries, employeesByWeek, substitutesByWeek };
+        return { employeesWithAbsences, weeklySummaries, employeesByWeek };
 
     }, [allEmployeesForQuadrant, substituteEmployees, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords, holidayReports, conversations]);
     
@@ -580,14 +536,12 @@ export default function VacationsPage() {
           <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
             <thead className="sticky top-0 z-10 bg-card shadow-sm">
               <tr>
-                <th className="p-0 border-b border-r sticky left-0 bg-card z-20" style={{ width: '0.0025px', overflow: 'hidden' }}>
-                   <div className="w-0 opacity-0">Grupo</div>
-                </th>
+                <th className="p-1 border-b border-r font-semibold text-sm w-36 sticky left-0 bg-card z-20">Grupo</th>
                 {weeksOfYear.map(week => {
                   const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
   
                   return (
-                    <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '400px' }}>
+                    <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '180px' }}>
                       <div className='flex justify-between items-center h-full px-1'>
                         <div className="flex flex-col items-start">
                           <span className='text-xs'>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
@@ -619,9 +573,7 @@ export default function VacationsPage() {
                 const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
                 return (
                   <tr key={group.id}>
-                    <td className="border p-0 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ width: '0.0025px', overflow: 'hidden' }}>
-                       <div className="w-0 opacity-0">{group.name}</div>
-                    </td>
+                    <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ backgroundColor: groupColors[group.id] || '#f0f0f0' }}>{group.name}</td>
                     {weeksOfYear.map(week => {
                       const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
                         const absence = (employeesWithAbsences[emp.id] || []).find(a =>
@@ -716,7 +668,6 @@ export default function VacationsPage() {
                       <p className="font-medium">Leyenda</p>
                       <div className="flex flex-wrap gap-4 text-sm">
                         <div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={plannerModifiersStyles.employeeAbsence}></div>Ausencia Programada</div>
-                        <div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={plannerModifiersStyles.request}></div>Petición Pendiente</div>
                         <div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={plannerModifiersStyles.other}></div>Festivo</div>
                         <div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={plannerModifiersStyles.opening}></div>Festivo de Apertura</div>
                       </div>
@@ -832,7 +783,7 @@ export default function VacationsPage() {
                     <CardTitle>Programador vacaciones</CardTitle>
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1 border rounded-md p-1">
-                                <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, substitutesByWeek, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost">
+                                <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, {}, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileDown className="mr-2 h-4 w-4" /> Cuadrante
                                 </Button>
                                 <Button onClick={() => generateSignatureReportPDF(selectedYear, allEmployeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost">
@@ -874,3 +825,6 @@ export default function VacationsPage() {
 
 
 
+
+
+    
