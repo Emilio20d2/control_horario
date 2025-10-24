@@ -77,31 +77,26 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
         periodToUpdate.vacationDaysUsedInAnotherCenter = vacationDaysUsedInAnotherCenter ?? periodToUpdate.vacationDaysUsedInAnotherCenter ?? 0;
     }
 
-    // --- RADICAL FIX ---
     // Handle contract type change - ONLY if fields are valid and provided.
     if (newContractType && newContractTypeDate && newContractTypeDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const changeDate = parseISO(newContractTypeDate);
-        
-        // This check prevents all downstream errors from invalid dates.
-        if (isValid(changeDate)) {
-            periodToUpdate.endDate = format(subDays(changeDate, 1), 'yyyy-MM-dd');
+        periodToUpdate.endDate = format(subDays(changeDate, 1), 'yyyy-MM-dd');
 
-            const newPeriod: EmploymentPeriod = {
-                id: `period_${Date.now()}`,
-                contractType: newContractType,
-                startDate: newContractTypeDate,
-                endDate: null,
-                annualComputedHours: 0,
-                initialOrdinaryHours: finalBalances.ordinary,
-                initialHolidayHours: finalBalances.holiday,
-                initialLeaveHours: finalBalances.leave,
-                vacationDays2024: 0, // Reset for new periods
-                workHoursHistory: periodToUpdate.workHoursHistory ? [periodToUpdate.workHoursHistory[periodToUpdate.workHoursHistory.length - 1]] : [],
-                weeklySchedulesHistory: periodToUpdate.weeklySchedulesHistory,
-                scheduledAbsences: [],
-            };
-            updatedPeriods.push(newPeriod);
-        }
+        const newPeriod: EmploymentPeriod = {
+            id: `period_${Date.now()}`,
+            contractType: newContractType,
+            startDate: newContractTypeDate,
+            endDate: null,
+            annualComputedHours: 0,
+            initialOrdinaryHours: finalBalances.ordinary,
+            initialHolidayHours: finalBalances.holiday,
+            initialLeaveHours: finalBalances.leave,
+            vacationDays2024: 0, // Reset for new periods
+            workHoursHistory: periodToUpdate.workHoursHistory ? [periodToUpdate.workHoursHistory[periodToUpdate.workHoursHistory.length - 1]] : [],
+            weeklySchedulesHistory: periodToUpdate.weeklySchedulesHistory,
+            scheduledAbsences: [],
+        };
+        updatedPeriods.push(newPeriod);
     } else {
         // Only update these if there is no contract change
         periodToUpdate.contractType = formData.contractType;
@@ -111,9 +106,8 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
         periodToUpdate.initialHolidayHours = periodToUpdate.initialHolidayHours ?? formData.initialHolidayHours ?? 0;
         periodToUpdate.initialLeaveHours = periodToUpdate.initialLeaveHours ?? formData.initialLeaveHours ?? 0;
     }
-    // --- END OF RADICAL FIX ---
 
-    if (newWeeklyWorkHours && newWeeklyWorkHours > 0 && newWeeklyWorkHoursDate) {
+    if (newWeeklyWorkHours && newWeeklyWorkHours > 0 && newWeeklyWorkHoursDate && newWeeklyWorkHoursDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const newRecord: WorkHoursRecord = {
             effectiveDate: newWeeklyWorkHoursDate,
             weeklyHours: newWeeklyWorkHours
