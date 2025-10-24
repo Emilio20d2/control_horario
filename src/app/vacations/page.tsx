@@ -57,6 +57,7 @@ import {
   addMonths,
   subDays,
   eachWeekOfInterval,
+  parse,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
@@ -93,7 +94,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Timestamp } from 'firebase/firestore';
 
 
-interface FormattedAbsence extends Ausencia {}
+interface FormattedAbsence extends Ausencia {
+    isRequest?: boolean;
+}
 
 export default function VacationsPage() {
     const dataProvider = useDataProvider();
@@ -237,9 +240,9 @@ export default function VacationsPage() {
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
 
         allEmployeesForQuadrant.forEach(emp => {
-            const allAbsenceDays = new Map<string, { typeId: string; typeAbbr: string; periodId?: string; absenceId?: string; }>();
+            const allAbsenceDays = new Map<string, { typeId: string; typeAbbr: string; periodId?: string; absenceId?: string; isRequest?: boolean }>();
 
-            // 1. Get from scheduledAbsences
+            // 1. Get from scheduledAbsences (confirmed)
             emp.employmentPeriods.forEach(period => {
                 (period.scheduledAbsences || []).filter(a => schedulableIds.has(a.absenceTypeId))
                     .forEach(absence => {
@@ -252,10 +255,46 @@ export default function VacationsPage() {
                                 typeAbbr: absenceType.abbreviation,
                                 periodId: period.id,
                                 absenceId: absence.id,
+                                isRequest: false,
                             });
                         });
                     });
             });
+            
+            // 2. Get from conversations (pending requests)
+            const conversation = conversations.find(c => c.employeeId === emp.id);
+            if (conversation?.lastMessageText?.startsWith('Solicitud de')) {
+                const requestRegex = /Solicitud de (.*?):\nDesde: (.*?)- Hasta: (.*?)/gm;
+                let match;
+                while ((match = requestRegex.exec(conversation.lastMessageText)) !== null) {
+                    const absenceName = match[1].trim();
+                    const fromDateStr = match[2].trim();
+                    const toDateStr = match[3].trim();
+                    const absenceType = absenceTypes.find(at => at.name === absenceName);
+                    
+                    if (absenceType) {
+                        try {
+                            const fromDate = parse(fromDateStr, 'dd/MM/yyyy', new Date());
+                            const toDate = parse(toDateStr, 'dd/MM/yyyy', new Date());
+                            
+                            eachDayOfInterval({ start: fromDate, end: toDate }).forEach(day => {
+                                const dayKey = format(day, 'yyyy-MM-dd');
+                                if (!allAbsenceDays.has(dayKey)) { // Don't overwrite confirmed absences
+                                     allAbsenceDays.set(dayKey, {
+                                        typeId: absenceType.id,
+                                        typeAbbr: absenceType.abbreviation,
+                                        isRequest: true,
+                                        absenceId: `request-${conversation.id}-${dayKey}`,
+                                    });
+                                }
+                            });
+                        } catch (e) {
+                            console.error("Error parsing date from request:", e);
+                        }
+                    }
+                }
+            }
+
 
             // 2. Get from weeklyRecords for point absences
             Object.values(weeklyRecords).forEach(record => {
@@ -287,10 +326,11 @@ export default function VacationsPage() {
                 let currentInfo = allAbsenceDays.get(format(currentStart, 'yyyy-MM-dd'))!;
                 for (let i = 1; i < sortedDays.length; i++) {
                     const dayInfo = allAbsenceDays.get(format(sortedDays[i], 'yyyy-MM-dd'))!;
-                    if (differenceInDays(sortedDays[i], sortedDays[i-1]) > 1 || dayInfo.typeId !== currentInfo.typeId) {
+                    if (differenceInDays(sortedDays[i], sortedDays[i-1]) > 1 || dayInfo.typeId !== currentInfo.typeId || dayInfo.isRequest !== currentInfo.isRequest) {
                         periods.push({
                             id: currentInfo.absenceId!, startDate: currentStart, endDate: sortedDays[i-1],
-                            absenceTypeId: currentInfo.typeId, absenceAbbreviation: currentInfo.typeAbbr, periodId: currentInfo.periodId
+                            absenceTypeId: currentInfo.typeId, absenceAbbreviation: currentInfo.typeAbbr, periodId: currentInfo.periodId,
+                            isRequest: currentInfo.isRequest
                         });
                         currentStart = sortedDays[i];
                         currentInfo = dayInfo;
@@ -298,7 +338,8 @@ export default function VacationsPage() {
                 }
                 periods.push({
                     id: currentInfo.absenceId!, startDate: currentStart, endDate: sortedDays[sortedDays.length - 1],
-                    absenceTypeId: currentInfo.typeId, absenceAbbreviation: currentInfo.typeAbbr, periodId: currentInfo.periodId
+                    absenceTypeId: currentInfo.typeId, absenceAbbreviation: currentInfo.typeAbbr, periodId: currentInfo.periodId,
+                    isRequest: currentInfo.isRequest,
                 });
             }
             employeesWithAbsences[emp.id] = periods;
@@ -359,7 +400,7 @@ export default function VacationsPage() {
 
         return { employeesWithAbsences, weeklySummaries, employeesByWeek, substitutesByWeek };
 
-    }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords, holidayReports, holidayEmployees]);
+    }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords, holidayReports, holidayEmployees, conversations]);
     
      useEffect(() => {
         if (!loading) {
@@ -471,7 +512,12 @@ export default function VacationsPage() {
     const employeeAbsenceDays = employeesWithAbsences[selectedEmployeeId]?.flatMap(p => eachDayOfInterval({ start: p.startDate, end: p.endDate })) || [];
 
     const plannerModifiers = { opening: openingHolidays, other: otherHolidays, employeeAbsence: employeeAbsenceDays };
-    const plannerModifiersStyles = { opening: { backgroundColor: '#a7f3d0' }, other: { backgroundColor: '#fecaca' }, employeeAbsence: { backgroundColor: '#dbeafe' }};
+    const plannerModifiersStyles = { 
+        opening: { backgroundColor: '#a7f3d0' }, 
+        other: { backgroundColor: '#fecaca' }, 
+        employeeAbsence: { backgroundColor: '#dbeafe' },
+        request: { backgroundColor: '#FEF08A' },
+    };
     const editModifiersStyles = { ...plannerModifiersStyles };
 
     const { weeksOfYear } = useMemo(() => {
@@ -600,7 +646,11 @@ export default function VacationsPage() {
                     }).filter(Boolean);
 
                     const cellHasContent = employeesWithAbsenceInWeek.length > 0;
-                    const cellBg = cellHasContent ? (groupColors[group.id] || '#f0f0f0') : 'transparent';
+                     const cellBg = cellHasContent
+                        ? employeesWithAbsenceInWeek.some(item => item?.absence.isRequest)
+                            ? plannerModifiersStyles.request
+                            : (groupColors[group.id] || '#f0f0f0')
+                        : 'transparent';
 
                     return (
                       <td key={`${group.id}-${week.key}`} className="border align-top py-0 px-0.5" style={{ backgroundColor: cellBg }}>
@@ -611,29 +661,31 @@ export default function VacationsPage() {
                             return (
                                 <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[9px] leading-tight py-0">
                                     <span className="flex-grow text-left truncate">{item.employee.name}</span>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                             <button className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
-                                                <Plus className="h-3 w-3" />
-                                            </button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-56 p-1">
-                                            <div className="flex flex-col">
-                                                {eventualEmployees.map(emp => (
-                                                    <Button
-                                                        key={emp.id}
-                                                        variant="ghost"
-                                                        className="w-full justify-start text-xs h-8"
-                                                        onClick={() => {
-                                                            handleAssignSubstitute(week.key, item.employee.id, emp.id);
-                                                        }}
-                                                    >
-                                                        {emp.name}
-                                                    </Button>
-                                                ))}
-                                            </div>
-                                        </PopoverContent>
-                                    </Popover>
+                                    {item.absence.isRequest ? <Info className="h-3 w-3 text-yellow-600" /> : (
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <button className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
+                                                    <Plus className="h-3 w-3" />
+                                                </button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-56 p-1">
+                                                <div className="flex flex-col">
+                                                    {eventualEmployees.map(emp => (
+                                                        <Button
+                                                            key={emp.id}
+                                                            variant="ghost"
+                                                            className="w-full justify-start text-xs h-8"
+                                                            onClick={() => {
+                                                                handleAssignSubstitute(week.key, item.employee.id, emp.id);
+                                                            }}
+                                                        >
+                                                            {emp.name}
+                                                        </Button>
+                                                    ))}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                    )}
                                     {substitute && (
                                         <div className="text-[10px] truncate text-red-600 font-semibold">
                                             Sust: {substitute.substituteName}
@@ -703,6 +755,7 @@ export default function VacationsPage() {
                       <p className="font-medium">Leyenda</p>
                       <div className="flex flex-wrap gap-4 text-sm">
                         <div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={plannerModifiersStyles.employeeAbsence}></div>Ausencia Programada</div>
+                        <div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={plannerModifiersStyles.request}></div>Petición Pendiente</div>
                         <div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={plannerModifiersStyles.other}></div>Festivo</div>
                         <div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={plannerModifiersStyles.opening}></div>Festivo de Apertura</div>
                       </div>
@@ -862,3 +915,4 @@ export default function VacationsPage() {
         </div>
     );
 }
+
