@@ -4,7 +4,7 @@
 
 import { addDoc, collection, deleteDoc, doc, updateDoc, Timestamp, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { AbsenceType, Holiday, AnnualConfiguration, ContractType, HolidayFormData, HolidayEmployee, EmployeeGroup, VacationCampaign } from '../types';
+import type { AbsenceType, Holiday, AnnualConfiguration, ContractType, HolidayFormData, HolidayEmployee, EmployeeGroup, VacationCampaign, HolidayReport } from '../types';
 
 
 export const createAbsenceType = async (data: Omit<AbsenceType, 'id'>): Promise<string> => {

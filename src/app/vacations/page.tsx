@@ -136,6 +136,9 @@ export default function VacationsPage() {
     
     // State for substitute assignment
     const [isFullScreen, setIsFullScreen] = useState(false);
+    const [isAssigning, setIsAssigning] = useState(false);
+    const [assignmentContext, setAssignmentContext] = useState<{ weekKey: string; employee: Employee; } | null>(null);
+
 
     // State for status report
     const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
@@ -153,11 +156,6 @@ export default function VacationsPage() {
             setSelectedCampaignId(activeCampaigns[0].id);
         }
     }, [activeCampaigns, selectedCampaignId]);
-    
-    const substituteEmployees = useMemo(() => {
-        const mainEmployeeIds = new Set(employees.map(e => e.id));
-        return holidayEmployees.filter(he => he.active && !mainEmployeeIds.has(he.id));
-    }, [holidayEmployees, employees]);
     
     const groupColors = useMemo(() => generateGroupColors(employeeGroups.map(g => g.id)), [employeeGroups]);
 
@@ -207,12 +205,10 @@ export default function VacationsPage() {
         return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
     }, [absenceTypes]);
 
-    const employeesForQuadrant = useMemo(() => {
+    const { employeesForQuadrant, substituteEmployees } = useMemo(() => {
         const mainEmployeesActive = employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
 
         const employeeMap = new Map<string, any>();
-
-        // Process main employees first
         mainEmployeesActive.forEach(emp => {
             const holidayInfo = holidayEmployees.find(he => he.id === emp.id);
             employeeMap.set(emp.id, {
@@ -223,7 +219,7 @@ export default function VacationsPage() {
             });
         });
         
-        return Array.from(employeeMap.values())
+        const quadrantEmployees = Array.from(employeeMap.values())
             .filter(e => e.active)
             .sort((a,b) => {
                 const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
@@ -231,7 +227,13 @@ export default function VacationsPage() {
                 if (groupA !== groupB) return groupA - groupB;
                 return a.name.localeCompare(b.name);
             });
+
+        const mainEmployeeIds = new Set(mainEmployeesActive.map(e => e.id));
+        const subs = holidayEmployees.filter(he => he.active && !mainEmployeeIds.has(he.id));
+
+        return { employeesForQuadrant: quadrantEmployees, substituteEmployees: subs };
     }, [employees, holidayEmployees, employeeGroups]);
+    
 
      useEffect(() => {
         if (schedulableAbsenceTypes.length > 0 && !selectedAbsenceTypeId) {
@@ -244,17 +246,10 @@ export default function VacationsPage() {
     
     const { employeesWithAbsences, weeklySummaries, employeesByWeek, substitutesByWeek, unifiedEmployees } = useMemo(() => {
         // Build a unified list of all people (main and eventual)
-        const allPeople = new Map<string, {id: string, name: string, isEventual: boolean, groupId?: string | null}>();
-        employees.forEach(e => allPeople.set(e.id, {id: e.id, name: e.name, isEventual: false}));
-        holidayEmployees.forEach(he => {
-            if (!allPeople.has(he.id)) {
-                allPeople.set(he.id, {id: he.id, name: he.name, isEventual: true, groupId: he.groupId});
-            } else {
-                 const existing = allPeople.get(he.id)!;
-                 existing.groupId = he.groupId;
-            }
-        });
-        const unifiedList = Array.from(allPeople.values());
+        const unifiedList = [
+            ...employees.map(e => ({id: e.id, name: e.name, isEventual: false})),
+            ...holidayEmployees.filter(he => !employees.some(e => e.id === he.id)).map(he => ({id: he.id, name: he.name, isEventual: true}))
+        ];
 
         const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
         const schedulableAbbrs = new Set(schedulableAbsenceTypes.map(at => at.abbreviation));
@@ -285,7 +280,7 @@ export default function VacationsPage() {
             // 2. Get from conversations (pending requests)
             const conversation = conversations.find(c => c.employeeId === emp.id);
             if (conversation?.lastMessageText?.startsWith('Solicitud de')) {
-                const requestRegex = /Solicitud de (.*?):\nDesde: (.*?)\n-\nHasta: (.*?)(?:\n|$)/gm;
+                const requestRegex = /Solicitud de (.*?):\nDesde: (.*?)\n-\nHasta: (.*)/gm;
                 let match;
                 while ((match = requestRegex.exec(conversation.lastMessageText)) !== null) {
                     const absenceName = match[1].trim();
@@ -568,10 +563,6 @@ export default function VacationsPage() {
     }, [selectedYear, getWeekId]);
     
     const handleAssignSubstitute = async (weekKey: string, employeeId: string, substituteId: string) => {
-        if (!substituteId) {
-            return;
-        }
-
         setIsGenerating(true);
         try {
             const report = holidayReports.find(r => r.weekId === weekKey && r.employeeId === employeeId);
@@ -581,21 +572,29 @@ export default function VacationsPage() {
                 substituteId: substituteId,
                 weekDate: parseISO(weekKey),
             };
-
+    
             if (report) {
+                // If a report exists, it means we are updating the substitute.
+                // An update should not fail if the logic is correct.
                 await updateHolidayReport(report.id, reportData);
             } else {
+                // If no report exists, create a new one.
                 await addHolidayReport(reportData);
             }
-
+    
             toast({ title: "Sustituto Asignado", description: "Se ha guardado el empleado eventual para esta semana." });
             refreshData();
         } catch (error) {
             console.error(error);
-            toast({ title: 'Error al asignar', description: 'No se pudo guardar la asignación.', variant: 'destructive' });
+            toast({ title: 'Error al asignar', description: 'No se pudo guardar la asignación del empleado sustituto.', variant: 'destructive' });
         } finally {
             setIsGenerating(false);
         }
+    };
+
+    const handleOpenAssignDialog = (weekKey: string, employee: Employee) => {
+        setAssignmentContext({ weekKey, employee });
+        setIsAssigning(true);
     };
 
     const handleGenerateStatusReport = () => {
@@ -683,29 +682,12 @@ export default function VacationsPage() {
                                 <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[9px] leading-tight py-0">
                                     <span className="flex-grow text-left truncate">{item.employee.name}</span>
                                     {item.absence.isRequest ? <Info className="h-3 w-3 text-yellow-600" /> : (
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <button className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0">
-                                                    <Plus className="h-3 w-3" />
-                                                </button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-56 p-1">
-                                                <div className="flex flex-col">
-                                                    {substituteEmployees.map(emp => (
-                                                        <Button
-                                                            key={emp.id}
-                                                            variant="ghost"
-                                                            className="w-full justify-start text-xs h-8"
-                                                            onClick={() => {
-                                                                handleAssignSubstitute(week.key, item.employee.id, emp.id);
-                                                            }}
-                                                        >
-                                                            {emp.name}
-                                                        </Button>
-                                                    ))}
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
+                                        <button 
+                                            className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0"
+                                            onClick={() => handleOpenAssignDialog(week.key, item.employee)}
+                                        >
+                                            <Plus className="h-3 w-3" />
+                                        </button>
                                     )}
                                     {substitute && (
                                         <div className="text-[10px] truncate text-red-600 font-semibold">
@@ -838,51 +820,37 @@ export default function VacationsPage() {
                 </CardContent>
             </Card>
 
-            <Dialog open={!!editingAbsence} onOpenChange={(open) => { if (!open) setEditingAbsence(null); }}>
+            <Dialog open={isAssigning} onOpenChange={setIsAssigning}>
                 <DialogContent>
-                    {editingAbsence && (
-                        <>
-                            <DialogHeader>
-                                <DialogTitle>Editar Ausencia de {editingAbsence.employee.name}</DialogTitle>
-                            </DialogHeader>
-                            <Calendar
-                                mode="range"
-                                selected={editedDateRange}
-                                onSelect={setEditedDateRange}
-                                locale={es}
-                                className="rounded-md border"
-                                month={editCalendarMonth}
-                                onMonthChange={setEditCalendarMonth}
-                                modifiers={plannerModifiers}
-                                modifiersStyles={editModifiersStyles}
-                            />
-                            <DialogFooter>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="destructive" disabled={isGenerating}>
-                                            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>¿Confirmas la eliminación?</AlertDialogTitle>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDeleteAbsence(editingAbsence.absence)}>Eliminar</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                                <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                                <Button onClick={handleUpdateAbsence} disabled={isGenerating}>
-                                    {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Guardar Cambios
-                                </Button>
-                            </DialogFooter>
-                        </>
-                    )}
+                    <DialogHeader>
+                        <DialogTitle>Asignar Sustituto</DialogTitle>
+                        {assignmentContext && (
+                            <DialogDescription>
+                                Selecciona un empleado eventual para sustituir a <strong>{assignmentContext.employee.name}</strong> en la semana del <strong>{format(parseISO(assignmentContext.weekKey), 'dd/MM/yyyy')}</strong>.
+                            </DialogDescription>
+                        )}
+                    </DialogHeader>
+                    <div className="py-4 space-y-2 max-h-60 overflow-y-auto">
+                        {substituteEmployees.map(sub => (
+                            <Button
+                                key={sub.id}
+                                variant="outline"
+                                className="w-full justify-start"
+                                onClick={async () => {
+                                    if (assignmentContext) {
+                                        await handleAssignSubstitute(assignmentContext.weekKey, assignmentContext.employee.id, sub.id);
+                                        setIsAssigning(false);
+                                        setAssignmentContext(null);
+                                    }
+                                }}
+                            >
+                                {sub.name}
+                            </Button>
+                        ))}
+                    </div>
                 </DialogContent>
             </Dialog>
+
 
             <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
               <DialogContent className="max-w-none w-screen h-screen p-0 m-0 relative">
@@ -936,3 +904,4 @@ export default function VacationsPage() {
         </div>
     );
 }
+
