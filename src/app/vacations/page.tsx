@@ -661,7 +661,7 @@ export default function VacationsPage() {
                         isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
                       );
                       return absence ? { employee: emp, absence } : null;
-                    }).filter(Boolean);
+                    }).filter((item): item is { employee: Employee, absence: FormattedAbsence } => item !== null);
 
                     const cellHasContent = employeesWithAbsenceInWeek.length > 0;
                      const cellBg = cellHasContent
@@ -676,9 +676,16 @@ export default function VacationsPage() {
                           {employeesWithAbsenceInWeek.map(item => {
                             if (!item) return null;
                             const substitute = substitutesByWeek[week.key]?.find(s => s.employeeId === item.employee.id);
+                            const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
+
                             return (
                                 <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[9px] leading-tight py-0">
-                                    <span className="flex-grow text-left truncate">{item.employee.name}</span>
+                                    <span className={cn(
+                                        "flex-grow text-left truncate",
+                                        isSpecialAbsence ? "text-blue-600" : "text-black"
+                                    )}>
+                                        {item.employee.name} ({item.absence.absenceAbbreviation})
+                                    </span>
                                     {item.absence.isRequest ? <Info className="h-3 w-3 text-yellow-600" /> : (
                                         <button 
                                             className="h-4 w-4 p-0 m-0 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 flex-shrink-0 border-0"
@@ -852,7 +859,7 @@ export default function VacationsPage() {
 
 
             <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
-              <DialogContent className="max-w-none w-screen h-screen p-0 m-0 sm:max-w-none">
+              <DialogContent className="max-w-none w-screen h-screen p-0 m-0 sm:max-w-none sm:max-w-none:translate-x-0 sm:max-w-none:translate-y-0">
                  <Button variant="ghost" size="icon" onClick={() => setIsFullScreen(false)} className="absolute top-2 right-2 z-20 bg-background/50 border hover:bg-background">
                     <X className="h-6 w-6" />
                 </Button>
@@ -903,5 +910,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-
-    
