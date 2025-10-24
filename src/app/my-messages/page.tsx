@@ -291,9 +291,15 @@ export default function MyMessagesPage() {
         const toDate = activeCampaign ? (activeCampaign.absenceEndDate as Timestamp).toDate() : undefined;
         
         const handleSelectRange = (range: DateRange | undefined) => {
-            setCurrentRange(range);
-            if (range?.from && range.to) {
-                setSelectedDateRanges(prev => [...prev, range]);
+            if (range?.from && !range.to) {
+                // If only the 'from' date is selected, set it and wait for the 'to' date
+                setCurrentRange({ from: range.from, to: undefined });
+            } else if (range?.from && range.to) {
+                // If both are selected, finalize the range
+                setSelectedDateRanges(prev => [...prev, { from: range.from, to: range.to }]);
+                setCurrentRange(undefined); // Reset for the next selection
+            } else {
+                // If the selection is cleared
                 setCurrentRange(undefined);
             }
         }
