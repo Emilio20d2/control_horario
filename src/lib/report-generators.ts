@@ -446,7 +446,7 @@ export const generateQuadrantReportPDF = (
 
         const body = employeeGroups.map(group => {
             const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-            const rowData = [{content: group.name, styles: { textColor: [255,255,255]}}]; // Hide text by making it white
+            const rowData = [{content: group.name, styles: { textColor: [255,255,255]}}];
 
             weeksToDraw.forEach(week => {
                 const absentEmployees = groupEmployees
@@ -466,10 +466,10 @@ export const generateQuadrantReportPDF = (
             body: body,
             startY: headerHeight,
             theme: 'grid',
-            styles: { fontSize: 5, cellPadding: 1, valign: 'middle' },
+            styles: { fontSize: 7, cellPadding: 1, valign: 'top' },
             headStyles: { fillColor: [220, 220, 220], textColor: 20, halign: 'center', fontSize: 6 },
             columnStyles: {
-                0: { cellWidth: 0.1, fontStyle: 'bold' },
+                0: { cellWidth: 0.1 },
                  ...weeksToDraw.reduce((acc, _, index) => {
                     acc[index + 1] = { cellWidth: cellWidth };
                     return acc;
@@ -612,3 +612,4 @@ export const generateRequestStatusReportPDF = (
     const safeTitle = campaign.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     doc.save(`informe_estado_${safeTitle}.pdf`);
 };
+
