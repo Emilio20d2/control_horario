@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { cn } from '@/lib/utils';
 import { isAfter, parseISO } from 'date-fns';
+import { Label } from '../ui/label';
 
 
 export function HolidayEmployeeManager() {
@@ -24,6 +25,7 @@ export function HolidayEmployeeManager() {
     const { toast } = useToast();
 
     const [newEmployeeName, setNewEmployeeName] = useState('');
+    const [newEmployeeId, setNewEmployeeId] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -64,20 +66,22 @@ export function HolidayEmployeeManager() {
 
     const handleAddEmployee = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newEmployeeName.trim()) {
-            toast({ title: 'Nombre vacío', description: 'El nombre del empleado no puede estar vacío.', variant: 'destructive' });
+        if (!newEmployeeName.trim() || !newEmployeeId.trim()) {
+            toast({ title: 'Datos incompletos', description: 'El nombre y el ID del empleado son obligatorios.', variant: 'destructive' });
             return;
         }
         setIsAdding(true);
         try {
             await addHolidayEmployee({
+                id: newEmployeeId.trim(),
                 name: newEmployeeName.trim(),
             });
             toast({ title: 'Empleado añadido', description: `Se ha añadido a ${newEmployeeName.trim()} a la lista.` });
             setNewEmployeeName('');
+            setNewEmployeeId('');
         } catch (error) {
             console.error(error);
-            toast({ title: 'Error', description: 'No se pudo añadir el empleado.', variant: 'destructive' });
+            toast({ title: 'Error', description: 'No se pudo añadir el empleado. Es posible que el ID ya exista.', variant: 'destructive' });
         } finally {
             setIsAdding(false);
         }
@@ -178,13 +182,24 @@ export function HolidayEmployeeManager() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <form onSubmit={handleAddEmployee} className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
-                    <div className="space-y-1 col-span-2">
-                        <label className="text-xs font-medium">Nombre Completo (Eventual)</label>
+                <form onSubmit={handleAddEmployee} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div className="space-y-1">
+                        <Label htmlFor="new-emp-name">Nombre Completo (Eventual)</Label>
                         <Input
-                            placeholder="Nombre del nuevo empleado eventual"
+                            id="new-emp-name"
+                            placeholder="Nombre del nuevo empleado"
                             value={newEmployeeName}
                             onChange={(e) => setNewEmployeeName(e.target.value)}
+                            disabled={isAdding}
+                        />
+                    </div>
+                     <div className="space-y-1">
+                        <Label htmlFor="new-emp-id">Nº Empleado / ID</Label>
+                        <Input
+                            id="new-emp-id"
+                            placeholder="ID único del empleado"
+                            value={newEmployeeId}
+                            onChange={(e) => setNewEmployeeId(e.target.value)}
                             disabled={isAdding}
                         />
                     </div>
