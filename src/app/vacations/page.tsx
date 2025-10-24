@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -34,7 +33,7 @@ import {
 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
-import type { Employee, EmploymentPeriod, Ausencia, VacationCampaign } from '@/lib/types';
+import type { Employee, EmploymentPeriod, Ausencia, VacationCampaign, Conversation } from '@/lib/types';
 import {
   format,
   isAfter,
@@ -154,7 +153,6 @@ export default function VacationsPage() {
         }
     }, [activeCampaigns, selectedCampaignId]);
     
-    // This is the definitive list of employees for the substitution popover.
     const substituteEmployees = useMemo(() => {
         return holidayEmployees.filter(he => he.active);
     }, [holidayEmployees]);
@@ -270,7 +268,7 @@ export default function VacationsPage() {
             // 2. Get from conversations (pending requests)
             const conversation = conversations.find(c => c.employeeId === emp.id);
             if (conversation?.lastMessageText?.startsWith('Solicitud de')) {
-                const requestRegex = /Solicitud de (.*?):\nDesde: (.*?)- Hasta: (.*?)/gm;
+                const requestRegex = /Solicitud de (.*?):\nDesde: (.*?)\n-\nHasta: (.*?)(?:\n|$)/gm;
                 let match;
                 while ((match = requestRegex.exec(conversation.lastMessageText)) !== null) {
                     const absenceName = match[1].trim();
@@ -921,3 +919,5 @@ export default function VacationsPage() {
         </div>
     );
 }
+
+    
