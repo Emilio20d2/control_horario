@@ -452,7 +452,7 @@ export const generateQuadrantReportPDF = (
             const rowData: any[] = [{ content: '', styles: { fillColor: group.color, lineWidth: 0.1, lineColor: [0,0,0] } }];
 
             weeksForPage.forEach(week => {
-                 const cellItems = groupEmployees.map(emp => {
+                 const cellContent = groupEmployees.map(emp => {
                     const absenceInWeek = employeesByWeek[week.key]?.find(e => e.employeeId === emp.id);
                     if (!absenceInWeek) return null;
                     
@@ -462,10 +462,10 @@ export const generateQuadrantReportPDF = (
                         text += `|${substituteInfo.substituteName}`;
                     }
                     return text;
-                }).filter(Boolean);
+                }).filter(Boolean).join('\n');
                 rowData.push({
-                    content: cellItems.join('\n'),
-                    styles: { fillColor: cellItems.length > 0 ? group.color : '#ffffff', lineWidth: 0.1, lineColor: [0,0,0] }
+                    content: cellContent,
+                    styles: { fillColor: cellContent ? group.color : '#ffffff', lineWidth: 0.1, lineColor: [0,0,0] }
                 });
             });
             return rowData;
@@ -499,7 +499,7 @@ export const generateQuadrantReportPDF = (
             margin: { left: pageMargin, right: pageMargin },
             didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index > 0) {
-                    const rawContent = data.cell.raw as string;
+                    const rawContent = data.cell.raw;
                     
                     if (typeof rawContent === 'string' && rawContent) {
                         data.cell.text = []; // Clear original text
@@ -514,7 +514,7 @@ export const generateQuadrantReportPDF = (
                             if (substitutePart) {
                                 doc.text(substitutePart, data.cell.x + data.cell.width - data.cell.padding('right'), y, { align: 'right', baseline: 'middle' });
                             }
-                            y += doc.getLineHeight() * 1.0; 
+                            y += doc.getLineHeight() * 2.0; 
                         });
                     }
                 }
@@ -650,6 +650,7 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
 
