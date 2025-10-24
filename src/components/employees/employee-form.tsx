@@ -158,9 +158,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         
         const weeklySchedulesHistoryFormatted = (period.weeklySchedulesHistory || []).map(schedule => ({
             ...schedule,
-            effectiveDate: typeof schedule.effectiveDate === 'string' 
-                ? schedule.effectiveDate 
-                : format(schedule.effectiveDate, 'yyyy-MM-dd'),
+            effectiveDate: format(schedule.effectiveDate instanceof Date ? schedule.effectiveDate : parseISO(schedule.effectiveDate as string), 'yyyy-MM-dd'),
         }));
 
         return {

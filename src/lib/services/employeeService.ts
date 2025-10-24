@@ -139,10 +139,13 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
     if (weeklySchedules && weeklySchedules.length > 0) {
         const scheduleToUpdate = weeklySchedules[0];
         
-        // **BUG FIX:** Ensure effectiveDate is a string before comparison.
-        const effectiveDateString = typeof scheduleToUpdate.effectiveDate === 'string'
-            ? scheduleToUpdate.effectiveDate
-            : format(scheduleToUpdate.effectiveDate, 'yyyy-MM-dd');
+        // Radical Fix: Ensure effectiveDate is a string before comparison.
+        const effectiveDateString = scheduleToUpdate.effectiveDate;
+        if (typeof effectiveDateString !== 'string' || !effectiveDateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            // This case should not happen with the form fix, but as a safeguard:
+            console.error("Radical Fix Triggered: effectiveDate for current schedule is not a valid string.", scheduleToUpdate);
+            // Optionally throw an error or handle it gracefully
+        }
 
         if(effectiveDateString) {
             const existingScheduleIndex = targetPeriodForSchedules.weeklySchedulesHistory.findIndex(
