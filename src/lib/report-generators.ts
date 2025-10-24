@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -447,7 +448,7 @@ export const generateQuadrantReportPDF = (
 
         const tableBody = employeeGroups.map(group => {
             const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-            const rowData: any[] = [{ content: '', styles: { fillColor: group.color } }]; 
+            const rowData: any[] = [{ content: '', styles: { fillColor: group.color, lineWidth: 0 } }]; 
 
             weeksForPage.forEach(week => {
                 const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
@@ -495,25 +496,27 @@ export const generateQuadrantReportPDF = (
             margin: { left: pageMargin, right: pageMargin },
             didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index > 0) {
-                    const cellContent: any = data.cell.raw;
+                    const cellContent: any[] = data.cell.raw as any[];
                     let y = data.cell.y + data.cell.padding('top') + 1;
-                    data.cell.text = []; // Limpiar el contenido original de la celda
+                    data.cell.text = []; // Clear original text
 
                     if (Array.isArray(cellContent)) {
                         cellContent.forEach(item => {
-                            const isSpecial = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
-                            const employeeColor: [number, number, number] = isSpecial ? [0, 0, 255] : [0, 0, 0];
-                            
-                            doc.setTextColor(employeeColor[0], employeeColor[1], employeeColor[2]);
-                            doc.text(`${item.employee.name} (${item.absence.absenceAbbreviation})`, data.cell.x + data.cell.padding('left'), y);
-                            y += doc.getLineHeight() * 0.9;
-                            
-                            if (item.substitute) {
-                                doc.setTextColor(255, 0, 0); // Rojo para sustituto
-                                const substituteText = `${item.substitute.substituteName}`;
-                                const textWidth = doc.getStringUnitWidth(substituteText) * doc.getFontSize() / doc.internal.scaleFactor;
-                                const xPos = data.cell.x + data.cell.width - data.cell.padding('right') - textWidth;
-                                doc.text(substituteText, xPos, y - doc.getLineHeight() * 0.9);
+                            if (typeof item === 'object' && item !== null && item.employee) {
+                                const isSpecial = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
+                                const employeeColor: [number, number, number] = isSpecial ? [0, 0, 255] : [0, 0, 0];
+                                
+                                doc.setTextColor(employeeColor[0], employeeColor[1], employeeColor[2]);
+                                doc.text(`${item.employee.name} (${item.absence.absenceAbbreviation})`, data.cell.x + data.cell.padding('left'), y);
+                                y += doc.getLineHeight() * 0.9;
+                                
+                                if (item.substitute) {
+                                    doc.setTextColor(255, 0, 0); // Rojo para sustituto
+                                    const substituteText = `${item.substitute.substituteName}`;
+                                    const textWidth = doc.getStringUnitWidth(substituteText) * doc.getFontSize() / doc.internal.scaleFactor;
+                                    const xPos = data.cell.x + data.cell.width - data.cell.padding('right') - textWidth;
+                                    doc.text(substituteText, xPos, y - doc.getLineHeight() * 0.9);
+                                }
                             }
                         });
                     }
@@ -571,7 +574,7 @@ export const generateSignatureReportPDF = (
             ],
             startY: finalY,
             theme: 'grid',
-            styles: { cellHeight: blockHeight, valign: 'top' },
+            styles: { cellHeight: blockHeight, valign: 'top', lineColor: [0,0,0], lineWidth: 0.1 },
             columnStyles: { 0: { cellWidth: 40 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 30 } }
         });
         finalY = doc.lastAutoTable.finalY + 5;
@@ -650,5 +653,6 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
