@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -424,7 +425,7 @@ export const generateQuadrantReportPDF = (
     allEmployeesForQuadrant: any[],
     employeesByWeek: Record<string, { employeeId: string; employeeName: string; absenceAbbreviation: string }[]>,
     weeklySummaries: Record<string, { employeeCount: number; hourImpact: number; }>,
-    substitutesByWeek: Record<string, { employeeId: string, substituteId: string, substituteName: string }[]> | undefined,
+    substitutesByWeek: Record<string, Record<string, { substituteId: string, substituteName: string }>> | undefined,
     getTheoreticalHoursAndTurn: (employeeId: string, date: Date) => { turnId: string | null },
     specialAbsenceAbbreviations: Set<string>,
 ) => {
@@ -448,7 +449,7 @@ export const generateQuadrantReportPDF = (
 
         const tableBody = employeeGroups.map(group => {
             const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
-            const rowData = [{ content: '', styles: { fontStyle: 'bold', halign: 'center' } }]; // Blank content for group name
+            const rowData = [{ content: '', styles: { fontStyle: 'bold', halign: 'center' } }]; 
 
             weeksForPage.forEach(week => {
                 const employeesWithAbsenceInWeek = groupEmployees
@@ -460,7 +461,7 @@ export const generateQuadrantReportPDF = (
                 
                 let cellContent = '';
                 employeesWithAbsenceInWeek.forEach(item => {
-                    const substitute = (safeSubstitutesByWeek[week.key] || []).find(s => s.employeeId === item.employee.id);
+                    const substitute = safeSubstitutesByWeek[week.key]?.[item.employee.id];
                     const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
 
                     cellContent += `[EMP:${isSpecialAbsence ? 'blue' : 'black'}]${item.employee.name} (${item.absence.absenceAbbreviation})\n`;
@@ -473,7 +474,7 @@ export const generateQuadrantReportPDF = (
             return rowData;
         });
         
-        const groupColumnLabel = 'Grupo'; // Label for the header
+        const groupColumnLabel = '';
         const tableHeader = [groupColumnLabel, ...weeksForPage.map(week => {
             const summary = weeklySummaries[week.key];
             const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
@@ -501,7 +502,6 @@ export const generateQuadrantReportPDF = (
             columnStyles: columnStyles,
             margin: { left: pageMargin, right: pageMargin },
             didDrawCell: (data) => {
-                // Remove group names from first column cells
                 if (data.section === 'body' && data.column.index === 0) {
                      data.cell.text = [];
                 }
@@ -527,7 +527,7 @@ export const generateQuadrantReportPDF = (
                             y += doc.getLineHeight() * 0.9;
                         });
                     }
-                    data.cell.text = []; // Clear original text to prevent it from being drawn
+                    data.cell.text = []; 
                 }
             },
         });
