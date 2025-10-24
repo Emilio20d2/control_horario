@@ -452,7 +452,7 @@ export const generateQuadrantReportPDF = (
             const rowData: any[] = [{ content: '', styles: { fillColor: group.color, lineWidth: 0.1, lineColor: [0,0,0] } }];
 
             weeksForPage.forEach(week => {
-                const cellItems = groupEmployees.map(emp => {
+                 const cellItems = groupEmployees.map(emp => {
                     const absenceInWeek = employeesByWeek[week.key]?.find(e => e.employeeId === emp.id);
                     if (!absenceInWeek) return null;
                     
@@ -463,7 +463,6 @@ export const generateQuadrantReportPDF = (
                     }
                     return text;
                 }).filter(Boolean);
-
                 rowData.push({
                     content: cellItems.join('\n'),
                     styles: { fillColor: cellItems.length > 0 ? group.color : '#ffffff', lineWidth: 0.1, lineColor: [0,0,0] }
@@ -501,24 +500,23 @@ export const generateQuadrantReportPDF = (
             didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index > 0) {
                     const rawContent = data.cell.raw as string;
-                    if (!rawContent || typeof rawContent !== 'string') return;
                     
-                    data.cell.text = []; // Clear original text
+                    if (typeof rawContent === 'string' && rawContent) {
+                        data.cell.text = []; // Clear original text
+                        const lines = rawContent.split('\n');
+                        let y = data.cell.y + data.cell.padding('top') + 1.5;
 
-                    const lines = rawContent.split('\n');
-                    let y = data.cell.y + data.cell.padding('top') + 1.5;
+                        lines.forEach(line => {
+                            const [employeePart, substitutePart] = line.split('|');
 
-                    lines.forEach(line => {
-                        const [employeePart, substitutePart] = line.split('|');
-                        
-                        doc.setTextColor(0, 0, 0); // Default black
-                        doc.text(employeePart, data.cell.x + data.cell.padding('left'), y, { baseline: 'middle' });
+                            doc.text(employeePart, data.cell.x + data.cell.padding('left'), y, { baseline: 'middle' });
 
-                        if (substitutePart) {
-                            doc.text(substitutePart, data.cell.x + data.cell.width - data.cell.padding('right'), y, { align: 'right', baseline: 'middle' });
-                        }
-                        y += doc.getLineHeight() * 0.6; 
-                    });
+                            if (substitutePart) {
+                                doc.text(substitutePart, data.cell.x + data.cell.width - data.cell.padding('right'), y, { align: 'right', baseline: 'middle' });
+                            }
+                            y += doc.getLineHeight() * 1.0; 
+                        });
+                    }
                 }
             },
         });
@@ -652,6 +650,7 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
 
