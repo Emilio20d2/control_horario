@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -7,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { MailQuestion, Info } from 'lucide-react';
+import { MailQuestion, Info, PlaneTakeoff } from 'lucide-react';
 
 export default function HelpPage() {
   return (
@@ -48,6 +49,33 @@ export default function HelpPage() {
         </Card>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+         <Card>
+            <CardHeader>
+                <div className="flex items-start gap-4">
+                    <PlaneTakeoff className="h-8 w-8 text-primary mt-1" />
+                    <div>
+                        <CardTitle>Solicitar Vacaciones</CardTitle>
+                        <CardDescription>Cómo funcionan los periodos de petición.</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <p className="text-muted-foreground mb-4">
+                    Las vacaciones y otros permisos largos se solicitan durante "campañas" o periodos específicos que abre la empresa.
+                </p>
+                <ol className="list-decimal list-inside space-y-3 text-sm">
+                    <li>
+                        <strong>Anuncio de Campaña:</strong> Cuando se abre un periodo de solicitud, verás un aviso especial en la página <span className="font-semibold text-primary">"Mis Mensajes"</span>.
+                    </li>
+                    <li>
+                        <strong>Realiza tu Petición:</strong> Dentro de esa sección, aparecerá un botón para "Hacer Solicitud". Sigue los pasos para elegir el tipo de ausencia y las fechas que deseas.
+                    </li>
+                     <li>
+                        <strong>Petición Enviada:</strong> Una vez enviada, tu solicitud quedará registrada y pendiente de revisión por parte de la dirección.
+                    </li>
+                </ol>
+            </CardContent>
+        </Card>
          <Card>
             <CardHeader>
                 <div className="flex items-start gap-4">
