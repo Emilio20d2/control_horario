@@ -109,7 +109,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const menuItems = isAdminView ? adminMenuItems : employeeMenuItems;
 
   const MainNav = ({className, isMobileNav}: {className?: string, isMobileNav?: boolean}) => (
-    <nav className={className}>
+    <nav className={cn(
+        "flex items-center gap-1",
+        isMobileNav && "flex-col !items-stretch"
+    )}>
         {menuItems.map((item) => {
              const isActive = pathname.startsWith(item.href);
 
@@ -128,7 +131,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 >
                     <item.icon className="h-5 w-5" />
                     <span className={cn(
-                        "text-[10px] font-medium",
+                        "text-[10px] font-medium text-center",
                         isMobileNav && "text-base"
                     )}>{item.label}</span>
                     {item.notification && (
