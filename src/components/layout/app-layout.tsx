@@ -36,7 +36,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -55,6 +54,7 @@ import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useIsMobile } from '@/hooks/use-is-mobile';
 
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -62,6 +62,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { unconfirmedWeeksDetails, appUser, employeeRecord, viewMode, setViewMode, loading: dataLoading, unreadMessageCount } = useDataProvider();
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     if (!appUser || !appUser.trueRole) return;
@@ -113,7 +114,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const isAdminView = appUser?.role === 'admin';
   const menuItems = isAdminView ? adminMenuItems : employeeMenuItems;
 
-  const MainNav = ({className}: {className?: string}) => (
+  const MainNav = ({className, isMobileNav}: {className?: string, isMobileNav?: boolean}) => (
     <nav className={className}>
         {menuItems.map((item) => {
              const isActive = pathname.startsWith(item.href);
@@ -124,13 +125,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     href={item.href}
                     className={cn(
                         'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors relative',
+                        isMobileNav && 'flex-col justify-center h-16',
                         isActive
                             ? 'bg-primary text-primary-foreground'
                             : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                     )}
                 >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
+                    <item.icon className="h-5 w-5" />
+                    <span className={cn(isMobileNav && 'text-xs')}>{item.label}</span>
                     {item.notification && (
                          <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
@@ -159,11 +161,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-screen w-full flex-col bg-background">
       <header className="sticky top-0 inset-x-0 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">
-        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+        <Link href={isAdminView ? "/dashboard" : "/my-profile"} className="flex items-center gap-2 font-semibold">
             <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
         </Link>
         
-        <MainNav className="hidden md:flex items-center gap-4 mx-auto" />
+        {isAdminView ? (
+            <MainNav className="hidden md:flex items-center gap-4 mx-auto" />
+        ) : (
+            <MainNav className="hidden md:flex items-center gap-1 mx-auto" />
+        )}
 
         <div className="flex items-center gap-4 ml-auto">
             {isAdminView && (
@@ -239,7 +245,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
-             <Sheet>
+             {isAdminView && <Sheet>
                 <SheetTrigger asChild>
                     <Button variant="outline" size="icon" className="md:hidden">
                         <Menu className="h-5 w-5" />
@@ -259,12 +265,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
                         <MainNav className="flex flex-col gap-2" />
                     </div>
                 </SheetContent>
-            </Sheet>
+            </Sheet>}
         </div>
       </header>
       <div className="flex-1 flex flex-col overflow-y-auto">
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 pb-16 md:pb-0">{children}</main>
       </div>
+
+       {!isAdminView && isMobile && (
+        <div className="fixed bottom-0 left-0 right-0 border-t bg-background z-10">
+          <MainNav className="flex items-center justify-around h-16" isMobileNav={true} />
+        </div>
+      )}
+
     </div>
   );
 }
