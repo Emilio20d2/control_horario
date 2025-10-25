@@ -33,6 +33,7 @@ import {
   X,
   Edit,
   UserX,
+  UserPlus,
 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -94,6 +95,7 @@ import { generateQuadrantReportPDF, generateSignatureReportPDF, generateRequestS
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Timestamp } from 'firebase/firestore';
+import { HolidayEmployeeManager } from '@/components/settings/holiday-employee-manager';
 
 
 interface FormattedAbsence extends Ausencia {
@@ -125,6 +127,7 @@ export default function VacationsPage() {
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     const [isGenerating, setIsGenerating] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
+    const [isHolidayEmployeeManagerOpen, setIsHolidayEmployeeManagerOpen] = useState(false);
     
     // State for planner
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
@@ -695,7 +698,7 @@ export default function VacationsPage() {
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader>
                     <CardTitle>Planificar Nueva Ausencia</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
@@ -841,6 +844,12 @@ export default function VacationsPage() {
                 </DialogContent>
             </Dialog>
 
+            <Dialog open={isHolidayEmployeeManagerOpen} onOpenChange={setIsHolidayEmployeeManagerOpen}>
+                <DialogContent className="max-w-4xl">
+                    <HolidayEmployeeManager />
+                </DialogContent>
+            </Dialog>
+
 
             <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
               <DialogContent className="max-w-none w-screen h-full p-0 m-0 sm:max-w-none sm:max-w-none:translate-x-0 sm:max-w-none:translate-y-0">
@@ -855,8 +864,24 @@ export default function VacationsPage() {
 
             <Card>
                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Programador vacaciones</CardTitle>
+                    <div className="flex items-center gap-4">
+                         <CardTitle>Programador vacaciones</CardTitle>
+                         <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+                            <SelectTrigger className="w-32 h-8 text-xs">
+                                <SelectValue placeholder="Año" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableYears.map(year => (
+                                    <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                         <div className="flex items-center gap-2">
+                             <Button variant="outline" size="sm" onClick={() => setIsHolidayEmployeeManagerOpen(true)}>
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Gestionar Empleados Eventuales
+                            </Button>
                             <div className="flex items-center gap-1 border rounded-md p-1">
                                 <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, substitutes, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileDown className="mr-2 h-4 w-4" /> Cuadrante
