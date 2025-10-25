@@ -102,7 +102,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/my-profile', label: 'Mi Ficha', icon: User },
     { href: '/my-schedule', label: 'Mis Presencias', icon: CalendarCheck },
     { href: '/my-messages', label: 'Mis Mensajes', icon: Mail, notification: unreadMessageCount > 0 },
-    { href: '/help', label: 'Ayuda', icon: HelpCircle },
   ];
 
   const isAdminView = appUser?.role === 'admin';
@@ -116,7 +115,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
         {menuItems.map((item) => {
              const isActive = pathname.startsWith(item.href);
              const isEmployeeViewAndNotMobileNav = !isAdminView && !isMobileNav;
-             const isHelpButtonForEmployee = item.href === '/help' && !isAdminView;
 
             return (
                 <Link
@@ -125,7 +123,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     onClick={() => isMobileNav && setMobileNavOpen(false)}
                     className={cn(
                         'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative',
-                        isHelpButtonForEmployee ? 'flex-row' : 'flex-col',
+                        'flex-col',
                         isMobileNav ? 'w-full text-foreground' : '',
                         isEmployeeViewAndNotMobileNav && 'h-16',
                         isActive
@@ -134,15 +132,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     )}
                 >
                     <item.icon className={cn(
-                        isEmployeeViewAndNotMobileNav && !isHelpButtonForEmployee ? "h-7 w-7" : "h-5 w-5",
-                        isHelpButtonForEmployee && "h-5 w-5"
+                        isEmployeeViewAndNotMobileNav ? "h-7 w-7" : "h-5 w-5",
                         )} />
                     
                     <span className={cn(
                         "font-medium text-center",
                         isMobileNav ? "text-base" : "text-[10px]",
                         isEmployeeViewAndNotMobileNav && 'text-xs',
-                        isHelpButtonForEmployee && 'text-sm'
                     )}>{item.label}</span>
 
                     {item.notification && (
@@ -187,7 +183,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
              {isMobile && !isAdminView && <MainNav />}
         </div>
         
-        <div className="flex items-center gap-4 ml-auto">
+        <div className="flex items-center gap-2 ml-auto">
             {isAdminView && !isMobile && (
               <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -231,6 +227,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   </DropdownMenuContent>
               </DropdownMenu>
             )}
+
+            {!isAdminView && (
+                <Button variant="ghost" asChild className="flex items-center gap-2">
+                    <Link href="/help">
+                        <HelpCircle className="h-5 w-5" />
+                        <span className="hidden sm:inline">Ayuda</span>
+                    </Link>
+                </Button>
+            )}
+
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
