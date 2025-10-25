@@ -67,11 +67,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
     const adminPages = ['/dashboard', '/schedule', '/employees', '/listings', '/vacations', '/messages', '/settings'];
 
     if (appUser.trueRole === 'admin') {
-      // If admin is in employee view, and goes to a page that isn't a designated employee page
       if (viewMode === 'employee' && !employeePages.some(p => pathname.startsWith(p))) {
         router.replace('/my-profile');
       } 
-      // If admin is in admin view and tries to access an employee-only page
       else if (viewMode === 'admin' && employeePages.some(p => pathname.startsWith(p))) {
         router.replace('/dashboard');
       }
@@ -124,12 +122,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
                         'flex items-center gap-3 px-3 py-2 rounded-md text-base md:text-sm font-medium transition-colors relative',
                         isMobileNav && 'text-foreground',
                         isActive
-                            ? 'bg-primary text-primary-foreground'
+                            ? 'bg-primary text-white font-semibold'
                             : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                     )}
                 >
                     <item.icon className="h-5 w-5" />
-                    <span>{item.label}</span>
+                    {!isMobileNav && <span>{item.label}</span>}
+                     {isMobileNav && <span className="text-lg">{item.label}</span>}
                     {item.notification && (
                          <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
@@ -160,28 +159,31 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 inset-x-0 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">
         
         <div className="flex items-center gap-2">
-            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-                <SheetTrigger asChild>
-                    <Button variant="outline" size="icon" className="md:hidden">
-                        <Menu className="h-5 w-5" />
-                        <span className="sr-only">Abrir menú</span>
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="flex flex-col">
-                    <Link href={isAdminView ? "/dashboard" : "/my-profile"} className="flex items-center gap-2 font-semibold mb-4">
-                        <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
-                        <span>Control Horario</span>
-                    </Link>
-                    <MainNav className="flex flex-col gap-2" isMobileNav={true} />
-                </SheetContent>
-            </Sheet>
-            <Link href={isAdminView ? "/dashboard" : "/my-profile"} className="hidden md:flex items-center gap-2 font-semibold">
-                <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
-            </Link>
+            {isMobile && isAdminView ? (
+                 <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+                    <SheetTrigger asChild>
+                        <Button variant="outline" size="icon">
+                            <Menu className="h-5 w-5" />
+                            <span className="sr-only">Abrir menú</span>
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="flex flex-col">
+                        <Link href={isAdminView ? "/dashboard" : "/my-profile"} className="flex items-center gap-2 font-semibold mb-4">
+                            <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
+                            <span>Control Horario</span>
+                        </Link>
+                        <MainNav className="flex flex-col gap-2" isMobileNav={true} />
+                    </SheetContent>
+                </Sheet>
+            ) : (
+                 <Link href={isAdminView ? "/dashboard" : "/my-profile"} className="flex items-center gap-2 font-semibold">
+                    <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
+                 </Link>
+            )}
         </div>
         
-        <div className="hidden md:flex flex-1 justify-center">
-            <MainNav className="flex items-center gap-1" />
+        <div className={cn("flex-1 justify-center", isMobile ? (isAdminView ? "hidden" : "flex") : "flex")}>
+             <MainNav className="flex items-center gap-1" />
         </div>
         
         <div className="flex items-center gap-4 ml-auto">
@@ -266,5 +268,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+    
 
     
