@@ -24,13 +24,6 @@ import {
   Mail,
 } from 'lucide-react';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -127,13 +120,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     className={cn(
                         'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors relative',
                         isMobileNav && 'flex-col justify-center h-16',
+                        !isMobileNav && (item.label === 'Ayuda' ? 'p-2' : ''),
                         isActive
                             ? 'bg-primary text-primary-foreground'
                             : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                     )}
                 >
                     <item.icon className="h-5 w-5" />
-                    <span className={cn(isMobileNav && 'text-xs')}>{item.label}</span>
+                    {(!isMobileNav && item.label === 'Ayuda') ? null : <span className={cn(isMobileNav && 'text-xs')}>{item.label}</span>}
                     {item.notification && (
                          <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
@@ -166,12 +160,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
         </Link>
         
-        {isAdminView ? (
-            <MainNav className="hidden md:flex items-center gap-4 mx-auto" />
-        ) : (
-            <MainNav className="hidden md:flex items-center gap-1 mx-auto" />
-        )}
-
+        <div className="hidden md:flex flex-1 justify-center">
+            <MainNav className="flex items-center gap-1" />
+        </div>
+        
         <div className="flex items-center gap-4 ml-auto">
             {isAdminView && (
               <DropdownMenu>
@@ -246,34 +238,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
-             {isAdminView && <Sheet>
-                <SheetTrigger asChild>
-                    <Button variant="outline" size="icon" className="md:hidden">
-                        <Menu className="h-5 w-5" />
-                        <span className="sr-only">Abrir menú</span>
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="right">
-                    <SheetHeader>
-                        <SheetTitle>
-                            <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-                                <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
-                                <span className="text-xl font-semibold font-headline">Control Horario</span>
-                            </Link>
-                        </SheetTitle>
-                    </SheetHeader>
-                    <div className="py-4">
-                        <MainNav className="flex flex-col gap-2" />
-                    </div>
-                </SheetContent>
-            </Sheet>}
         </div>
       </header>
       <div className="flex-1 flex flex-col overflow-y-auto">
         <main className="flex-1 pb-16 md:pb-0">{children}</main>
       </div>
 
-       {!isAdminView && isMobile && (
+       {isMobile && (
         <div className="fixed bottom-0 left-0 right-0 border-t bg-background z-10">
           <MainNav className="flex items-center justify-around h-16" isMobileNav={true} />
         </div>
