@@ -34,6 +34,7 @@ import {
   Edit,
   UserX,
   UserPlus,
+  Plane,
 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -96,6 +97,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Timestamp } from 'firebase/firestore';
 import { HolidayEmployeeManager } from '@/components/settings/holiday-employee-manager';
+import { Separator } from '@/components/ui/separator';
 
 
 interface FormattedAbsence extends Ausencia {
@@ -121,6 +123,7 @@ export default function VacationsPage() {
         vacationCampaigns,
         conversations,
         deleteHolidayReport,
+        calculateEmployeeVacations,
     } = dataProvider;
     const { toast } = useToast();
     
@@ -134,6 +137,8 @@ export default function VacationsPage() {
     const [selectedAbsenceTypeId, setSelectedAbsenceTypeId] = useState<string>('');
     const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(undefined);
     const [calendarMonth, setCalendarMonth] = useState(new Date());
+    const [vacationCalculation, setVacationCalculation] = useState<ReturnType<typeof calculateEmployeeVacations> | null>(null);
+
 
     // State for editing
     const [editingAbsence, setEditingAbsence] = useState<{ employee: any; absence: FormattedAbsence; } | null>(null);
@@ -268,6 +273,14 @@ export default function VacationsPage() {
         };
     }, [employees, holidayEmployees, employeeGroups, loading]);
     
+    // Recalculate vacation data when employee or year changes
+    useEffect(() => {
+        const emp = employees.find(e => e.id === selectedEmployeeId);
+        if (emp && selectedYear) {
+            const calculation = calculateEmployeeVacations(emp, Number(selectedYear));
+            setVacationCalculation(calculation);
+        }
+    }, [selectedEmployeeId, selectedYear, employees, calculateEmployeeVacations, weeklyRecords]);
 
      useEffect(() => {
         if (schedulableAbsenceTypes.length > 0 && !selectedAbsenceTypeId) {
@@ -718,6 +731,13 @@ export default function VacationsPage() {
         </div>
       );
 
+    const CalculationRow = ({ label, value, isBold = false, isNegative = false }: { label: string; value: string; isBold?: boolean; isNegative?: boolean; }) => (
+        <div className={cn("flex justify-between text-xs", isBold && "font-bold")}>
+            <span>{label}</span>
+            <span className={cn("font-mono", isNegative && "text-destructive")}>{value}</span>
+        </div>
+    );
+
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
              <Card>
@@ -730,8 +750,8 @@ export default function VacationsPage() {
                         Gestionar Empleados Eventuales
                     </Button>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                    <div className="space-y-4">
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
+                    <div className="lg:col-span-2 space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="space-y-2 sm:col-span-1">
                                 <label className="text-sm font-medium">Año</label>
@@ -773,39 +793,70 @@ export default function VacationsPage() {
                         </Button>
                     </div>
                     <div className="space-y-4">
-                      <p className="font-medium">Leyenda</p>
-                      <div className="flex flex-wrap gap-4 text-sm">
-                        <div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={plannerModifiersStyles.employeeAbsence}></div>Ausencia Programada</div>
-                        <div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={plannerModifiersStyles.other}></div>Festivo</div>
-                        <div className="flex items-center gap-2"><div className="h-4 w-4 rounded-full" style={plannerModifiersStyles.opening}></div>Festivo de Apertura</div>
-                      </div>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Días Programados ({selectedYear})</CardTitle>
+                                <Plane className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                            {vacationCalculation ? (
+                                <div className={cn(
+                                    "text-2xl font-bold",
+                                    vacationCalculation.vacationDaysTaken > vacationCalculation.vacationDaysAvailable ? "text-destructive" : ""
+                                )}>
+                                    {vacationCalculation.vacationDaysTaken} / {vacationCalculation.vacationDaysAvailable}
+                                    <span className="text-sm text-muted-foreground ml-1">días</span>
+                                </div>
+                            ) : (
+                                <Skeleton className="h-8 w-32" />
+                            )}
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="pb-2">
+                                 <CardTitle className="text-sm font-medium">Cálculo de Días Disponibles</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                {vacationCalculation ? (
+                                    <>
+                                        <CalculationRow label="Días prorrateados del año" value={vacationCalculation.proratedDays.toFixed(2)} />
+                                        <CalculationRow label={`Arrastrados del año anterior`} value={vacationCalculation.carryOverDays.toFixed(2)} isNegative={vacationCalculation.carryOverDays < 0} />
+                                        <CalculationRow label="Descuento por suspensión" value={`-${vacationCalculation.suspensionDeduction.toFixed(2)}`} isNegative={vacationCalculation.suspensionDeduction > 0} />
+                                        <Separator className="my-2" />
+                                        <CalculationRow label="Total Días Disponibles" value={String(vacationCalculation.vacationDaysAvailable)} isBold />
+                                    </>
+                                ) : (
+                                    <Skeleton className="h-20 w-full" />
+                                )}
+                            </CardContent>
+                        </Card>
 
-                       <div className="space-y-2 pt-6">
-                        <h4 className="font-medium">Historial de Ausencias Programadas ({selectedYear})</h4>
-                        <div className="border rounded-md max-h-60 overflow-y-auto">
+                       <div className="space-y-2 pt-2">
+                        <h4 className="font-medium text-sm">Historial de Ausencias ({selectedYear})</h4>
+                        <div className="border rounded-md max-h-40 overflow-y-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Tipo</TableHead>
-                                        <TableHead>Inicio</TableHead>
-                                        <TableHead>Fin</TableHead>
-                                        <TableHead className="text-right">Acciones</TableHead>
+                                        <TableHead className="text-xs h-8">Tipo</TableHead>
+                                        <TableHead className="text-xs h-8">Inicio</TableHead>
+                                        <TableHead className="text-xs h-8">Fin</TableHead>
+                                        <TableHead className="text-right text-xs h-8">Acciones</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {employeesWithAbsences[selectedEmployeeId]?.filter(a => getYear(a.startDate) === Number(selectedYear) || getYear(a.endDate) === Number(selectedYear)).map(absence => (
                                         <TableRow key={absence.id}>
-                                            <TableCell>{absenceTypes.find(at => at.id === absence.absenceTypeId)?.name || 'Desconocido'}</TableCell>
-                                            <TableCell>{format(absence.startDate, 'dd/MM/yyyy')}</TableCell>
-                                            <TableCell>{format(absence.endDate, 'dd/MM/yyyy')}</TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon" disabled={isGenerating || absence.id.startsWith('weekly-')} onClick={() => setEditingAbsence({ employee: allEmployeesForQuadrant.find(e => e.id === selectedEmployeeId)!, absence })}>
-                                                    <Edit className="h-4 w-4"/>
+                                            <TableCell className="text-xs py-1">{absenceTypes.find(at => at.id === absence.absenceTypeId)?.name || 'Desconocido'}</TableCell>
+                                            <TableCell className="text-xs py-1">{format(absence.startDate, 'dd/MM/yy')}</TableCell>
+                                            <TableCell className="text-xs py-1">{format(absence.endDate, 'dd/MM/yy')}</TableCell>
+                                            <TableCell className="text-right py-0">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={isGenerating || absence.id.startsWith('weekly-')} onClick={() => setEditingAbsence({ employee: allEmployeesForQuadrant.find(e => e.id === selectedEmployeeId)!, absence })}>
+                                                    <Edit className="h-3 w-3"/>
                                                 </Button>
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
-                                                        <Button variant="ghost" size="icon" disabled={isGenerating || absence.id.startsWith('weekly-')}>
-                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={isGenerating || absence.id.startsWith('weekly-')}>
+                                                            <Trash2 className="h-3 w-3 text-destructive" />
                                                         </Button>
                                                     </AlertDialogTrigger>
                                                     <AlertDialogContent>
@@ -826,7 +877,7 @@ export default function VacationsPage() {
                                     ))}
                                     {(!employeesWithAbsences[selectedEmployeeId] || employeesWithAbsences[selectedEmployeeId].length === 0) && (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
+                                            <TableCell colSpan={4} className="text-center text-muted-foreground h-24 text-xs">
                                                 No hay ausencias programadas para este empleado en {selectedYear}.
                                             </TableCell>
                                         </TableRow>
