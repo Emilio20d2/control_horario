@@ -111,11 +111,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const MainNav = ({className, isMobileNav}: {className?: string, isMobileNav?: boolean}) => (
     <nav className={cn(
         "flex items-center gap-1",
-        isMobileNav && "flex-col !items-stretch"
+        isMobileNav ? "flex-col !items-stretch" : (isMobile && !isAdminView ? 'justify-around w-full' : '')
     )}>
         {menuItems.map((item) => {
              const isActive = pathname.startsWith(item.href);
-             const isEmployeeViewAndNotMobile = !isAdminView && !isMobileNav;
+             const isEmployeeViewAndNotMobileNav = !isAdminView && !isMobileNav;
 
             return (
                 <Link
@@ -125,7 +125,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     className={cn(
                         'flex flex-col items-center justify-center gap-1 p-2 rounded-md transition-colors relative',
                         isMobileNav ? 'w-full text-foreground' : '',
-                        isEmployeeViewAndNotMobile ? 'h-16' : '',
+                        isEmployeeViewAndNotMobileNav ? 'h-16' : '',
                         isActive
                             ? 'bg-primary text-white font-semibold'
                             : 'text-foreground hover:bg-accent hover:text-accent-foreground'
@@ -133,12 +133,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 >
                     <item.icon className={cn(
                         "h-5 w-5",
-                        isEmployeeViewAndNotMobile && 'h-6 w-6'
+                        isEmployeeViewAndNotMobileNav && 'h-7 w-7'
                         )} />
                     <span className={cn(
                         "text-[10px] font-medium text-center",
                         isMobileNav && "text-base",
-                        isEmployeeViewAndNotMobile && 'text-xs'
+                        isEmployeeViewAndNotMobileNav && 'text-xs'
                     )}>{item.label}</span>
                     {item.notification && (
                          <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
