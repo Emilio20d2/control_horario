@@ -700,21 +700,28 @@ export default function VacationsPage() {
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                     <div className="space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="space-y-2 sm:col-span-1">
+                                <label className="text-sm font-medium">Año</label>
+                                <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+                                    <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                                    <SelectContent>{availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2 sm:col-span-2">
                                 <label className="text-sm font-medium">Empleado</label>
                                 <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
                                     <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                                     <SelectContent>{activeEmployees.map(emp => <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Tipo de Ausencia</label>
-                                <Select value={selectedAbsenceTypeId} onValueChange={setSelectedAbsenceTypeId} disabled={!selectedEmployeeId}>
-                                    <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                                    <SelectContent>{schedulableAbsenceTypes.map(at => <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>)}</SelectContent>
-                                </Select>
-                            </div>
+                        </div>
+                        <div className="space-y-2">
+                             <label className="text-sm font-medium">Tipo de Ausencia</label>
+                            <Select value={selectedAbsenceTypeId} onValueChange={setSelectedAbsenceTypeId} disabled={!selectedEmployeeId}>
+                                <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                                <SelectContent>{schedulableAbsenceTypes.map(at => <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>)}</SelectContent>
+                            </Select>
                         </div>
                         <Calendar
                             mode="range"
@@ -850,10 +857,6 @@ export default function VacationsPage() {
                  <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Programador vacaciones</CardTitle>
                         <div className="flex items-center gap-2">
-                             <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
-                                <SelectTrigger className='w-32'><SelectValue /></SelectTrigger>
-                                <SelectContent>{availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
-                            </Select>
                             <div className="flex items-center gap-1 border rounded-md p-1">
                                 <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, substitutes, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileDown className="mr-2 h-4 w-4" /> Cuadrante
