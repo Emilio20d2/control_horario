@@ -2,11 +2,12 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   LayoutDashboard,
   Users,
@@ -57,6 +58,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { unconfirmedWeeksDetails, appUser, employeeRecord, viewMode, setViewMode, loading: dataLoading, unreadMessageCount } = useDataProvider();
   const isMobile = useIsMobile();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   
   useEffect(() => {
     if (!appUser || !appUser.trueRole) return;
@@ -117,17 +119,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => isMobileNav && setMobileNavOpen(false)}
                     className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors relative',
-                        isMobileNav && 'flex-col justify-center h-16',
-                        !isMobileNav && (item.label === 'Ayuda' ? 'p-2' : ''),
+                        'flex items-center gap-3 px-3 py-2 rounded-md text-base md:text-sm font-medium transition-colors relative',
+                        isMobileNav && 'text-foreground',
                         isActive
                             ? 'bg-primary text-primary-foreground'
                             : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                     )}
                 >
                     <item.icon className="h-5 w-5" />
-                    {(!isMobileNav && item.label === 'Ayuda') ? null : <span className={cn(isMobileNav && 'text-xs')}>{item.label}</span>}
+                    <span>{item.label}</span>
                     {item.notification && (
                          <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
@@ -156,9 +158,27 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-screen w-full flex-col bg-background">
       <header className="sticky top-0 inset-x-0 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">
-        <Link href={isAdminView ? "/dashboard" : "/my-profile"} className="flex items-center gap-2 font-semibold">
-            <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
-        </Link>
+        
+        <div className="flex items-center gap-2">
+            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+                <SheetTrigger asChild>
+                    <Button variant="outline" size="icon" className="md:hidden">
+                        <Menu className="h-5 w-5" />
+                        <span className="sr-only">Abrir menú</span>
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="flex flex-col">
+                    <Link href={isAdminView ? "/dashboard" : "/my-profile"} className="flex items-center gap-2 font-semibold mb-4">
+                        <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
+                        <span>Control Horario</span>
+                    </Link>
+                    <MainNav className="flex flex-col gap-2" isMobileNav={true} />
+                </SheetContent>
+            </Sheet>
+            <Link href={isAdminView ? "/dashboard" : "/my-profile"} className="hidden md:flex items-center gap-2 font-semibold">
+                <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
+            </Link>
+        </div>
         
         <div className="hidden md:flex flex-1 justify-center">
             <MainNav className="flex items-center gap-1" />
@@ -241,15 +261,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
       <div className="flex-1 flex flex-col overflow-y-auto">
-        <main className="flex-1 pb-16 md:pb-0">{children}</main>
+        <main className="flex-1">{children}</main>
       </div>
-
-       {isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 border-t bg-background z-10">
-          <MainNav className="flex items-center justify-around h-16" isMobileNav={true} />
-        </div>
-      )}
-
     </div>
   );
 }
+
+    
