@@ -186,7 +186,9 @@ export default function VacationsPage() {
     }, [activeEmployees, selectedEmployeeId]);
     
     useEffect(() => {
-        setCalendarMonth(new Date(Number(selectedYear), 0, 1));
+        if (selectedYear) {
+            setCalendarMonth(new Date(Number(selectedYear), 0, 1));
+        }
     }, [selectedYear]);
 
     useEffect(() => {
@@ -650,7 +652,7 @@ export default function VacationsPage() {
 
                                 return (
                                     <div key={item.employee.id} className="group/cell flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[11px] leading-tight hover:bg-black/5" >
-                                        <button onClick={() => setEditingAbsence({employee: item.employee, absence: item.absence})} className={cn("flex-grow text-left truncate", isSpecialAbsence && 'text-blue-600')}>
+                                        <button onClick={() => setEditingAbsence({employee: item.employee, absence: item.absence})} className={cn("flex-grow text-left truncate", isSpecialAbsence && 'text-blue-600 font-semibold')}>
                                             {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
                                         </button>
                                         <div className="flex-shrink-0">
@@ -658,7 +660,7 @@ export default function VacationsPage() {
                                             <PopoverTrigger asChild>
                                                 <button className="p-0.5 rounded-full hover:bg-slate-200">
                                                         {substituteInfo ? (
-                                                            <span className="text-red-600 font-semibold">{substituteInfo.substituteName}</span>
+                                                            <span className="text-red-600 font-bold">{substituteInfo.substituteName}</span>
                                                         ) : (
                                                             <Plus className="h-3 w-3" />
                                                         )}
@@ -897,7 +899,7 @@ export default function VacationsPage() {
                                             </SelectContent>
                                         </Select>
                                         <Button onClick={handleGenerateStatusReport} disabled={isGenerating || !selectedCampaignId} size="sm" variant="ghost" className="text-xs">
-                                            <SunSnow className="mr-2 h-4 w-4" /> Estado Solicitudes
+                                            <SunSnow className="mr-2 h-4 w-4" /> Peticiones Vacaciones
                                         </Button>
                                     </>
                                 )}
@@ -914,5 +916,6 @@ export default function VacationsPage() {
         </div>
     );
 }
+
 
 
