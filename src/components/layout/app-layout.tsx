@@ -138,7 +138,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     <span className={cn(
                         "font-medium text-center",
                         isMobileNav ? "text-base" : "text-[10px]",
-                        isEmployeeViewAndNotMobileNav && 'text-xs',
+                        isEmployeeViewAndNotMobileNav && 'text-sm',
                     )}>{item.label}</span>
 
                     {item.notification && (
@@ -171,16 +171,33 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 inset-x-0 flex h-20 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">
         
         <div className="flex items-center gap-2">
-            {!isMobile && isAdminView && (
-              <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-                  <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
-              </Link>
+            {isMobile && isAdminView && (
+              <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+                <SheetTrigger asChild>
+                    <Button variant="outline" size="icon">
+                        <Menu className="h-5 w-5" />
+                        <span className="sr-only">Abrir menú</span>
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="flex flex-col">
+                    <Link href="/dashboard" className="flex items-center gap-2 font-semibold mb-4">
+                        <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
+                        <span>Control Horario</span>
+                    </Link>
+                    <MainNav isMobileNav={true} />
+                </SheetContent>
+              </Sheet>
             )}
         </div>
         
         <div className="flex-1 flex justify-center">
              {!isMobile && <MainNav />}
              {isMobile && !isAdminView && <MainNav />}
+             {isAdminView && (
+              <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+                  <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
+              </Link>
+            )}
         </div>
         
         <div className="flex items-center gap-2 ml-auto">
@@ -267,24 +284,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
-
-             {isMobile && isAdminView && (
-              <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-                <SheetTrigger asChild>
-                    <Button variant="outline" size="icon">
-                        <Menu className="h-5 w-5" />
-                        <span className="sr-only">Abrir menú</span>
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="flex flex-col">
-                    <Link href="/dashboard" className="flex items-center gap-2 font-semibold mb-4">
-                        <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
-                        <span>Control Horario</span>
-                    </Link>
-                    <MainNav isMobileNav={true} />
-                </SheetContent>
-              </Sheet>
-            )}
         </div>
       </header>
       <div className="flex-1 flex flex-col overflow-y-auto">
