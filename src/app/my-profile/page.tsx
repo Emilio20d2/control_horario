@@ -44,7 +44,7 @@ export default function MyProfilePage() {
     useEffect(() => {
         if (!dataLoading && employee) {
             setDisplayBalances(getEmployeeFinalBalances(employee.id));
-            setVacationInfo(calculateEmployeeVacations(employee, currentYear));
+            setVacationInfo(calculateEmployeeVacations(employee, currentYear, 'confirmed'));
         }
     }, [employee, dataLoading, weeklyRecords, getEmployeeFinalBalances, calculateEmployeeVacations, currentYear]);
 

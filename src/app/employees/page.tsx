@@ -108,7 +108,7 @@ export default function EmployeesPage() {
             ))
             ) : employees.map((employee) => {
             const employeeBalances = showBalances && !balancesLoading ? balances[employee.id] : undefined;
-            const { vacationDaysTaken, vacationDaysAvailable } = showBalances ? calculateEmployeeVacations(employee) : { vacationDaysTaken: 0, vacationDaysAvailable: 31 };
+            const { vacationDaysTaken, vacationDaysAvailable } = showBalances ? calculateEmployeeVacations(employee, new Date().getFullYear(), 'confirmed') : { vacationDaysTaken: 0, vacationDaysAvailable: 31 };
             const lastPeriod = [...(employee.employmentPeriods || [])].sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
             return (
             <TableRow key={employee.id}>
@@ -188,7 +188,7 @@ export default function EmployeesPage() {
                 ) : employees.length > 0 ? (
                     employees.map(employee => {
                         const employeeBalances = showBalances && !balancesLoading ? balances[employee.id] : undefined;
-                        const vacationInfo = showBalances ? calculateEmployeeVacations(employee) : undefined;
+                        const vacationInfo = showBalances ? calculateEmployeeVacations(employee, new Date().getFullYear(), 'confirmed') : undefined;
                         const lastPeriod = [...(employee.employmentPeriods || [])].sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
                         return (
                             <EmployeeCard 

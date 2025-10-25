@@ -49,7 +49,7 @@ export interface EmploymentPeriod {
     initialOrdinaryHours: number;
     initialHolidayHours: number;
     initialLeaveHours: number;
-    vacationDays2024?: number;
+    vacationDays2024?: number | null;
     workHoursHistory?: WorkHoursRecord[];
     /**
      * Historical log of an employee's work calendars. This array allows for multiple
@@ -201,7 +201,7 @@ export interface EmployeeFormData {
     initialOrdinaryHours?: number;
     initialHolidayHours?: number;
     initialLeaveHours?: number;
-    vacationDays2024?: number;
+    vacationDays?: number;
     weeklySchedules: WeeklyScheduleData[];
     newWeeklySchedule?: WeeklyScheduleData;
 };

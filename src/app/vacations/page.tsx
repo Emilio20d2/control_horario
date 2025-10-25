@@ -277,7 +277,7 @@ export default function VacationsPage() {
     useEffect(() => {
         const emp = employees.find(e => e.id === selectedEmployeeId);
         if (emp && selectedYear) {
-            const calculation = calculateEmployeeVacations(emp, Number(selectedYear));
+            const calculation = calculateEmployeeVacations(emp, Number(selectedYear), 'programmed');
             setVacationCalculation(calculation);
         }
     }, [selectedEmployeeId, selectedYear, employees, calculateEmployeeVacations, weeklyRecords]);

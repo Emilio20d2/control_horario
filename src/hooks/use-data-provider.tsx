@@ -111,7 +111,7 @@ deleteContractType: (id: string) => Promise<void>;
   updateEmployeeWorkHours: (employeeId: string, weeklyHours: number, effectiveDate: string) => Promise<void>;
   getWeekId: (d: Date) => string;
   processEmployeeWeekData: (emp: Employee, weekDays: Date[], weekId: string) => DailyEmployeeData | null;
-  calculateEmployeeVacations: (emp: Employee, year?: number) => {
+  calculateEmployeeVacations: (emp: Employee, year?: number, mode?: 'confirmed' | 'programmed') => {
     vacationDaysTaken: number;
     suspensionDays: number;
     vacationDaysAvailable: number;
@@ -383,8 +383,8 @@ const unreadMessageCount = useMemo(() => {
     setUsers(freshUsers);
   };
 
-  const calculateEmployeeVacations = useCallback((emp: Employee, calculationYear?: number) => {
-    const year = calculationYear ?? new Date().getFullYear();
+  const calculateEmployeeVacations = useCallback((emp: Employee, calculationYear?: number, mode: 'confirmed' | 'programmed' = 'programmed') => {
+    const year = calculationYear ?? getYear(new Date());
     const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
     const suspensionTypeIds = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.id));
     const suspensionAbbrs = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.abbreviation));
@@ -395,27 +395,29 @@ const unreadMessageCount = useMemo(() => {
     // --- Calculate days taken and suspension days IN THE CURRENT YEAR ---
     let vacationDaysTakenInCurrentYear = 0;
     const currentYearDayMap = new Map<string, 'V' | 'S'>();
-    
-    emp.employmentPeriods?.forEach(period => {
-      period.scheduledAbsences?.forEach(absence => {
-        if (!absence.endDate) return;
-        const absenceCode = suspensionTypeIds.has(absence.absenceTypeId) ? 'S' : (absence.absenceTypeId === vacationType.id ? 'V' : null);
-        if (!absenceCode) return;
-        eachDayOfInterval({ start: startOfDay(absence.startDate), end: endOfDay(absence.endDate) }).forEach(day => {
-            if (getYear(day) === year) {
-                currentYearDayMap.set(format(day, 'yyyy-MM-dd'), absenceCode);
-            }
+
+    if (mode === 'programmed') {
+        emp.employmentPeriods?.forEach(period => {
+          period.scheduledAbsences?.forEach(absence => {
+            if (!absence.endDate) return;
+            const absenceCode = suspensionTypeIds.has(absence.absenceTypeId) ? 'S' : (absence.absenceTypeId === vacationType.id ? 'V' : null);
+            if (!absenceCode) return;
+            eachDayOfInterval({ start: startOfDay(absence.startDate), end: endOfDay(absence.endDate) }).forEach(day => {
+                if (getYear(day) === year) {
+                    currentYearDayMap.set(format(day, 'yyyy-MM-dd'), absenceCode);
+                }
+            });
+          });
         });
-      });
-    });
+    }
     
     Object.values(weeklyRecords).forEach(record => {
       const empWeekData = record.weekData[emp.id];
-      if (!empWeekData?.days) return;
+      if (!empWeekData?.days || !empWeekData.confirmed) return;
       Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
           if (getYear(parseISO(dayStr)) !== year) return;
           const dayKey = format(parseISO(dayStr), 'yyyy-MM-dd');
-          if (currentYearDayMap.has(dayKey)) return; 
+          if (currentYearDayMap.has(dayKey) && mode === 'programmed') return; // Don't double count if already in scheduledAbsences for programmed mode
           if (dayData.absence && dayData.absence !== 'ninguna') {
               if (suspensionAbbrs.has(dayData.absence)) currentYearDayMap.set(dayKey, 'S');
               else if (dayData.absence === vacationType.abbreviation) currentYearDayMap.set(dayKey, 'V');
@@ -437,7 +439,7 @@ const unreadMessageCount = useMemo(() => {
       const firstPeriod = emp.employmentPeriods?.[0];
       carryOverDays = firstPeriod?.vacationDays2024 ?? 0;
     } else {
-      const { vacationDaysAvailable: prevYearAvailable, vacationDaysTaken: prevYearTaken } = calculateEmployeeVacations(emp, previousYear);
+      const { vacationDaysAvailable: prevYearAvailable, vacationDaysTaken: prevYearTaken } = calculateEmployeeVacations(emp, previousYear, 'confirmed');
       carryOverDays = prevYearAvailable - prevYearTaken;
     }
     
