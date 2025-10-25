@@ -710,7 +710,7 @@ export default function VacationsPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="space-y-2 sm:col-span-1">
                                 <label className="text-sm font-medium">Año</label>
-                                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                                <Select value={selectedYear} onValueChange={(value) => setSelectedYear(value)}>
                                     <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                                     <SelectContent>{availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
                                 </Select>
