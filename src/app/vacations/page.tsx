@@ -124,7 +124,7 @@ export default function VacationsPage() {
     } = dataProvider;
     const { toast } = useToast();
     
-    const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+    const [selectedYear, setSelectedYear] = useState(() => String(new Date().getFullYear()));
     const [isGenerating, setIsGenerating] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [isHolidayEmployeeManagerOpen, setIsHolidayEmployeeManagerOpen] = useState(false);
@@ -186,7 +186,7 @@ export default function VacationsPage() {
     }, [activeEmployees, selectedEmployeeId]);
     
     useEffect(() => {
-        setCalendarMonth(new Date(selectedYear, 0, 1));
+        setCalendarMonth(new Date(Number(selectedYear), 0, 1));
     }, [selectedYear]);
 
     useEffect(() => {
@@ -349,7 +349,7 @@ export default function VacationsPage() {
             employeesWithAbsences[emp.id] = periods;
         });
         
-        const year = selectedYear;
+        const year = Number(selectedYear);
         const yearStartBoundary = startOfYear(new Date(year, 0, 1));
         const yearEndBoundary = endOfYear(new Date(year, 11, 31));
         
@@ -381,7 +381,7 @@ export default function VacationsPage() {
             allEmployeesForQuadrant.forEach(emp => {
                 const empAbsences = employeesWithAbsences[emp.id];
                 const absenceThisWeek = empAbsences?.find(a => 
-                    isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end) && getYear(a.startDate) === selectedYear
+                    isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end) && getYear(a.startDate) === year
                 );
 
                 if (absenceThisWeek) {
@@ -407,7 +407,7 @@ export default function VacationsPage() {
                 }, 0);
             
             if (latestYearWithAbsence > 0 && availableYears.includes(latestYearWithAbsence)) {
-                setSelectedYear(latestYearWithAbsence);
+                setSelectedYear(String(latestYearWithAbsence));
             }
         }
     }, [loading, employeesWithAbsences, availableYears]);
@@ -516,7 +516,7 @@ export default function VacationsPage() {
     const editModifiersStyles = { ...plannerModifiersStyles };
 
     const { weeksOfYear } = useMemo(() => {
-        const year = selectedYear;
+        const year = Number(selectedYear);
         const yearStartBoundary = startOfYear(new Date(year, 0, 1));
         const yearEndBoundary = endOfYear(new Date(year, 11, 31));
         
@@ -710,7 +710,7 @@ export default function VacationsPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="space-y-2 sm:col-span-1">
                                 <label className="text-sm font-medium">Año</label>
-                                <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+                                <Select value={selectedYear} onValueChange={setSelectedYear}>
                                     <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                                     <SelectContent>{availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
                                 </Select>
@@ -768,7 +768,7 @@ export default function VacationsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {employeesWithAbsences[selectedEmployeeId]?.filter(a => getYear(a.startDate) === selectedYear || getYear(a.endDate) === selectedYear).map(absence => (
+                                    {employeesWithAbsences[selectedEmployeeId]?.filter(a => getYear(a.startDate) === Number(selectedYear) || getYear(a.endDate) === Number(selectedYear)).map(absence => (
                                         <TableRow key={absence.id}>
                                             <TableCell>{absenceTypes.find(at => at.id === absence.absenceTypeId)?.name || 'Desconocido'}</TableCell>
                                             <TableCell>{format(absence.startDate, 'dd/MM/yyyy')}</TableCell>
@@ -873,10 +873,10 @@ export default function VacationsPage() {
                     </div>
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1 border rounded-md p-1">
-                                <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, substitutes, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost">
+                                <Button onClick={() => generateQuadrantReportPDF(Number(selectedYear), weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, substitutes, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileDown className="mr-2 h-4 w-4" /> Cuadrante
                                 </Button>
-                                <Button onClick={() => generateSignatureReportPDF(selectedYear, allEmployeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost">
+                                <Button onClick={() => generateSignatureReportPDF(Number(selectedYear), allEmployeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileSignature className="mr-2 h-4 w-4" /> Firmas
                                 </Button>
                                 {activeCampaigns.length > 0 && (
