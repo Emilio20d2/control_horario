@@ -698,8 +698,12 @@ export default function VacationsPage() {
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
              <Card>
-                <CardHeader>
+                <CardHeader className="flex-row justify-between items-center">
                     <CardTitle>Planificar Nueva Ausencia</CardTitle>
+                    <Button variant="outline" size="sm" onClick={() => setIsHolidayEmployeeManagerOpen(true)}>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Gestionar Empleados Eventuales
+                    </Button>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                     <div className="space-y-4">
@@ -864,24 +868,10 @@ export default function VacationsPage() {
 
             <Card>
                  <CardHeader className="flex flex-row items-center justify-between">
-                    <div className="flex items-center gap-4">
+                    <div>
                          <CardTitle>Programador vacaciones</CardTitle>
-                         <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
-                            <SelectTrigger className="w-32 h-8 text-xs">
-                                <SelectValue placeholder="Año" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableYears.map(year => (
-                                    <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
                     </div>
                         <div className="flex items-center gap-2">
-                             <Button variant="outline" size="sm" onClick={() => setIsHolidayEmployeeManagerOpen(true)}>
-                                <UserPlus className="mr-2 h-4 w-4" />
-                                Gestionar Empleados Eventuales
-                            </Button>
                             <div className="flex items-center gap-1 border rounded-md p-1">
                                 <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, substitutes, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileDown className="mr-2 h-4 w-4" /> Cuadrante
