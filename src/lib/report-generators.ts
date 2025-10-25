@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -609,40 +610,32 @@ export const generateRequestStatusReportPDF = (
         if (absencesForCampaign.length === 0) {
             return {
                 name: emp.name,
-                status: 'PENDIENTE DE SOLICITUD',
-                original: '',
-                current: '',
+                originalRequestText: 'PENDIENTE DE SOLICITUD',
+                modifiedRequestText: '',
             };
         }
 
         const absence = absencesForCampaign.sort((a,b) => a.startDate.getTime() - b.startDate.getTime())[0];
         const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
-
-        let originalText = '';
-        if (absence.originalRequest?.startDate) {
-            originalText = `${absenceType?.abbreviation}: ${format(absence.originalRequest.startDate, 'dd/MM/yy')} - ${absence.originalRequest.endDate ? format(absence.originalRequest.endDate, 'dd/MM/yy') : ''}`;
-        }
+        
+        const originalText = (absence.originalRequest && absence.originalRequest.startDate)
+            ? `${absenceType?.abbreviation}: ${format(absence.originalRequest.startDate, 'dd/MM/yy')} - ${absence.originalRequest.endDate ? format(absence.originalRequest.endDate, 'dd/MM/yy') : ''}`
+            : 'PENDIENTE DE SOLICITUD';
         
         const currentText = `${absenceType?.abbreviation}: ${format(absence.startDate, 'dd/MM/yy')} - ${absence.endDate ? format(absence.endDate, 'dd/MM/yy') : ''}`;
 
-        const isModified = !isEqual(absence.startDate, absence.originalRequest.startDate) || !isEqual(absence.endDate || 0, absence.originalRequest.endDate || 0);
+        const isModified = (absence.originalRequest?.startDate && !isEqual(absence.startDate, absence.originalRequest.startDate)) ||
+                           (absence.originalRequest?.endDate && !isEqual(absence.endDate || 0, absence.originalRequest.endDate || 0));
 
         return {
             name: emp.name,
-            status: isModified ? 'Modificada' : 'Original',
-            original: originalText,
-            current: isModified ? currentText : '',
+            originalRequestText: originalText,
+            modifiedRequestText: isModified ? currentText : '',
         };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
     const head = [['Empleado', 'Solicitud Original', 'Estado/Modificación']];
-    const body = reportData.map(d => {
-        let statusCell = d.status;
-        if(d.status === 'Modificada') {
-            statusCell = `Modificada a:\n${d.current}`
-        }
-        return [d.name, d.original, statusCell]
-    });
+    const body = reportData.map(d => [d.name, d.originalRequestText, d.modifiedRequestText]);
 
     autoTable(doc, {
         head: head,
@@ -652,13 +645,13 @@ export const generateRequestStatusReportPDF = (
         headStyles: { fillColor: [41, 128, 185], textColor: 255 },
         columnStyles: { 1: { cellWidth: 60 }, 2: { cellWidth: 60 } },
         didDrawCell: (data) => {
-            if (data.section === 'body' && data.column.index > 0) {
-                const rawText = data.cell.raw as string;
-                if (rawText.includes('PENDIENTE')) {
+            if (data.section === 'body') {
+                if (data.column.index === 1 && data.cell.raw === 'PENDIENTE DE SOLICITUD') {
                     doc.setTextColor(220, 53, 69); // Destructive color
                     doc.setFont(doc.getFont().fontName, 'bold');
-                } else if (rawText.includes('Modificada')) {
+                } else if (data.column.index === 2 && data.cell.raw !== '') {
                      doc.setTextColor(255, 193, 7); // Warning/Orange color
+                     doc.setFont(doc.getFont().fontName, 'bold');
                 }
             }
         },
@@ -667,6 +660,4 @@ export const generateRequestStatusReportPDF = (
     const safeTitle = campaign.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     doc.save(`informe_peticiones_${safeTitle}.pdf`);
 };
-
-
     
