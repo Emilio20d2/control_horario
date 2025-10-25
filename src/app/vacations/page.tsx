@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -408,7 +408,11 @@ export default function VacationsPage() {
                 }, 0);
             
             if (latestYearWithAbsence > 0 && availableYears.includes(latestYearWithAbsence)) {
-                setSelectedYear(String(latestYearWithAbsence));
+                // Only set if not manually changed
+                // This check avoids overwriting a manual selection if data reloads
+                if (!isInitialLoad.current) {
+                    setSelectedYear(String(latestYearWithAbsence));
+                }
             }
             isInitialLoad.current = false;
         }
