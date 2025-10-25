@@ -392,7 +392,6 @@ const unreadMessageCount = useMemo(() => {
     const defaultReturn = { vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31, baseDays: 31, carryOverDays: 0, suspensionDeduction: 0, proratedDays: 0, vacationDays2024: 0 };
     if (!vacationType) return defaultReturn;
     
-    // --- CALCULATE FOR CURRENT YEAR ---
     const currentYearStart = startOfYear(new Date(year, 0, 1));
     const currentYearEnd = endOfYear(new Date(year, 11, 31));
     let contractDaysInCurrentYear = 0;
@@ -453,10 +452,16 @@ const unreadMessageCount = useMemo(() => {
     });
 
     // --- CALCULATE CARRY-OVER FROM PREVIOUS YEAR ---
-    const previousYear = year - 1;
-    const { vacationDaysAvailable: prevYearAvailable, vacationDaysTaken: prevYearTaken } = calculateEmployeeVacations(emp, previousYear);
-    const carryOverDays = prevYearAvailable - prevYearTaken;
-
+    let carryOverDays = 0;
+    if (year === 2025) {
+        // Special logic for 2025: use the specific field.
+        const firstPeriod = emp.employmentPeriods?.[0];
+        carryOverDays = firstPeriod?.vacationDays2024 ?? 0;
+    } else if (year > 2025) {
+        const previousYear = year - 1;
+        const { vacationDaysAvailable: prevYearAvailable, vacationDaysTaken: prevYearTaken } = calculateEmployeeVacations(emp, previousYear);
+        carryOverDays = prevYearAvailable - prevYearTaken;
+    }
 
     const baseDays = 31;
     const daysInCurrentYear = differenceInDays(currentYearEnd, currentYearStart) + 1;
@@ -473,7 +478,7 @@ const unreadMessageCount = useMemo(() => {
         carryOverDays,
         suspensionDeduction,
         proratedDays,
-        vacationDays2024: 0, // Deprecated, but keep for type compatibility
+        vacationDays2024: firstPeriodThisYear?.vacationDays2024 ?? 0,
     };
 }, [absenceTypes, weeklyRecords, employees]);
 
