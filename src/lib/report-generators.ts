@@ -601,40 +601,42 @@ export const generateRequestStatusReportPDF = (
     const reportData = allEmployees.map(emp => {
         const absencesForCampaign = (emp.employmentPeriods || [])
             .flatMap(p => p.scheduledAbsences || [])
-            .filter(a => {
-                if (!campaignAbsenceTypes.has(a.absenceTypeId)) return false;
+            .filter((a): a is ScheduledAbsence & { endDate: Date, originalRequest: { startDate: Date, endDate: Date | null } } => {
+                if (!a.endDate || !campaignAbsenceTypes.has(a.absenceTypeId)) return false;
                 const absenceStart = a.startDate;
                 return isAfter(absenceStart, campaignStart) && isBefore(absenceStart, campaignEnd);
             });
         
-        if (absencesForCampaign.length === 0) {
-            return {
-                name: emp.name,
-                originalRequestText: 'PENDIENTE DE SOLICITUD',
-                modifiedRequestText: '',
-            };
+        let originalRequestText = 'PENDIENTE DE SOLICITUD';
+        let modifiedRequestText = '';
+        
+        if (absencesForCampaign.length > 0) {
+            const mainAbsence = absencesForCampaign.sort((a,b) => a.startDate.getTime() - b.startDate.getTime())[0];
+            const absenceType = absenceTypes.find(at => at.id === mainAbsence.absenceTypeId);
+
+            if (mainAbsence.originalRequest && mainAbsence.originalRequest.startDate) {
+                originalRequestText = `${absenceType?.abbreviation}: ${format(mainAbsence.originalRequest.startDate, 'dd/MM/yy')} - ${mainAbsence.originalRequest.endDate ? format(mainAbsence.originalRequest.endDate, 'dd/MM/yy') : ''}`;
+                
+                const isModified = !isEqual(mainAbsence.startDate, mainAbsence.originalRequest.startDate) || !isEqual(mainAbsence.endDate, mainAbsence.originalRequest.endDate || mainAbsence.endDate);
+
+                if (isModified) {
+                     modifiedRequestText = `${absenceType?.abbreviation}: ${format(mainAbsence.startDate, 'dd/MM/yy')} - ${format(mainAbsence.endDate, 'dd/MM/yy')}`;
+                }
+            } else {
+                // This case handles data created before the 'originalRequest' field existed. Treat current as original.
+                 originalRequestText = `${absenceType?.abbreviation}: ${format(mainAbsence.startDate, 'dd/MM/yy')} - ${format(mainAbsence.endDate, 'dd/MM/yy')}`;
+            }
         }
-
-        const absence = absencesForCampaign.sort((a,b) => a.startDate.getTime() - b.startDate.getTime())[0];
-        const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
-        
-        const originalText = (absence.originalRequest && absence.originalRequest.startDate)
-            ? `${absenceType?.abbreviation}: ${format(absence.originalRequest.startDate, 'dd/MM/yy')} - ${absence.originalRequest.endDate ? format(absence.originalRequest.endDate, 'dd/MM/yy') : ''}`
-            : 'PENDIENTE DE SOLICITUD';
-        
-        const currentText = `${absenceType?.abbreviation}: ${format(absence.startDate, 'dd/MM/yy')} - ${absence.endDate ? format(absence.endDate, 'dd/MM/yy') : ''}`;
-
-        const isModified = (absence.originalRequest?.startDate && !isEqual(absence.startDate, absence.originalRequest.startDate)) ||
-                           (absence.originalRequest?.endDate && !isEqual(absence.endDate || 0, absence.originalRequest.endDate || 0));
 
         return {
             name: emp.name,
-            originalRequestText: originalText,
-            modifiedRequestText: isModified ? currentText : '',
+            originalRequestText,
+            modifiedRequestText,
         };
+
     }).sort((a, b) => a.name.localeCompare(b.name));
 
-    const head = [['Empleado', 'Solicitud Original', 'Estado/Modificación']];
+    const head = [['Empleado', 'Solicitud Original', 'Modificacion']];
     const body = reportData.map(d => [d.name, d.originalRequestText, d.modifiedRequestText]);
 
     autoTable(doc, {
