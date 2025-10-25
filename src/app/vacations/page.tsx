@@ -697,10 +697,6 @@ export default function VacationsPage() {
              <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Planificar Nueva Ausencia</CardTitle>
-                    <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
-                        <SelectTrigger className='w-32'><SelectValue /></SelectTrigger>
-                        <SelectContent>{availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
-                    </Select>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                     <div className="space-y-4">
@@ -854,6 +850,10 @@ export default function VacationsPage() {
                  <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Programador vacaciones</CardTitle>
                         <div className="flex items-center gap-2">
+                             <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+                                <SelectTrigger className='w-32'><SelectValue /></SelectTrigger>
+                                <SelectContent>{availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+                            </Select>
                             <div className="flex items-center gap-1 border rounded-md p-1">
                                 <Button onClick={() => generateQuadrantReportPDF(selectedYear, weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, substitutes, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileDown className="mr-2 h-4 w-4" /> Cuadrante
