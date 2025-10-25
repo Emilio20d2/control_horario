@@ -407,12 +407,11 @@ export default function VacationsPage() {
                     return year > latest ? year : latest;
                 }, 0);
             
-            if (latestYearWithAbsence > 0 && availableYears.includes(latestYearWithAbsence)) {
-                // Only set if not manually changed
-                // This check avoids overwriting a manual selection if data reloads
-                if (!isInitialLoad.current) {
-                    setSelectedYear(String(latestYearWithAbsence));
-                }
+            const currentYear = new Date().getFullYear();
+            const yearToSet = latestYearWithAbsence > 0 ? latestYearWithAbsence : currentYear;
+
+            if (availableYears.includes(yearToSet)) {
+                setSelectedYear(String(yearToSet));
             }
             isInitialLoad.current = false;
         }
@@ -645,27 +644,24 @@ export default function VacationsPage() {
                            <div className="flex flex-col gap-0.5 relative h-full">
                             {employeesWithAbsenceInWeek.map(item => {
                                 if (!item) return null;
-                                const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
-                                const selectedSubstitute = substitutes[week.key]?.[item.employee.id];
-                                let textContent = `${item.employee.name} (${item.absence.absenceAbbreviation})`;
-                                if (selectedSubstitute) {
-                                    textContent += `|${selectedSubstitute.substituteName}`;
+                                let textContent: string | React.ReactNode = `${item.employee.name} (${item.absence.absenceAbbreviation})`;
+                                const substituteInfo = substitutes[week.key]?.[item.employee.id];
+
+                                if(substituteInfo) {
+                                    textContent = `${item.employee.name} (${item.absence.absenceAbbreviation})|${substituteInfo.substituteName}`;
                                 }
                                 
                                 return (
                                     <div key={item.employee.id} className="group/cell flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[11px] leading-tight hover:bg-black/5" >
-                                        <button onClick={() => setEditingAbsence({employee: item.employee, absence: item.absence})} className={cn(
-                                            "flex-grow text-left truncate",
-                                            isSpecialAbsence ? "text-blue-600" : "text-black"
-                                        )}>
-                                            {item.employee.name} ({item.absence.absenceAbbreviation})
+                                        <button onClick={() => setEditingAbsence({employee: item.employee, absence: item.absence})} className="flex-grow text-left truncate">
+                                            {textContent.toString().split('|')[0]}
                                         </button>
                                         <div className="flex-shrink-0">
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <button className="p-0.5 rounded-full hover:bg-slate-200">
-                                                        {selectedSubstitute ? (
-                                                            <span className="text-red-600 font-semibold">{selectedSubstitute.substituteName}</span>
+                                                        {substituteInfo ? (
+                                                            <span className="text-red-600 font-semibold">{substituteInfo.substituteName}</span>
                                                         ) : (
                                                             <Plus className="h-3 w-3" />
                                                         )}
@@ -678,7 +674,7 @@ export default function VacationsPage() {
                                                             {sub.name}
                                                         </button>
                                                     ))}
-                                                    {selectedSubstitute && (
+                                                    {substituteInfo && (
                                                         <>
                                                             <hr className="my-1"/>
                                                             <button onClick={() => handleSelectSubstitute(week.key, item.employee.id, null)} className="flex items-center gap-2 text-sm text-left p-1 rounded-sm text-destructive hover:bg-destructive/10">
@@ -708,8 +704,10 @@ export default function VacationsPage() {
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
              <Card>
-                <CardHeader className="flex-row justify-between items-center">
-                    <CardTitle>Planificar Nueva Ausencia</CardTitle>
+                <CardHeader className="flex-row justify-between items-start">
+                    <div className="flex-grow">
+                        <CardTitle>Planificar Nueva Ausencia</CardTitle>
+                    </div>
                     <Button variant="outline" size="sm" onClick={() => setIsHolidayEmployeeManagerOpen(true)}>
                         <UserPlus className="mr-2 h-4 w-4" />
                         Gestionar Empleados Eventuales
@@ -919,3 +917,4 @@ export default function VacationsPage() {
         </div>
     );
 }
+
