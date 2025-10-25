@@ -5,14 +5,14 @@ import { TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { format, isSameDay, getISODay, isBefore, parseISO, isAfter } from 'date-fns';
+import { format, isSameDay, getISODay, isBefore, parseISO, isAfter, eachDayOfInterval, subDays, addDays, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { InputStepper } from '@/components/ui/input-stepper';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import type { DailyEmployeeData, Employee, DailyData } from '@/lib/types';
+import type { DailyEmployeeData, Employee, DailyData, ScheduledAbsence, EmploymentPeriod } from '@/lib/types';
 import { CheckCircle, Undo2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from "@/components/ui/checkbox"
@@ -22,6 +22,7 @@ import { es } from 'date-fns/locale';
 import { AbsenceEditor } from './absence-editor';
 import { HolidayEditor } from './holiday-editor';
 import { BalancePreviewDisplay } from './balance-preview';
+import { updateDocument } from '@/lib/services/firestoreService';
 
 interface WeekRowProps {
     employee: Employee;
@@ -142,11 +143,100 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         });
     }, []);
 
+    const syncVacationsWithScheduledAbsences = async () => {
+        if (!initialWeekData || !localWeekData || !employee) return;
+
+        const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
+        if (!vacationType) return;
+
+        const updatedPeriods: EmploymentPeriod[] = JSON.parse(JSON.stringify(employee.employmentPeriods));
+        let hasChanges = false;
+
+        for (const day of weekDays) {
+            const dayKey = format(day, 'yyyy-MM-dd');
+            const originalDay = initialWeekData.days[dayKey];
+            const newDay = localWeekData.days[dayKey];
+
+            const wasVacation = originalDay?.absence === vacationType.abbreviation;
+            const isNowVacation = newDay?.absence === vacationType.abbreviation;
+            
+            if (wasVacation === isNowVacation) continue;
+
+            const activePeriod = updatedPeriods.find(p => {
+                const pStart = startOfDay(parseISO(p.startDate as string));
+                const pEnd = p.endDate ? startOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
+                return !isAfter(pStart, day) && isAfter(pEnd, day);
+            });
+            if (!activePeriod) continue;
+
+            hasChanges = true;
+            
+            if (isNowVacation) { // Added vacation
+                if (!activePeriod.scheduledAbsences) activePeriod.scheduledAbsences = [];
+                activePeriod.scheduledAbsences.push({
+                    id: `abs_${Date.now()}_${Math.random()}`,
+                    absenceTypeId: vacationType.id,
+                    startDate: startOfDay(day),
+                    endDate: startOfDay(day),
+                });
+
+            } else { // Removed vacation
+                const absenceIndex = activePeriod.scheduledAbsences?.findIndex(a => 
+                    a.absenceTypeId === vacationType.id &&
+                    !isAfter(startOfDay(a.startDate), startOfDay(day)) &&
+                    a.endDate && !isBefore(startOfDay(a.endDate), startOfDay(day))
+                );
+
+                if (absenceIndex !== undefined && absenceIndex > -1 && activePeriod.scheduledAbsences) {
+                    const absenceToRemove = activePeriod.scheduledAbsences[absenceIndex];
+                    
+                    const originalStartDate = startOfDay(absenceToRemove.startDate);
+                    const originalEndDate = startOfDay(absenceToRemove.endDate!);
+                    const dayToRemove = startOfDay(day);
+
+                    activePeriod.scheduledAbsences.splice(absenceIndex, 1);
+
+                    if (isAfter(dayToRemove, originalStartDate)) {
+                        activePeriod.scheduledAbsences.push({ ...absenceToRemove, endDate: subDays(dayToRemove, 1) });
+                    }
+                    if (isBefore(dayToRemove, originalEndDate)) {
+                        activePeriod.scheduledAbsences.push({ ...absenceToRemove, startDate: addDays(dayToRemove, 1) });
+                    }
+                }
+            }
+        }
+        
+        if (hasChanges) {
+             // Merge overlapping/adjacent intervals
+             updatedPeriods.forEach(p => {
+                if (p.scheduledAbsences) {
+                    p.scheduledAbsences.sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
+                    const merged: ScheduledAbsence[] = [];
+                    for(const abs of p.scheduledAbsences) {
+                        if (merged.length > 0 && 
+                            merged[merged.length - 1].absenceTypeId === abs.absenceTypeId && 
+                            abs.endDate && merged[merged.length-1].endDate &&
+                            isSameDay(addDays(merged[merged.length-1].endDate!, 1), abs.startDate)) {
+                            
+                            merged[merged.length-1].endDate = abs.endDate;
+                        } else {
+                            merged.push(abs);
+                        }
+                    }
+                    p.scheduledAbsences = merged;
+                }
+            });
+            await updateDocument('employees', employee.id, { employmentPeriods: updatedPeriods });
+        }
+    };
+
     const handleConfirm = async () => {
         if (!localWeekData || !employee || !preview || !initialBalances) return;
         setIsSaving(true);
     
         try {
+            await syncVacationsWithScheduledAbsences();
+
             const activePeriod = getActivePeriod(employee.id, weekDays[0]);
             if (!activePeriod) throw new Error("No active period found");
     
