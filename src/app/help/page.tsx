@@ -18,7 +18,75 @@ export default function HelpPage() {
       </h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="lg:col-span-2">
+        <Card>
+            <CardHeader>
+                <div className="flex items-start gap-4">
+                    <User className="h-8 w-8 text-primary mt-1" />
+                    <div>
+                        <CardTitle>Mi Ficha</CardTitle>
+                        <CardDescription>Tu perfil y resumen de balances.</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <p className="text-muted-foreground">
+                    Esta sección centraliza toda tu información personal y laboral:
+                </p>
+                <ul className="list-disc list-inside space-y-2 mt-3 text-sm">
+                    <li><strong>Balances de Horas:</strong> Consulta en tiempo real el estado de tus bolsas de horas (Ordinaria, Festivos, Libranza) y tu balance total.</li>
+                    <li><strong>Datos del Contrato:</strong> Revisa tu tipo de contrato y tu jornada semanal vigente.</li>
+                    <li><strong>Vacaciones:</strong> Visualiza un resumen de tus días de vacaciones disponibles y consumidos.</li>
+                </ul>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <div className="flex items-start gap-4">
+                    <Info className="h-8 w-8 text-primary mt-1" />
+                    <div>
+                        <CardTitle>Entender el Cálculo de Vacaciones</CardTitle>
+                        <CardDescription>Cómo ver el desglose de tus días de vacaciones.</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <p className="text-muted-foreground">
+                    Para saber cómo se ha calculado el total de tus días de vacaciones disponibles, sigue estos pasos:
+                </p>
+                <ol className="list-decimal list-inside space-y-2 mt-3 text-sm">
+                    <li>Ve a la sección <span className="font-semibold text-primary">"Mi Ficha"</span>.</li>
+                    <li>Localiza la tarjeta que muestra tus días de vacaciones.</li>
+                    <li>
+                        <strong>Haz clic o pulsa</strong> sobre esa tarjeta.
+                    </li>
+                    <li>Aparecerá una ventana emergente con el desglose detallado: días base, días arrastrados del año anterior, descuentos por suspensiones, etc.</li>
+                </ol>
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                <div className="flex items-start gap-4">
+                    <CalendarCheck className="h-8 w-8 text-primary mt-1" />
+                    <div>
+                        <CardTitle>Mis Presencias</CardTitle>
+                        <CardDescription>Tu histórico de semanas confirmadas.</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <p className="text-muted-foreground">
+                    Aquí puedes consultar un registro de solo lectura de todas tus semanas laborales que ya han sido revisadas y confirmadas por un administrador.
+                </p>
+                <ul className="list-disc list-inside space-y-2 mt-3 text-sm">
+                    <li>Revisa el detalle de horas trabajadas y ausencias de semanas pasadas.</li>
+                    <li>Consulta el impacto exacto que tuvo cada semana en tus balances de horas.</li>
+                </ul>
+            </CardContent>
+        </Card>
+
+        <Card>
               <CardHeader>
                   <div className="flex items-start gap-4">
                       <MailQuestion className="h-8 w-8 text-primary mt-1" />
@@ -52,49 +120,6 @@ export default function HelpPage() {
          <Card>
             <CardHeader>
                 <div className="flex items-start gap-4">
-                    <User className="h-8 w-8 text-primary mt-1" />
-                    <div>
-                        <CardTitle>Mi Ficha</CardTitle>
-                        <CardDescription>Tu perfil y resumen de balances.</CardDescription>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground">
-                    Esta sección centraliza toda tu información personal y laboral:
-                </p>
-                <ul className="list-disc list-inside space-y-2 mt-3 text-sm">
-                    <li><strong>Balances de Horas:</strong> Consulta en tiempo real el estado de tus bolsas de horas (Ordinaria, Festivos, Libranza) y tu balance total.</li>
-                    <li><strong>Datos del Contrato:</strong> Revisa tu tipo de contrato y tu jornada semanal vigente.</li>
-                    <li><strong>Vacaciones:</strong> Visualiza un resumen de tus días de vacaciones disponibles y consumidos.</li>
-                </ul>
-            </CardContent>
-        </Card>
-        
-        <Card>
-            <CardHeader>
-                <div className="flex items-start gap-4">
-                    <CalendarCheck className="h-8 w-8 text-primary mt-1" />
-                    <div>
-                        <CardTitle>Mis Presencias</CardTitle>
-                        <CardDescription>Tu histórico de semanas confirmadas.</CardDescription>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground">
-                    Aquí puedes consultar un registro de solo lectura de todas tus semanas laborales que ya han sido revisadas y confirmadas por un administrador.
-                </p>
-                <ul className="list-disc list-inside space-y-2 mt-3 text-sm">
-                    <li>Revisa el detalle de horas trabajadas y ausencias de semanas pasadas.</li>
-                    <li>Consulta el impacto exacto que tuvo cada semana en tus balances de horas.</li>
-                </ul>
-            </CardContent>
-        </Card>
-
-         <Card>
-            <CardHeader>
-                <div className="flex items-start gap-4">
                     <PlaneTakeoff className="h-8 w-8 text-primary mt-1" />
                     <div>
                         <CardTitle>Solicitar Vacaciones</CardTitle>
@@ -119,31 +144,7 @@ export default function HelpPage() {
                 </ol>
             </CardContent>
         </Card>
-
-         <Card>
-            <CardHeader>
-                <div className="flex items-start gap-4">
-                    <Info className="h-8 w-8 text-primary mt-1" />
-                    <div>
-                        <CardTitle>Entender el Cálculo de Vacaciones</CardTitle>
-                        <CardDescription>Cómo ver el desglose de tus días de vacaciones.</CardDescription>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground">
-                    Para saber cómo se ha calculado el total de tus días de vacaciones disponibles, sigue estos pasos:
-                </p>
-                <ol className="list-decimal list-inside space-y-2 mt-3 text-sm">
-                    <li>Ve a la sección <span className="font-semibold text-primary">"Mi Ficha"</span>.</li>
-                    <li>Localiza la tarjeta que muestra tus días de vacaciones.</li>
-                    <li>
-                        <strong>Haz clic o pulsa</strong> sobre esa tarjeta.
-                    </li>
-                    <li>Aparecerá una ventana emergente con el desglose detallado: días base, días arrastrados del año anterior, descuentos por suspensiones, etc.</li>
-                </ol>
-            </CardContent>
-        </Card>
+        
         <Card>
             <CardHeader>
                 <div>
