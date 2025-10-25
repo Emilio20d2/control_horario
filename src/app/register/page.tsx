@@ -2,49 +2,56 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { FirebaseError } from 'firebase/app';
 import Image from 'next/image';
 import Link from 'next/link';
+import { createUserAccount } from '@/lib/actions/userActions';
 import { Loader2 } from 'lucide-react';
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      toast({
+        title: 'Error en la contraseña',
+        description: 'Las contraseñas no coinciden.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setLoading(true);
     try {
-      await login(email, password);
-      // The redirect is handled by the root page.tsx now
-      router.push('/');
-    } catch (error) {
-        console.error(error);
-        let description = 'Las credenciales no son correctas. Por favor, inténtalo de nuevo.';
-        if (error instanceof FirebaseError) {
-          if (error.code === 'auth/api-key-not-valid') {
-            description = 'Error de configuración: La API Key de Firebase no es válida. Revisa tu archivo .env.local.';
-          } else if (error.code === 'auth/invalid-credential') {
-            description = 'Email o contraseña incorrectos. Verifica tus credenciales.';
-          }
+        const result = await createUserAccount({ email, password });
+        if (result.success) {
+            toast({
+                title: '¡Registro completado!',
+                description: 'Tu cuenta ha sido creada. Ahora puedes iniciar sesión.',
+            });
+            router.push('/login');
+        } else {
+            throw new Error(result.error);
         }
-        toast({
-            title: 'Error de autenticación',
-            description: description,
-            variant: 'destructive',
-          });
-      setLoading(false);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: 'Error en el registro',
+        description: error instanceof Error ? error.message : 'No se pudo completar el registro.',
+        variant: 'destructive',
+      });
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -55,17 +62,17 @@ export default function LoginPage() {
             <div className="mb-4 flex justify-center">
                 <Image src="/logo.png" alt="Logo de la aplicación" width={64} height={64} className="h-16 w-16" />
             </div>
-          <CardTitle className="text-2xl font-bold font-headline">Iniciar Sesión</CardTitle>
-          <CardDescription>Accede a tu panel de Control Horario</CardDescription>
+          <CardTitle className="text-2xl font-bold font-headline">Crear Cuenta</CardTitle>
+          <CardDescription>Regístrate con el email de tu ficha de empleado.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleRegister} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="usuario@ejemplo.com"
+                placeholder="tu.email@ejemplo.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -81,19 +88,24 @@ export default function LoginPage() {
                 required
               />
             </div>
+             <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Acceder'}
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Registrarse'}
             </Button>
           </form>
             <div className="mt-4 text-center text-sm">
-                ¿No tienes una cuenta?{' '}
-                <Link href="/register" className="underline">
-                    Regístrate
-                </Link>
-            </div>
-            <div className="mt-2 text-center text-sm">
-                 <Link href="/forgot-password" className="underline text-sm text-muted-foreground hover:text-primary">
-                    ¿Olvidaste tu contraseña?
+                ¿Ya tienes una cuenta?{' '}
+                <Link href="/login" className="underline">
+                    Inicia Sesión
                 </Link>
             </div>
         </CardContent>

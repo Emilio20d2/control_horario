@@ -1,36 +1,52 @@
+
 'use server';
 
-import { getAuthAdmin } from '@/lib/firebase-admin';
+import { getAuthAdmin, getDbAdmin } from '@/lib/firebase-admin';
+import type { Employee } from '../types';
 
 export interface CreateUserPayload {
     email: string;
+    password?: string; // Optional password for creation, can be auto-generated
 }
 
-export const createUserAccount = async (payload: CreateUserPayload) => {
-    const { email } = payload;
-    
+export const createUserAccount = async (payload: {email: string, password: string}): Promise<{ success: boolean; uid?: string, error?: string; }> => {
+    const { email, password } = payload;
+    const db = getDbAdmin();
+    const authAdmin = getAuthAdmin();
+
     try {
-        const authAdmin = getAuthAdmin();
+        if (!email || !password) {
+            throw new Error('Email y contraseña son obligatorios.');
+        }
+
+        // 1. Check if employee with this email exists
+        const employeesRef = db.collection('employees');
+        const querySnapshot = await employeesRef.where('email', '==', email).limit(1).get();
+
+        if (querySnapshot.empty) {
+            return { success: false, error: 'No se ha encontrado ninguna ficha de empleado con este correo electrónico.' };
+        }
+
+        const employeeDoc = querySnapshot.docs[0];
+        const employeeData = employeeDoc.data() as Employee;
         
-        if (!authAdmin) {
-            throw new Error('La autenticación de administrador de Firebase no está inicializada.');
-        }
-        if (!email) {
-          throw new Error('El email es un campo obligatorio.');
+        // 2. Check if employee is already registered (has authId)
+        if (employeeData.authId) {
+            return { success: false, error: 'Este empleado ya tiene una cuenta registrada.' };
         }
 
-        // Generate a more secure, random password.
-        const tempPassword = Math.random().toString(36).slice(-8) + 'aA1!';
-
+        // 3. Create Firebase Auth user
         const userRecord = await authAdmin.createUser({
             email,
-            password: tempPassword,
+            password,
+            displayName: employeeData.name,
         });
 
-        // It is recommended to send the temporary password to the user via a secure channel (e.g., email),
-        // but for this implementation, we will just return the UID.
-        // The user will have to use the "Forgot Password" flow to set their own password.
-        
+        // 4. Update the employee document with the new authId (UID)
+        await employeeDoc.ref.update({
+            authId: userRecord.uid
+        });
+
         return { success: true, uid: userRecord.uid };
 
     } catch (error: any) {
@@ -39,10 +55,30 @@ export const createUserAccount = async (payload: CreateUserPayload) => {
         if (error.code === 'auth/email-already-exists') {
           errorMessage = 'El correo electrónico ya está en uso por otro usuario.';
         } else if (error.code === 'auth/invalid-password') {
-            errorMessage = 'La contraseña generada no es válida (error interno).';
+            errorMessage = 'La contraseña debe tener al menos 6 caracteres.';
         }
         return { success: false, error: errorMessage };
     }
 };
 
-    
+export const sendPasswordResetEmail = async (email: string): Promise<{ success: boolean; message?: string, error?: string }> => {
+    const authAdmin = getAuthAdmin();
+
+    try {
+        await authAdmin.getUserByEmail(email);
+        const link = await authAdmin.generatePasswordResetLink(email);
+
+        // In a real application, you would send an email here using a service like SendGrid or Nodemailer.
+        // For this context, we confirm the link was generated.
+        console.log(`Password reset link generated (but not sent): ${link}`);
+
+        return { success: true, message: 'Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña.' };
+    } catch (error: any) {
+        if (error.code === 'auth/user-not-found') {
+            // We don't want to reveal if a user exists or not
+             return { success: true, message: 'Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña.' };
+        }
+        console.error('Error sending password reset email:', error);
+        return { success: false, error: 'No se pudo enviar el correo de recuperación.' };
+    }
+};
