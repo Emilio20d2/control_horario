@@ -111,7 +111,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const MainNav = ({className, isMobileNav}: {className?: string, isMobileNav?: boolean}) => (
     <nav className={cn(
         "flex items-center gap-1",
-        isMobileNav ? "flex-col !items-stretch" : (isMobile && !isAdminView ? 'justify-around w-full' : '')
+        isMobileNav ? "flex-col !items-stretch" : 'justify-center'
     )}>
         {menuItems.map((item) => {
              const isActive = pathname.startsWith(item.href);
@@ -127,26 +127,23 @@ export function AppLayout({ children }: { children: ReactNode }) {
                         'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative',
                         isHelpButtonForEmployee ? 'flex-row' : 'flex-col',
                         isMobileNav ? 'w-full text-foreground' : '',
-                        isEmployeeViewAndNotMobileNav && !isHelpButtonForEmployee ? 'h-16' : '',
+                        isEmployeeViewAndNotMobileNav && 'h-16',
                         isActive
                             ? 'bg-primary text-white font-semibold'
                             : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                     )}
                 >
                     <item.icon className={cn(
-                        isHelpButtonForEmployee ? "h-5 w-5" : "h-5 w-5",
-                        isEmployeeViewAndNotMobileNav && !isHelpButtonForEmployee && 'h-7 w-7'
+                        isEmployeeViewAndNotMobileNav && !isHelpButtonForEmployee ? "h-7 w-7" : "h-5 w-5",
+                        isHelpButtonForEmployee && "h-5 w-5"
                         )} />
                     
-                    {isHelpButtonForEmployee ? (
-                         <span className="text-sm font-medium">{item.label}</span>
-                    ) : (
-                        <span className={cn(
-                            "text-[10px] font-medium text-center",
-                            isMobileNav && "text-base",
-                            isEmployeeViewAndNotMobileNav && 'text-xs'
-                        )}>{item.label}</span>
-                    )}
+                    <span className={cn(
+                        "font-medium text-center",
+                        isMobileNav ? "text-base" : "text-[10px]",
+                        isEmployeeViewAndNotMobileNav && 'text-xs',
+                        isHelpButtonForEmployee && 'text-sm'
+                    )}>{item.label}</span>
 
                     {item.notification && (
                          <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
