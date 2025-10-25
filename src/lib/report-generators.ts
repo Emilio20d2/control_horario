@@ -597,6 +597,13 @@ export const generateRequestStatusReportPDF = (
     const campaignAbsenceTypes = new Set(campaign.allowedAbsenceTypeIds);
     const campaignStart = campaign.absenceStartDate instanceof Timestamp ? campaign.absenceStartDate.toDate() : campaign.absenceStartDate;
     const campaignEnd = campaign.absenceEndDate instanceof Timestamp ? campaign.absenceEndDate.toDate() : campaign.absenceEndDate;
+    
+    const toDate = (date: any): Date => {
+        if (date instanceof Timestamp) return date.toDate();
+        if (date instanceof Date) return date;
+        if (typeof date === 'string') return parseISO(date);
+        return new Date(date);
+    }
 
     const reportData = allEmployees.map(emp => {
         const absencesForCampaign = (emp.employmentPeriods || [])
@@ -615,9 +622,12 @@ export const generateRequestStatusReportPDF = (
             const absenceType = absenceTypes.find(at => at.id === mainAbsence.absenceTypeId);
 
             if (mainAbsence.originalRequest && mainAbsence.originalRequest.startDate) {
-                originalRequestText = `${absenceType?.abbreviation}: ${format(mainAbsence.originalRequest.startDate, 'dd/MM/yy')} - ${mainAbsence.originalRequest.endDate ? format(mainAbsence.originalRequest.endDate, 'dd/MM/yy') : ''}`;
+                const originalStartDate = toDate(mainAbsence.originalRequest.startDate);
+                const originalEndDate = mainAbsence.originalRequest.endDate ? toDate(mainAbsence.originalRequest.endDate) : null;
                 
-                const isModified = !isEqual(mainAbsence.startDate, mainAbsence.originalRequest.startDate) || !isEqual(mainAbsence.endDate, mainAbsence.originalRequest.endDate || mainAbsence.endDate);
+                originalRequestText = `${absenceType?.abbreviation}: ${format(originalStartDate, 'dd/MM/yy')} - ${originalEndDate ? format(originalEndDate, 'dd/MM/yy') : ''}`;
+                
+                const isModified = !isEqual(mainAbsence.startDate, originalStartDate) || !isEqual(mainAbsence.endDate, originalEndDate || mainAbsence.endDate);
 
                 if (isModified) {
                      modifiedRequestText = `${absenceType?.abbreviation}: ${format(mainAbsence.startDate, 'dd/MM/yy')} - ${format(mainAbsence.endDate, 'dd/MM/yy')}`;
