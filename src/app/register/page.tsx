@@ -63,7 +63,7 @@ export default function RegisterPage() {
                 <Image src="/logo.png" alt="Logo de la aplicación" width={64} height={64} className="h-16 w-16" />
             </div>
           <CardTitle className="text-2xl font-bold font-headline">Crear Cuenta</CardTitle>
-          <CardDescription>Regístrate con el email de tu ficha de empleado.</CardDescription>
+          <CardDescription>Regístrate con el email que tienes registrado en INET</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleRegister} className="space-y-4">
