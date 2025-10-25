@@ -454,7 +454,6 @@ const unreadMessageCount = useMemo(() => {
     // --- CALCULATE CARRY-OVER FROM PREVIOUS YEAR ---
     let carryOverDays = 0;
     if (year === 2025) {
-        // Special logic for 2025: use the specific field.
         const firstPeriod = emp.employmentPeriods?.[0];
         carryOverDays = firstPeriod?.vacationDays2024 ?? 0;
     } else if (year > 2025) {
@@ -464,23 +463,33 @@ const unreadMessageCount = useMemo(() => {
     }
 
     const baseDays = 31;
-    const daysInCurrentYear = differenceInDays(currentYearEnd, currentYearStart) + 1;
-    const proratedDays = isTransfer ? baseDays : (baseDays / daysInCurrentYear) * contractDaysInCurrentYear;
+    let proratedDays = baseDays;
+    
+    if (!isTransfer) {
+        const daysInCurrentYear = differenceInDays(currentYearEnd, currentYearStart) + 1;
+        proratedDays = (baseDays / daysInCurrentYear) * contractDaysInCurrentYear;
+    }
+
     const suspensionDeduction = (suspensionDaysInCurrentYear / 30) * 2.5;
 
-    const totalAvailable = proratedDays + carryOverDays - suspensionDeduction;
+    let totalAvailable = proratedDays + carryOverDays - suspensionDeduction;
+
+    if (isTransfer) {
+        const vacationDaysUsedInAnotherCenter = firstPeriodThisYear.vacationDaysUsedInAnotherCenter ?? 0;
+        totalAvailable -= vacationDaysUsedInAnotherCenter;
+    }
 
     return {
         vacationDaysTaken: vacationDaysTakenInCurrentYear,
         suspensionDays: suspensionDaysInCurrentYear,
-        vacationDaysAvailable: Math.ceil(totalAvailable),
+        vacationDaysAvailable: Math.round(totalAvailable),
         baseDays: 31,
         carryOverDays,
         suspensionDeduction,
         proratedDays,
         vacationDays2024: firstPeriodThisYear?.vacationDays2024 ?? 0,
     };
-}, [absenceTypes, weeklyRecords, employees]);
+}, [absenceTypes, weeklyRecords]);
 
 
 
