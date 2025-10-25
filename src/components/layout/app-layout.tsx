@@ -115,6 +115,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     )}>
         {menuItems.map((item) => {
              const isActive = pathname.startsWith(item.href);
+             const isEmployeeViewAndNotMobile = !isAdminView && !isMobileNav;
 
             return (
                 <Link
@@ -123,16 +124,21 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     onClick={() => isMobileNav && setMobileNavOpen(false)}
                     className={cn(
                         'flex flex-col items-center justify-center gap-1 p-2 rounded-md transition-colors relative',
-                        isMobileNav ? 'w-full text-foreground' : 'h-16',
+                        isMobileNav ? 'w-full text-foreground' : '',
+                        isEmployeeViewAndNotMobile ? 'h-16' : '',
                         isActive
                             ? 'bg-primary text-white font-semibold'
                             : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                     )}
                 >
-                    <item.icon className="h-5 w-5" />
+                    <item.icon className={cn(
+                        "h-5 w-5",
+                        isEmployeeViewAndNotMobile && 'h-6 w-6'
+                        )} />
                     <span className={cn(
                         "text-[10px] font-medium text-center",
-                        isMobileNav && "text-base"
+                        isMobileNav && "text-base",
+                        isEmployeeViewAndNotMobile && 'text-xs'
                     )}>{item.label}</span>
                     {item.notification && (
                          <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
@@ -172,7 +178,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
         
         <div className="flex-1 flex justify-center">
-             {(!isMobile || !isAdminView) && <MainNav className="flex items-center gap-1" />}
+             {!isMobile && <MainNav className="flex items-center gap-1" />}
+             {isMobile && !isAdminView && <MainNav />}
         </div>
         
         <div className="flex items-center gap-4 ml-auto">
