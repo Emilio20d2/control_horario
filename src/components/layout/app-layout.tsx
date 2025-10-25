@@ -99,12 +99,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
   ];
   
   const employeeMenuItems = [
-    { href: '/my-profile', label: 'Mi Ficha', icon: User },
-    { href: '/my-schedule', label: 'Mis Presencias', icon: CalendarCheck },
-    { href: '/my-messages', label: 'Mis Mensajes', icon: Mail, notification: unreadMessageCount > 0 },
+    { href: '/my-profile', label: 'Ficha', icon: User },
+    { href: '/my-schedule', label: 'Presencias', icon: CalendarCheck },
+    { href: '/my-messages', label: 'Mensajes', icon: Mail, notification: unreadMessageCount > 0 },
   ];
 
-  const isAdminView = appUser?.role === 'admin';
+  const isAdminView = viewMode === 'admin';
   const menuItems = isAdminView ? adminMenuItems : employeeMenuItems;
 
   const MainNav = ({className, isMobileNav}: {className?: string, isMobileNav?: boolean}) => (
@@ -123,7 +123,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     onClick={() => isMobileNav && setMobileNavOpen(false)}
                     className={cn(
                         'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative',
-                        'flex-col',
+                        'flex-col text-center',
                         isMobileNav ? 'w-full text-foreground' : '',
                         isEmployeeViewAndNotMobileNav && 'h-16',
                         isActive
@@ -132,13 +132,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     )}
                 >
                     <item.icon className={cn(
-                        isEmployeeViewAndNotMobileNav ? "h-5 w-5" : "h-5 w-5",
+                        isEmployeeViewAndNotMobileNav ? "h-6 w-6" : "h-5 w-5",
                         )} />
                     
                     <span className={cn(
-                        "font-medium text-center",
+                        "font-medium",
                         isMobileNav ? "text-base" : "text-xs",
-                        isEmployeeViewAndNotMobileNav && 'text-sm',
                     )}>{item.label}</span>
 
                     {item.notification && (
@@ -177,7 +176,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         )}
         
         <div className="flex-1 flex justify-center">
-             {!isMobile && <MainNav />}
+             {!isMobile && isAdminView && <MainNav />}
              {isMobile && !isAdminView && <MainNav />}
         </div>
         
