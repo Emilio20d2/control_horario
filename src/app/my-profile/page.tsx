@@ -159,7 +159,14 @@ export default function MyProfilePage() {
                                         {vacationInfo.carryOverDays.toFixed(2)}
                                     </span>
                                 </div>
-                                {vacationInfo.suspensionDeduction > 0 && <div className="flex justify-between"><span>Descuento por suspensión:</span> <span className="font-mono font-medium text-red-600">- {vacationInfo.suspensionDeduction.toFixed(2)}</span></div>}
+                                {vacationInfo.suspensionDeduction > 0 && (
+                                    <div className="flex justify-between">
+                                        <span>Descuento por suspensión:</span>
+                                        <span className="font-mono font-medium text-destructive">
+                                            - {vacationInfo.suspensionDeduction.toFixed(2)}
+                                        </span>
+                                    </div>
+                                )}
                                 <Separator />
                                 <div className="flex justify-between font-bold"><span>Total Días Disponibles:</span> <span className="font-mono">{vacationInfo.vacationDaysAvailable}</span></div>
                             </div>
@@ -231,3 +238,4 @@ export default function MyProfilePage() {
         </div>
     );
 }
+
