@@ -500,11 +500,16 @@ export default function VacationsPage() {
 
         setIsGenerating(true);
         try {
+            const originalRequest = {
+                startDate: format(selectedDateRange.from, 'yyyy-MM-dd'),
+                endDate: format(selectedDateRange.to, 'yyyy-MM-dd'),
+            };
+            
             await addScheduledAbsence(selectedEmployeeId, activePeriod.id, {
                 absenceTypeId: selectedAbsenceTypeId,
                 startDate: format(selectedDateRange.from, 'yyyy-MM-dd'),
                 endDate: format(selectedDateRange.to, 'yyyy-MM-dd'),
-            }, selectedEmployee);
+            }, selectedEmployee, originalRequest);
             
             toast({ title: 'Periodo de ausencia añadido', description: `Se ha guardado la ausencia para ${selectedEmployee?.name}.` });
             setSelectedDateRange(undefined);
@@ -906,7 +911,7 @@ export default function VacationsPage() {
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        <Button onClick={handleGenerateStatusReport} disabled={isGenerating || !selectedCampaignId} size="sm" variant="ghost" className="text-xs">
+                                        <Button onClick={handleGenerateStatusReport} disabled={isGenerating || !selectedCampaignId} size="sm" variant="ghost">
                                             <SunSnow className="mr-2 h-4 w-4" /> Peticiones Vacaciones
                                         </Button>
                                     </>
