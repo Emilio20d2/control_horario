@@ -39,18 +39,18 @@ export default function MyProfilePage() {
     const { employeeRecord: employee, weeklyRecords, loading: dataLoading, absenceTypes, getEmployeeFinalBalances, calculateEmployeeVacations } = useDataProvider();
     const [displayBalances, setDisplayBalances] = useState<{ ordinary: number; holiday: number; leave: number; total: number; } | null>(null);
     const [vacationInfo, setVacationInfo] = useState<ReturnType<typeof calculateEmployeeVacations> | null>(null);
+    const currentYear = getYear(new Date());
 
     useEffect(() => {
         if (!dataLoading && employee) {
             setDisplayBalances(getEmployeeFinalBalances(employee.id));
-            setVacationInfo(calculateEmployeeVacations(employee));
+            setVacationInfo(calculateEmployeeVacations(employee, currentYear));
         }
-    }, [employee, dataLoading, weeklyRecords, getEmployeeFinalBalances, calculateEmployeeVacations]);
+    }, [employee, dataLoading, weeklyRecords, getEmployeeFinalBalances, calculateEmployeeVacations, currentYear]);
 
     const absenceSummary = useMemo(() => {
         if (!employee || !weeklyRecords || absenceTypes.length === 0) return [];
     
-        const currentYear = getYear(new Date());
         const summary: Record<string, { type: AbsenceType; total: number; isDays: boolean }> = {};
     
         const dayCountAbsences = new Set(['V', 'AT', 'AP', 'B', 'B/C', 'EG', 'EXD', 'FF', 'PE']);
@@ -79,7 +79,7 @@ export default function MyProfilePage() {
     
         return Object.values(summary);
     
-    }, [employee, weeklyRecords, absenceTypes]);
+    }, [employee, weeklyRecords, absenceTypes, currentYear]);
     
     if (dataLoading || !employee || !vacationInfo) {
         return (
@@ -146,15 +146,19 @@ export default function MyProfilePage() {
                     <PopoverContent className="w-80">
                         <div className="grid gap-4">
                             <div className="space-y-2">
-                                <h4 className="font-medium leading-none">Cálculo de Días Disponibles</h4>
+                                <h4 className="font-medium leading-none">Cálculo de Días Disponibles ({currentYear})</h4>
                                 <p className="text-sm text-muted-foreground">
                                     Desglose de cómo se calcula tu total de vacaciones.
                                 </p>
                             </div>
                             <div className="space-y-2 text-sm">
-                                <div className="flex justify-between"><span>Días base prorrateados:</span> <span className="font-mono font-medium">{vacationInfo.proratedDays.toFixed(2)}</span></div>
-                                {vacationInfo.vacationDays2024 > 0 && <div className="flex justify-between"><span>Días de 2024:</span> <span className="font-mono font-medium text-blue-600">+ {vacationInfo.vacationDays2024.toFixed(2)}</span></div>}
-                                {vacationInfo.carryOverDays > 0 && <div className="flex justify-between"><span>Arrastrados año anterior:</span> <span className="font-mono font-medium text-blue-600">+ {vacationInfo.carryOverDays.toFixed(2)}</span></div>}
+                                <div className="flex justify-between"><span>Días prorrateados del año:</span> <span className="font-mono font-medium">{vacationInfo.proratedDays.toFixed(2)}</span></div>
+                                <div className="flex justify-between">
+                                    <span>Arrastrados del año anterior:</span>
+                                    <span className={cn("font-mono font-medium", vacationInfo.carryOverDays < 0 && "text-destructive")}>
+                                        {vacationInfo.carryOverDays.toFixed(2)}
+                                    </span>
+                                </div>
                                 {vacationInfo.suspensionDeduction > 0 && <div className="flex justify-between"><span>Descuento por suspensión:</span> <span className="font-mono font-medium text-red-600">- {vacationInfo.suspensionDeduction.toFixed(2)}</span></div>}
                                 <Separator />
                                 <div className="flex justify-between font-bold"><span>Total Días Disponibles:</span> <span className="font-mono">{vacationInfo.vacationDaysAvailable}</span></div>
