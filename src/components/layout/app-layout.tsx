@@ -119,18 +119,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     href={item.href}
                     onClick={() => isMobileNav && setMobileNavOpen(false)}
                     className={cn(
-                        'flex items-center gap-3 px-3 py-2 rounded-md text-base md:text-sm font-medium transition-colors relative',
-                        isMobileNav && 'text-foreground',
+                        'flex flex-col items-center justify-center gap-1 p-2 rounded-md transition-colors relative',
+                        isMobileNav ? 'w-full text-foreground' : 'h-16',
                         isActive
                             ? 'bg-primary text-white font-semibold'
                             : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                     )}
                 >
                     <item.icon className="h-5 w-5" />
-                    {!isMobileNav && <span>{item.label}</span>}
-                     {isMobileNav && <span className="text-lg">{item.label}</span>}
+                    <span className={cn(
+                        "text-[10px] font-medium",
+                        isMobileNav && "text-base"
+                    )}>{item.label}</span>
                     {item.notification && (
-                         <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                         <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
                         </span>
@@ -156,7 +158,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   
   return (
     <div className="flex h-screen w-full flex-col bg-background">
-      <header className="sticky top-0 inset-x-0 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">
+      <header className="sticky top-0 inset-x-0 flex h-20 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">
         
         <div className="flex items-center gap-2">
             {isMobile && isAdminView ? (
@@ -182,7 +184,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             )}
         </div>
         
-        <div className={cn("flex-1 justify-center", isMobile ? (isAdminView ? "hidden" : "flex") : "flex")}>
+        <div className="flex-1 flex justify-center">
              <MainNav className="flex items-center gap-1" />
         </div>
         
@@ -268,7 +270,3 @@ export function AppLayout({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
-    
-
-    
