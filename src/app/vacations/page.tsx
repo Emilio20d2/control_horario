@@ -124,7 +124,7 @@ export default function VacationsPage() {
     } = dataProvider;
     const { toast } = useToast();
     
-    const [selectedYear, setSelectedYear] = useState(() => String(new Date().getFullYear()));
+    const [selectedYear, setSelectedYear] = useState<string>(() => String(new Date().getFullYear()));
     const [isGenerating, setIsGenerating] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [isHolidayEmployeeManagerOpen, setIsHolidayEmployeeManagerOpen] = useState(false);
@@ -397,8 +397,9 @@ export default function VacationsPage() {
 
     }, [allEmployeesForQuadrant, substituteEmployees, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords, holidayReports, conversations]);
     
-     useEffect(() => {
-        if (!loading) {
+    const isInitialLoad = useRef(true);
+    useEffect(() => {
+        if (!loading && isInitialLoad.current) {
             const latestYearWithAbsence = Object.values(employeesWithAbsences)
                 .flat()
                 .reduce((latest, absence) => {
@@ -409,6 +410,7 @@ export default function VacationsPage() {
             if (latestYearWithAbsence > 0 && availableYears.includes(latestYearWithAbsence)) {
                 setSelectedYear(String(latestYearWithAbsence));
             }
+            isInitialLoad.current = false;
         }
     }, [loading, employeesWithAbsences, availableYears]);
 
@@ -636,54 +638,58 @@ export default function VacationsPage() {
   
                       return (
                         <td key={`${group.id}-${week.key}`} className="border align-top py-1 px-0.5" style={{ backgroundColor: cellBg }}>
-                          <div className="flex flex-col gap-0.5 relative h-full">
+                           <div className="flex flex-col gap-0.5 relative h-full">
                             {employeesWithAbsenceInWeek.map(item => {
-                              if (!item) return null;
-                              const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
-                              const selectedSubstitute = substitutes[week.key]?.[item.employee.id];
-
-                              return (
-                                <div key={item.employee.id} className="flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[11px] leading-tight hover:bg-black/5">
-                                    <button onClick={() => setEditingAbsence({employee: item.employee, absence: item.absence})} className={cn(
-                                        "flex-grow text-left truncate",
-                                        isSpecialAbsence ? "text-blue-600" : "text-black"
-                                    )}>
-                                        {item.employee.name} ({item.absence.absenceAbbreviation})
-                                    </button>
-                                     <div className="flex-shrink-0">
-                                      <Popover>
-                                          <PopoverTrigger asChild>
-                                               <button className="p-0.5 rounded-full hover:bg-slate-200">
-                                                    {selectedSubstitute ? (
-                                                        <span className="text-red-600 font-semibold">{selectedSubstitute.substituteName}</span>
-                                                    ) : (
-                                                        <Plus className="h-3 w-3" />
-                                                    )}
-                                               </button>
-                                          </PopoverTrigger>
-                                          <PopoverContent className="w-48 p-1">
-                                              <div className="flex flex-col">
-                                                  {substituteEmployees.map(sub => (
-                                                      <button key={sub.id} onClick={() => handleSelectSubstitute(week.key, item.employee.id, sub)} className="text-sm text-left p-1 rounded-sm hover:bg-accent">
-                                                          {sub.name}
-                                                      </button>
-                                                  ))}
-                                                  {selectedSubstitute && (
-                                                      <>
-                                                        <hr className="my-1"/>
-                                                        <button onClick={() => handleSelectSubstitute(week.key, item.employee.id, null)} className="flex items-center gap-2 text-sm text-left p-1 rounded-sm text-destructive hover:bg-destructive/10">
-                                                          <UserX className="h-4 w-4" /> Quitar Sustituto
+                                if (!item) return null;
+                                const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
+                                const selectedSubstitute = substitutes[week.key]?.[item.employee.id];
+                                let textContent = `${item.employee.name} (${item.absence.absenceAbbreviation})`;
+                                if (selectedSubstitute) {
+                                    textContent += `|${selectedSubstitute.substituteName}`;
+                                }
+                                
+                                return (
+                                    <div key={item.employee.id} className="group/cell flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[11px] leading-tight hover:bg-black/5" >
+                                        <button onClick={() => setEditingAbsence({employee: item.employee, absence: item.absence})} className={cn(
+                                            "flex-grow text-left truncate",
+                                            isSpecialAbsence ? "text-blue-600" : "text-black"
+                                        )}>
+                                            {item.employee.name} ({item.absence.absenceAbbreviation})
+                                        </button>
+                                        <div className="flex-shrink-0">
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <button className="p-0.5 rounded-full hover:bg-slate-200">
+                                                        {selectedSubstitute ? (
+                                                            <span className="text-red-600 font-semibold">{selectedSubstitute.substituteName}</span>
+                                                        ) : (
+                                                            <Plus className="h-3 w-3" />
+                                                        )}
+                                                </button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-48 p-1">
+                                                <div className="flex flex-col">
+                                                    {substituteEmployees.map(sub => (
+                                                        <button key={sub.id} onClick={() => handleSelectSubstitute(week.key, item.employee.id, sub)} className="text-sm text-left p-1 rounded-sm hover:bg-accent">
+                                                            {sub.name}
                                                         </button>
-                                                      </>
-                                                  )}
-                                              </div>
-                                          </PopoverContent>
-                                      </Popover>
+                                                    ))}
+                                                    {selectedSubstitute && (
+                                                        <>
+                                                            <hr className="my-1"/>
+                                                            <button onClick={() => handleSelectSubstitute(week.key, item.employee.id, null)} className="flex items-center gap-2 text-sm text-left p-1 rounded-sm text-destructive hover:bg-destructive/10">
+                                                            <UserX className="h-4 w-4" /> Quitar Sustituto
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                        </div>
                                     </div>
-                                </div>
-                              )
+                                );
                             })}
-                          </div>
+                            </div>
                         </td>
                       );
                     })}
