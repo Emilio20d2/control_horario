@@ -644,17 +644,14 @@ export default function VacationsPage() {
                            <div className="flex flex-col gap-0.5 relative h-full">
                             {employeesWithAbsenceInWeek.map(item => {
                                 if (!item) return null;
-                                let textContent: string | React.ReactNode = `${item.employee.name} (${item.absence.absenceAbbreviation})`;
-                                const substituteInfo = substitutes[week.key]?.[item.employee.id];
 
-                                if(substituteInfo) {
-                                    textContent = `${item.employee.name} (${item.absence.absenceAbbreviation})|${substituteInfo.substituteName}`;
-                                }
-                                
+                                const substituteInfo = substitutes[week.key]?.[item.employee.id];
+                                const isSpecialAbsence = specialAbsenceAbbreviations.has(item.absence.absenceAbbreviation);
+
                                 return (
                                     <div key={item.employee.id} className="group/cell flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[11px] leading-tight hover:bg-black/5" >
-                                        <button onClick={() => setEditingAbsence({employee: item.employee, absence: item.absence})} className="flex-grow text-left truncate">
-                                            {textContent.toString().split('|')[0]}
+                                        <button onClick={() => setEditingAbsence({employee: item.employee, absence: item.absence})} className={cn("flex-grow text-left truncate", isSpecialAbsence && 'text-blue-600')}>
+                                            {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
                                         </button>
                                         <div className="flex-shrink-0">
                                         <Popover>
@@ -718,7 +715,7 @@ export default function VacationsPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="space-y-2 sm:col-span-1">
                                 <label className="text-sm font-medium">Año</label>
-                                <Select value={selectedYear} onValueChange={(value) => setSelectedYear(value)}>
+                                <Select value={selectedYear} onValueChange={setSelectedYear}>
                                     <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                                     <SelectContent>{availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
                                 </Select>
@@ -917,4 +914,5 @@ export default function VacationsPage() {
         </div>
     );
 }
+
 
