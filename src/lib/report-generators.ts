@@ -1,10 +1,9 @@
 
-
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear, isWithinInterval, getISOWeek, isAfter, isBefore } from 'date-fns';
+import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear, isWithinInterval, getISOWeek, isAfter, isBefore, isEqual } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Employee, WeeklyRecord, AbsenceType, Holiday, EmployeeGroup, Ausencia, Conversation, VacationCampaign, ScheduledAbsence } from './types';
 import { Timestamp } from 'firebase/firestore';
@@ -606,7 +605,7 @@ export const generateRequestStatusReportPDF = (
                 const absenceStart = a.startDate;
                 return isAfter(absenceStart, campaignStart) && isBefore(absenceStart, campaignEnd);
             });
-
+        
         if (absencesForCampaign.length === 0) {
             return {
                 name: emp.name,
@@ -616,17 +615,17 @@ export const generateRequestStatusReportPDF = (
             };
         }
 
-        const firstAbsence = absencesForCampaign.sort((a,b) => a.startDate.getTime() - b.startDate.getTime())[0];
-        const absenceType = absenceTypes.find(at => at.id === firstAbsence.absenceTypeId);
-        
+        const absence = absencesForCampaign.sort((a,b) => a.startDate.getTime() - b.startDate.getTime())[0];
+        const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
+
         let originalText = '';
-        if (firstAbsence.originalRequest?.startDate) {
-            originalText = `${absenceType?.abbreviation}: ${format(firstAbsence.originalRequest.startDate, 'dd/MM/yy')} - ${firstAbsence.originalRequest.endDate ? format(firstAbsence.originalRequest.endDate, 'dd/MM/yy') : ''}`;
+        if (absence.originalRequest?.startDate) {
+            originalText = `${absenceType?.abbreviation}: ${format(absence.originalRequest.startDate, 'dd/MM/yy')} - ${absence.originalRequest.endDate ? format(absence.originalRequest.endDate, 'dd/MM/yy') : ''}`;
         }
         
-        const currentText = `${absenceType?.abbreviation}: ${format(firstAbsence.startDate, 'dd/MM/yy')} - ${firstAbsence.endDate ? format(firstAbsence.endDate, 'dd/MM/yy') : ''}`;
+        const currentText = `${absenceType?.abbreviation}: ${format(absence.startDate, 'dd/MM/yy')} - ${absence.endDate ? format(absence.endDate, 'dd/MM/yy') : ''}`;
 
-        const isModified = originalText !== currentText;
+        const isModified = !isEqual(absence.startDate, absence.originalRequest.startDate) || !isEqual(absence.endDate || 0, absence.originalRequest.endDate || 0);
 
         return {
             name: emp.name,
@@ -637,7 +636,13 @@ export const generateRequestStatusReportPDF = (
     }).sort((a, b) => a.name.localeCompare(b.name));
 
     const head = [['Empleado', 'Solicitud Original', 'Estado/Modificación']];
-    const body = reportData.map(d => [d.name, d.original, d.status === 'Modificada' ? `Modificada a:\n${d.current}` : d.status]);
+    const body = reportData.map(d => {
+        let statusCell = d.status;
+        if(d.status === 'Modificada') {
+            statusCell = `Modificada a:\n${d.current}`
+        }
+        return [d.name, d.original, statusCell]
+    });
 
     autoTable(doc, {
         head: head,
@@ -662,3 +667,6 @@ export const generateRequestStatusReportPDF = (
     const safeTitle = campaign.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     doc.save(`informe_peticiones_${safeTitle}.pdf`);
 };
+
+
+    

@@ -303,11 +303,15 @@ export const addScheduledAbsence = async (
         originalRequest: originalRequest ? {
             startDate: parseISO(originalRequest.startDate),
             endDate: originalRequest.endDate ? parseISO(originalRequest.endDate) : null,
-        } : {
-            startDate: parseISO(newAbsence.startDate),
-            endDate: newAbsence.endDate ? parseISO(newAbsence.endDate) : null,
-        }
+        } : undefined
     };
+    
+    if (!absenceToAdd.originalRequest) {
+        absenceToAdd.originalRequest = {
+            startDate: absenceToAdd.startDate,
+            endDate: absenceToAdd.endDate
+        };
+    }
 
     period.scheduledAbsences.push(absenceToAdd);
 
