@@ -4,7 +4,7 @@
 'use client';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear, isWithinInterval, getISOWeek } from 'date-fns';
+import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear, isWithinInterval, getISOWeek, isAfter, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Employee, WeeklyRecord, AbsenceType, Holiday, EmployeeGroup, Ausencia, Conversation, VacationCampaign, ScheduledAbsence } from './types';
 import { Timestamp } from 'firebase/firestore';
@@ -595,6 +595,8 @@ export const generateRequestStatusReportPDF = (
     doc.text(campaign.title, pageMargin, 22);
 
     const campaignAbsenceTypes = new Set(campaign.allowedAbsenceTypeIds);
+    const campaignStart = campaign.absenceStartDate instanceof Timestamp ? campaign.absenceStartDate.toDate() : campaign.absenceStartDate;
+    const campaignEnd = campaign.absenceEndDate instanceof Timestamp ? campaign.absenceEndDate.toDate() : campaign.absenceEndDate;
 
     const reportData = allEmployees.map(emp => {
         const absencesForCampaign = (emp.employmentPeriods || [])
@@ -602,9 +604,7 @@ export const generateRequestStatusReportPDF = (
             .filter(a => {
                 if (!campaignAbsenceTypes.has(a.absenceTypeId)) return false;
                 const absenceStart = a.startDate;
-                const campaignStart = campaign.absenceStartDate instanceof Timestamp ? campaign.absenceStartDate.toDate() : campaign.absenceStartDate;
-                const campaignEnd = campaign.absenceEndDate instanceof Timestamp ? campaign.absenceEndDate.toDate() : campaign.absenceEndDate;
-                return isWithinInterval(absenceStart, { start: campaignStart, end: campaignEnd });
+                return isAfter(absenceStart, campaignStart) && isBefore(absenceStart, campaignEnd);
             });
 
         if (absencesForCampaign.length === 0) {

@@ -300,9 +300,12 @@ export const addScheduledAbsence = async (
         absenceTypeId: newAbsence.absenceTypeId,
         startDate: parseISO(newAbsence.startDate),
         endDate: newAbsence.endDate ? parseISO(newAbsence.endDate) : null,
-        originalRequest: {
-            startDate: originalRequest ? parseISO(originalRequest.startDate) : parseISO(newAbsence.startDate),
-            endDate: originalRequest && originalRequest.endDate ? parseISO(originalRequest.endDate) : (newAbsence.endDate ? parseISO(newAbsence.endDate) : null),
+        originalRequest: originalRequest ? {
+            startDate: parseISO(originalRequest.startDate),
+            endDate: originalRequest.endDate ? parseISO(originalRequest.endDate) : null,
+        } : {
+            startDate: parseISO(newAbsence.startDate),
+            endDate: newAbsence.endDate ? parseISO(newAbsence.endDate) : null,
         }
     };
 
@@ -317,7 +320,7 @@ export const deleteScheduledAbsence = async (
     periodId: string, 
     absenceId: string, 
     currentEmployee: Employee,
-    weeklyRecords: Record<string, WeeklyRecord>
+    weeklyRecords?: Record<string, WeeklyRecord> // Optional to avoid breaking other calls
 ): Promise<void> => {
     const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
     if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
@@ -325,16 +328,19 @@ export const deleteScheduledAbsence = async (
     const absenceToDelete = period.scheduledAbsences.find(a => a.id === absenceId);
     if (!absenceToDelete) throw new Error("Ausencia no encontrada para eliminar");
     
-    const daysInAbsence = eachDayOfInterval({
-        start: startOfDay(absenceToDelete.startDate),
-        end: startOfDay(absenceToDelete.endDate || absenceToDelete.startDate)
-    });
+    // This check is now optional based on context
+    if (weeklyRecords) {
+        const daysInAbsence = eachDayOfInterval({
+            start: startOfDay(absenceToDelete.startDate),
+            end: startOfDay(absenceToDelete.endDate || absenceToDelete.startDate)
+        });
 
-    for(const day of daysInAbsence) {
-        const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-        const weekRecord = weeklyRecords[weekId]?.weekData?.[employeeId];
-        if (weekRecord?.confirmed) {
-            throw new Error(`No se puede eliminar la ausencia. La semana del ${weekId} ya está confirmada y afecta a este periodo.`);
+        for(const day of daysInAbsence) {
+            const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+            const weekRecord = weeklyRecords[weekId]?.weekData?.[employeeId];
+            if (weekRecord?.confirmed) {
+                throw new Error(`No se puede eliminar la ausencia. La semana del ${weekId} ya está confirmada y afecta a este periodo.`);
+            }
         }
     }
 

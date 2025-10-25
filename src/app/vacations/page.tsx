@@ -413,12 +413,12 @@ export default function VacationsPage() {
             const currentYear = new Date().getFullYear();
             const yearToSet = latestYearWithAbsence > 0 ? latestYearWithAbsence : currentYear;
 
-            if (availableYears.includes(yearToSet)) {
+            if (availableYears.includes(yearToSet) && !selectedYear) {
                 setSelectedYear(String(yearToSet));
             }
             isInitialLoad.current = false;
         }
-    }, [loading, employeesWithAbsences, availableYears]);
+    }, [loading, employeesWithAbsences, availableYears, selectedYear]);
 
 
     const handleUpdateAbsence = async () => {
