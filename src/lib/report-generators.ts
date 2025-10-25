@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear, isWithinInterval, getISOWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { Employee, WeeklyRecord, AbsenceType, Holiday, EmployeeGroup, Ausencia, Conversation, VacationCampaign } from './types';
+import type { Employee, WeeklyRecord, AbsenceType, Holiday, EmployeeGroup, Ausencia, Conversation, VacationCampaign, ScheduledAbsence } from './types';
 import { Timestamp } from 'firebase/firestore';
 
 // Helper function to add headers and footers to PDF
@@ -589,42 +589,55 @@ export const generateRequestStatusReportPDF = (
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     const pageMargin = 15;
 
-    // Header
     doc.setFontSize(16).setFont('helvetica', 'bold');
-    doc.text(`Informe de Estado de Solicitudes`, pageMargin, 15);
+    doc.text(`Informe de Peticiones de Vacaciones`, pageMargin, 15);
     doc.setFontSize(12);
     doc.text(campaign.title, pageMargin, 22);
 
-    const submissionStart = campaign.submissionStartDate instanceof Timestamp ? campaign.submissionStartDate.toDate() : campaign.submissionStartDate;
+    const campaignAbsenceTypes = new Set(campaign.allowedAbsenceTypeIds);
 
     const reportData = allEmployees.map(emp => {
-        const conversation = conversations.find(c => c.employeeId === emp.id);
-        const lastMessage = conversation?.lastMessageText || '';
-        const lastMessageTimestamp = conversation?.lastMessageTimestamp;
+        const absencesForCampaign = (emp.employmentPeriods || [])
+            .flatMap(p => p.scheduledAbsences || [])
+            .filter(a => {
+                if (!campaignAbsenceTypes.has(a.absenceTypeId)) return false;
+                const absenceStart = a.startDate;
+                const campaignStart = campaign.absenceStartDate instanceof Timestamp ? campaign.absenceStartDate.toDate() : campaign.absenceStartDate;
+                const campaignEnd = campaign.absenceEndDate instanceof Timestamp ? campaign.absenceEndDate.toDate() : campaign.absenceEndDate;
+                return isWithinInterval(absenceStart, { start: campaignStart, end: campaignEnd });
+            });
+
+        if (absencesForCampaign.length === 0) {
+            return {
+                name: emp.name,
+                status: 'PENDIENTE DE SOLICITUD',
+                original: '',
+                current: '',
+            };
+        }
+
+        const firstAbsence = absencesForCampaign.sort((a,b) => a.startDate.getTime() - b.startDate.getTime())[0];
+        const absenceType = absenceTypes.find(at => at.id === firstAbsence.absenceTypeId);
         
-        let status = 'PENDIENTE DE SOLICITUD';
-        let details = '';
-
-        if (lastMessageTimestamp && (lastMessageTimestamp as Timestamp).toDate() > submissionStart) {
-            const requestRegex = /Confirmación de solicitud de (.*?) para los periodos: (.*)/s;
-            const match = lastMessage.match(requestRegex);
-
-            if (match) {
-                status = 'Solicitud Realizada';
-                const [, type, periods] = match;
-                details = `${type} | ${periods}`;
-            }
+        let originalText = '';
+        if (firstAbsence.originalRequest?.startDate) {
+            originalText = `${absenceType?.abbreviation}: ${format(firstAbsence.originalRequest.startDate, 'dd/MM/yy')} - ${firstAbsence.originalRequest.endDate ? format(firstAbsence.originalRequest.endDate, 'dd/MM/yy') : ''}`;
         }
         
+        const currentText = `${absenceType?.abbreviation}: ${format(firstAbsence.startDate, 'dd/MM/yy')} - ${firstAbsence.endDate ? format(firstAbsence.endDate, 'dd/MM/yy') : ''}`;
+
+        const isModified = originalText !== currentText;
+
         return {
             name: emp.name,
-            status,
-            details,
+            status: isModified ? 'Modificada' : 'Original',
+            original: originalText,
+            current: isModified ? currentText : '',
         };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
-    const head = [['Empleado', 'Estado', 'Detalles de la Solicitud']];
-    const body = reportData.map(d => [d.name, d.status, d.details]);
+    const head = [['Empleado', 'Solicitud Original', 'Estado/Modificación']];
+    const body = reportData.map(d => [d.name, d.original, d.status === 'Modificada' ? `Modificada a:\n${d.current}` : d.status]);
 
     autoTable(doc, {
         head: head,
@@ -632,30 +645,20 @@ export const generateRequestStatusReportPDF = (
         startY: 30,
         theme: 'striped',
         headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        columnStyles: { 1: { cellWidth: 60 }, 2: { cellWidth: 60 } },
         didDrawCell: (data) => {
-            if (data.section === 'body' && data.column.index === 1) {
-                if (data.cell.raw === 'PENDIENTE DE SOLICITUD') {
+            if (data.section === 'body' && data.column.index > 0) {
+                const rawText = data.cell.raw as string;
+                if (rawText.includes('PENDIENTE')) {
                     doc.setTextColor(220, 53, 69); // Destructive color
                     doc.setFont(doc.getFont().fontName, 'bold');
+                } else if (rawText.includes('Modificada')) {
+                     doc.setTextColor(255, 193, 7); // Warning/Orange color
                 }
             }
         },
     });
     
     const safeTitle = campaign.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-    doc.save(`informe_estado_${safeTitle}.pdf`);
+    doc.save(`informe_peticiones_${safeTitle}.pdf`);
 };
-
-
-    
-
-    
-
-
-
-
-
-
-
-
-

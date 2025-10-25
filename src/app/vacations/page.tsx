@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
-import type { Employee, EmploymentPeriod, Ausencia, VacationCampaign, Conversation, HolidayEmployee } from '@/lib/types';
+import type { Employee, EmploymentPeriod, Ausencia, VacationCampaign, Conversation, HolidayEmployee, ScheduledAbsence } from '@/lib/types';
 import {
   format,
   isAfter,
@@ -281,7 +281,7 @@ export default function VacationsPage() {
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
 
         allEmployeesForQuadrant.forEach(emp => {
-            const allAbsenceDays = new Map<string, { typeId: string; typeAbbr: string; periodId?: string; absenceId?: string; isRequest?: boolean }>();
+            const allAbsenceDays = new Map<string, { typeId: string; typeAbbr: string; periodId?: string; absenceId?: string; isRequest?: boolean; originalRequest?: { startDate: Date, endDate: Date | null } }>();
 
             // 1. Get from scheduledAbsences (confirmed)
             emp.employmentPeriods.forEach(period => {
@@ -297,6 +297,7 @@ export default function VacationsPage() {
                                 periodId: period.id,
                                 absenceId: absence.id,
                                 isRequest: false,
+                                originalRequest: absence.originalRequest,
                             });
                         });
                     });
@@ -336,7 +337,7 @@ export default function VacationsPage() {
                         periods.push({
                             id: currentInfo.absenceId!, startDate: currentStart, endDate: sortedDays[i-1],
                             absenceTypeId: currentInfo.typeId, absenceAbbreviation: currentInfo.typeAbbr, periodId: currentInfo.periodId,
-                            isRequest: currentInfo.isRequest
+                            isRequest: currentInfo.isRequest, originalRequest: currentInfo.originalRequest
                         });
                         currentStart = sortedDays[i];
                         currentInfo = dayInfo;
@@ -345,7 +346,7 @@ export default function VacationsPage() {
                 periods.push({
                     id: currentInfo.absenceId!, startDate: currentStart, endDate: sortedDays[sortedDays.length - 1],
                     absenceTypeId: currentInfo.typeId, absenceAbbreviation: currentInfo.typeAbbr, periodId: currentInfo.periodId,
-                    isRequest: currentInfo.isRequest,
+                    isRequest: currentInfo.isRequest, originalRequest: currentInfo.originalRequest,
                 });
             }
             employeesWithAbsences[emp.id] = periods;
@@ -433,6 +434,13 @@ export default function VacationsPage() {
             const { employee, absence } = editingAbsence;
             const period = employee.employmentPeriods.find((p: EmploymentPeriod) => p.id === absence.periodId);
             if (!period) throw new Error("Periodo laboral no encontrado para la ausencia.");
+            
+            // Re-use the existing original request from the absence being edited
+            const originalRequest = absence.originalRequest ? {
+                startDate: format(absence.originalRequest.startDate, 'yyyy-MM-dd'),
+                endDate: absence.originalRequest.endDate ? format(absence.originalRequest.endDate, 'yyyy-MM-dd') : null
+            } : undefined;
+
 
             await deleteScheduledAbsence(employee.id, period.id, absence.id, employee, weeklyRecords);
             
@@ -440,7 +448,7 @@ export default function VacationsPage() {
                 absenceTypeId: absence.absenceTypeId,
                 startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
                 endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
-            }, employee);
+            }, employee, originalRequest);
 
             toast({ title: 'Ausencia actualizada', description: `La ausencia de ${employee.name} ha sido modificada.` });
             refreshData();
@@ -916,6 +924,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-
-
-

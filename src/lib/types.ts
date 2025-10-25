@@ -32,6 +32,10 @@ export interface ScheduledAbsence {
     absenceTypeId: string;
     startDate: Date; 
     endDate: Date | null; 
+    originalRequest?: {
+        startDate: Date;
+        endDate: Date | null;
+    }
 }
 
 export interface EmploymentPeriod {
@@ -267,6 +271,10 @@ export interface Ausencia {
     absenceTypeId: string;
     absenceAbbreviation: string;
     periodId?: string;
+    originalRequest?: {
+        startDate: Date;
+        endDate: Date | null;
+    }
   }
 
 export interface Conversation {

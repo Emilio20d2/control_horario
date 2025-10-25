@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { addDocument, updateDocument, deleteDocument, setDocument } from './firestoreService';
@@ -284,7 +285,8 @@ export const addScheduledAbsence = async (
         startDate: string; // YYYY-MM-DD
         endDate: string | null;
     },
-    currentEmployee: Employee
+    currentEmployee: Employee,
+    originalRequest?: { startDate: string, endDate: string | null }
 ): Promise<void> => {
     const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
     if (!period) throw new Error("Periodo laboral no encontrado");
@@ -298,6 +300,10 @@ export const addScheduledAbsence = async (
         absenceTypeId: newAbsence.absenceTypeId,
         startDate: parseISO(newAbsence.startDate),
         endDate: newAbsence.endDate ? parseISO(newAbsence.endDate) : null,
+        originalRequest: {
+            startDate: originalRequest ? parseISO(originalRequest.startDate) : parseISO(newAbsence.startDate),
+            endDate: originalRequest && originalRequest.endDate ? parseISO(originalRequest.endDate) : (newAbsence.endDate ? parseISO(newAbsence.endDate) : null),
+        }
     };
 
     period.scheduledAbsences.push(absenceToAdd);
