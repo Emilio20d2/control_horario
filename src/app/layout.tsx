@@ -36,8 +36,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Control Horario" />
         
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" href="/favicon.ico" sizes="any" suppressHydrationWarning />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" suppressHydrationWarning />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
       </head>
       <body className={cn('antialiased font-body', fontBody.variable, fontHeadline.variable)}>
         <AppProviders>
