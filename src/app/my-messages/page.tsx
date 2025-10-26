@@ -270,13 +270,30 @@ export default function MyMessagesPage() {
             const isFirstCampaign = allCampaignsThisYear.length > 0 && allCampaignsThisYear[0].id === activeCampaign.id;
             const isSecondCampaign = allCampaignsThisYear.length > 1 && allCampaignsThisYear[1].id === activeCampaign.id;
     
-            if (isFirstCampaign && newlyRequestedDays > 10) {
-                 toast({
-                    variant: "destructive",
-                    title: "Límite de la primera campaña excedido",
-                    description: `En esta campaña solo puedes solicitar un máximo de 10 días de vacaciones. Has solicitado ${newlyRequestedDays}.`,
-                });
-                return;
+            if (isFirstCampaign) {
+                let campaignLimit = 10;
+                if (vacationDaysAvailable < 31) {
+                    const adjustedLimit = vacationDaysAvailable - 21;
+                    if (adjustedLimit < campaignLimit) {
+                         if (newlyRequestedDays > adjustedLimit) {
+                            toast({
+                                variant: "destructive",
+                                title: "Límite de primera campaña ajustado",
+                                description: `Debido a tu saldo de días, para poder disfrutar de 21 días en verano, ahora solo puedes solicitar un máximo de ${adjustedLimit} días.`,
+                            });
+                            return;
+                        }
+                        campaignLimit = adjustedLimit;
+                    }
+                }
+                 if (newlyRequestedDays > campaignLimit) {
+                    toast({
+                       variant: "destructive",
+                       title: `Límite de la primera campaña excedido (${campaignLimit} días)`,
+                       description: `En esta campaña solo puedes solicitar un máximo de ${campaignLimit} días de vacaciones. Has solicitado ${newlyRequestedDays}.`,
+                   });
+                   return;
+               }
             }
     
             if (isSecondCampaign && newlyRequestedDays > 21) {
