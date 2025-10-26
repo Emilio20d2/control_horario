@@ -455,7 +455,6 @@ export default function SettingsPageContent() {
 
             <TabsContent value="utils">
                 <div className='grid gap-6'>
-                    <MigrationManager />
                     <ImportManager />
                     <DataCleanupManager />
                     <RetroactiveAuditManager />
@@ -468,4 +467,3 @@ export default function SettingsPageContent() {
   );
 }
 
-    
