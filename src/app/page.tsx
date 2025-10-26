@@ -10,30 +10,25 @@ export default function Home() {
   const { user, appUser, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    // This effect only runs AFTER all loading is complete (handled by AppProviders)
     if (authLoading) {
-      return; // Wait until auth/appUser loading is fully finished
+      return;
     }
 
-    // If, after loading, there's no user, redirect to login
     if (!user) {
       router.replace('/login');
       return;
     }
 
-    // If we have an appUser, redirect based on their role
     if (appUser) {
       if (appUser.role === 'admin') {
         router.replace('/dashboard');
-      } else { // 'employee'
+      } else if (appUser.role === 'employee') {
         router.replace('/my-profile');
       }
-    } else {
-       // This case can happen if the user doc doesn't exist. Fallback to login.
-       console.error("User authenticated but no appUser profile found after load. Redirecting to login.");
-       router.replace('/login');
     }
-    
+    // If appUser is not available after loading, it will implicitly do nothing,
+    // waiting for the state to resolve. The loading screen from AppProviders handles the UI.
+
   }, [user, appUser, authLoading, router]);
 
 
