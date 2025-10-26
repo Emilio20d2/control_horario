@@ -47,19 +47,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
             const userData = userDoc.data() as Omit<AppUser, 'id'>;
-            const trueRole = userData.role;
+            const trueRole = userData.role; // This is the source of truth from DB
             const initialViewMode = trueRole === 'admin' ? 'admin' : 'employee';
             
+            setViewMode(initialViewMode); // <-- CRITICAL FIX: Set viewMode based on true role
             setAppUser({ id: user.uid, ...userData, trueRole, role: initialViewMode });
-            setViewMode(initialViewMode);
           } else {
             console.warn("User document not found in Firestore for UID:", user.uid);
             setAppUser(null);
+            // If user doc is not found, default to employee view and redirect to a safe page.
+            setViewMode('employee'); 
           }
         } catch (error) {
           console.error("Error fetching user document:", error);
           setAppUser(null);
-          // Optional: handle error state, maybe sign out user
+          // Fallback in case of error
+          setViewMode('employee'); 
         }
       } else {
         setUser(null);
