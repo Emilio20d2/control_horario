@@ -112,6 +112,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/my-profile', label: 'Ficha', icon: User },
     { href: '/my-schedule', label: 'Presencias', icon: CalendarCheck },
     { href: '/my-messages', label: 'Mensajes', icon: Mail, notification: unreadMessageCount > 0 },
+    { href: '/help', label: 'Ayuda', icon: HelpCircle },
   ];
 
   const isAdminView = viewMode === 'admin';
@@ -182,8 +183,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         )}
         
         <div className="flex-1 flex justify-center">
-             {!isMobile && <MainNav />}
-             {isMobile && !isAdminView && <MainNav />}
+            {isMobile ? <MainNav isMobileNav={false} /> : <MainNav isMobileNav={false} />}
         </div>
         
         <div className="flex items-center gap-2 ml-auto">
@@ -229,15 +229,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
                       )}
                   </DropdownMenuContent>
               </DropdownMenu>
-            )}
-
-            {!isAdminView && (
-                <Button variant="ghost" asChild className="flex items-center gap-2">
-                    <Link href="/help">
-                        <HelpCircle className="h-5 w-5" />
-                        <span className="hidden sm:inline">Ayuda</span>
-                    </Link>
-                </Button>
             )}
 
             <DropdownMenu>
