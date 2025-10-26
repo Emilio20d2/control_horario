@@ -1,5 +1,4 @@
 
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -230,9 +229,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
   const { user: authUser, loading: authLoading } = useAuth();
   
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async (user: any) => {
     console.log("Starting to load app data...");
-    setLoading(true);
+    
     const unsubs: (() => void)[] = [];
 
     const safeFormat = (date: Date | Timestamp | string | null | undefined): string | null => {
@@ -285,57 +284,61 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setupSubscription<VacationCampaign>('vacationCampaigns', setVacationCampaigns, data => data.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime()))
     ];
 
-    Promise.all(dataPromises).finally(() => {
-        console.log("Finished loading app data.");
-        setLoading(false);
-    });
+    await Promise.all(dataPromises);
+    console.log("Finished loading app data.");
+    setLoading(false);
 
     return () => unsubs.forEach(unsub => unsub());
   }, []);
 
   // Effect to load AppUser data
   useEffect(() => {
-    if (authLoading) return;
-
-    if (authUser) {
-      if (authUser.email === 'emiliogp@inditex.com') {
-          const hardcodedAdminUser: AppUser = {
-              id: authUser.uid,
-              email: authUser.email,
-              employeeId: 'hardcoded_admin',
-              role: 'admin',
-              trueRole: 'admin',
-          };
-          setAppUser(hardcodedAdminUser);
-          setViewMode('admin');
-          return;
-      }
-      
-      getDocumentById<AppUser>('users', authUser.uid).then(userRecord => {
-        if (userRecord) {
-            const trueRole = userRecord.role;
-            const newRole = trueRole === 'admin' ? viewMode : 'employee';
-             setAppUser({
-                ...userRecord,
-                role: newRole,
-                trueRole: trueRole,
-            });
-        }
-      }).catch(() => {
+    if (authLoading || !authUser) {
+      if(!authLoading) {
         setAppUser(null);
-      });
-    } else {
-      setAppUser(null);
-      setLoading(false);
+        setLoading(false);
+      }
+      return;
+    };
+
+    setLoading(true);
+
+    if (authUser.email === 'emiliogp@inditex.com') {
+        const hardcodedAdminUser: AppUser = {
+            id: authUser.uid,
+            email: authUser.email,
+            employeeId: 'hardcoded_admin',
+            role: 'admin',
+            trueRole: 'admin',
+        };
+        setAppUser(hardcodedAdminUser);
+        setViewMode('admin');
+        return;
     }
+    
+    getDocumentById<AppUser>('users', authUser.uid).then(userRecord => {
+      if (userRecord) {
+          const trueRole = userRecord.role;
+          const newRole = trueRole === 'admin' ? viewMode : 'employee';
+           setAppUser({
+              ...userRecord,
+              role: newRole,
+              trueRole: trueRole,
+          });
+      } else {
+        setAppUser(null);
+      }
+    }).catch(() => {
+      setAppUser(null);
+    });
   }, [authLoading, authUser, viewMode]);
 
   // Effect to load main application data after appUser is set
   useEffect(() => {
-    if(appUser && !authLoading) {
-        loadData();
+    if (appUser && authUser) {
+        loadData(authUser);
     }
-  }, [appUser, authLoading, loadData]);
+  }, [appUser, authUser, loadData]);
   
   // Effect to find the employee record corresponding to the logged-in user
   useEffect(() => {
@@ -367,7 +370,8 @@ const unreadMessageCount = useMemo(() => {
   };
   
   const refreshData = useCallback(() => {
-    console.log("Refreshing data (triggered by onSnapshot)...");
+    // This is now just a placeholder. The onSnapshot listeners handle live updates.
+    console.log("Data refresh triggered (onSnapshot handles this).");
   }, []);
 
   const refreshUsers = async () => {

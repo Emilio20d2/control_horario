@@ -12,37 +12,43 @@ export default function Home() {
   const { appUser, loading: dataLoading } = useDataProvider();
 
   useEffect(() => {
-    // Wait until both authentication and data loading are complete
+    // This effect runs only when loading states or user objects change.
+    // It is responsible for redirecting the user AFTER all loading is complete.
+
+    // Do nothing while either auth or data is loading.
+    // The loading screen is handled by AppProviders.
     if (authLoading || dataLoading) {
-      return; // Do nothing while loading
+      return; 
     }
 
-    // Once loading is finished, decide where to redirect
+    // If loading is done and there's no authenticated user, go to login.
     if (!user) {
-      // If no user is authenticated, go to login
       router.replace('/login');
-    } else if (appUser) {
-      // If there is an authenticated user and app user data is available
+      return;
+    }
+    
+    // If loading is done and we have an authenticated user with an app profile.
+    if (appUser) {
       if (appUser.role === 'admin') {
         router.replace('/dashboard');
       } else {
         router.replace('/my-profile');
       }
-    }
-    // If user is authenticated but appUser is not loaded yet, this effect will
-    // re-run once appUser is available, handling the redirection correctly.
-    // A fallback to /login is included in case appUser never loads for an auth'd user.
-    else if (!dataLoading) {
-        router.replace('/login');
+    } 
+    // Fallback: If loading is done, user is auth'd, but appUser failed to load,
+    // send back to login to prevent being stuck.
+    else {
+      router.replace('/login');
     }
     
   }, [user, appUser, authLoading, dataLoading, router]);
 
-  // Display a consistent loading screen while logic is processing
+  // The actual loading UI is now handled by the AppStateController in AppProviders.
+  // This just returns a placeholder while the redirection logic runs.
   return (
-    <div className="flex h-screen w-full items-center justify-center">
+     <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-            <p className="text-muted-foreground">Cargando...</p>
+            <p className="text-muted-foreground">Iniciando...</p>
             <div className="w-64 h-2 rounded-full bg-muted-foreground/10 overflow-hidden">
                 <div className="h-full bg-primary animate-pulse w-full"></div>
             </div>
