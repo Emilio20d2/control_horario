@@ -614,5 +614,4 @@ export default function MyMessagesPage() {
 
         </div>
     );
-
-    
+}
