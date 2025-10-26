@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { addDocument, updateDocument, deleteDocument, setDocument } from './firestoreService';
@@ -352,3 +351,5 @@ export const deleteScheduledAbsence = async (
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
+
+    
