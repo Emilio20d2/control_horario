@@ -294,51 +294,39 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   // Effect to load AppUser data
   useEffect(() => {
     if (authLoading || !authUser) {
-      if(!authLoading) {
-        setAppUser(null);
-        setLoading(false);
-      }
-      return;
-    };
-
-    setLoading(true);
-
-    if (authUser.email === 'emiliogp@inditex.com') {
-        const hardcodedAdminUser: AppUser = {
-            id: authUser.uid,
-            email: authUser.email,
-            employeeId: 'hardcoded_admin',
-            role: 'admin',
-            trueRole: 'admin',
-        };
-        setAppUser(hardcodedAdminUser);
-        setViewMode('admin');
+        if(!authLoading) {
+            setAppUser(null);
+        }
         return;
-    }
+    };
     
     getDocumentById<AppUser>('users', authUser.uid).then(userRecord => {
-      if (userRecord) {
-          const trueRole = userRecord.role;
-          const newRole = trueRole === 'admin' ? viewMode : 'employee';
-           setAppUser({
-              ...userRecord,
-              role: newRole,
-              trueRole: trueRole,
-          });
-      } else {
-        setAppUser(null);
-      }
+        if (userRecord) {
+            const trueRole = userRecord.role;
+            const newRole = trueRole === 'admin' ? viewMode : 'employee';
+            setAppUser({
+                ...userRecord,
+                role: newRole,
+                trueRole: trueRole,
+            });
+        } else {
+            setAppUser(null);
+        }
     }).catch(() => {
-      setAppUser(null);
+        setAppUser(null);
     });
   }, [authLoading, authUser, viewMode]);
+
 
   // Effect to load main application data after appUser is set
   useEffect(() => {
     if (appUser && authUser) {
+        setLoading(true);
         loadData(authUser);
+    } else if (!authLoading && !authUser) {
+        setLoading(false);
     }
-  }, [appUser, authUser, loadData]);
+  }, [appUser, authUser, loadData, authLoading]);
   
   // Effect to find the employee record corresponding to the logged-in user
   useEffect(() => {
