@@ -480,7 +480,7 @@ export default function MyMessagesPage() {
                             className="rounded-md border p-0"
                             fromDate={fromDate}
                             toDate={toDate}
-                            disabled={{ before: fromDate, after: toDate }}
+                            disabled={[{ before: fromDate, after: toDate }, ...otherHolidays]}
                             modifiers={requestDialogModifiers}
                             modifiersStyles={requestDialogModifiersStyles}
                         />
@@ -495,7 +495,7 @@ export default function MyMessagesPage() {
                                             <span>
                                                 {range.from ? format(range.from, 'dd/MM/yy') : ''} - {range.to ? format(range.to, 'dd/MM/yy') : ''}
                                             </span>
-                                            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleRemoveRange(index)}>
+                                            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={()={() => handleRemoveRange(index)}}>
                                                 <Trash2 className="h-3 w-3 text-destructive" />
                                             </Button>
                                         </li>
@@ -504,8 +504,8 @@ export default function MyMessagesPage() {
                              )}
                          </div>
                          <div className="flex justify-between">
-                            <Button variant="outline" onClick={() => setRequestStep(1)}>Anterior</Button>
-                            <Button onClick={() => setRequestStep(3)} disabled={selectedDateRanges.length === 0}>Siguiente</Button>
+                            <Button variant="outline" onClick={()={() => setRequestStep(1)}>Anterior</Button>
+                            <Button onClick={()={() => setRequestStep(3)} disabled={selectedDateRanges.length === 0}>Siguiente</Button>
                          </div>
                     </div>
                 )}
@@ -519,7 +519,7 @@ export default function MyMessagesPage() {
                             ))}
                          </div>
                          <div className="flex justify-between">
-                            <Button variant="outline" onClick={() => setRequestStep(2)}>Anterior</Button>
+                            <Button variant="outline" onClick={()={() => setRequestStep(2)}>Anterior</Button>
                             <Button onClick={handleSubmitRequest}>Confirmar y Enviar</Button>
                          </div>
                     </div>
@@ -612,4 +612,5 @@ export default function MyMessagesPage() {
 
         </div>
     );
-}
+
+    
