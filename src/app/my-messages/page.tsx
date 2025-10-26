@@ -358,8 +358,8 @@ export default function MyMessagesPage() {
     const renderChatHeader = () => {
         if (activeCampaign) {
             return (
-                 <div className="flex flex-col items-start gap-4 w-full">
-                    <div className="flex-grow">
+                <div className="flex flex-col items-start gap-4 w-full">
+                    <div>
                         <h2 className="text-lg font-bold">{activeCampaign.title}</h2>
                         <p className="text-sm text-muted-foreground">{activeCampaign.description}</p>
                     </div>
@@ -417,11 +417,11 @@ export default function MyMessagesPage() {
                 // If the selection is cleared
                 setCurrentRange(undefined);
             }
-        }
+        };
 
         const handleRemoveRange = (index: number) => {
             setSelectedDateRanges(prev => prev.filter((_, i) => i !== index));
-        }
+        };
 
         const hasAlreadyRequested = selectedAbsenceTypeId ? alreadyRequestedAbsenceTypeIds.has(selectedAbsenceTypeId) : false;
 
@@ -495,7 +495,7 @@ export default function MyMessagesPage() {
                                             <span>
                                                 {range.from ? format(range.from, 'dd/MM/yy') : ''} - {range.to ? format(range.to, 'dd/MM/yy') : ''}
                                             </span>
-                                            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={()={() => handleRemoveRange(index)}}>
+                                            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleRemoveRange(index)}>
                                                 <Trash2 className="h-3 w-3 text-destructive" />
                                             </Button>
                                         </li>
@@ -504,8 +504,8 @@ export default function MyMessagesPage() {
                              )}
                          </div>
                          <div className="flex justify-between">
-                            <Button variant="outline" onClick={()={() => setRequestStep(1)}>Anterior</Button>
-                            <Button onClick={()={() => setRequestStep(3)} disabled={selectedDateRanges.length === 0}>Siguiente</Button>
+                            <Button variant="outline" onClick={() => setRequestStep(1)}>Anterior</Button>
+                            <Button onClick={() => setRequestStep(3)} disabled={selectedDateRanges.length === 0}>Siguiente</Button>
                          </div>
                     </div>
                 )}
@@ -519,14 +519,14 @@ export default function MyMessagesPage() {
                             ))}
                          </div>
                          <div className="flex justify-between">
-                            <Button variant="outline" onClick={()={() => setRequestStep(2)}>Anterior</Button>
+                            <Button variant="outline" onClick={() => setRequestStep(2)}>Anterior</Button>
                             <Button onClick={handleSubmitRequest}>Confirmar y Enviar</Button>
                          </div>
                     </div>
                 )}
             </div>
-        )
-    }
+        );
+    };
     
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6 h-full">
@@ -612,5 +612,4 @@ export default function MyMessagesPage() {
 
         </div>
     );
-
-    
+}
