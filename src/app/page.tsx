@@ -7,11 +7,11 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function Home() {
   const router = useRouter();
-  const { user, appUser, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, viewMode } = useAuth();
 
   useEffect(() => {
     if (authLoading) {
-      return;
+      return; // Espera a que la autenticación y la determinación del rol finalicen.
     }
 
     if (!user) {
@@ -19,25 +19,23 @@ export default function Home() {
       return;
     }
 
-    if (appUser) {
-      if (appUser.role === 'admin') {
+    // Una vez que la carga ha terminado y tenemos un usuario,
+    // el viewMode ya estará correctamente establecido.
+    if (viewMode === 'admin') {
         router.replace('/dashboard');
-      } else if (appUser.role === 'employee') {
+    } else if (viewMode === 'employee') {
         router.replace('/my-profile');
-      }
     }
-    // If appUser is not available after loading, it will implicitly do nothing,
-    // waiting for the state to resolve. The loading screen from AppProviders handles the UI.
 
-  }, [user, appUser, authLoading, router]);
+  }, [user, authLoading, viewMode, router]);
 
 
-  // The actual loading UI is handled by AppStateController in AppProviders.
-  // This component just returns a placeholder while the redirection logic runs.
+  // La pantalla de carga principal es manejada por AppStateController en AppProviders.
+  // Este componente solo muestra un placeholder mientras se ejecuta la lógica de redirección.
   return (
      <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-            <p className="text-muted-foreground">Iniciando...</p>
+            <p className="text-muted-foreground">Redirigiendo...</p>
             <div className="w-64 h-2 rounded-full bg-muted-foreground/10 overflow-hidden">
                 <div className="h-full bg-primary animate-pulse w-full"></div>
             </div>
