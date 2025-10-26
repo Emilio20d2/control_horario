@@ -13,7 +13,7 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
-import type { Message, VacationCampaign, Employee } from '@/lib/types';
+import type { Message, VacationCampaign, Employee, AbsenceType, ScheduledAbsence } from '@/lib/types';
 import { format, isWithinInterval, startOfDay, endOfDay, parseISO, eachDayOfInterval, isAfter } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useIsMobile } from '@/hooks/use-is-mobile';
@@ -58,6 +58,27 @@ export default function MyMessagesPage() {
       if (!activeCampaign) return [];
       return absenceTypes.filter(at => activeCampaign.allowedAbsenceTypeIds.includes(at.id));
     }, [activeCampaign, absenceTypes]);
+
+    const alreadyRequestedAbsenceTypeIds = useMemo(() => {
+        if (!employeeRecord || !activeCampaign) return new Set<string>();
+
+        const requestedIds = new Set<string>();
+        const campaignAbsenceTypeSet = new Set(activeCampaign.allowedAbsenceTypeIds);
+
+        employeeRecord.employmentPeriods.forEach(period => {
+            period.scheduledAbsences?.forEach(absence => {
+                if (
+                    campaignAbsenceTypeSet.has(absence.absenceTypeId) &&
+                    absence.originalRequest?.startDate // Check if it originates from a request
+                ) {
+                    requestedIds.add(absence.absenceTypeId);
+                }
+            });
+        });
+        return requestedIds;
+
+    }, [employeeRecord, activeCampaign]);
+
 
     useEffect(() => {
         if(isRequesting) {
@@ -266,13 +287,10 @@ export default function MyMessagesPage() {
     const renderChatHeader = () => {
         if (activeCampaign) {
             return (
-                <div className="flex flex-col items-start gap-4 w-full">
-                    <div className="flex items-start gap-4">
-                        <Avatar className="border-2 border-foreground h-12 w-12"><AvatarFallback>D</AvatarFallback></Avatar>
-                        <div>
-                            <h2 className="text-lg font-bold">{activeCampaign.title}</h2>
-                            <p className="text-sm text-muted-foreground">{activeCampaign.description}</p>
-                        </div>
+                 <div className="flex flex-col items-start gap-4 w-full">
+                    <div className="flex-grow">
+                        <h2 className="text-lg font-bold">{activeCampaign.title}</h2>
+                        <p className="text-sm text-muted-foreground">{activeCampaign.description}</p>
                     </div>
                     <Button size="sm" onClick={() => setIsRequesting(true)} className="self-end">
                         <PlusCircle className="mr-2 h-4 w-4" />
@@ -334,6 +352,8 @@ export default function MyMessagesPage() {
             setSelectedDateRanges(prev => prev.filter((_, i) => i !== index));
         }
 
+        const hasAlreadyRequested = selectedAbsenceTypeId ? alreadyRequestedAbsenceTypeIds.has(selectedAbsenceTypeId) : false;
+
         return (
             <div className="flex flex-col gap-4">
                 {requestStep === 0 && (
@@ -343,11 +363,25 @@ export default function MyMessagesPage() {
                             <SelectTrigger><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
                             <SelectContent>
                                 {campaignAbsenceTypes.map(at => (
-                                    <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>
+                                    <SelectItem key={at.id} value={at.id} disabled={alreadyRequestedAbsenceTypeIds.has(at.id)}>
+                                        {at.name} {alreadyRequestedAbsenceTypeIds.has(at.id) && "(Ya solicitado)"}
+                                    </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Button onClick={() => setRequestStep(1)} disabled={!selectedAbsenceTypeId}>Siguiente</Button>
+                        {selectedAbsenceTypeId && (
+                            <Alert variant={hasAlreadyRequested ? "destructive" : "default"}>
+                                <Info className="h-4 w-4" />
+                                <AlertTitle>{hasAlreadyRequested ? "Solicitud Duplicada" : "Puedes Continuar"}</AlertTitle>
+                                <AlertDescription>
+                                    {hasAlreadyRequested 
+                                    ? "Ya has realizado una solicitud para este tipo de ausencia en esta campaña. Solo se permite una solicitud por tipo."
+                                    : "Solo se permite una solicitud por tipo de ausencia y por campaña."
+                                    }
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                        <Button onClick={() => setRequestStep(1)} disabled={!selectedAbsenceTypeId || hasAlreadyRequested}>Siguiente</Button>
                     </div>
                 )}
                 {requestStep === 1 && (
@@ -494,9 +528,3 @@ export default function MyMessagesPage() {
         </div>
     );
 }
-
-    
-
-    
-
-    
