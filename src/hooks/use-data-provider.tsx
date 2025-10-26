@@ -299,12 +299,12 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
     if (authUser) {
       if (authUser.email === 'emiliogp@inditex.com') {
-          const hardcodedAdminUser = {
+          const hardcodedAdminUser: AppUser = {
               id: authUser.uid,
               email: authUser.email,
               employeeId: 'hardcoded_admin',
-              role: 'admin' as 'admin' | 'employee',
-              trueRole: 'admin' as 'admin' | 'employee',
+              role: 'admin',
+              trueRole: 'admin',
           };
           setAppUser(hardcodedAdminUser);
           setViewMode('admin');
@@ -332,10 +332,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   // Effect to load main application data after appUser is set
   useEffect(() => {
-    if(appUser) {
+    if(appUser && !authLoading) {
         loadData();
     }
-  }, [appUser, loadData]);
+  }, [appUser, authLoading, loadData]);
   
   // Effect to find the employee record corresponding to the logged-in user
   useEffect(() => {
