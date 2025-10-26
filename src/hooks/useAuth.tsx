@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const trueRole = userData.role; // This is the source of truth from DB
             const initialViewMode = trueRole === 'admin' ? 'admin' : 'employee';
             
-            setViewMode(initialViewMode); // <-- CRITICAL FIX: Set viewMode based on true role
+            setViewMode(initialViewMode);
             setAppUser({ id: user.uid, ...userData, trueRole, role: initialViewMode });
           } else {
             console.warn("User document not found in Firestore for UID:", user.uid);

@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Users, FileDown, CalendarX2, Library, BookUser, AlertTriangle, FileSignature, ScanText, Loader2 as Loader2Icon, Mail } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
+import { useAuth } from '@/hooks/useAuth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Bar, CartesianGrid, XAxis, BarChart as RechartsBarChart } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
@@ -36,7 +37,8 @@ const chartConfig = {
 
 export default function DashboardPage() {
     const dataProvider = useDataProvider();
-    const { employees, weeklyRecords, loading, absenceTypes, holidays, getProcessedAnnualDataForEmployee, getEmployeeFinalBalances, calculateTheoreticalAnnualWorkHours, getEmployeeBalancesForWeek, getWeekId, calculateCurrentAnnualComputedHours, getEffectiveWeeklyHours, getTheoreticalHoursAndTurn, getActivePeriod, processEmployeeWeekData, calculateBalancePreview, vacationData, appUser } = dataProvider;
+    const { employees, weeklyRecords, loading, absenceTypes, holidays, getProcessedAnnualDataForEmployee, getEmployeeFinalBalances, calculateTheoreticalAnnualWorkHours, getEmployeeBalancesForWeek, getWeekId, calculateCurrentAnnualComputedHours, getEffectiveWeeklyHours, getTheoreticalHoursAndTurn, getActivePeriod, processEmployeeWeekData, calculateBalancePreview, vacationData } = dataProvider;
+    const { appUser } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
 

@@ -21,6 +21,7 @@ import type {
   EmployeeGroup,
   Conversation,
   VacationCampaign,
+  ScheduledAbsence,
 } from '../types';
 import { onCollectionUpdate, getDocumentById } from '@/lib/services/firestoreService';
 import { 
@@ -55,7 +56,7 @@ import { addDocument, setDocument, getCollection } from '@/lib/services/firestor
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp, collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
-import { calculateBalancePreview } from '../lib/calculators/balance-calculator';
+import { calculateBalancePreview } from '../calculators/balance-calculator';
 import { useAuth } from './useAuth';
 import { db } from '@/lib/firebase';
 import { getFinalBalancesForEmployee, getVacationSummaryForEmployee } from '@/lib/services/employee-data-service';
@@ -220,14 +221,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const { user: authUser, loading: authLoading, appUser } = useAuth();
   
   useEffect(() => {
-    if (authLoading) {
-      // Don't start loading data until auth state is resolved.
-      return;
-    }
-    
-    if (!authUser) {
-      setLoading(false);
-      return;
+    if (authLoading || !appUser) {
+        if (!authLoading) setLoading(false);
+        return;
     }
 
     setLoading(true);
@@ -289,16 +285,16 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubs.forEach(unsub => unsub());
-  }, [authLoading, authUser]);
+  }, [authLoading, appUser]);
   
   useEffect(() => {
-    if (authUser && employees.length > 0) {
-        const foundEmployee = employees.find(e => e.email === authUser.email);
+    if (appUser && employees.length > 0) {
+        const foundEmployee = employees.find(e => e.email === appUser.email);
         setEmployeeRecord(foundEmployee || null);
-    } else if (!authUser) {
+    } else if (!appUser) {
         setEmployeeRecord(null);
     }
-}, [authUser, employees]);
+}, [appUser, employees]);
 
 
 const unreadMessageCount = useMemo(() => {
