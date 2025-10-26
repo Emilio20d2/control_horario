@@ -9,14 +9,18 @@ export interface CreateUserPayload {
     password?: string; // Optional password for creation, can be auto-generated
 }
 
-export const createUserAccount = async (payload: {email: string, password: string}): Promise<{ success: boolean; uid?: string, error?: string; }> => {
+export const createUserAccount = async (payload: {email: string, password?: string}): Promise<{ success: boolean; uid?: string, error?: string; }> => {
     const { email, password } = payload;
     const db = getDbAdmin();
     const authAdmin = getAuthAdmin();
 
     try {
-        if (!email || !password) {
-            throw new Error('Email y contraseña son obligatorios.');
+        if (!email) {
+            throw new Error('El email es obligatorio.');
+        }
+        
+        if (!password) {
+            throw new Error('La contraseña es obligatoria.');
         }
 
         // 1. Check if employee with this email exists
@@ -32,7 +36,20 @@ export const createUserAccount = async (payload: {email: string, password: strin
         
         // 2. Check if employee is already registered (has authId)
         if (employeeData.authId) {
-            return { success: false, error: 'Este empleado ya tiene una cuenta registrada.' };
+            // Check if a user account already exists in Firebase Auth, if so, just link it.
+            try {
+                const userRecord = await authAdmin.getUserByEmail(email);
+                if(userRecord.uid !== employeeData.authId) {
+                    await employeeDoc.ref.update({ authId: userRecord.uid });
+                }
+                 return { success: true, uid: userRecord.uid, error: 'Este empleado ya tiene una cuenta registrada.' };
+            } catch (error: any) {
+                 if (error.code === 'auth/user-not-found') {
+                    // Auth user deleted, but authId still exists on employee. Let's recreate.
+                 } else {
+                     throw error; // Re-throw other errors
+                 }
+            }
         }
 
         // 3. Create Firebase Auth user
@@ -82,3 +99,5 @@ export const sendPasswordResetEmail = async (email: string): Promise<{ success: 
         return { success: false, error: 'No se pudo enviar el correo de recuperación.' };
     }
 };
+
+    

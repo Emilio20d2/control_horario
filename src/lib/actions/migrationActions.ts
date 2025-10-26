@@ -23,25 +23,24 @@ export async function migrateEmployeeDataToUsers(): Promise<{ success: boolean; 
                 const userDocRef = db.collection('users').doc(employeeData.authId);
                 const existingUser = usersData.get(employeeData.authId);
 
-                const roleToSet = employeeData.role || 'employee';
-
                 if (existingUser) {
-                    // User exists, update if necessary
+                    // User exists, update if necessary to ensure consistency
                     const updates: any = {};
                     if (existingUser.employeeId !== employeeId) updates.employeeId = employeeId;
                     if (existingUser.email !== employeeData.email) updates.email = employeeData.email;
-                    if (existingUser.role !== roleToSet) updates.role = roleToSet;
+                    // We don't update role here, we just ensure a default one exists if missing.
+                    if (!existingUser.role) updates.role = 'employee';
 
                     if (Object.keys(updates).length > 0) {
                         batch.update(userDocRef, updates);
                         usersUpdated++;
                     }
                 } else {
-                    // User does not exist, create it
+                    // User does not exist in 'users' collection, create it
                     batch.set(userDocRef, {
                         email: employeeData.email,
                         employeeId: employeeId,
-                        role: roleToSet
+                        role: 'employee' // Default role
                     });
                     usersCreated++;
                 }

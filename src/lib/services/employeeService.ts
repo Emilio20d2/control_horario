@@ -6,13 +6,27 @@ import type { Employee, EmployeeFormData, WorkHoursRecord, ScheduledAbsence, Emp
 import { isAfter, parseISO, startOfDay, addDays, subDays, format, eachDayOfInterval, startOfWeek, isValid } from 'date-fns';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { createUserAccount } from '../actions/userActions';
 
 export const createEmployee = async (formData: EmployeeFormData & { authId: string | null }): Promise<string> => {
-    const { name, employeeNumber, dni, phone, email, role, startDate, isTransfer, vacationDaysUsedInAnotherCenter, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours, vacationDays2024, authId } = formData;
+    const { name, employeeNumber, dni, phone, email, role, startDate, isTransfer, vacationDaysUsedInAnotherCenter, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours, vacationDays2024 } = formData;
     
     if (!employeeNumber) {
         throw new Error("El número de empleado es obligatorio para crear un nuevo empleado.");
     }
+
+    let authId: string | null = null;
+    if (email) {
+        const password = Math.random().toString(36).slice(-8); // Generate a random temporary password
+        const userResult = await createUserAccount({ email, password });
+        if (userResult.success && userResult.uid) {
+            authId = userResult.uid;
+        } else {
+            // Forward the error from the server action
+            throw new Error(userResult.error || 'Failed to create authentication user.');
+        }
+    }
+
 
     const newEmployee: Omit<Employee, 'id'> = {
         name,
@@ -50,7 +64,7 @@ export const createEmployee = async (formData: EmployeeFormData & { authId: stri
     await setDocument('employees', employeeNumber, newEmployee);
 
     // Now update the user document in 'users' collection with the correct employeeId
-    if (authId) {
+    if (authId && email) {
         await setDocument('users', authId, { email, employeeId: employeeNumber, role: role || 'employee' });
     }
 

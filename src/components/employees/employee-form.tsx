@@ -49,7 +49,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
-import { createUserAccount } from '@/lib/actions/userActions';
 
 
 const dayScheduleSchema = z.object({
@@ -138,7 +137,7 @@ const generateDefaultShift = (hours: number, days: string[]) => {
 export function EmployeeForm({ employee }: EmployeeFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { contractTypes, users, appUser, refreshUsers, employeeGroups, getEmployeeFinalBalances } = useDataProvider();
+  const { contractTypes, users, appUser, getEmployeeFinalBalances } = useDataProvider();
   const { reauthenticateWithPassword } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const [password, setPassword] = useState('');
@@ -146,7 +145,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
   const getInitialValues = () => {
     const userForEmployee = employee?.authId ? users.find(u => u.id === employee.authId) : undefined;
     
-    const role = employee?.email === 'emiliogp@inditex.com' ? 'admin' : userForEmployee?.role || 'employee';
+    const role = userForEmployee?.role || 'employee';
 
     if (employee && employee.employmentPeriods?.length > 0) {
         const period = [...employee.employmentPeriods].sort((a,b) => {
@@ -267,23 +266,12 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                 title: "Empleado Actualizado",
                 description: `Los datos de ${values.name} han sido guardados.`,
             });
-            await refreshUsers();
             router.push(`/employees/${employee.id}`);
         } else {
             // Create new employee
-            let authId: string | null = null;
-            if (values.email) {
-                const userResult = await createUserAccount({ email: values.email });
-                if (userResult.success && userResult.uid) {
-                    authId = userResult.uid;
-                } else {
-                    throw new Error(userResult.error || 'Failed to create authentication user.');
-                }
-            }
-
             const dataToSave: EmployeeFormData & { authId: string | null } = {
                 ...values,
-                authId: authId,
+                authId: null, // Placeholder, will be handled in createEmployee service
                 annualComputedHours: values.annualComputedHours ?? 0,
                 initialOrdinaryHours: values.initialOrdinaryHours ?? 0,
                 initialHolidayHours: values.initialHolidayHours ?? 0,
@@ -436,7 +424,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Rol del Usuario</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                                 <SelectTrigger>
                                 <SelectValue placeholder="Selecciona un rol" />
@@ -863,4 +851,5 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
   );
 }
 
+    
     
