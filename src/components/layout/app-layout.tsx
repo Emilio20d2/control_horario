@@ -180,7 +180,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </Link>
         )}
         
-        <div className="flex-1 flex justify-center">
+        <div className={cn(
+            "flex-1 justify-center",
+            viewMode === 'admin' ? 'hidden md:flex' : 'flex'
+        )}>
             <MainNav isMobileNav={false} />
         </div>
         
