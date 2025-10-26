@@ -307,7 +307,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         .then(userRecord => {
           if (userRecord) {
             const trueRole = userRecord.role;
-            // Set the initial view mode based on the user's true role
             const initialViewMode = trueRole === 'admin' ? 'admin' : 'employee';
             setViewMode(initialViewMode);
             setAppUser({
