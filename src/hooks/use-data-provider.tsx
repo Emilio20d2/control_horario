@@ -220,13 +220,16 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const { user: authUser, loading: authLoading, appUser } = useAuth();
   
   useEffect(() => {
-    if (authLoading || !authUser) {
-      // If auth is loading, or there's no user, we shouldn't be loading data.
+    if (authLoading) {
+      // Don't start loading data until auth state is resolved.
+      return;
+    }
+    
+    if (!authUser) {
       setLoading(false);
       return;
-    };
+    }
 
-    console.log("Auth is ready, starting to load app data...");
     setLoading(true);
     
     const unsubs: (() => void)[] = [];
@@ -282,22 +285,20 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     ];
 
     Promise.all(dataPromises).then(() => {
-      console.log("Finished loading app data.");
       setLoading(false);
     });
 
     return () => unsubs.forEach(unsub => unsub());
   }, [authLoading, authUser]);
   
-  // Effect to find the employee record corresponding to the logged-in user
   useEffect(() => {
-    if (appUser && employees.length > 0) {
-        const foundEmployee = employees.find(e => e.id === appUser.employeeId);
+    if (authUser && employees.length > 0) {
+        const foundEmployee = employees.find(e => e.email === authUser.email);
         setEmployeeRecord(foundEmployee || null);
-    } else if (!appUser) {
+    } else if (!authUser) {
         setEmployeeRecord(null);
     }
-}, [appUser, employees]);
+}, [authUser, employees]);
 
 
 const unreadMessageCount = useMemo(() => {
