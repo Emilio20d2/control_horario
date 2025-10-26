@@ -55,8 +55,8 @@ import { useIsMobile } from '@/hooks/use-is-mobile';
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
-  const { unconfirmedWeeksDetails, appUser, employeeRecord, viewMode, setViewMode, loading: dataLoading, unreadMessageCount } = useDataProvider();
+  const { user, logout, appUser, viewMode, setViewMode, loading: authLoading } = useAuth();
+  const { unconfirmedWeeksDetails, employeeRecord, loading: dataLoading, unreadMessageCount } = useDataProvider();
   const isMobile = useIsMobile();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   
@@ -162,19 +162,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
     </nav>
   );
 
-  if (dataLoading) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-            <div className="flex flex-col items-center gap-4">
-                <p className="text-muted-foreground">Cargando datos...</p>
-                <div className="w-64 h-2 rounded-full bg-muted-foreground/10 overflow-hidden">
-                    <div className="h-full bg-primary animate-pulse w-full"></div>
-                </div>
-            </div>
-        </div>
-    );
+  if (authLoading || (user && dataLoading)) {
+    return null; // The loading screen is handled by AppStateController
   }
   
+  // If we are on public pages like /login, render children without the layout
+  if (!user) {
+    return <main>{children}</main>;
+  }
+
   return (
     <div className="flex h-screen w-full flex-col bg-background">
       <header className="sticky top-0 inset-x-0 flex h-20 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">

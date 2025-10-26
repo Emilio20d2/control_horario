@@ -6,15 +6,15 @@ import { DataProvider, useDataProvider } from "@/hooks/use-data-provider";
 import { ReactNode } from "react";
 
 function AppStateController({ children }: { children: ReactNode }) {
-    const { user, loading: authLoading } = useAuth();
-    const { loading: dataLoading, appUser } = useDataProvider();
+    const { user, loading: authLoading, appUser } = useAuth();
+    const { loading: dataLoading } = useDataProvider();
 
-    // While auth is resolving, show a spinner. This is the very first check.
+    // While auth is resolving (user and appUser), show a spinner. This is the very first check.
     if (authLoading) {
         return (
              <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex flex-col items-center gap-4">
-                    <p className="text-muted-foreground">Autenticando...</p>
+                    <p className="text-muted-foreground">Autenticando y verificando perfil...</p>
                     <div className="w-64 h-2 rounded-full bg-muted-foreground/10 overflow-hidden">
                         <div className="h-full bg-primary animate-pulse w-full"></div>
                     </div>
@@ -29,14 +29,12 @@ function AppStateController({ children }: { children: ReactNode }) {
         return <>{children}</>;
     }
     
-    // If we have an authenticated user but data is still loading (either appUser or the rest)
+    // If we have an authenticated user but the main app data is still loading
     if (user && dataLoading) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex flex-col items-center gap-4">
-                    <p className="text-muted-foreground">
-                        {!appUser ? 'Verificando perfil...' : 'Cargando datos...'}
-                    </p>
+                    <p className="text-muted-foreground">Cargando datos de la aplicación...</p>
                     <div className="w-64 h-2 rounded-full bg-muted-foreground/10 overflow-hidden">
                         <div className="h-full bg-primary animate-pulse w-full"></div>
                     </div>

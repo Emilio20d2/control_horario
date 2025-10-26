@@ -4,17 +4,15 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { useDataProvider } from '@/hooks/use-data-provider';
 
 export default function Home() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
-  const { appUser, loading: dataLoading } = useDataProvider();
+  const { user, appUser, loading: authLoading } = useAuth();
 
   useEffect(() => {
     // This effect only runs AFTER all loading is complete (handled by AppProviders)
-    if (authLoading || dataLoading) {
-      return; // Wait until loading is fully finished
+    if (authLoading) {
+      return; // Wait until auth/appUser loading is fully finished
     }
 
     // If, after loading, there's no user, redirect to login
@@ -31,13 +29,12 @@ export default function Home() {
         router.replace('/my-profile');
       }
     } else {
-       // This case should ideally not be reached if logic is correct,
-       // but as a fallback, it prevents an empty page.
+       // This case can happen if the user doc doesn't exist. Fallback to login.
        console.error("User authenticated but no appUser profile found after load. Redirecting to login.");
        router.replace('/login');
     }
     
-  }, [user, appUser, authLoading, dataLoading, router]);
+  }, [user, appUser, authLoading, router]);
 
 
   // The actual loading UI is handled by AppStateController in AppProviders.

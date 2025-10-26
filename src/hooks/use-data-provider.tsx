@@ -68,7 +68,6 @@ interface DataContextType {
   annualConfigs: AnnualConfiguration[];
   weeklyRecords: Record<string, WeeklyRecord>;
   users: AppUser[];
-  appUser: AppUser | null;
   employeeRecord: Employee | null;
   holidayEmployees: HolidayEmployee[];
   holidayReports: HolidayReport[];
@@ -78,9 +77,6 @@ interface DataContextType {
   loading: boolean;
   unreadMessageCount: number;
   unconfirmedWeeksDetails: { weekId: string; employeeNames: string[] }[];
-  viewMode: 'admin' | 'employee';
-  setViewMode: (mode: 'admin' | 'employee') => void;
-  loadData: (user: any) => void;
   refreshData: () => void;
   refreshUsers: () => Promise<void>;
   getEmployeeById: (id: string) => Employee | undefined;
@@ -144,7 +140,6 @@ const DataContext = createContext<DataContextType>({
   annualConfigs: [],
   weeklyRecords: {},
   users: [],
-  appUser: null,
   employeeRecord: null,
   holidayEmployees: [],
   holidayReports: [],
@@ -154,9 +149,6 @@ const DataContext = createContext<DataContextType>({
   loading: true,
   unreadMessageCount: 0,
   unconfirmedWeeksDetails: [],
-  viewMode: 'admin',
-  setViewMode: () => {},
-  loadData: () => {},
   refreshData: () => {},
   refreshUsers: async () => {},
   getEmployeeById: () => undefined,
@@ -217,7 +209,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [annualConfigs, setAnnualConfigs] = useState<AnnualConfiguration[]>([]);
   const [weeklyRecords, setWeeklyRecords] = useState<Record<string, WeeklyRecord>>({});
   const [users, setUsers] = useState<AppUser[]>([]);
-  const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [employeeRecord, setEmployeeRecord] = useState<Employee | null>(null);
   const [holidayEmployees, setHolidayEmployees] = useState<HolidayEmployee[]>([]);
   const [holidayReports, setHolidayReports] = useState<HolidayReport[]>([]);
@@ -226,11 +217,16 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [vacationCampaigns, setVacationCampaigns] = useState<VacationCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
-  const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
-  const { user: authUser, loading: authLoading } = useAuth();
+  const { user: authUser, loading: authLoading, appUser } = useAuth();
   
-  const loadData = useCallback(async (user: any) => {
-    console.log("Starting to load app data...");
+  useEffect(() => {
+    if (authLoading || !authUser) {
+      // If auth is loading, or there's no user, we shouldn't be loading data.
+      setLoading(false);
+      return;
+    };
+
+    console.log("Auth is ready, starting to load app data...");
     setLoading(true);
     
     const unsubs: (() => void)[] = [];
@@ -285,59 +281,13 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setupSubscription<VacationCampaign>('vacationCampaigns', setVacationCampaigns, data => data.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime()))
     ];
 
-    await Promise.all(dataPromises);
-    console.log("Finished loading app data.");
-    setLoading(false);
+    Promise.all(dataPromises).then(() => {
+      console.log("Finished loading app data.");
+      setLoading(false);
+    });
 
     return () => unsubs.forEach(unsub => unsub());
-  }, []);
-
-  // Effect to load AppUser data FIRST
-  useEffect(() => {
-    if (authLoading) return; // Wait for auth to be ready
-    
-    if (!authUser) {
-        setAppUser(null);
-        setLoading(false); // No user, stop loading.
-        return;
-    }
-
-    // Only fetch if we have an authenticated user and no app user yet.
-    if (authUser && !appUser) {
-        getDocumentById<AppUser>('users', authUser.uid)
-            .then(userRecord => {
-                if (userRecord) {
-                    const trueRole = userRecord.role;
-                    const initialViewMode = trueRole === 'admin' ? 'admin' : 'employee';
-                    setViewMode(initialViewMode);
-                    setAppUser({
-                        ...userRecord,
-                        role: initialViewMode,
-                        trueRole: trueRole,
-                    });
-                    // IMPORTANT: Only trigger full data load AFTER role is determined
-                    loadData(authUser); 
-                } else {
-                    console.error("Authenticated user record not found in 'users' collection.");
-                    setAppUser(null);
-                    setLoading(false); // Critical error, stop loading.
-                }
-            })
-            .catch((err) => {
-                console.error("Error fetching user profile:", err);
-                setAppUser(null);
-                setLoading(false); // Error, stop loading.
-            });
-    }
-  }, [authLoading, authUser, appUser, loadData]);
-
-
-  // Effect to handle view mode changes for admins
-  useEffect(() => {
-    if (appUser && appUser.trueRole === 'admin' && appUser.role !== viewMode) {
-      setAppUser(prev => prev ? { ...prev, role: viewMode } : null);
-    }
-  }, [viewMode, appUser]);
+  }, [authLoading, authUser]);
   
   // Effect to find the employee record corresponding to the logged-in user
   useEffect(() => {
@@ -1167,7 +1117,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         return null;
     };
 
-  const value = {
+  const value: DataContextType = {
     employees,
     holidays,
     absenceTypes,
@@ -1175,7 +1125,6 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     annualConfigs,
     weeklyRecords,
     users,
-    appUser,
     employeeRecord,
     holidayEmployees,
     holidayReports,
@@ -1185,9 +1134,6 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     loading,
     unreadMessageCount,
     unconfirmedWeeksDetails,
-    viewMode,
-    setViewMode,
-    loadData,
     refreshData,
     refreshUsers,
     getEmployeeById,
@@ -1209,7 +1155,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     createHoliday: createHolidayService,
     updateHoliday: updateHolidayService,
     deleteHoliday: deleteHolidayService,
-createAnnualConfig: createAnnualConfigService,
+    createAnnualConfig: createAnnualConfigService,
     updateAnnualConfig: updateAnnualConfigService,
     deleteAnnualConfig: deleteAnnualConfigService,
     createContractType: createContractTypeService,
@@ -1227,7 +1173,7 @@ createAnnualConfig: createAnnualConfigService,
     deleteHolidayReport,
     createEmployeeGroup,
     updateEmployeeGroup,
-deleteEmployeeGroup,
+    deleteEmployeeGroup,
     updateEmployeeGroupOrder,
     createVacationCampaign,
     updateVacationCampaign,
