@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizonal, Loader2, Info, Calendar as CalendarIcon, Edit, PlusCircle, Trash2 } from 'lucide-react';
+import { SendHorizonal, Loader2, Info, Calendar as CalendarIcon, Edit, PlusCircle, Trash2, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useDataProvider } from '@/hooks/use-data-provider';
@@ -14,7 +14,7 @@ import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDo
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
 import type { Message, VacationCampaign, Employee, AbsenceType, ScheduledAbsence } from '@/lib/types';
-import { format, isWithinInterval, startOfDay, endOfDay, parseISO, eachDayOfInterval, isAfter } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay, parseISO, eachDayOfInterval, isAfter, differenceInDays } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '@/components/ui/drawer';
@@ -28,7 +28,7 @@ import { addScheduledAbsence } from '@/lib/services/employeeService';
 
 
 export default function MyMessagesPage() {
-    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, holidays, refreshData } = useDataProvider();
+    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, holidays, refreshData, calculateEmployeeVacations } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
     const conversationId = employeeRecord?.id;
     const viewportRef = useRef<HTMLDivElement>(null);
@@ -59,6 +59,12 @@ export default function MyMessagesPage() {
       return absenceTypes.filter(at => activeCampaign.allowedAbsenceTypeIds.includes(at.id));
     }, [activeCampaign, absenceTypes]);
 
+    const campaignIncludesSpecialAbsences = useMemo(() => {
+        if (!campaignAbsenceTypes) return false;
+        const specialNames = ['Excedencia', 'Permiso no retribuido'];
+        return campaignAbsenceTypes.some(at => specialNames.includes(at.name));
+    }, [campaignAbsenceTypes]);
+
     const alreadyRequestedAbsenceTypeIds = useMemo(() => {
         if (!employeeRecord || !activeCampaign) return new Set<string>();
 
@@ -82,12 +88,12 @@ export default function MyMessagesPage() {
 
     useEffect(() => {
         if(isRequesting) {
-            setRequestStep(0);
+            setRequestStep(campaignIncludesSpecialAbsences ? 0 : 1);
             setSelectedAbsenceTypeId('');
             setSelectedDateRanges([]);
             setCurrentRange(undefined);
         }
-    }, [isRequesting]);
+    }, [isRequesting, campaignIncludesSpecialAbsences]);
 
     const conversation = useMemo(() => {
         if (!conversationId) return null;
@@ -235,6 +241,29 @@ export default function MyMessagesPage() {
             return;
         }
 
+        // --- VALIDATION FOR VACATIONS ---
+        if (absenceType.name === 'Vacaciones') {
+            const currentYear = activeCampaign ? (activeCampaign.absenceStartDate as Timestamp).toDate().getFullYear() : new Date().getFullYear();
+            const { vacationDaysAvailable } = calculateEmployeeVacations(employeeRecord, currentYear, 'programmed');
+            
+            const newlyRequestedDays = selectedDateRanges.reduce((acc, range) => {
+                if (range.from && range.to) {
+                    return acc + differenceInDays(range.to, range.from) + 1;
+                }
+                return acc;
+            }, 0);
+
+            if (newlyRequestedDays > vacationDaysAvailable) {
+                toast({
+                    variant: "destructive",
+                    title: "Días de vacaciones excedidos",
+                    description: `Estás intentando solicitar ${newlyRequestedDays} días, pero solo tienes ${vacationDaysAvailable} días disponibles. Ajusta tu solicitud.`,
+                });
+                return;
+            }
+        }
+
+
         setIsRequesting(false); // Close dialog immediately
 
         try {
@@ -358,6 +387,20 @@ export default function MyMessagesPage() {
             <div className="flex flex-col gap-4">
                 {requestStep === 0 && (
                     <div className="space-y-4">
+                        <Alert variant="destructive">
+                            <ShieldAlert className="h-4 w-4" />
+                            <AlertTitle>¡Atención!</AlertTitle>
+                            <AlertDescription>
+                                Esta campaña incluye "Excedencia" o "Permiso no retribuido", los cuales afectan a tus días de vacaciones disponibles.
+                                <br/><br/>
+                                <strong className='font-bold'>Recomendación:</strong> Solicita primero tus periodos de Excedencia/Permiso no retribuido y después, en una nueva solicitud, tus Vacaciones.
+                            </AlertDescription>
+                        </Alert>
+                        <Button onClick={() => setRequestStep(1)} className='w-full'>Continuar</Button>
+                    </div>
+                )}
+                {requestStep === 1 && (
+                    <div className="space-y-4">
                          <h3 className="font-semibold text-center">Paso 1: Elige el tipo de ausencia</h3>
                         <Select value={selectedAbsenceTypeId} onValueChange={setSelectedAbsenceTypeId}>
                             <SelectTrigger><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
@@ -381,10 +424,10 @@ export default function MyMessagesPage() {
                                 </AlertDescription>
                             </Alert>
                         )}
-                        <Button onClick={() => setRequestStep(1)} disabled={!selectedAbsenceTypeId || hasAlreadyRequested}>Siguiente</Button>
+                        <Button onClick={() => setRequestStep(2)} disabled={!selectedAbsenceTypeId || hasAlreadyRequested}>Siguiente</Button>
                     </div>
                 )}
-                {requestStep === 1 && (
+                {requestStep === 2 && (
                     <div className="space-y-4">
                         <h3 className="font-semibold text-center">Paso 2: Elige los periodos</h3>
                         <Calendar
@@ -419,12 +462,12 @@ export default function MyMessagesPage() {
                              )}
                          </div>
                          <div className="flex justify-between">
-                            <Button variant="outline" onClick={() => setRequestStep(0)}>Anterior</Button>
-                            <Button onClick={() => setRequestStep(2)} disabled={selectedDateRanges.length === 0}>Siguiente</Button>
+                            <Button variant="outline" onClick={() => setRequestStep(1)}>Anterior</Button>
+                            <Button onClick={() => setRequestStep(3)} disabled={selectedDateRanges.length === 0}>Siguiente</Button>
                          </div>
                     </div>
                 )}
-                {requestStep === 2 && (
+                {requestStep === 3 && (
                     <div className="space-y-4 text-center">
                          <h3 className="font-semibold">Paso 3: Confirma tu solicitud</h3>
                          <div className="p-4 rounded-md border bg-muted space-y-2">
@@ -434,7 +477,7 @@ export default function MyMessagesPage() {
                             ))}
                          </div>
                          <div className="flex justify-between">
-                            <Button variant="outline" onClick={() => setRequestStep(1)}>Anterior</Button>
+                            <Button variant="outline" onClick={() => setRequestStep(2)}>Anterior</Button>
                             <Button onClick={handleSubmitRequest}>Confirmar y Enviar</Button>
                          </div>
                     </div>
