@@ -436,6 +436,8 @@ export default function MyMessagesPage() {
                                 Esta campaña incluye "Excedencia" o "Permiso no retribuido", los cuales afectan a tus días de vacaciones disponibles.
                                 <br/><br/>
                                 <strong className='font-bold'>Recomendación:</strong> Solicita primero tus periodos de Excedencia/Permiso no retribuido y después, en una nueva solicitud, tus Vacaciones.
+                                <br/><br/>
+                                <strong className='font-bold'>IMPORTANTE: Recuerda que también debes realizar esta misma solicitud a través de la app de INET.</strong>
                             </AlertDescription>
                         </Alert>
                         <Button onClick={() => setRequestStep(1)} className='w-full'>Continuar</Button>
@@ -526,7 +528,7 @@ export default function MyMessagesPage() {
                 )}
             </div>
         );
-    };
+    }
     
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6 h-full">
@@ -612,4 +614,5 @@ export default function MyMessagesPage() {
 
         </div>
     );
-}
+
+    
