@@ -266,12 +266,18 @@ export default function MyMessagesPage() {
     const renderChatHeader = () => {
         if (activeCampaign) {
             return (
-                <div className="flex items-start gap-4">
-                    <Avatar className="border-2 border-foreground h-12 w-12"><AvatarFallback>D</AvatarFallback></Avatar>
-                    <div>
-                        <h2 className="text-lg font-bold">{activeCampaign.title}</h2>
-                        <p className="text-sm text-muted-foreground">{activeCampaign.description}</p>
+                <div className="flex items-center justify-between gap-4 w-full">
+                    <div className="flex items-start gap-4">
+                        <Avatar className="border-2 border-foreground h-12 w-12"><AvatarFallback>D</AvatarFallback></Avatar>
+                        <div>
+                            <h2 className="text-lg font-bold">{activeCampaign.title}</h2>
+                            <p className="text-sm text-muted-foreground">{activeCampaign.description}</p>
+                        </div>
                     </div>
+                    <Button size="sm" onClick={() => setIsRequesting(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Hacer Solicitud
+                    </Button>
                 </div>
             )
         }
@@ -440,21 +446,6 @@ export default function MyMessagesPage() {
                      )}
                 </ScrollArea>
                 <div className="p-4 border-t bg-background space-y-4">
-                    {activeCampaign && (
-                        <Alert>
-                            <Info className="h-4 w-4" />
-                            <AlertTitle>{activeCampaign.title}</AlertTitle>
-                            <AlertDescription>
-                                <div className="flex justify-between items-center">
-                                    <p>Campaña de solicitud activa. ¿Quieres hacer una petición?</p>
-                                    <Button size="sm" onClick={() => setIsRequesting(true)}>
-                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                        Hacer Solicitud
-                                    </Button>
-                                </div>
-                            </AlertDescription>
-                        </Alert>
-                    )}
                     <form onSubmit={handleSendMessage} className="relative">
                         <Input 
                             placeholder="Escribe tu mensaje para cualquier otra consulta..." 
@@ -503,6 +494,8 @@ export default function MyMessagesPage() {
         </div>
     );
 }
+
+    
 
     
 
