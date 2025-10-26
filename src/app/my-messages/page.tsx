@@ -230,20 +230,20 @@ export default function MyMessagesPage() {
 
     const handleSubmitRequest = async () => {
         const absenceType = campaignAbsenceTypes.find(at => at.id === selectedAbsenceTypeId);
-        if (!employeeRecord || selectedDateRanges.length === 0 || !absenceType) {
+        if (!employeeRecord || selectedDateRanges.length === 0 || !absenceType || !activeCampaign) {
             toast({ title: "Datos incompletos", description: "Selecciona al menos un periodo de fechas para enviar la solicitud.", variant: "destructive" });
             return;
         }
-
+    
         const activePeriod = employeeRecord.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
         if (!activePeriod) {
             toast({ title: 'Error', description: 'No tienes un periodo laboral activo para solicitar ausencias.', variant: 'destructive' });
             return;
         }
-
+    
         // --- VALIDATION FOR VACATIONS ---
         if (absenceType.name === 'Vacaciones') {
-            const currentYear = activeCampaign ? (activeCampaign.absenceStartDate as Timestamp).toDate().getFullYear() : new Date().getFullYear();
+            const currentYear = (activeCampaign.absenceStartDate as Timestamp).toDate().getFullYear();
             const { vacationDaysAvailable } = calculateEmployeeVacations(employeeRecord, currentYear, 'programmed');
             
             const newlyRequestedDays = selectedDateRanges.reduce((acc, range) => {
@@ -252,20 +252,45 @@ export default function MyMessagesPage() {
                 }
                 return acc;
             }, 0);
-
+    
             if (newlyRequestedDays > vacationDaysAvailable) {
                 toast({
                     variant: "destructive",
                     title: "Días de vacaciones excedidos",
-                    description: `Estás intentando solicitar ${newlyRequestedDays} días, pero solo tienes ${vacationDaysAvailable} días disponibles. Ajusta tu solicitud.`,
+                    description: `Estás intentando solicitar ${newlyRequestedDays} días, pero solo tienes ${vacationDaysAvailable} días disponibles en total. Ajusta tu solicitud.`,
+                });
+                return;
+            }
+    
+            // Identify if this is the first or second campaign of the year
+            const allCampaignsThisYear = vacationCampaigns
+                .filter(c => (c.absenceStartDate as Timestamp).toDate().getFullYear() === currentYear)
+                .sort((a,b) => (a.submissionStartDate as Timestamp).toDate().getTime() - (b.submissionStartDate as Timestamp).toDate().getTime());
+            
+            const isFirstCampaign = allCampaignsThisYear.length > 0 && allCampaignsThisYear[0].id === activeCampaign.id;
+            const isSecondCampaign = allCampaignsThisYear.length > 1 && allCampaignsThisYear[1].id === activeCampaign.id;
+    
+            if (isFirstCampaign && newlyRequestedDays > 10) {
+                 toast({
+                    variant: "destructive",
+                    title: "Límite de la primera campaña excedido",
+                    description: `En esta campaña solo puedes solicitar un máximo de 10 días de vacaciones. Has solicitado ${newlyRequestedDays}.`,
+                });
+                return;
+            }
+    
+            if (isSecondCampaign && newlyRequestedDays > 21) {
+                toast({
+                    variant: "destructive",
+                    title: "Límite de la segunda campaña excedido",
+                    description: `En esta campaña solo puedes solicitar un máximo de 21 días de vacaciones. Has solicitado ${newlyRequestedDays}.`,
                 });
                 return;
             }
         }
-
-
+    
         setIsRequesting(false); // Close dialog immediately
-
+    
         try {
             for (const range of selectedDateRanges) {
                 if (range.from && range.to) {
@@ -280,12 +305,12 @@ export default function MyMessagesPage() {
             await refreshData();
             
             toast({ title: "Solicitud de Ausencia Guardada", description: "Tus periodos de ausencia se han guardado correctamente." });
-
+    
             const formattedRanges = selectedDateRanges.map(range => 
                 `del ${format(range.from!, 'dd/MM/yyyy')} al ${format(range.to!, 'dd/MM/yyyy')}`
             ).join(', ');
             await sendMessage(`Confirmación de solicitud de ${absenceType.name} para los periodos: ${formattedRanges}.`);
-
+    
         } catch (error) {
             console.error("Error saving scheduled absences:", error);
             toast({ title: "Error al guardar la solicitud", description: "No se pudieron guardar tus ausencias. Inténtalo de nuevo.", variant: "destructive" });
