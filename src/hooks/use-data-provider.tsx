@@ -231,6 +231,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   
   const loadData = useCallback(async (user: any) => {
     console.log("Starting to load app data...");
+    setLoading(true);
     
     const unsubs: (() => void)[] = [];
 
@@ -291,41 +292,45 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubs.forEach(unsub => unsub());
   }, []);
 
-  // Effect to load AppUser data
+  // Effect to load AppUser data FIRST
   useEffect(() => {
-    if (authLoading || !authUser) {
-      if (!authLoading) {
+    if (authLoading) return; // Wait for auth to be ready
+    
+    if (!authUser) {
         setAppUser(null);
-        setLoading(false);
-      }
-      return;
+        setLoading(false); // No user, stop loading.
+        return;
     }
-  
-    // Only proceed if we have a user and haven't loaded their profile yet
+
+    // Only fetch if we have an authenticated user and no app user yet.
     if (authUser && !appUser) {
-      getDocumentById<AppUser>('users', authUser.uid)
-        .then(userRecord => {
-          if (userRecord) {
-            const trueRole = userRecord.role;
-            const initialViewMode = trueRole === 'admin' ? 'admin' : 'employee';
-            setViewMode(initialViewMode);
-            setAppUser({
-              ...userRecord,
-              role: initialViewMode,
-              trueRole: trueRole,
+        getDocumentById<AppUser>('users', authUser.uid)
+            .then(userRecord => {
+                if (userRecord) {
+                    const trueRole = userRecord.role;
+                    const initialViewMode = trueRole === 'admin' ? 'admin' : 'employee';
+                    setViewMode(initialViewMode);
+                    setAppUser({
+                        ...userRecord,
+                        role: initialViewMode,
+                        trueRole: trueRole,
+                    });
+                    // IMPORTANT: Only trigger full data load AFTER role is determined
+                    loadData(authUser); 
+                } else {
+                    console.error("Authenticated user record not found in 'users' collection.");
+                    setAppUser(null);
+                    setLoading(false); // Critical error, stop loading.
+                }
+            })
+            .catch((err) => {
+                console.error("Error fetching user profile:", err);
+                setAppUser(null);
+                setLoading(false); // Error, stop loading.
             });
-          } else {
-            // User exists in Auth but not in 'users' collection. This is an error state.
-            setAppUser(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          setAppUser(null);
-          setLoading(false);
-        });
     }
-  }, [authLoading, authUser, appUser]);
+  }, [authLoading, authUser, appUser, loadData]);
+
 
   // Effect to handle view mode changes for admins
   useEffect(() => {
@@ -333,16 +338,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       setAppUser(prev => prev ? { ...prev, role: viewMode } : null);
     }
   }, [viewMode, appUser]);
-
-  // Effect to load main application data after appUser is set
-  useEffect(() => {
-    if (appUser && authUser) {
-        setLoading(true);
-        loadData(authUser);
-    } else if (!authLoading && !authUser) {
-        setLoading(false);
-    }
-  }, [appUser, authUser, loadData, authLoading]);
   
   // Effect to find the employee record corresponding to the logged-in user
   useEffect(() => {

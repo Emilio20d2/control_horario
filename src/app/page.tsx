@@ -12,42 +12,34 @@ export default function Home() {
   const { appUser, loading: dataLoading, viewMode } = useDataProvider();
 
   useEffect(() => {
-    // Do nothing while loading. The loading screen is handled by AppProviders.
+    // Render loading screen (handled by AppStateController) while waiting
     if (authLoading || dataLoading) {
       return;
     }
 
-    // If loading is done and there's no user, go to login.
+    // If loading is finished and there's no user, redirect to login
     if (!user) {
       router.replace('/login');
       return;
     }
 
-    // If we have a user profile, redirect based on roles.
+    // If we have an appUser, redirect based on their role and current view mode
     if (appUser) {
-      // If the true role is admin and they are in employee view mode
-      if (appUser.trueRole === 'admin' && viewMode === 'employee') {
-        router.replace('/my-profile');
-      } 
-      // If the true role is admin and they are in admin view mode
-      else if (appUser.trueRole === 'admin' && viewMode === 'admin') {
+      if (appUser.role === 'admin') {
         router.replace('/dashboard');
-      } 
-      // If the user is a regular employee
-      else if (appUser.trueRole === 'employee') {
+      } else if (appUser.role === 'employee') {
         router.replace('/my-profile');
-      }
-      // Fallback
-      else {
+      } else {
+        // Fallback for unexpected roles
         router.replace('/login');
       }
-    } 
-    // Fallback if appUser is null after loading
-    else {
-      router.replace('/login');
+    } else {
+      // Fallback if appUser is null after loading (e.g., data inconsistency)
+       console.error("User authenticated but no appUser profile found. Redirecting to login.");
+       router.replace('/login');
     }
     
-  }, [user, appUser, authLoading, dataLoading, router, viewMode]);
+  }, [user, appUser, authLoading, dataLoading, router]);
 
 
   // The actual loading UI is now handled by the AppStateController in AppProviders.
