@@ -444,12 +444,14 @@ export default function MyMessagesPage() {
                         <Alert>
                             <Info className="h-4 w-4" />
                             <AlertTitle>{activeCampaign.title}</AlertTitle>
-                            <AlertDescription className="flex justify-between items-center">
-                                <p>Campaña de solicitud activa. ¿Quieres hacer una petición?</p>
-                                <Button size="sm" onClick={() => setIsRequesting(true)}>
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Hacer Solicitud
-                                </Button>
+                            <AlertDescription>
+                                <div className="flex justify-between items-center">
+                                    <p>Campaña de solicitud activa. ¿Quieres hacer una petición?</p>
+                                    <Button size="sm" onClick={() => setIsRequesting(true)}>
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Hacer Solicitud
+                                    </Button>
+                                </div>
                             </AlertDescription>
                         </Alert>
                     )}
@@ -501,5 +503,7 @@ export default function MyMessagesPage() {
         </div>
     );
 }
+
+    
 
     
