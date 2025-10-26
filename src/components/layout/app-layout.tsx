@@ -115,8 +115,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/help', label: 'Ayuda', icon: HelpCircle },
   ];
 
-  const isAdminView = viewMode === 'admin';
-  const menuItems = isAdminView ? adminMenuItems : employeeMenuItems;
+  const menuItems = viewMode === 'admin' ? adminMenuItems : employeeMenuItems;
 
   const MainNav = ({className, isMobileNav}: {className?: string, isMobileNav?: boolean}) => (
     <nav className={cn(
@@ -125,7 +124,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
     )}>
         {menuItems.map((item) => {
              const isActive = pathname.startsWith(item.href);
-             const isEmployeeViewAndNotMobileNav = !isAdminView && !isMobileNav;
 
             return (
                 <Link
@@ -136,14 +134,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
                         'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative',
                         'flex-col text-center',
                         isMobileNav ? 'w-full text-foreground' : '',
-                        isEmployeeViewAndNotMobileNav && 'h-16',
+                        viewMode === 'employee' && !isMobileNav && 'h-16',
                         isActive
                             ? 'bg-primary text-white font-semibold'
                             : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                     )}
                 >
                     <item.icon className={cn(
-                        isEmployeeViewAndNotMobileNav ? "h-6 w-6" : "h-5 w-5",
+                        viewMode === 'employee' ? "h-6 w-6" : "h-5 w-5",
                         )} />
                     
                     <span className={cn(
@@ -176,18 +174,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="flex h-screen w-full flex-col bg-background">
       <header className="sticky top-0 inset-x-0 flex h-20 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">
         
-        {isAdminView && (
+        {viewMode === 'admin' && (
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
               <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
           </Link>
         )}
         
         <div className="flex-1 flex justify-center">
-            {isMobile ? <MainNav isMobileNav={false} /> : <MainNav isMobileNav={false} />}
+            <MainNav isMobileNav={false} />
         </div>
         
         <div className="flex items-center gap-2 ml-auto">
-            {isAdminView && !isMobile && (
+            {viewMode === 'admin' && !isMobile && (
               <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="rounded-full relative">
@@ -261,7 +259,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
-            {isMobile && isAdminView && (
+            {isMobile && viewMode === 'admin' && (
               <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
                 <SheetTrigger asChild>
                     <Button variant="outline" size="icon">
