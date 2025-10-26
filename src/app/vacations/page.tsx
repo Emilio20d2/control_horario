@@ -540,7 +540,15 @@ export default function VacationsPage() {
     
     const openingHolidays = holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date);
     const otherHolidays = holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date);
-    const employeeAbsenceDays = employeesWithAbsences[selectedEmployeeId]?.flatMap(p => eachDayOfInterval({ start: p.startDate, end: p.endDate })) || [];
+    
+    const employeeAbsenceDays = useMemo(() => {
+        if (!selectedEmployeeId) return [];
+        return (employeesWithAbsences[selectedEmployeeId] || []).flatMap(p => {
+            if (!p.endDate) return [p.startDate];
+            return eachDayOfInterval({ start: p.startDate, end: p.endDate });
+        });
+    }, [selectedEmployeeId, employeesWithAbsences]);
+
 
     const plannerModifiers = { opening: openingHolidays, other: otherHolidays, employeeAbsence: employeeAbsenceDays };
     const editModifiers = { opening: openingHolidays, other: otherHolidays };
