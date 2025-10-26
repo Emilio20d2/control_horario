@@ -231,6 +231,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const { user: authUser, loading: authLoading } = useAuth();
   
   const loadData = useCallback(() => {
+    console.log("Starting to load app data...");
     setLoading(true);
     const unsubs: (() => void)[] = [];
 
@@ -249,7 +250,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         return ready;
     };
     
-    const promises = [
+    const dataPromises = [
         setupSubscription<Employee>('employees', setEmployees, (data) => data.map(emp => ({
             ...emp, 
             employmentPeriods: emp.employmentPeriods.map(p => ({
@@ -281,80 +282,71 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setupSubscription<HolidayReport>('holidayReports', setHolidayReports),
         setupSubscription<EmployeeGroup>('employeeGroups', setEmployeeGroups, data => data.sort((a,b) => a.order - b.order)),
         setupSubscription<Conversation>('conversations', setConversations, data => data.sort((a, b) => b.lastMessageTimestamp.toDate().getTime() - a.lastMessageTimestamp.toDate().getTime())),
-        setupSubscription<VacationCampaign>('vacationCampaigns', setVacationCampaigns, data => data.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime())),
+        setupSubscription<VacationCampaign>('vacationCampaigns', setVacationCampaigns, data => data.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime()))
     ];
 
-    Promise.all(promises).then(() => {
-        setLoading(false);
-    }).catch(error => {
-        console.error("Error during initial data load:", error);
+    Promise.all(dataPromises).finally(() => {
+        console.log("Finished loading app data.");
         setLoading(false);
     });
 
     return () => unsubs.forEach(unsub => unsub());
   }, []);
 
+  // Effect to load AppUser data
   useEffect(() => {
-    if (!authLoading && authUser) {
-      loadData();
-    } else if (!authLoading && !authUser) {
-      setLoading(false);
-    }
-  }, [authLoading, authUser, loadData]);
-  
-  useEffect(() => {
-    if (authUser && employees.length > 0) {
-        const loggedInUserEmail = authUser.email?.trim().toLowerCase();
-        if (loggedInUserEmail) {
-            const foundEmployee = employees.find(e => 
-                e.email && e.email.trim().toLowerCase() === loggedInUserEmail
-            );
-            setEmployeeRecord(foundEmployee || null);
-        } else {
-            setEmployeeRecord(null);
-        }
-    } else if (!authUser) {
-        setEmployeeRecord(null);
-    }
-}, [authUser, employees]);
-
-useEffect(() => {
     if (authLoading) return;
 
     if (authUser) {
-        const userEmployeeRecord = employees.find(e => e.authId === authUser.uid);
-        
-        getDocumentById<AppUser>('users', authUser.uid).then(userRecord => {
-            const adminEmails = ['emiliogp@inditex.com', 'rebecapa@inditex.com'];
-            const isHardcodedAdmin = adminEmails.includes(authUser.email?.toLowerCase() || '');
-            const trueRole = (userRecord?.role === 'admin' || isHardcodedAdmin) ? 'admin' : 'employee';
-            
+      if (authUser.email === 'emiliogp@inditex.com') {
+          const hardcodedAdminUser = {
+              id: authUser.uid,
+              email: authUser.email,
+              employeeId: 'hardcoded_admin',
+              role: 'admin' as 'admin' | 'employee',
+              trueRole: 'admin' as 'admin' | 'employee',
+          };
+          setAppUser(hardcodedAdminUser);
+          setViewMode('admin');
+          return;
+      }
+      
+      getDocumentById<AppUser>('users', authUser.uid).then(userRecord => {
+        if (userRecord) {
+            const trueRole = userRecord.role;
             const newRole = trueRole === 'admin' ? viewMode : 'employee';
-
-            setAppUser({
-                id: authUser.uid,
-                email: authUser.email!,
-                employeeId: userRecord?.employeeId || userEmployeeRecord?.id || '',
+             setAppUser({
+                ...userRecord,
                 role: newRole,
                 trueRole: trueRole,
             });
-        }).catch(() => {
-             const adminEmails = ['emiliogp@inditex.com', 'rebecapa@inditex.com'];
-             const isHardcodedAdmin = adminEmails.includes(authUser.email?.toLowerCase() || '');
-             const trueRole = isHardcodedAdmin ? 'admin' : 'employee';
-             const newRole = trueRole === 'admin' ? viewMode : 'employee';
-             setAppUser({
-                id: authUser.uid,
-                email: authUser.email!,
-                employeeId: userEmployeeRecord?.id || '',
-                role: newRole,
-                trueRole: trueRole,
-             });
-        });
-    } else {
+        }
+      }).catch(() => {
         setAppUser(null);
+      });
+    } else {
+      setAppUser(null);
+      setLoading(false);
     }
-}, [authLoading, authUser, viewMode, employees]);
+  }, [authLoading, authUser, viewMode]);
+
+  // Effect to load main application data after appUser is set
+  useEffect(() => {
+    if(appUser) {
+        loadData();
+    }
+  }, [appUser, loadData]);
+  
+  // Effect to find the employee record corresponding to the logged-in user
+  useEffect(() => {
+    if (appUser && employees.length > 0) {
+        const foundEmployee = employees.find(e => e.id === appUser.employeeId);
+        setEmployeeRecord(foundEmployee || null);
+    } else if (!appUser) {
+        setEmployeeRecord(null);
+    }
+}, [appUser, employees]);
+
 
 const unreadMessageCount = useMemo(() => {
     if (!appUser) return 0;

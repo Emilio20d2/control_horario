@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
@@ -41,8 +42,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     await signOut(auth);
-    // After sign out, the user state will become null, and the AppProviders will redirect to /login
-    router.push('/login');
   };
   
   const reauthenticateWithPassword = async (password: string): Promise<boolean> => {
