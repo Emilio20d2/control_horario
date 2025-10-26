@@ -33,14 +33,19 @@ export async function migrateEmployeeDataToUsers(): Promise<{ success: boolean; 
                 } catch (error: any) {
                     if (error.code === 'auth/user-not-found') {
                         // User does not exist, so create them
-                        const tempPassword = Math.random().toString(36).slice(-8); // Generate a random password
-                        userRecord = await auth.createUser({
-                            email: employeeData.email,
-                            password: tempPassword,
-                            displayName: employeeData.name,
-                        });
-                        authId = userRecord.uid;
-                        usersCreatedInAuth++;
+                        try {
+                            const tempPassword = Math.random().toString(36).slice(-8); // Generate a random password
+                            userRecord = await auth.createUser({
+                                email: employeeData.email,
+                                password: tempPassword,
+                                displayName: employeeData.name,
+                            });
+                            authId = userRecord.uid;
+                            usersCreatedInAuth++;
+                        } catch(creationError: any) {
+                            console.error(`Failed to create auth user for ${employeeData.email}:`, creationError);
+                            continue; // Skip this employee if auth creation fails
+                        }
                     } else {
                         // For other auth errors, log it and skip this employee
                         console.error(`Error fetching user for ${employeeData.email}:`, error);
@@ -48,6 +53,7 @@ export async function migrateEmployeeDataToUsers(): Promise<{ success: boolean; 
                     }
                 }
                 
+                // Use a separate batch for each employee to ensure atomicity per user
                 const batch = db.batch();
 
                 // 2. Link employee to authId if not already linked
@@ -78,6 +84,7 @@ export async function migrateEmployeeDataToUsers(): Promise<{ success: boolean; 
                     usersDocCreated++;
                 }
 
+                // Commit the batch for the current employee before moving to the next
                 await batch.commit();
             }
         }
