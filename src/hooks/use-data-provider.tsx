@@ -56,7 +56,7 @@ import { addDocument, setDocument, getCollection } from '@/lib/services/firestor
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp, collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
-import { calculateBalancePreview } from '../calculators/balance-calculator';
+import { calculateBalancePreview } from '@/lib/calculators/balance-calculator';
 import { useAuth } from './useAuth';
 import { db } from '@/lib/firebase';
 import { getFinalBalancesForEmployee, getVacationSummaryForEmployee } from '@/lib/services/employee-data-service';
@@ -203,6 +203,7 @@ const roundToNearestQuarter = (num: number) => {
 
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
+  const { user, appUser, loading: authLoading } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [absenceTypes, setAbsenceTypes] = useState<AbsenceType[]>([]);
@@ -218,11 +219,13 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [vacationCampaigns, setVacationCampaigns] = useState<VacationCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
-  const { user: authUser, loading: authLoading, appUser } = useAuth();
   
   useEffect(() => {
-    if (authLoading || !appUser) {
-        if (!authLoading) setLoading(false);
+    if (authLoading) {
+        return; // Wait for auth to finish
+    }
+    if (!user || !appUser) {
+        setLoading(false); // No user, so no data to load
         return;
     }
 
@@ -285,7 +288,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubs.forEach(unsub => unsub());
-  }, [authLoading, appUser]);
+  }, [authLoading, user, appUser]);
   
   useEffect(() => {
     if (appUser && employees.length > 0) {
