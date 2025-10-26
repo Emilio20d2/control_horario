@@ -60,19 +60,29 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const isMobile = useIsMobile();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   
+  // This effect handles forced navigation when the viewMode doesn't match the current route.
   useEffect(() => {
     if (!appUser || !appUser.trueRole) return;
     
     const employeePages = ['/my-profile', '/my-schedule', '/my-messages', '/help'];
     const adminPages = ['/dashboard', '/schedule', '/employees', '/listings', '/vacations', '/messages', '/settings'];
 
+    // If the user's *actual* role is admin, we allow switching views.
     if (appUser.trueRole === 'admin') {
-      if (viewMode === 'employee' && !employeePages.some(p => pathname.startsWith(p))) {
+      // If in employee view, but on an admin page, redirect to the employee home.
+      if (viewMode === 'employee' && adminPages.some(p => pathname.startsWith(p))) {
         router.replace('/my-profile');
       } 
+      // If in admin view, but on an employee page, redirect to the admin home.
       else if (viewMode === 'admin' && employeePages.some(p => pathname.startsWith(p))) {
         router.replace('/dashboard');
       }
+    }
+    // If the user is a regular employee, they should ALWAYS be on an employee page.
+    else if (appUser.trueRole === 'employee') {
+        if (!employeePages.some(p => pathname.startsWith(p))) {
+            router.replace('/my-profile');
+        }
     }
   }, [viewMode, appUser, pathname, router]);
 
@@ -176,7 +186,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         )}
         
         <div className="flex-1 flex justify-center">
-             {!isMobile && isAdminView && <MainNav />}
+             {!isMobile && <MainNav />}
              {isMobile && !isAdminView && <MainNav />}
         </div>
         

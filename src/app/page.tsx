@@ -9,39 +9,46 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 export default function Home() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { appUser, loading: dataLoading } = useDataProvider();
+  const { appUser, loading: dataLoading, viewMode } = useDataProvider();
 
   useEffect(() => {
-    // This effect runs only when loading states or user objects change.
-    // It is responsible for redirecting the user AFTER all loading is complete.
-
-    // Do nothing while either auth or data is loading.
-    // The loading screen is handled by AppProviders.
+    // Do nothing while loading. The loading screen is handled by AppProviders.
     if (authLoading || dataLoading) {
-      return; 
+      return;
     }
 
-    // If loading is done and there's no authenticated user, go to login.
+    // If loading is done and there's no user, go to login.
     if (!user) {
       router.replace('/login');
       return;
     }
-    
-    // If loading is done and we have an authenticated user with an app profile.
+
+    // If we have a user profile, redirect based on roles.
     if (appUser) {
-      if (appUser.role === 'admin') {
+      // If the true role is admin and they are in employee view mode
+      if (appUser.trueRole === 'admin' && viewMode === 'employee') {
+        router.replace('/my-profile');
+      } 
+      // If the true role is admin and they are in admin view mode
+      else if (appUser.trueRole === 'admin' && viewMode === 'admin') {
         router.replace('/dashboard');
-      } else {
+      } 
+      // If the user is a regular employee
+      else if (appUser.trueRole === 'employee') {
         router.replace('/my-profile');
       }
+      // Fallback
+      else {
+        router.replace('/login');
+      }
     } 
-    // Fallback: If loading is done, user is auth'd, but appUser failed to load,
-    // send back to login to prevent being stuck.
+    // Fallback if appUser is null after loading
     else {
       router.replace('/login');
     }
     
-  }, [user, appUser, authLoading, dataLoading, router]);
+  }, [user, appUser, authLoading, dataLoading, router, viewMode]);
+
 
   // The actual loading UI is now handled by the AppStateController in AppProviders.
   // This just returns a placeholder while the redirection logic runs.

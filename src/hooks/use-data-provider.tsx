@@ -294,29 +294,46 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   // Effect to load AppUser data
   useEffect(() => {
     if (authLoading || !authUser) {
-        if(!authLoading) {
-            setAppUser(null);
-        }
-        return;
-    };
-    
-    getDocumentById<AppUser>('users', authUser.uid).then(userRecord => {
-        if (userRecord) {
-            const trueRole = userRecord.role;
-            const newRole = trueRole === 'admin' ? viewMode : 'employee';
-            setAppUser({
-                ...userRecord,
-                role: newRole,
-                trueRole: trueRole,
-            });
-        } else {
-            setAppUser(null);
-        }
-    }).catch(() => {
+      if (!authLoading) {
         setAppUser(null);
-    });
-  }, [authLoading, authUser, viewMode]);
+        setLoading(false);
+      }
+      return;
+    }
+  
+    // Only proceed if we have a user and haven't loaded their profile yet
+    if (authUser && !appUser) {
+      getDocumentById<AppUser>('users', authUser.uid)
+        .then(userRecord => {
+          if (userRecord) {
+            const trueRole = userRecord.role;
+            // Set the initial view mode based on the user's true role
+            const initialViewMode = trueRole === 'admin' ? 'admin' : 'employee';
+            setViewMode(initialViewMode);
+            setAppUser({
+              ...userRecord,
+              role: initialViewMode,
+              trueRole: trueRole,
+            });
+          } else {
+            // User exists in Auth but not in 'users' collection. This is an error state.
+            setAppUser(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          setAppUser(null);
+          setLoading(false);
+        });
+    }
+  }, [authLoading, authUser, appUser]);
 
+  // Effect to handle view mode changes for admins
+  useEffect(() => {
+    if (appUser && appUser.trueRole === 'admin' && appUser.role !== viewMode) {
+      setAppUser(prev => prev ? { ...prev, role: viewMode } : null);
+    }
+  }, [viewMode, appUser]);
 
   // Effect to load main application data after appUser is set
   useEffect(() => {
