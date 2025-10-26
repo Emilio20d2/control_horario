@@ -6,11 +6,11 @@ import { DataProvider } from "@/hooks/use-data-provider";
 import { ReactNode } from "react";
 import { AppLayout } from "./app-layout";
 
-const CoreApp = ({ children }: { children: ReactNode }) => {
+export function AppProviders({ children }: { children: ReactNode }) {
     const { user, loading: authLoading } = useAuth();
 
     if (authLoading) {
-        return (
+         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex flex-col items-center gap-4">
                     <p className="text-muted-foreground">Autenticando...</p>
@@ -22,26 +22,24 @@ const CoreApp = ({ children }: { children: ReactNode }) => {
         );
     }
     
-    if (user) {
-        return (
-            <AppLayout>
-                {children}
-            </AppLayout>
-        );
+    // If there is no user, we are on a public page (login, register), so we just render children.
+    if (!user) {
+        return <>{children}</>;
     }
-
-    return <>{children}</>;
+    
+    // If there is a user, wrap with DataProvider. AppLayout is now in the root layout.
+    return (
+        <DataProvider>
+            {children}
+        </DataProvider>
+    );
 }
 
-
-export function AppProviders({ children }: { children: ReactNode }) {
+// Wrapping the main component with AuthProvider
+export default function AppProvidersWrapper({ children }: { children: ReactNode }) {
     return (
         <AuthProvider>
-          <DataProvider>
-            <CoreApp>
-              {children}
-            </CoreApp>
-          </DataProvider>
+            <AppProviders>{children}</AppProviders>
         </AuthProvider>
     )
 }
