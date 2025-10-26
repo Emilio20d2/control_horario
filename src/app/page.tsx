@@ -9,41 +9,39 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 export default function Home() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { appUser, loading: dataLoading, viewMode } = useDataProvider();
+  const { appUser, loading: dataLoading } = useDataProvider();
 
   useEffect(() => {
-    // Render loading screen (handled by AppStateController) while waiting
+    // This effect only runs AFTER all loading is complete (handled by AppProviders)
     if (authLoading || dataLoading) {
-      return;
+      return; // Wait until loading is fully finished
     }
 
-    // If loading is finished and there's no user, redirect to login
+    // If, after loading, there's no user, redirect to login
     if (!user) {
       router.replace('/login');
       return;
     }
 
-    // If we have an appUser, redirect based on their role and current view mode
+    // If we have an appUser, redirect based on their role
     if (appUser) {
       if (appUser.role === 'admin') {
         router.replace('/dashboard');
-      } else if (appUser.role === 'employee') {
+      } else { // 'employee'
         router.replace('/my-profile');
-      } else {
-        // Fallback for unexpected roles
-        router.replace('/login');
       }
     } else {
-      // Fallback if appUser is null after loading (e.g., data inconsistency)
-       console.error("User authenticated but no appUser profile found. Redirecting to login.");
+       // This case should ideally not be reached if logic is correct,
+       // but as a fallback, it prevents an empty page.
+       console.error("User authenticated but no appUser profile found after load. Redirecting to login.");
        router.replace('/login');
     }
     
   }, [user, appUser, authLoading, dataLoading, router]);
 
 
-  // The actual loading UI is now handled by the AppStateController in AppProviders.
-  // This just returns a placeholder while the redirection logic runs.
+  // The actual loading UI is handled by AppStateController in AppProviders.
+  // This component just returns a placeholder while the redirection logic runs.
   return (
      <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
