@@ -365,5 +365,3 @@ export const deleteScheduledAbsence = async (
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
-
-    
