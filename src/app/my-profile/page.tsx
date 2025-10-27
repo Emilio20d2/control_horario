@@ -7,7 +7,7 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmployeeDetails } from '@/components/employees/employee-details';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
-import { isAfter, parseISO, startOfDay, getYear, isWithinInterval, startOfYear, endOfYear, getISOWeekYear } from 'date-fns';
+import { isAfter, parseISO, startOfDay, getYear, isWithinInterval, startOfYear, endOfYear, getISOWeekYear, eachDayOfInterval, startOfWeek } from 'date-fns';
 import { Briefcase, Gift, Scale, Wallet, Plane, Info, CalendarX2, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -301,3 +301,6 @@ export default function MyProfilePage() {
     );
 }
 
+
+
+    
