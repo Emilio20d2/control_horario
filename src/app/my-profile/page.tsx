@@ -7,7 +7,7 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmployeeDetails } from '@/components/employees/employee-details';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
-import { isAfter, parseISO, startOfDay, getYear, isWithinInterval, startOfYear, endOfYear, getISOWeekYear, eachDayOfInterval, startOfWeek } from 'date-fns';
+import { isAfter, parseISO, startOfDay, getYear, isWithinInterval, startOfYear, endOfYear, getISOWeekYear, eachDayOfInterval, startOfWeek, isSameDay } from 'date-fns';
 import { Briefcase, Gift, Scale, Wallet, Plane, Info, CalendarX2, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -87,22 +87,60 @@ export default function MyProfilePage() {
         if (!employee) return [];
         const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
         if (!vacationType) return [];
+    
         const nextYear = currentYear + 1;
-
-        return (employee.employmentPeriods || [])
-            .flatMap(p => p.scheduledAbsences || [])
-            .filter((a): a is ScheduledAbsence & { endDate: Date } => a.absenceTypeId === vacationType.id && !!a.endDate && (getYear(a.startDate) === currentYear || getYear(a.startDate) === nextYear))
-            .sort((a,b) => a.startDate.getTime() - b.startDate.getTime())
-            .map(period => {
-                const allDaysConfirmed = eachDayOfInterval({start: period.startDate, end: period.endDate}).every(day => {
-                    const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-                    const dayKey = format(day, 'yyyy-MM-dd');
-                    const weekRecord = weeklyRecords[weekId];
-                    return weekRecord?.weekData?.[employee.id]?.confirmed && weekRecord.weekData[employee.id].days[dayKey]?.absence === vacationType.abbreviation;
-                });
-                return { ...period, isConfirmed: allDaysConfirmed };
+        const allVacationDays = new Map<string, 'programmed' | 'confirmed'>();
+    
+        // 1. Get from scheduledAbsences
+        (employee.employmentPeriods || []).forEach(p => {
+            (p.scheduledAbsences || []).forEach(a => {
+                if (a.absenceTypeId === vacationType.id && a.endDate) {
+                    const absenceYear = getYear(a.startDate);
+                    if (absenceYear === currentYear || absenceYear === nextYear) {
+                        eachDayOfInterval({ start: a.startDate, end: a.endDate }).forEach(day => {
+                            allVacationDays.set(format(day, 'yyyy-MM-dd'), 'programmed');
+                        });
+                    }
+                }
             });
-
+        });
+    
+        // 2. Get from weeklyRecords (confirmed vacations)
+        Object.values(weeklyRecords).forEach(record => {
+            const empWeekData = record.weekData[employee.id];
+            if (empWeekData?.confirmed && empWeekData.days) {
+                Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                    const dayDate = parseISO(dayStr);
+                    const dayYear = getYear(dayDate);
+                    if ((dayYear === currentYear || dayYear === nextYear) && dayData.absence === vacationType.abbreviation) {
+                        allVacationDays.set(dayStr, 'confirmed');
+                    }
+                });
+            }
+        });
+        
+        const sortedDays = Array.from(allVacationDays.keys()).sort();
+        const periods: { startDate: Date, endDate: Date, isConfirmed: boolean }[] = [];
+    
+        for (let i = 0; i < sortedDays.length; i++) {
+            const day = parseISO(sortedDays[i]);
+            if (i > 0 && isSameDay(day, new Date(parseISO(sortedDays[i - 1]).getTime() + 86400000))) {
+                periods[periods.length - 1].endDate = day;
+                // If any day in the period is confirmed, the whole period is considered confirmed for display
+                if (allVacationDays.get(sortedDays[i]) === 'confirmed') {
+                    periods[periods.length - 1].isConfirmed = true;
+                }
+            } else {
+                periods.push({
+                    startDate: day,
+                    endDate: day,
+                    isConfirmed: allVacationDays.get(sortedDays[i]) === 'confirmed'
+                });
+            }
+        }
+    
+        return periods;
+    
     }, [employee, absenceTypes, currentYear, weeklyRecords]);
     
     if (dataLoading || !employee || !vacationInfo) {
@@ -261,10 +299,10 @@ export default function MyProfilePage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {vacationPeriods.map(period => (
-                                    <TableRow key={period.id}>
+                                {vacationPeriods.map((period, index) => (
+                                    <TableRow key={index}>
                                         <TableCell>{format(period.startDate, 'PPP', { locale: es })}</TableCell>
-                                        <TableCell>{period.endDate ? format(period.endDate, 'PPP', { locale: es }) : ''}</TableCell>
+                                        <TableCell>{format(period.endDate, 'PPP', { locale: es })}</TableCell>
                                         <TableCell className="text-center">
                                             {period.isConfirmed && <CheckCircle className="h-5 w-5 text-green-600 mx-auto" />}
                                         </TableCell>
