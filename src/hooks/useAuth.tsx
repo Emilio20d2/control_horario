@@ -50,19 +50,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
 
-          let foundEmployee: Employee | null = null;
-
           if (userDoc.exists()) {
               const dbData = userDoc.data() as Omit<AppUser, 'id'>;
+              // Set the definitive role and view mode from the database
               setAppUser({ id: user.uid, ...dbData, trueRole: dbData.role });
-              setViewMode(dbData.role); // Set view mode based on the true role from DB
-
-              if (dbData.employeeId) {
-                  const empDoc = await getDoc(doc(db, 'employees', dbData.employeeId));
-                  if (empDoc.exists()) {
-                      foundEmployee = { id: empDoc.id, ...empDoc.data() } as Employee;
-                  }
-              }
+              setViewMode(dbData.role);
           } else {
               // Fallback for users that exist in Auth but not in 'users' collection
               // This can happen during initial signup. Let's find them by email.
@@ -71,7 +63,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 const empSnapshot = await getDocs(q);
                 if (!empSnapshot.empty) {
                     const empDoc = empSnapshot.docs[0];
-                    foundEmployee = { id: empDoc.id, ...empDoc.data() } as Employee;
                     const defaultRole = 'employee';
                     const newUserDocData = { email: user.email, employeeId: empDoc.id, role: defaultRole };
                     await setDoc(userDocRef, newUserDocData); // Create the user doc
@@ -80,8 +71,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 }
               }
           }
-          setEmployeeRecord(foundEmployee);
-
         } catch (error) {
           console.error("Error fetching user data:", error);
           setAppUser(null);
