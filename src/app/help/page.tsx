@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { MailQuestion, Info, PlaneTakeoff, User, CalendarCheck } from 'lucide-react';
+import { MailQuestion, Info, PlaneTakeoff, User, CalendarCheck, FileQuestion } from 'lucide-react';
 
 export default function HelpPage() {
   return (
@@ -145,6 +145,23 @@ export default function HelpPage() {
             </CardContent>
         </Card>
         
+        <Card>
+            <CardHeader>
+                <div className="flex items-start gap-4">
+                    <FileQuestion className="h-8 w-8 text-primary mt-1" />
+                    <div>
+                        <CardTitle>Cómputo en Semanas de Vacaciones</CardTitle>
+                        <CardDescription>¿Qué pasa si mis vacaciones no cubren la semana laboral completa?</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <p className="text-muted-foreground">
+                    <strong className="font-semibold text-foreground">Nota aclaratoria:</strong> si un periodo de vacaciones no completa una semana laboral entera, el sistema podrá utilizar horas de cualquiera de tus bolsas de devolución (Libranza, Festivos) para completar las horas que faltan, siempre y cuando tengas un saldo de horas a tu favor.
+                </p>
+            </CardContent>
+        </Card>
+
         <Card>
             <CardHeader>
                 <div>

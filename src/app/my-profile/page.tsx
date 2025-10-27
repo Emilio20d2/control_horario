@@ -262,11 +262,6 @@ export default function MyProfilePage() {
                         <p className="text-muted-foreground text-center py-4">No tienes periodos de vacaciones programados para este año.</p>
                     )}
                 </CardContent>
-                <CardFooter>
-                    <p className="text-xs text-muted-foreground">
-                        <strong className="font-semibold text-foreground">Nota aclaratoria:</strong> si el periodo de vacaciones no completa una semana laboral, el sistema podrá completarla utilizando horas de cualquier bolsa de devolución (Libranza, Festivos) siempre que el saldo de horas sea a favor del empleado.
-                    </p>
-                </CardFooter>
             </Card>
             
             <div className="space-y-6 col-span-2">
@@ -288,4 +283,3 @@ export default function MyProfilePage() {
         </div>
     );
 }
-
