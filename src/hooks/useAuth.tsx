@@ -12,7 +12,6 @@ import type { AppUser, Employee } from '@/lib/types';
 interface AuthContextType {
   user: User | null;
   appUser: AppUser | null;
-  employeeRecord: Employee | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -24,7 +23,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   appUser: null,
-  employeeRecord: null,
   loading: true,
   login: async () => {},
   logout: async () => {},
@@ -36,7 +34,6 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [appUser, setAppUser] = useState<AppUser | null>(null);
-  const [employeeRecord, setEmployeeRecord] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
   const router = useRouter();
@@ -56,8 +53,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               setAppUser({ id: user.uid, ...dbData, trueRole: dbData.role });
               setViewMode(dbData.role);
           } else {
-              // Fallback for users that exist in Auth but not in 'users' collection
-              // This can happen during initial signup. Let's find them by email.
+              // This is a fallback for users that exist in Auth but not in 'users' collection yet.
+              // This can happen during initial signup. Let's try to find them by email in employees.
               if(user.email) {
                 const q = query(collection(db, 'employees'), where('email', '==', user.email));
                 const empSnapshot = await getDocs(q);
@@ -68,18 +65,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     await setDoc(userDocRef, newUserDocData); // Create the user doc
                     setAppUser({ id: user.uid, ...newUserDocData, trueRole: defaultRole });
                     setViewMode(defaultRole);
+                } else {
+                    // This handles the case of an admin-only user who might not have an employee record.
+                    // We'll create a minimal user profile for them if they don't exist.
+                    // The role should be assigned manually in Firestore for such users.
+                    const minimalUserData = { email: user.email, employeeId: null, role: 'employee' }; // Default to employee
+                    await setDoc(userDocRef, minimalUserData);
+                    setAppUser({ id: user.uid, ...minimalUserData, trueRole: 'employee' });
+                    setViewMode('employee');
                 }
               }
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
           setAppUser(null);
-          setEmployeeRecord(null);
         }
       } else {
         setUser(null);
         setAppUser(null);
-        setEmployeeRecord(null);
       }
       setLoading(false);
     });
@@ -123,7 +126,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user, loading, router]);
 
 
-  const value = { user, appUser, loading, login, logout, reauthenticateWithPassword, viewMode, setViewMode, employeeRecord };
+  const value = { user, appUser, loading, login, logout, reauthenticateWithPassword, viewMode, setViewMode };
 
   return (
     <AuthContext.Provider value={value}>
