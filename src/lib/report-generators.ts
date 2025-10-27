@@ -612,29 +612,37 @@ export const generateRequestStatusReportPDF = (
                 if (!a.endDate || !campaignAbsenceTypes.has(a.absenceTypeId)) return false;
                 const absenceStart = a.startDate;
                 return isAfter(absenceStart, campaignStart) && isBefore(absenceStart, campaignEnd);
-            });
+            }).sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
         
         let originalRequestText = 'PENDIENTE DE SOLICITUD';
         let modifiedRequestText = '';
         
         if (absencesForCampaign.length > 0) {
-            const mainAbsence = absencesForCampaign.sort((a,b) => a.startDate.getTime() - b.startDate.getTime())[0];
-            const absenceType = absenceTypes.find(at => at.id === mainAbsence.absenceTypeId);
+            const originalRequests = [];
+            const modifiedRequests = [];
+            let isModifiedOverall = false;
 
-            if (mainAbsence.originalRequest && mainAbsence.originalRequest.startDate) {
-                const originalStartDate = toDate(mainAbsence.originalRequest.startDate);
-                const originalEndDate = mainAbsence.originalRequest.endDate ? toDate(mainAbsence.originalRequest.endDate) : null;
-                
-                originalRequestText = `${absenceType?.abbreviation}: ${format(originalStartDate, 'dd/MM/yy')} - ${originalEndDate ? format(originalEndDate, 'dd/MM/yy') : ''}`;
-                
-                const isModified = !isEqual(mainAbsence.startDate, originalStartDate) || !isEqual(mainAbsence.endDate, originalEndDate || mainAbsence.endDate);
+            for (const absence of absencesForCampaign) {
+                const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
+                if (absence.originalRequest && absence.originalRequest.startDate) {
+                    const originalStartDate = toDate(absence.originalRequest.startDate);
+                    const originalEndDate = absence.originalRequest.endDate ? toDate(absence.originalRequest.endDate) : null;
+                    originalRequests.push(`${absenceType?.abbreviation}: ${format(originalStartDate, 'dd/MM/yy')} - ${originalEndDate ? format(originalEndDate, 'dd/MM/yy') : ''}`);
+                    
+                    const isModified = !isEqual(absence.startDate, originalStartDate) || (originalEndDate && !isEqual(absence.endDate, originalEndDate));
 
-                if (isModified) {
-                     modifiedRequestText = `${absenceType?.abbreviation}: ${format(mainAbsence.startDate, 'dd/MM/yy')} - ${format(mainAbsence.endDate, 'dd/MM/yy')}`;
+                    if (isModified) {
+                        isModifiedOverall = true;
+                        modifiedRequests.push(`${absenceType?.abbreviation}: ${format(absence.startDate, 'dd/MM/yy')} - ${format(absence.endDate, 'dd/MM/yy')}`);
+                    }
+                } else {
+                    originalRequests.push(`${absenceType?.abbreviation}: ${format(absence.startDate, 'dd/MM/yy')} - ${format(absence.endDate, 'dd/MM/yy')}`);
                 }
-            } else {
-                // This case handles data created before the 'originalRequest' field existed. Treat current as original.
-                 originalRequestText = `${absenceType?.abbreviation}: ${format(mainAbsence.startDate, 'dd/MM/yy')} - ${format(mainAbsence.endDate, 'dd/MM/yy')}`;
+            }
+
+            originalRequestText = originalRequests.join('\n');
+            if (isModifiedOverall) {
+                modifiedRequestText = modifiedRequests.join('\n');
             }
         }
 
