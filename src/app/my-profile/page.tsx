@@ -87,10 +87,11 @@ export default function MyProfilePage() {
         if (!employee) return [];
         const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
         if (!vacationType) return [];
+        const nextYear = currentYear + 1;
 
         return (employee.employmentPeriods || [])
             .flatMap(p => p.scheduledAbsences || [])
-            .filter(a => a.absenceTypeId === vacationType.id && a.endDate && getYear(a.startDate) === currentYear)
+            .filter(a => a.absenceTypeId === vacationType.id && a.endDate && (getYear(a.startDate) === currentYear || getYear(a.startDate) === nextYear))
             .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
 
     }, [employee, absenceTypes, currentYear]);
@@ -237,7 +238,7 @@ export default function MyProfilePage() {
                 <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">
                         <Plane className="h-5 w-5 text-primary" />
-                        Mis Vacaciones ({currentYear})
+                        Mis Vacaciones ({currentYear} - {currentYear + 1})
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -259,7 +260,7 @@ export default function MyProfilePage() {
                             </TableBody>
                         </Table>
                     ) : (
-                        <p className="text-muted-foreground text-center py-4">No tienes periodos de vacaciones programados para este año.</p>
+                        <p className="text-muted-foreground text-center py-4">No tienes periodos de vacaciones programados para este año o el siguiente.</p>
                     )}
                 </CardContent>
                 <CardFooter>
