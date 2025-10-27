@@ -8,12 +8,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmployeeDetails } from '@/components/employees/employee-details';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { isAfter, parseISO, startOfDay, getYear, isWithinInterval, startOfYear, endOfYear, getISOWeekYear } from 'date-fns';
-import { Briefcase, Gift, Scale, Wallet, Plane, Info, CalendarX2 } from 'lucide-react';
+import { Briefcase, Gift, Scale, Wallet, Plane, Info, CalendarX2, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
-import type { AbsenceType } from '@/lib/types';
+import type { AbsenceType, ScheduledAbsence } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -91,10 +91,19 @@ export default function MyProfilePage() {
 
         return (employee.employmentPeriods || [])
             .flatMap(p => p.scheduledAbsences || [])
-            .filter(a => a.absenceTypeId === vacationType.id && a.endDate && (getYear(a.startDate) === currentYear || getYear(a.startDate) === nextYear))
-            .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
+            .filter((a): a is ScheduledAbsence & { endDate: Date } => a.absenceTypeId === vacationType.id && !!a.endDate && (getYear(a.startDate) === currentYear || getYear(a.startDate) === nextYear))
+            .sort((a,b) => a.startDate.getTime() - b.startDate.getTime())
+            .map(period => {
+                const allDaysConfirmed = eachDayOfInterval({start: period.startDate, end: period.endDate}).every(day => {
+                    const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+                    const dayKey = format(day, 'yyyy-MM-dd');
+                    const weekRecord = weeklyRecords[weekId];
+                    return weekRecord?.weekData?.[employee.id]?.confirmed && weekRecord.weekData[employee.id].days[dayKey]?.absence === vacationType.abbreviation;
+                });
+                return { ...period, isConfirmed: allDaysConfirmed };
+            });
 
-    }, [employee, absenceTypes, currentYear]);
+    }, [employee, absenceTypes, currentYear, weeklyRecords]);
     
     if (dataLoading || !employee || !vacationInfo) {
         return (
@@ -248,6 +257,7 @@ export default function MyProfilePage() {
                                 <TableRow>
                                     <TableHead>Fecha de Inicio</TableHead>
                                     <TableHead>Fecha de Fin</TableHead>
+                                    <TableHead className="text-center">Confirmado</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -255,6 +265,9 @@ export default function MyProfilePage() {
                                     <TableRow key={period.id}>
                                         <TableCell>{format(period.startDate, 'PPP', { locale: es })}</TableCell>
                                         <TableCell>{period.endDate ? format(period.endDate, 'PPP', { locale: es }) : ''}</TableCell>
+                                        <TableCell className="text-center">
+                                            {period.isConfirmed && <CheckCircle className="h-5 w-5 text-green-600 mx-auto" />}
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -287,3 +300,4 @@ export default function MyProfilePage() {
         </div>
     );
 }
+
