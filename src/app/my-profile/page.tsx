@@ -262,6 +262,9 @@ export default function MyProfilePage() {
                         <p className="text-muted-foreground text-center py-4">No tienes periodos de vacaciones programados para este año.</p>
                     )}
                 </CardContent>
+                <CardFooter>
+                    <p className="text-xs text-muted-foreground">Para que los periodos de vacaciones sean oficiales, tienen que estar firmados.</p>
+                </CardFooter>
             </Card>
             
             <div className="space-y-6 col-span-2">
