@@ -173,7 +173,7 @@ export default function MyMessagesPage() {
         autoReplyTimeoutRef.current = setTimeout(() => {
             const autoReplyText = `Hola ${employeeRecord.name.split(' ')[0]}, hemos recibido tu consulta. Un responsable la revisará y te responderá por este mismo medio tan pronto como sea posible. Gracias por tu paciencia.`;
             sendBotMessage(autoReplyText, true);
-        }, 60000); // 1 minute delay
+        }, 30000); // 30 second delay
     };
 
     const sendMessage = async (text: string) => {
@@ -615,3 +615,5 @@ export default function MyMessagesPage() {
         </div>
     );
 }
+
+    
