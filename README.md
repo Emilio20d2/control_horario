@@ -86,12 +86,12 @@ Muestra toda la información relevante de un empleado en un solo lugar.
 - **Ausencias Programadas**: Permite registrar ausencias de larga duración (como bajas o excedencias) que se aplicarán automáticamente en el calendario.
 - **Calendarios Laborales**: Muestra el historial de calendarios rotativos que ha tenido el empleado.
 
-### e. Listados Personalizados (`/listings`)
+### e. Formularios Personalizados (`/listings`)
 
 Herramienta flexible para crear e imprimir formularios en PDF para cualquier necesidad.
 
 - **Funcionamiento**:
-  1.  **Define un Título y Descripción** para tu listado (ej: "Control de Entrega de EPIs").
+  1.  **Define un Título y Descripción** para tu formulario (ej: "Control de Entrega de EPIs").
   2.  **Añade Columnas**: Puedes crear las columnas que necesites (ej: "Casco", "Botas", "Firma").
   3.  **Elige el Tipo de Contenido**: Cada columna puede ser un campo de texto libre o casillas de verificación (checkboxes), que a su vez pueden tener etiquetas personalizadas (ej: "Entregado, Devuelto").
   4.  **Genera el PDF**: La aplicación creará un documento con todos los empleados activos listados, listos para que rellenes el formulario.

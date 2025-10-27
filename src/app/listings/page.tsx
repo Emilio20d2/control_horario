@@ -34,7 +34,7 @@ const columnSchema = z.object({
 });
 
 const formSchema = z.object({
-  title: z.string().min(1, 'El título del listado es obligatorio.'),
+  title: z.string().min(1, 'El título del formulario es obligatorio.'),
   description: z.string().optional(),
   columns: z.array(columnSchema).min(1, 'Debe haber al menos una columna.'),
 });
@@ -191,13 +191,13 @@ export default function ListingsPage() {
     }
     
     const safeTitle = data.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-    doc.save(`listado_${safeTitle}_${format(new Date(), 'yyyyMMdd')}.pdf`);
+    doc.save(`formulario_${safeTitle}_${format(new Date(), 'yyyyMMdd')}.pdf`);
   };
 
   return (
     <div className="flex flex-col gap-6">
       <div className="px-4 md:px-6 pt-4">
-        <h1 className="text-2xl font-bold tracking-tight font-headline">Listados Personalizados</h1>
+        <h1 className="text-2xl font-bold tracking-tight font-headline">Formularios Personalizados</h1>
       </div>
       <div className="px-4 md:px-6 pb-4">
         <Tabs defaultValue="custom-forms">
@@ -223,7 +223,7 @@ export default function ListingsPage() {
                         name="title"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Título del Listado</FormLabel>
+                            <FormLabel>Título del Formulario</FormLabel>
                             <FormControl>
                               <Input placeholder="Ej: Control de Entrega de Uniformes" {...field} />
                             </FormControl>
@@ -247,7 +247,7 @@ export default function ListingsPage() {
                     </div>
 
                     <div className="space-y-4">
-                      <Label>Columnas del Listado</Label>
+                      <Label>Columnas del Formulario</Label>
                       {fields.map((field, index) => (
                         <div key={field.id} className="flex flex-col md:flex-row items-start md:items-end gap-4 p-4 border rounded-lg">
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 flex-grow w-full">

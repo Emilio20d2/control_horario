@@ -55,7 +55,7 @@ Centralicen toda la información de su equipo:
 Adapten la aplicación a las reglas de su negocio, no al revés:
 
 -   **Configuración a Medida:** Definan festivos, horas de convenio, tipos de ausencia, tipos de contrato y las reglas de cómputo de cada bolsa de horas.
--   **Listados Personalizados:** Creen cualquier tipo de formulario en PDF (entrega de EPIs, controles de formación, etc.) con las columnas que necesiten, listo para imprimir con la lista de empleados activos.
+-   **Formularios Personalizados:** Creen cualquier tipo de formulario en PDF (entrega de EPIs, controles de formación, etc.) con las columnas que necesiten, listo para imprimir con la lista de empleados activos.
 
 **Beneficio Clave:** Flexibilidad total para que la herramienta se adapte a su convenio y a sus procesos internos, no a la inversa.
 
@@ -114,4 +114,3 @@ Pero vamos un paso más allá. Implementamos un **doble factor de seguridad**:
 Les invito a dar el paso hacia una gestión más inteligente. Les invito a experimentar la tranquilidad que ofrece "Control Horario".
 
 Muchas gracias.
-```

@@ -129,7 +129,7 @@ export function PersonalDataReportGenerator() {
         });
         
         const safeTitle = data.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-        doc.save(`listado_datos_${safeTitle}_${format(new Date(), 'yyyyMMdd')}.pdf`);
+        doc.save(`formulario_datos_${safeTitle}_${format(new Date(), 'yyyyMMdd')}.pdf`);
 
     } catch (error) {
       console.error(error);
@@ -146,7 +146,7 @@ export function PersonalDataReportGenerator() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Listado de Datos Personales</CardTitle>
+        <CardTitle>Formulario de Datos Personales</CardTitle>
         <CardDescription>
           Selecciona los campos de datos que quieres incluir en el informe, ordénalos y genera un PDF.
         </CardDescription>
