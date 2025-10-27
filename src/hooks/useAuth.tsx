@@ -5,7 +5,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
 import type { AppUser, Employee } from '@/lib/types';
 
 
@@ -47,61 +47,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (user) {
         setUser(user);
         try {
-          // Primero, buscamos en la colección 'users' para obtener el rol.
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
 
-          let userData: Omit<AppUser, 'id'>;
           let foundEmployee: Employee | null = null;
-          
-          if (userDoc.exists()) {
-             userData = userDoc.data() as Omit<AppUser, 'id'>;
-             // Si tenemos employeeId, lo usamos para buscar al empleado.
-             if (userData.employeeId) {
-                const empDoc = await getDoc(doc(db, 'employees', userData.employeeId));
-                if (empDoc.exists()) {
-                    foundEmployee = { id: empDoc.id, ...empDoc.data() } as Employee;
-                }
-             }
-          } else {
-             // Si no hay documento en 'users', lo creamos a partir de la info de 'employees'.
-             const q = query(collection(db, 'employees'), where('email', '==', user.email));
-             const empSnapshot = await getDocs(q);
-             if (!empSnapshot.empty) {
-                 const empDoc = empSnapshot.docs[0];
-                 foundEmployee = { id: empDoc.id, ...empDoc.data() } as Employee;
-                 userData = { email: user.email!, employeeId: empDoc.id, role: 'employee' }; // Asumimos rol de empleado
-                 await setDoc(userDocRef, userData); // Creamos el documento en 'users'
-             }
-          }
-          
-          // Si después de todo no encontramos al empleado, buscamos por email.
-          if (!foundEmployee && user.email) {
-            const q = query(collection(db, 'employees'), where('email', '==', user.email));
-            const empSnapshot = await getDocs(q);
-            if (!empSnapshot.empty) {
-                foundEmployee = { id: empSnapshot.docs[0].id, ...empSnapshot.docs[0].data() } as Employee;
-            }
-          }
-          
-          setEmployeeRecord(foundEmployee);
 
           if (userDoc.exists()) {
-            const dbData = userDoc.data() as Omit<AppUser, 'id'>;
-            const trueRole = dbData.role;
-            const initialViewMode = trueRole === 'admin' ? 'admin' : 'employee';
-            setViewMode(initialViewMode);
-            setAppUser({ id: user.uid, ...dbData, trueRole, role: initialViewMode });
+              const dbData = userDoc.data() as Omit<AppUser, 'id'>;
+              setAppUser({ id: user.uid, ...dbData, trueRole: dbData.role });
+              setViewMode(dbData.role); // Set view mode based on the true role from DB
+
+              if (dbData.employeeId) {
+                  const empDoc = await getDoc(doc(db, 'employees', dbData.employeeId));
+                  if (empDoc.exists()) {
+                      foundEmployee = { id: empDoc.id, ...empDoc.data() } as Employee;
+                  }
+              }
           } else {
-            setViewMode('employee'); // Default for new users or users without a doc
-            setAppUser({ id: user.uid, email: user.email!, employeeId: foundEmployee?.id || '', role: 'employee', trueRole: 'employee' });
+              // Fallback for users that exist in Auth but not in 'users' collection
+              // This can happen during initial signup. Let's find them by email.
+              if(user.email) {
+                const q = query(collection(db, 'employees'), where('email', '==', user.email));
+                const empSnapshot = await getDocs(q);
+                if (!empSnapshot.empty) {
+                    const empDoc = empSnapshot.docs[0];
+                    foundEmployee = { id: empDoc.id, ...empDoc.data() } as Employee;
+                    const defaultRole = 'employee';
+                    const newUserDocData = { email: user.email, employeeId: empDoc.id, role: defaultRole };
+                    await setDoc(userDocRef, newUserDocData); // Create the user doc
+                    setAppUser({ id: user.uid, ...newUserDocData, trueRole: defaultRole });
+                    setViewMode(defaultRole);
+                }
+              }
           }
+          setEmployeeRecord(foundEmployee);
 
         } catch (error) {
           console.error("Error fetching user data:", error);
           setAppUser(null);
           setEmployeeRecord(null);
-          setViewMode('employee');
         }
       } else {
         setUser(null);
