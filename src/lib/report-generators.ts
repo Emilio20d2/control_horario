@@ -546,7 +546,7 @@ export const generateSignatureReportPDF = (
 
     allEmployeesForQuadrant.forEach((employee, index) => {
         const vacationAbsences = (employeesWithAbsences[employee.id] || [])
-            .filter(a => a.absenceTypeId === vacationType.id)
+            .filter(a => a.absenceTypeId === vacationType.id && getYear(a.startDate) === year)
             .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
 
         const vacationPeriodsText = vacationAbsences.length > 0
