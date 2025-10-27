@@ -618,31 +618,33 @@ export const generateRequestStatusReportPDF = (
         let modifiedRequestText = '';
         
         if (absencesForCampaign.length > 0) {
-            const originalRequests = [];
-            const modifiedRequests = [];
+            const originalRequestParts: string[] = [];
+            const modifiedRequestParts: string[] = [];
             let isModifiedOverall = false;
 
-            for (const absence of absencesForCampaign) {
+            absencesForCampaign.forEach(absence => {
                 const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
+                const typeAbbr = absenceType?.abbreviation || '??';
+                
                 if (absence.originalRequest && absence.originalRequest.startDate) {
                     const originalStartDate = toDate(absence.originalRequest.startDate);
                     const originalEndDate = absence.originalRequest.endDate ? toDate(absence.originalRequest.endDate) : null;
-                    originalRequests.push(`${absenceType?.abbreviation}: ${format(originalStartDate, 'dd/MM/yy')} - ${originalEndDate ? format(originalEndDate, 'dd/MM/yy') : ''}`);
+                    
+                    originalRequestParts.push(`${typeAbbr}: ${format(originalStartDate, 'dd/MM/yy')} - ${originalEndDate ? format(originalEndDate, 'dd/MM/yy') : ''}`);
                     
                     const isModified = !isEqual(absence.startDate, originalStartDate) || (originalEndDate && !isEqual(absence.endDate, originalEndDate));
-
                     if (isModified) {
                         isModifiedOverall = true;
-                        modifiedRequests.push(`${absenceType?.abbreviation}: ${format(absence.startDate, 'dd/MM/yy')} - ${format(absence.endDate, 'dd/MM/yy')}`);
+                        modifiedRequestParts.push(`${typeAbbr}: ${format(absence.startDate, 'dd/MM/yy')} - ${format(absence.endDate, 'dd/MM/yy')}`);
                     }
                 } else {
-                    originalRequests.push(`${absenceType?.abbreviation}: ${format(absence.startDate, 'dd/MM/yy')} - ${format(absence.endDate, 'dd/MM/yy')}`);
+                    originalRequestParts.push(`${typeAbbr}: ${format(absence.startDate, 'dd/MM/yy')} - ${format(absence.endDate, 'dd/MM/yy')}`);
                 }
-            }
-
-            originalRequestText = originalRequests.join('\n');
+            });
+            
+            originalRequestText = originalRequestParts.join('\n');
             if (isModifiedOverall) {
-                modifiedRequestText = modifiedRequests.join('\n');
+                modifiedRequestText = modifiedRequestParts.join('\n');
             }
         }
 
@@ -681,3 +683,4 @@ export const generateRequestStatusReportPDF = (
     doc.save(`informe_peticiones_${safeTitle}.pdf`);
 };
     
+
