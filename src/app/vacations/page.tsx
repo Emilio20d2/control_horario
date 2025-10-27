@@ -172,18 +172,17 @@ export default function VacationsPage() {
         return employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
     }, [employees]);
 
-    const activeCampaigns = useMemo(() => {
+    const allCampaignsSorted = useMemo(() => {
         const toDate = (date: Date | Timestamp) => (date instanceof Timestamp ? date.toDate() : date);
-        return vacationCampaigns
-            .filter(c => c.isActive)
+        return [...vacationCampaigns]
             .sort((a,b) => toDate(b.submissionStartDate).getTime() - toDate(a.submissionStartDate).getTime());
     }, [vacationCampaigns]);
 
     useEffect(() => {
-        if (activeCampaigns.length > 0 && !selectedCampaignId) {
-            setSelectedCampaignId(activeCampaigns[0].id);
+        if (allCampaignsSorted.length > 0 && !selectedCampaignId) {
+            setSelectedCampaignId(allCampaignsSorted[0].id);
         }
-    }, [activeCampaigns, selectedCampaignId]);
+    }, [allCampaignsSorted, selectedCampaignId]);
     
     const groupColors = useMemo(() => generateGroupColors(employeeGroups.map(g => g.id)), [employeeGroups]);
 
@@ -586,7 +585,7 @@ export default function VacationsPage() {
     }, [selectedYear, getWeekId]);
     
     const handleGenerateStatusReport = () => {
-        const campaign = activeCampaigns.find(c => c.id === selectedCampaignId);
+        const campaign = allCampaignsSorted.find(c => c.id === selectedCampaignId);
         if (!campaign) {
             toast({ title: 'Error', description: 'Por favor, selecciona una campaña válida.', variant: 'destructive' });
             return;
@@ -963,15 +962,15 @@ export default function VacationsPage() {
                                 <Button onClick={() => generateSignatureReportPDF(Number(selectedYear), allEmployeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost">
                                     <FileSignature className="mr-2 h-4 w-4" /> Firmas
                                 </Button>
-                                {activeCampaigns.length > 0 && (
+                                {allCampaignsSorted.length > 0 && (
                                     <>
                                         <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
                                             <SelectTrigger className="h-8 w-48 text-xs">
                                                 <SelectValue placeholder="Seleccionar campaña..." />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {activeCampaigns.map(c => (
-                                                    <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                                                {allCampaignsSorted.map(c => (
+                                                    <SelectItem key={c.id} value={c.id}>{c.title} {c.isActive ? '' : '(Inactiva)'}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
