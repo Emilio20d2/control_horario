@@ -6,7 +6,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmployeeDetails } from '@/components/employees/employee-details';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { isAfter, parseISO, startOfDay, getYear, isWithinInterval, startOfYear, endOfYear, getISOWeekYear } from 'date-fns';
 import { Briefcase, Gift, Scale, Wallet, Plane, Info, CalendarX2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator';
 import type { AbsenceType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const BalanceItem = ({ title, value, icon: Icon, isLoading }: { title: string; value: number | undefined; icon: React.ElementType; isLoading: boolean }) => (
     <div className="flex flex-col gap-2">
@@ -80,6 +82,18 @@ export default function MyProfilePage() {
         return Object.values(summary);
     
     }, [employee, weeklyRecords, absenceTypes, currentYear]);
+
+    const vacationPeriods = useMemo(() => {
+        if (!employee) return [];
+        const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
+        if (!vacationType) return [];
+
+        return (employee.employmentPeriods || [])
+            .flatMap(p => p.scheduledAbsences || [])
+            .filter(a => a.absenceTypeId === vacationType.id && a.endDate && getYear(a.startDate) === currentYear)
+            .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
+
+    }, [employee, absenceTypes, currentYear]);
     
     if (dataLoading || !employee || !vacationInfo) {
         return (
@@ -217,6 +231,42 @@ export default function MyProfilePage() {
                         <p className="text-muted-foreground text-center py-4">No tienes ausencias registradas este año.</p>
                     )}
                 </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <Plane className="h-5 w-5 text-primary" />
+                        Mis Vacaciones ({currentYear})
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {vacationPeriods.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Fecha de Inicio</TableHead>
+                                    <TableHead>Fecha de Fin</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {vacationPeriods.map(period => (
+                                    <TableRow key={period.id}>
+                                        <TableCell>{format(period.startDate, 'PPP', { locale: es })}</TableCell>
+                                        <TableCell>{period.endDate ? format(period.endDate, 'PPP', { locale: es }) : ''}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                        <p className="text-muted-foreground text-center py-4">No tienes periodos de vacaciones programados para este año.</p>
+                    )}
+                </CardContent>
+                <CardFooter>
+                    <p className="text-xs text-muted-foreground">
+                        <strong className="font-semibold text-foreground">Nota aclaratoria:</strong> si el periodo de vacaciones no completa una semana laboral, el sistema podrá completarla utilizando horas de cualquier bolsa de devolución (Libranza, Festivos) siempre que el saldo de horas sea a favor del empleado.
+                    </p>
+                </CardFooter>
             </Card>
             
             <div className="space-y-6 col-span-2">
