@@ -40,8 +40,7 @@ export default function RootLayout({
         
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-        <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png" />
+        <link rel="apple-touch-icon" href="/logo.png" />
       </head>
       <body className={cn('antialiased font-body', fontBody.variable, fontHeadline.variable)}>
         <AppProviders>
