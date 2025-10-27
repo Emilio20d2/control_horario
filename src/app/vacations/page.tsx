@@ -956,17 +956,17 @@ export default function VacationsPage() {
                          <CardTitle>Programador vacaciones</CardTitle>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <div className="flex items-center gap-1 border rounded-md p-1">
-                            <Button onClick={() => generateQuadrantReportPDF(Number(selectedYear), weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, substitutes, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost">
+                        <div className="flex flex-wrap items-center gap-1 border rounded-md p-1">
+                            <Button onClick={() => generateQuadrantReportPDF(Number(selectedYear), weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, substitutes, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost" className="h-9 md:h-8">
                                 <FileDown className="mr-2 h-4 w-4" /> Cuadrante
                             </Button>
-                            <Button onClick={() => generateSignatureReportPDF(Number(selectedYear), allEmployeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost">
+                            <Button onClick={() => generateSignatureReportPDF(Number(selectedYear), allEmployeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost" className="h-9 md:h-8">
                                 <FileSignature className="mr-2 h-4 w-4" /> Firmas
                             </Button>
                             {allCampaignsSorted.length > 0 && (
                                 <>
                                     <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
-                                        <SelectTrigger className="h-8 w-auto md:w-48 text-xs">
+                                        <SelectTrigger className="h-9 md:h-8 w-auto md:w-48 text-xs">
                                             <SelectValue placeholder="Seleccionar campaña..." />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -975,12 +975,12 @@ export default function VacationsPage() {
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <Button onClick={handleGenerateStatusReport} disabled={isGenerating || !selectedCampaignId} size="sm" variant="ghost">
+                                    <Button onClick={handleGenerateStatusReport} disabled={isGenerating || !selectedCampaignId} size="sm" variant="ghost" className="h-9 md:h-8">
                                         <SunSnow className="mr-2 h-4 w-4" /> Peticiones
                                     </Button>
                                 </>
                             )}
-                            <Button onClick={() => setIsFullScreen(true)} size="sm" variant="ghost">
+                            <Button onClick={() => setIsFullScreen(true)} size="sm" variant="ghost" className="h-9 md:h-8">
                                 <Expand className="mr-2 h-4 w-4" /> Completa
                             </Button>
                         </div>
