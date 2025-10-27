@@ -62,6 +62,7 @@ import {
   subDays,
   eachWeekOfInterval,
   parse,
+  isEqual,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
@@ -950,40 +951,40 @@ export default function VacationsPage() {
             </Dialog>
 
             <Card>
-                 <CardHeader className="flex flex-row items-center justify-between">
+                 <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
                          <CardTitle>Programador vacaciones</CardTitle>
                     </div>
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1 border rounded-md p-1">
-                                <Button onClick={() => generateQuadrantReportPDF(Number(selectedYear), weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, substitutes, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost">
-                                    <FileDown className="mr-2 h-4 w-4" /> Cuadrante
-                                </Button>
-                                <Button onClick={() => generateSignatureReportPDF(Number(selectedYear), allEmployeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost">
-                                    <FileSignature className="mr-2 h-4 w-4" /> Firmas
-                                </Button>
-                                {allCampaignsSorted.length > 0 && (
-                                    <>
-                                        <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
-                                            <SelectTrigger className="h-8 w-48 text-xs">
-                                                <SelectValue placeholder="Seleccionar campaña..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {allCampaignsSorted.map(c => (
-                                                    <SelectItem key={c.id} value={c.id}>{c.title} {c.isActive ? '' : '(Inactiva)'}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <Button onClick={handleGenerateStatusReport} disabled={isGenerating || !selectedCampaignId} size="sm" variant="ghost">
-                                            <SunSnow className="mr-2 h-4 w-4" /> Peticiones Vacaciones
-                                        </Button>
-                                    </>
-                                )}
-                                <Button onClick={() => setIsFullScreen(true)} size="sm" variant="ghost">
-                                    <Expand className="mr-2 h-4 w-4" /> Pantalla Completa
-                                </Button>
-                            </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-1 border rounded-md p-1">
+                            <Button onClick={() => generateQuadrantReportPDF(Number(selectedYear), weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, substitutes, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost">
+                                <FileDown className="mr-2 h-4 w-4" /> Cuadrante
+                            </Button>
+                            <Button onClick={() => generateSignatureReportPDF(Number(selectedYear), allEmployeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost">
+                                <FileSignature className="mr-2 h-4 w-4" /> Firmas
+                            </Button>
+                            {allCampaignsSorted.length > 0 && (
+                                <>
+                                    <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
+                                        <SelectTrigger className="h-8 w-auto md:w-48 text-xs">
+                                            <SelectValue placeholder="Seleccionar campaña..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {allCampaignsSorted.map(c => (
+                                                <SelectItem key={c.id} value={c.id}>{c.title} {c.isActive ? '' : '(Inactiva)'}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Button onClick={handleGenerateStatusReport} disabled={isGenerating || !selectedCampaignId} size="sm" variant="ghost">
+                                        <SunSnow className="mr-2 h-4 w-4" /> Peticiones
+                                    </Button>
+                                </>
+                            )}
+                            <Button onClick={() => setIsFullScreen(true)} size="sm" variant="ghost">
+                                <Expand className="mr-2 h-4 w-4" /> Completa
+                            </Button>
                         </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {loading ? <Skeleton className="h-full w-full" /> : renderQuadrant()}
