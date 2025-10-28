@@ -451,7 +451,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         name="groupId"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Agrupación Comercial</FormLabel>
+                            <FormLabel>Agrupación</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                                 <SelectTrigger>
@@ -840,7 +840,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                 {employee && (
                     <AlertDialog onOpenChange={(open) => !open && setPassword('')}>
                         <AlertDialogTrigger asChild>
-                            <Button variant="destructive">
+                            <Button variant="destructive" type="button">
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Eliminar Empleado
                             </Button>
@@ -880,8 +880,3 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     </Card>
   );
 }
-
-    
-    
-
-    
