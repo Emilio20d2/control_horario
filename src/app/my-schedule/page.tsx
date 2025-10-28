@@ -18,8 +18,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { setDocument } from '@/lib/services/firestoreService';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/firebase';
 
 interface ConfirmedWeek {
     weekId: string;
@@ -32,6 +33,41 @@ const CorrectionRequestDialog = ({ open, onOpenChange, weekId, employee, onSubmi
     const [reason, setReason] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
+
+    const sendMessage = async (text: string) => {
+        if (!employee) return;
+        const conversationId = employee.id;
+        
+        const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
+        const userMessageData = {
+            text: text,
+            senderId: employee.id,
+            timestamp: serverTimestamp()
+        };
+
+        const convDocRef = doc(db, 'conversations', conversationId);
+        const convDoc = await getDoc(convDocRef);
+
+        if (!convDoc.exists()) {
+            await setDoc(convDocRef, {
+                employeeId: employee.id,
+                employeeName: employee.name,
+                lastMessageText: text,
+                lastMessageTimestamp: serverTimestamp(),
+                unreadByAdmin: true,
+                unreadByEmployee: false,
+            });
+        } else {
+             await updateDoc(convDocRef, {
+                lastMessageText: text,
+                lastMessageTimestamp: serverTimestamp(),
+                unreadByAdmin: true,
+                unreadByEmployee: false,
+            });
+        }
+
+        await addDoc(messagesColRef, userMessageData);
+    };
 
     const handleSubmit = async () => {
         if (!reason.trim()) {
@@ -50,6 +86,11 @@ const CorrectionRequestDialog = ({ open, onOpenChange, weekId, employee, onSubmi
                 requestedAt: Timestamp.now(),
             };
             await setDocument('correctionRequests', requestId, requestData);
+
+            const weekStartDateFormatted = format(parseISO(weekId), 'd MMM, yyyy', { locale: es });
+            const messageText = `**SOLICITUD DE CORRECCIÓN**\n\n**Semana:** ${weekStartDateFormatted}\n**Motivo:** ${reason.trim()}`;
+            await sendMessage(messageText);
+
             toast({ title: "Solicitud enviada", description: "Tu solicitud de corrección ha sido enviada al administrador." });
             onSubmitted();
             onOpenChange(false);
@@ -372,10 +413,3 @@ export default function MySchedulePage() {
         </div>
     );
 }
-
-    
-
-    
-
-    
-
