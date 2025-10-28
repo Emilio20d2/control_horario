@@ -81,7 +81,9 @@ export default function DashboardPage() {
 
     
     const allEmployeesForReport = useMemo(() => {
-        return employees.sort((a, b) => a.name.localeCompare(b.name));
+        return employees
+            .filter(e => e.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
+            .sort((a, b) => a.name.localeCompare(b.name));
     }, [employees]);
 
     useEffect(() => {
@@ -535,5 +537,7 @@ export default function DashboardPage() {
         </div>
       );
 }
+
+    
 
     

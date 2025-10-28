@@ -162,7 +162,7 @@ export default function VacationsPage() {
                 newSubs[report.weekId][report.employeeId] = {
                     reportId: report.id,
                     substituteId: report.substituteId,
-                    substituteName: report.substituteName
+                    substituteName: report.substituteName,
                 };
             });
             setSubstitutes(newSubs);
@@ -237,16 +237,18 @@ export default function VacationsPage() {
     
     const { allEmployeesForQuadrant, substituteEmployees } = useMemo(() => {
         if (loading) return { allEmployeesForQuadrant: [], substituteEmployees: [] };
-    
-        const mainEmployeesMap = new Map(employees.map(e => [e.id, e]));
-    
-        const holidayEmployeesData: Record<string, { groupId?: string | null }> = {};
+
+        const activeEmployeesForQuadrant = employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
+
+        const mainEmployeesMap = new Map(activeEmployeesForQuadrant.map(e => [e.id, e]));
+
+        const holidayEmployeesData: Record<string, { groupId?: string | null, active: boolean }> = {};
         holidayEmployees.forEach(he => {
-            holidayEmployeesData[he.id] = { groupId: he.groupId };
+            holidayEmployeesData[he.id] = { groupId: he.groupId, active: he.active };
         });
-    
+
         const eventuals = holidayEmployees
-            .filter(he => !mainEmployeesMap.has(he.id))
+            .filter(he => !mainEmployeesMap.has(he.id) && he.active)
             .map(he => ({
                 id: he.id,
                 name: he.name,
@@ -254,22 +256,22 @@ export default function VacationsPage() {
                 isEventual: true,
                 groupId: he.groupId || null,
             }));
-    
-        const mainEmployeesWithGroup = employees.map(emp => ({
+
+        const mainEmployeesWithGroup = activeEmployeesForQuadrant.map(emp => ({
             ...emp,
             isEventual: false,
             groupId: holidayEmployeesData[emp.id]?.groupId || null,
         }));
-    
+
         const combinedList = [...mainEmployeesWithGroup, ...eventuals] as (Employee & { isEventual: boolean, groupId: string | null })[];
-    
+
         const sortedQuadrantEmployees = combinedList.sort((a, b) => {
             const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
             const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
             if (groupA !== groupB) return groupA - groupB;
             return a.name.localeCompare(b.name);
         });
-    
+
         return {
             allEmployeesForQuadrant: sortedQuadrantEmployees,
             substituteEmployees: eventuals,
@@ -913,3 +915,5 @@ export default function VacationsPage() {
         </div>
     );
 }
+
+    

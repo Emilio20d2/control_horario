@@ -48,36 +48,14 @@ export default function ListingsPage() {
   const activeEmployeesForListing = useMemo(() => {
     const holidayEmployeesMap = new Map(holidayEmployees.map(he => [he.id, he]));
 
-    const unifiedList = [
-        ...employees.map(emp => {
-            const holidayInfo = holidayEmployeesMap.get(emp.id);
-            return {
-                ...emp,
-                isEventual: false,
-                isActiveForReport: holidayInfo ? holidayInfo.active : true,
-            };
-        }),
-        ...holidayEmployees
-            .filter(he => !employees.some(e => e.id === he.id))
-            .map(he => ({
-                id: he.id,
-                name: he.name,
-                employmentPeriods: [], 
-                isEventual: true,
-                isActiveForReport: he.active,
-            }))
-    ];
-
-    const filteredEmployees = unifiedList.filter(emp => {
-        if (emp.isEventual) {
-            return emp.isActiveForReport;
-        }
-        // For main employees, check both report active flag AND if they have an active contract
+    return employees
+      .filter(emp => {
+        const holidayInfo = holidayEmployeesMap.get(emp.id);
+        const isActiveForReport = holidayInfo ? holidayInfo.active : true;
         const hasActiveContract = emp.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
-        return emp.isActiveForReport && hasActiveContract;
-    });
-
-    return filteredEmployees.sort((a, b) => a.name.localeCompare(b.name));
+        return isActiveForReport && hasActiveContract;
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
 }, [employees, holidayEmployees]);
 
 
@@ -375,3 +353,5 @@ export default function ListingsPage() {
     </div>
   );
 }
+
+    

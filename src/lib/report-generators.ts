@@ -542,8 +542,10 @@ export const generateSignatureReportPDF = (
 
     let finalY = 25;
 
-    // Filter out eventual employees
-    const employeesForReport = allEmployeesForQuadrant.filter(emp => !emp.isEventual);
+    // Filter out eventual employees and employees without active contract
+    const employeesForReport = allEmployeesForQuadrant.filter(emp => 
+        !emp.isEventual && emp.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate), new Date()))
+    );
 
     employeesForReport.forEach((employee) => {
         const vacationAbsences = (employeesWithAbsences[employee.id] || [])
@@ -565,7 +567,7 @@ export const generateSignatureReportPDF = (
         autoTable(doc, {
             body: [
                 [
-                    { content: employee.employeeNumber || '', styles: { fontStyle: 'bold', halign: 'center' } },
+                    { content: employee.employeeNumber || '', styles: { fontStyle: 'bold', halign: 'left' } },
                     { content: employee.name, styles: { fontStyle: 'bold' } },
                     { content: vacationPeriodsText, styles: { fontSize: 9 } },
                     { content: 'Firma:', styles: { halign: 'right', valign: 'bottom' } },
@@ -581,6 +583,7 @@ export const generateSignatureReportPDF = (
                 3: { cellWidth: 30 } 
             }
         });
+        // @ts-ignore
         finalY = doc.lastAutoTable.finalY + 5;
     });
 
@@ -689,4 +692,6 @@ export const generateRequestStatusReportPDF = (
     const safeTitle = campaign.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     doc.save(`informe_peticiones_${safeTitle}.pdf`);
 };
+    
+
     
