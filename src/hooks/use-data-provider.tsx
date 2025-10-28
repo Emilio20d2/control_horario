@@ -492,7 +492,7 @@ useEffect(() => {
         }
     }
     
-    details.sort((a, b) => a.weekId.localeCompare(b.weekId));
+    details.sort((a, b) => a.weekId.localeCompare(b.id));
     setUnconfirmedWeeksDetails(details);
 
 }, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
@@ -688,10 +688,7 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
         const relevantRecords = Object.values(weeklyRecords).filter(record => {
             const weekDate = parseISO(record.id);
             const isoYear = getISOWeekYear(weekDate);
-            // CRITICAL OVERRIDE for 2025
-            if (year === 2025) {
-                return isoYear === 2025 && record.weekData[employeeId]?.confirmed;
-            }
+            if (year === 2025) return isoYear === 2025 && record.weekData[employeeId]?.confirmed;
             return isoYear === year && record.weekData[employeeId]?.confirmed;
         });
     
@@ -702,26 +699,21 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
                     const dayDate = parseISO(dayKey);
                     const isoYear = getISOWeekYear(dayDate);
                     
-                    let isCorrectYear = false;
-                     // CRITICAL OVERRIDE for 2025
-                    if (year === 2025) {
-                        isCorrectYear = isoYear === 2025 || (getYear(dayDate) === 2024 && getISOWeek(dayDate) === 1);
-                    } else {
-                        isCorrectYear = isoYear === year;
-                    }
+                    let isCorrectYear = (year === 2025) 
+                        ? (isoYear === 2025 || (getYear(dayDate) === 2024 && getISOWeek(dayDate) === 1))
+                        : (isoYear === year);
 
                     if (!isCorrectYear) return;
-
     
                     const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
                     let dailyComputable = 0;
     
-                    // Include worked hours only if it's not a holiday or Sunday
-                    if (!dayData.isHoliday && getISODay(dayDate) !== 7) {
-                        dailyComputable += dayData.workedHours || 0;
+                    if (!absenceType || !absenceType.deductsHours) {
+                        if (!dayData.isHoliday && getISODay(dayDate) !== 7) {
+                            dailyComputable += dayData.workedHours || 0;
+                        }
                     }
     
-                    // Include absence hours if the absence type computes to annual hours
                     if (absenceType && absenceType.computesToAnnualHours) {
                         dailyComputable += dayData.absenceHours || 0;
                     }
@@ -744,100 +736,100 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
     };
 
     const calculateTheoreticalAnnualWorkHours = useCallback((employeeId: string, year: number): { theoreticalHours: number, baseTheoreticalHours: number, suspensionDetails: any[], workHoursChangeDetails: any[] } => {
-    const employee = employees.find(e => e.id === employeeId);
-    const annualConfig = annualConfigs.find(c => c.year === year);
-
-    const defaultReturn = { theoreticalHours: 0, baseTheoreticalHours: 0, suspensionDetails: [], workHoursChangeDetails: [] };
-
-    if (!employee || !annualConfig) {
-        return defaultReturn;
-    }
-
-    const yearStart = startOfYear(new Date(year, 0, 1));
-    const yearEnd = endOfYear(new Date(year, 11, 31));
-    const daysInYear = differenceInDays(yearEnd, yearStart) + 1;
-    const baseTheoreticalHours = annualConfig.maxAnnualHours;
-
-    let totalProratedHours = 0;
-    const allWorkHoursChangeDetails: any[] = [];
-    const allSuspensionDetails: any[] = [];
-
-    employee.employmentPeriods.forEach(period => {
-        const pStart = parseISO(period.startDate as string);
-        const pEnd = period.endDate ? parseISO(period.endDate as string) : yearEnd;
-
-        // Skip period if it doesn't overlap with the year
-        if (isAfter(pStart, yearEnd) || isBefore(pEnd, yearStart)) {
-            return;
+        const employee = employees.find(e => e.id === employeeId);
+        const annualConfig = annualConfigs.find(c => c.year === year);
+    
+        const defaultReturn = { theoreticalHours: 0, baseTheoreticalHours: 0, suspensionDetails: [], workHoursChangeDetails: [] };
+    
+        if (!employee || !annualConfig) {
+            return defaultReturn;
         }
-
-        const effectivePeriodStart = max([yearStart, pStart]);
-        const effectivePeriodEnd = min([yearEnd, pEnd]);
-        
-        if (isAfter(effectivePeriodStart, effectivePeriodEnd)) return;
-        
-        const contractDaysInYear = differenceInDays(effectivePeriodEnd, effectivePeriodStart) + 1;
-        
-        let periodBaseHours = (baseTheoreticalHours / daysInYear) * contractDaysInYear;
-        
-        const history = (period.workHoursHistory || []).sort((a,b) => parseISO(a.effectiveDate as string).getTime() - parseISO(b.effectiveDate as string).getTime());
-        if (history.length > 0) {
-            for (let i = 0; i < history.length; i++) {
-                const currentChange = history[i];
-                const nextChange = history[i + 1];
-
-                const changeStart = max([effectivePeriodStart, parseISO(currentChange.effectiveDate as string)]);
-                const changeEnd = min([effectivePeriodEnd, nextChange ? subDays(parseISO(nextChange.effectiveDate as string), 1) : effectivePeriodEnd]);
-                
-                if (isAfter(changeStart, changeEnd)) continue;
-
-                const daysOfChange = differenceInDays(changeEnd, changeStart) + 1;
-                const weeklyHoursDiff = currentChange.weeklyHours - annualConfig.referenceWeeklyHours;
-                
-                if (Math.abs(weeklyHoursDiff) > 0.01) {
-                    const impact = (weeklyHoursDiff / 7) * daysOfChange;
-                    periodBaseHours += impact;
-                    allWorkHoursChangeDetails.push({ 
-                        newWeeklyHours: currentChange.weeklyHours, 
-                        effectiveDate: currentChange.effectiveDate, 
-                        days: daysOfChange,
-                        impact: impact 
-                    });
+    
+        const yearStart = startOfYear(new Date(year, 0, 1));
+        const yearEnd = endOfYear(new Date(year, 11, 31));
+        const daysInYear = differenceInDays(yearEnd, yearStart) + 1;
+        const baseTheoreticalHours = annualConfig.maxAnnualHours;
+    
+        let totalProratedHours = 0;
+        const allWorkHoursChangeDetails: any[] = [];
+        const allSuspensionDetails: any[] = [];
+    
+        employee.employmentPeriods.forEach(period => {
+            const pStart = parseISO(period.startDate as string);
+            const pEnd = period.endDate ? parseISO(period.endDate as string) : yearEnd;
+    
+            // Skip period if it doesn't overlap with the year
+            if (isAfter(pStart, yearEnd) || isBefore(pEnd, yearStart)) {
+                return;
+            }
+    
+            const effectivePeriodStart = max([yearStart, pStart]);
+            const effectivePeriodEnd = min([yearEnd, pEnd]);
+            
+            if (isAfter(effectivePeriodStart, effectivePeriodEnd)) return;
+            
+            const contractDaysInYear = differenceInDays(effectivePeriodEnd, effectivePeriodStart) + 1;
+            
+            let periodBaseHours = (baseTheoreticalHours / daysInYear) * contractDaysInYear;
+            
+            const history = (period.workHoursHistory || []).sort((a,b) => parseISO(a.effectiveDate as string).getTime() - parseISO(b.effectiveDate as string).getTime());
+            if (history.length > 0) {
+                for (let i = 0; i < history.length; i++) {
+                    const currentChange = history[i];
+                    const nextChange = history[i + 1];
+    
+                    const changeStart = max([effectivePeriodStart, parseISO(currentChange.effectiveDate as string)]);
+                    const changeEnd = min([effectivePeriodEnd, nextChange ? subDays(parseISO(nextChange.effectiveDate as string), 1) : effectivePeriodEnd]);
+                    
+                    if (isAfter(changeStart, changeEnd)) continue;
+    
+                    const daysOfChange = differenceInDays(changeEnd, changeStart) + 1;
+                    const weeklyHoursDiff = currentChange.weeklyHours - annualConfig.referenceWeeklyHours;
+                    
+                    if (Math.abs(weeklyHoursDiff) > 0.01) {
+                        const impact = (weeklyHoursDiff / 7) * daysOfChange;
+                        periodBaseHours += impact;
+                        allWorkHoursChangeDetails.push({ 
+                            newWeeklyHours: currentChange.weeklyHours, 
+                            effectiveDate: currentChange.effectiveDate, 
+                            days: daysOfChange,
+                            impact: impact 
+                        });
+                    }
                 }
             }
-        }
-        
-        const suspensionTypeIds = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.id));
-        let periodSuspensionDays = 0;
-
-        (period.scheduledAbsences || []).forEach(absence => {
-            if (suspensionTypeIds.has(absence.absenceTypeId) && absence.endDate) {
-                const effectiveAbsenceStart = max([effectivePeriodStart, absence.startDate]);
-                const effectiveAbsenceEnd = min([effectivePeriodEnd, absence.endDate]);
-                
-                if (isAfter(effectiveAbsenceStart, effectiveAbsenceEnd)) return;
-                
-                const days = differenceInDays(effectiveAbsenceEnd, effectiveAbsenceStart) + 1;
-                periodSuspensionDays += days;
-                allSuspensionDetails.push({ name: absenceTypes.find(at => at.id === absence.absenceTypeId)?.name, days });
+            
+            const suspensionTypeIds = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.id));
+            let periodSuspensionDays = 0;
+    
+            (period.scheduledAbsences || []).forEach(absence => {
+                if (suspensionTypeIds.has(absence.absenceTypeId) && absence.endDate) {
+                    const effectiveAbsenceStart = max([effectivePeriodStart, absence.startDate]);
+                    const effectiveAbsenceEnd = min([effectivePeriodEnd, absence.endDate]);
+                    
+                    if (isAfter(effectiveAbsenceStart, effectiveAbsenceEnd)) return;
+                    
+                    const days = differenceInDays(effectiveAbsenceEnd, effectiveAbsenceStart) + 1;
+                    periodSuspensionDays += days;
+                    allSuspensionDetails.push({ name: absenceTypes.find(at => at.id === absence.absenceTypeId)?.name, days });
+                }
+            });
+            
+            if (periodSuspensionDays > 0) {
+                const hoursToDeduct = (baseTheoreticalHours / daysInYear) * periodSuspensionDays;
+                periodBaseHours -= hoursToDeduct;
             }
+    
+            totalProratedHours += periodBaseHours;
         });
-        
-        if (periodSuspensionDays > 0) {
-            const hoursToDeduct = (baseTheoreticalHours / daysInYear) * periodSuspensionDays;
-            periodBaseHours -= hoursToDeduct;
-        }
-
-        totalProratedHours += periodBaseHours;
-    });
-
-    return {
-        theoreticalHours: roundToNearestQuarter(totalProratedHours),
-        baseTheoreticalHours: baseTheoreticalHours,
-        suspensionDetails: allSuspensionDetails,
-        workHoursChangeDetails: allWorkHoursChangeDetails
-    };
-}, [employees, annualConfigs, absenceTypes]);
+    
+        return {
+            theoreticalHours: roundToNearestQuarter(totalProratedHours),
+            baseTheoreticalHours: baseTheoreticalHours,
+            suspensionDetails: allSuspensionDetails,
+            workHoursChangeDetails: allWorkHoursChangeDetails
+        };
+    }, [employees, annualConfigs, absenceTypes]);
     
 
 const getProcessedAnnualDataForEmployee = async (employeeId: string, year: number): Promise<{ annualData: WeeklyRecordWithBalances[] }> => {
