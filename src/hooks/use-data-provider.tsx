@@ -492,7 +492,7 @@ useEffect(() => {
         }
     }
     
-    details.sort((a, b) => a.weekId.localeCompare(b.id));
+    details.sort((a, b) => a.weekId.localeCompare(b.weekId));
     setUnconfirmedWeeksDetails(details);
 
 }, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
@@ -697,8 +697,13 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
             if (employeeData?.days) {
                 Object.entries(employeeData.days).forEach(([dayKey, dayData]) => {
                     const dayDate = parseISO(dayKey);
-                    const isoYear = getISOWeekYear(dayDate);
                     
+                    // Critical: Skip any holiday from annual computation
+                    if (dayData.isHoliday) {
+                        return;
+                    }
+                    
+                    const isoYear = getISOWeekYear(dayDate);
                     let isCorrectYear = (year === 2025) 
                         ? (isoYear === 2025 || (getYear(dayDate) === 2024 && getISOWeek(dayDate) === 1))
                         : (isoYear === year);
@@ -707,14 +712,13 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
     
                     const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
                     let dailyComputable = 0;
-    
-                    if (!absenceType || !absenceType.deductsHours) {
-                        // Exclude Sundays and 'Apertura' holidays from worked hours computation
-                        if (getISODay(dayDate) !== 7 && dayData.holidayType !== 'Apertura') {
-                            dailyComputable += dayData.workedHours || 0;
-                        }
+
+                    // If it's a Sunday, don't compute worked hours.
+                    if (getISODay(dayDate) !== 7) {
+                        dailyComputable += dayData.workedHours || 0;
                     }
-    
+
+                    // Only add absence hours if the type is configured to do so.
                     if (absenceType && absenceType.computesToAnnualHours) {
                         dailyComputable += dayData.absenceHours || 0;
                     }
