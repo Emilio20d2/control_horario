@@ -11,50 +11,66 @@ import { SendHorizonal, ArrowLeft, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
-import { useCollectionData } from 'react-firebase-hooks/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Conversation, Message } from '@/lib/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function MessagesPage() {
-    const { employees, conversations, loading: dataLoading } = useDataProvider();
+    const { employees, conversations, loading: dataLoading, refreshData } = useDataProvider();
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
     const [newMessage, setNewMessage] = useState('');
     const isMobile = useIsMobile();
     const viewportRef = useRef<HTMLDivElement>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [messagesLoading, setMessagesLoading] = useState(true);
 
+    const selectedConversation = conversations.find(c => c.id === selectedConversationId);
 
-    const [messagesSnapshot, messagesLoading] = useCollectionData(
-        selectedConversationId ? query(collection(db, 'conversations', selectedConversationId, 'messages'), orderBy('timestamp', 'asc')) : null
-    );
+    // Effect to fetch messages for the selected conversation
+    useEffect(() => {
+        if (!selectedConversationId) {
+            setMessages([]);
+            return;
+        }
 
-    const messages = useMemo(() => {
-        if (!messagesSnapshot) return [];
-        return messagesSnapshot.map(data => {
-            return {
-                ...data,
-                timestamp: data.timestamp?.toDate() // Convert Firestore Timestamp to Date
-            } as Message;
+        setMessagesLoading(true);
+        const messagesQuery = query(collection(db, 'conversations', selectedConversationId, 'messages'), orderBy('timestamp', 'asc'));
+        
+        const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+            const fetchedMessages = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    ...data,
+                    timestamp: data.timestamp?.toDate()
+                } as Message;
+            });
+            setMessages(fetchedMessages);
+            setMessagesLoading(false);
         });
-    }, [messagesSnapshot]);
 
+        return () => unsubscribe();
+    }, [selectedConversationId]);
+
+
+    // Effect to scroll to the bottom of the chat
     useEffect(() => {
         if (viewportRef.current) {
             viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
         }
     }, [messages, messagesLoading]);
 
-    const selectedConversation = conversations.find(c => c.id === selectedConversationId);
-
     // Effect to mark conversation as read
     useEffect(() => {
         if (selectedConversationId && selectedConversation?.unreadByAdmin) {
             const convRef = doc(db, 'conversations', selectedConversationId);
-            updateDoc(convRef, { unreadByAdmin: false });
+            updateDoc(convRef, { unreadByAdmin: false }).then(() => {
+                // Manually trigger a data refresh to update UI state in the data provider
+                refreshData();
+            });
         }
-    }, [selectedConversationId, selectedConversation]);
+    }, [selectedConversationId, selectedConversation, refreshData]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -75,7 +91,6 @@ export default function MessagesPage() {
             lastMessageText: messageText,
             lastMessageTimestamp: serverTimestamp(),
             unreadByEmployee: true,
-            // When admin replies, it's considered "read" by admin
             unreadByAdmin: false, 
         });
     };
