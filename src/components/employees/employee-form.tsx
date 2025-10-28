@@ -148,7 +148,6 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     const userForEmployee = employee?.authId ? users.find(u => u.id === employee.authId) : undefined;
     const role = userForEmployee?.role || 'employee';
     
-    // Find groupId either from holidayEmployees or directly if available (future-proofing)
     const holidayEmployee = employee ? holidayEmployees.find(he => he.id === employee.id) : undefined;
     const groupId = holidayEmployee?.groupId;
 
@@ -313,14 +312,13 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     }
     setIsDeleting(true);
 
-    const isAuthenticated = await reauthenticateWithPassword(password);
-    if (!isAuthenticated) {
-        toast({ title: 'Error de autenticación', description: 'La contraseña no es correcta.', variant: 'destructive' });
-        setIsDeleting(false);
-        return;
-    }
-
     try {
+        const isAuthenticated = await reauthenticateWithPassword(password);
+        if (!isAuthenticated) {
+            toast({ title: 'Error de autenticación', description: 'La contraseña no es correcta.', variant: 'destructive' });
+            return;
+        }
+
         await deleteEmployee(employee.id);
         toast({
             title: "Empleado Eliminado",
@@ -866,7 +864,13 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             </div>
                             <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={onDelete} disabled={isDeleting}>
+                            <AlertDialogAction 
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    onDelete();
+                                }} 
+                                disabled={isDeleting}
+                            >
                                 {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sí, eliminar empleado'}
                             </AlertDialogAction>
                             </AlertDialogFooter>
