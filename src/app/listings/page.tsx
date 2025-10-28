@@ -16,7 +16,7 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, isAfter, parseISO } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HolidayEmployeeManager } from '@/components/settings/holiday-employee-manager';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,36 +46,37 @@ export default function ListingsPage() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const activeEmployeesForListing = useMemo(() => {
-    // 1. Create a map of holiday employees for quick lookup.
     const holidayEmployeesMap = new Map(holidayEmployees.map(he => [he.id, he]));
 
-    // 2. Unify main employees and eventuals, filtering by the "active for reports" flag.
     const unifiedList = [
         ...employees.map(emp => {
             const holidayInfo = holidayEmployeesMap.get(emp.id);
             return {
                 ...emp,
                 isEventual: false,
-                // If a main employee has a record in holidayEmployees, respect its active status.
-                // If not, they are considered active for reports by default.
                 isActiveForReport: holidayInfo ? holidayInfo.active : true,
             };
         }),
         ...holidayEmployees
-            .filter(he => !employees.some(e => e.id === he.id)) // Add eventuals who are not main employees
+            .filter(he => !employees.some(e => e.id === he.id))
             .map(he => ({
                 id: he.id,
                 name: he.name,
-                employmentPeriods: [], // Eventuals don't have employment periods in the main system
+                employmentPeriods: [], 
                 isEventual: true,
                 isActiveForReport: he.active,
             }))
     ];
 
-    // 3. Filter the final list based ONLY on the "active for reports" status.
-    const filteredEmployees = unifiedList.filter(emp => emp.isActiveForReport);
+    const filteredEmployees = unifiedList.filter(emp => {
+        if (emp.isEventual) {
+            return emp.isActiveForReport;
+        }
+        // For main employees, check both report active flag AND if they have an active contract
+        const hasActiveContract = emp.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
+        return emp.isActiveForReport && hasActiveContract;
+    });
 
-    // 4. Sort the final list by name.
     return filteredEmployees.sort((a, b) => a.name.localeCompare(b.name));
 }, [employees, holidayEmployees]);
 
@@ -374,5 +375,3 @@ export default function ListingsPage() {
     </div>
   );
 }
-
-    
