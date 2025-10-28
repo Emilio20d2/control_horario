@@ -131,32 +131,6 @@ export default function MyMessagesPage() {
     }, [formattedMessages, messagesLoading]);
 
 
-    // Effect to send initial welcome message for generic chat
-    useEffect(() => {
-        const sendWelcomeMessage = async () => {
-            if (employeeRecord && conversationId && !messagesLoading && formattedMessages.length === 0 && !activeCampaign) {
-                const welcomeText = `Hola ${employeeRecord.name.split(' ')[0]}, este servicio de mensajería es exclusivamente para incidencias relacionadas con el control de horas semanales o con esta aplicación.\nPronto recibirás una contestación por este chat.\nPara cualquier otra consulta, ponte en contacto directamente con Dirección.`;
-                const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
-                await addDoc(messagesColRef, {
-                    text: welcomeText,
-                    senderId: 'admin',
-                    timestamp: serverTimestamp()
-                });
-                
-                const convDocRef = doc(db, 'conversations', conversationId);
-                await setDoc(convDocRef, {
-                    employeeId: employeeRecord.id,
-                    employeeName: employeeRecord.name,
-                    lastMessageText: "Consulta de empleado",
-                    lastMessageTimestamp: serverTimestamp(),
-                    unreadByEmployee: true,
-                }, { merge: true });
-            }
-        };
-
-        sendWelcomeMessage();
-    }, [employeeRecord, conversationId, messagesLoading, formattedMessages.length, activeCampaign]);
-
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (newMessage.trim() === '' || !conversationId || !employeeRecord) return;
@@ -377,7 +351,6 @@ export default function MyMessagesPage() {
                     <h2 className="text-lg font-bold">Dirección</h2>
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                         Este servicio de mensajería es exclusivamente para incidencias relacionadas con el control de horas semanales o con esta aplicación.
-                        {'\n'}Pronto recibirás una contestación por este chat.
                         {'\n'}Para cualquier otra consulta, ponte en contacto directamente con Dirección.
                     </p>
                 </div>
@@ -618,3 +591,6 @@ export default function MyMessagesPage() {
 
     
 
+
+
+    
