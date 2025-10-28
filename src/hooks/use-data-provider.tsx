@@ -709,7 +709,8 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
                     let dailyComputable = 0;
     
                     if (!absenceType || !absenceType.deductsHours) {
-                        if (!dayData.isHoliday && getISODay(dayDate) !== 7) {
+                        // Exclude Sundays and 'Apertura' holidays from worked hours computation
+                        if (getISODay(dayDate) !== 7 && dayData.holidayType !== 'Apertura') {
                             dailyComputable += dayData.workedHours || 0;
                         }
                     }
