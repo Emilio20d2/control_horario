@@ -161,7 +161,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         
         if (!period) {
              return {
-                name: '', employeeNumber: '', dni: '', phone: '', email: '', role: 'employee', groupId: '',
+                name: '', employeeNumber: '', dni: '', phone: '', email: '', role: 'employee', groupId: 'ninguno',
                 startDate: new Date().toISOString().split('T')[0], endDate: null, isTransfer: false, vacationDaysUsedInAnotherCenter: undefined,
                 contractType: '', initialWeeklyWorkHours: 40, annualComputedHours: 0,
                 initialOrdinaryHours: undefined, initialHolidayHours: undefined, initialLeaveHours: undefined, vacationDays2024: undefined,
@@ -196,7 +196,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             phone: employee.phone,
             email: employee.email,
             role: role,
-            groupId: groupId || '',
+            groupId: groupId || 'ninguno',
             startDate: startDateString,
             endDate: endDateValue,
             isTransfer: period.isTransfer || false,
@@ -225,7 +225,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         phone: '',
         email: '',
         role: 'employee',
-        groupId: '',
+        groupId: 'ninguno',
         startDate: new Date().toISOString().split('T')[0],
         endDate: null,
         isTransfer: false,
@@ -460,7 +460,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                                 </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                                <SelectItem value="">Sin Agrupación</SelectItem>
+                                <SelectItem value="ninguno">Sin Agrupación</SelectItem>
                                 {employeeGroups.map(group => (
                                     <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
                                 ))}
