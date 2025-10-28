@@ -485,9 +485,9 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         <FormItem>
                             <FormLabel>Fecha de Inicio del Contrato</FormLabel>
                             <FormControl>
-                            <Input type="date" {...field} disabled={!!employee} />
+                            <Input type="date" {...field} disabled={!isFirstPeriod} />
                             </FormControl>
-                             {!!employee && <FormDescription>No se puede modificar la fecha de inicio de un contrato existente.</FormDescription>}
+                            {!isFirstPeriod && <FormDescription>No se puede modificar la fecha de inicio de un contrato con historial.</FormDescription>}
                             <FormMessage />
                         </FormItem>
                         )}
@@ -880,3 +880,5 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
     </Card>
   );
 }
+
+    
