@@ -51,7 +51,7 @@ export default function ListingsPage() {
     return employees
       .filter(emp => {
         const holidayInfo = holidayEmployeesMap.get(emp.id);
-        const isActiveForReport = holidayInfo ? holidayInfo.active : true;
+        const isActiveForReport = holidayInfo ? holidayInfo.active : false; // Default to false if not in the list
         const hasActiveContract = emp.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
         return isActiveForReport && hasActiveContract;
       })

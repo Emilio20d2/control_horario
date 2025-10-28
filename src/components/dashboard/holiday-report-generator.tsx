@@ -41,20 +41,16 @@ export function HolidayReportGenerator() {
         // Use only employees with an active contract for this report.
         const mainEmployees = employees
           .filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
-          .map(e => {
-            const activePeriod = e.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
-            const weeklyHours = getEffectiveWeeklyHours(activePeriod || null, new Date());
-            return {
+          .map(e => ({
                 id: e.id,
                 name: e.name,
                 isEventual: false,
-            };
-        });
+            }));
         
         const mainEmployeeNames = new Set(mainEmployees.map(me => me.name.trim().toLowerCase()));
 
         const externalEmployees = holidayEmployees
-            .filter(he => !mainEmployeeNames.has(he.name.trim().toLowerCase()))
+            .filter(he => he.active && !mainEmployeeNames.has(he.name.trim().toLowerCase()))
             .map(e => ({
                 id: e.id,
                 name: e.name,
@@ -65,7 +61,7 @@ export function HolidayReportGenerator() {
 
         return combinedList.sort((a, b) => a.name.localeCompare(b.name));
 
-    }, [employees, holidayEmployees, loading, getEffectiveWeeklyHours]);
+    }, [employees, holidayEmployees, loading]);
 
     const handleGenerateReport = () => {
         setIsGenerating(true);
