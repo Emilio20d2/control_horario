@@ -698,11 +698,6 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
                 Object.entries(employeeData.days).forEach(([dayKey, dayData]) => {
                     const dayDate = parseISO(dayKey);
                     
-                    // Critical: Skip any holiday from annual computation
-                    if (dayData.isHoliday) {
-                        return;
-                    }
-                    
                     const isoYear = getISOWeekYear(dayDate);
                     let isCorrectYear = (year === 2025) 
                         ? (isoYear === 2025 || (getYear(dayDate) === 2024 && getISOWeek(dayDate) === 1))
@@ -710,13 +705,16 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
 
                     if (!isCorrectYear) return;
     
+                    // Skip Sundays and any type of holiday entirely
+                    if (getISODay(dayDate) === 7 || dayData.isHoliday) {
+                        return;
+                    }
+                    
                     const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
                     let dailyComputable = 0;
 
-                    // If it's a Sunday, don't compute worked hours.
-                    if (getISODay(dayDate) !== 7) {
-                        dailyComputable += dayData.workedHours || 0;
-                    }
+                    // Add worked hours
+                    dailyComputable += dayData.workedHours || 0;
 
                     // Only add absence hours if the type is configured to do so.
                     if (absenceType && absenceType.computesToAnnualHours) {
