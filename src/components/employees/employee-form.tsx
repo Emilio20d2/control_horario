@@ -196,7 +196,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             phone: employee.phone,
             email: employee.email,
             role: role,
-            groupId: groupId,
+            groupId: groupId || '',
             startDate: startDateString,
             endDate: endDateValue,
             isTransfer: period.isTransfer || false,
