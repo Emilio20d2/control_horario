@@ -747,64 +747,102 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
         const employee = getEmployeeById(employeeId);
         const annualConfig = annualConfigs.find(c => c.year === year);
     
-        if (!employee || !annualConfig) {
-            return { theoreticalHours: 0, baseTheoreticalHours: 0, suspensionDetails: [], workHoursChangeDetails: [] };
-        }
+        const defaultReturn = { theoreticalHours: 0, baseTheoreticalHours: 0, suspensionDetails: [], workHoursChangeDetails: [] };
     
-        const suspensionTypeIds = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.id));
-        const suspensionAbsenceAbbrs = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.abbreviation));
+        if (!employee || !annualConfig) {
+            return defaultReturn;
+        }
     
         const yearStart = startOfYear(new Date(year, 0, 1));
         const yearEnd = endOfYear(new Date(year, 11, 31));
+        const daysInYear = differenceInDays(yearEnd, yearStart) + 1;
     
-        let totalProratedHours = 0;
-        const suspensionIntervals = [];
+        // 1. Calculate base theoretical hours, prorated for contract duration in the year
+        let contractDaysInYear = 0;
+        let proratedBaseHours = 0;
     
-        // Collect all suspension intervals
-        for (const period of (employee.employmentPeriods || [])) {
-            for (const absence of (period.scheduledAbsences || [])) {
-                if (suspensionTypeIds.has(absence.absenceTypeId) && absence.endDate) {
-                    suspensionIntervals.push({
-                        start: startOfDay(absence.startDate),
-                        end: endOfDay(absence.endDate)
+        employee.employmentPeriods.forEach(period => {
+            const pStart = parseISO(period.startDate as string);
+            const pEnd = period.endDate ? parseISO(period.endDate as string) : yearEnd;
+            const effectiveStart = isAfter(pStart, yearStart) ? pStart : yearStart;
+            const effectiveEnd = isBefore(pEnd, yearEnd) ? pEnd : yearEnd;
+    
+            if (isAfter(effectiveStart, effectiveEnd)) return;
+    
+            const daysInPeriod = differenceInDays(effectiveEnd, effectiveStart) + 1;
+            contractDaysInYear += daysInPeriod;
+        });
+    
+        proratedBaseHours = (annualConfig.maxAnnualHours / daysInYear) * contractDaysInYear;
+    
+        let finalHours = proratedBaseHours;
+    
+        // 2. Adjust for work hours changes
+        const referenceHours = annualConfig.referenceWeeklyHours;
+        const workHoursChangeDetails: any[] = [];
+    
+        employee.employmentPeriods.forEach(period => {
+            const history = (period.workHoursHistory || []).sort((a,b) => parseISO(a.effectiveDate as string).getTime() - parseISO(b.effectiveDate as string).getTime());
+            if (history.length === 0) return;
+    
+            for (let i = 0; i < history.length; i++) {
+                const currentChange = history[i];
+                const nextChange = history[i + 1];
+    
+                const pStart = parseISO(period.startDate as string);
+                const pEnd = period.endDate ? parseISO(period.endDate as string) : yearEnd;
+    
+                const changeStart = max([yearStart, pStart, parseISO(currentChange.effectiveDate as string)]);
+                const changeEnd = min([yearEnd, pEnd, nextChange ? subDays(parseISO(nextChange.effectiveDate as string), 1) : pEnd]);
+                
+                if (isAfter(changeStart, changeEnd)) continue;
+    
+                const daysOfChange = differenceInDays(changeEnd, changeStart) + 1;
+                const weeklyHoursDiff = currentChange.weeklyHours - referenceHours;
+                
+                if (Math.abs(weeklyHoursDiff) > 0.01) {
+                    const impact = (weeklyHoursDiff / 7) * daysOfChange;
+                    finalHours += impact;
+                    workHoursChangeDetails.push({ 
+                        newWeeklyHours: currentChange.weeklyHours, 
+                        effectiveDate: currentChange.effectiveDate, 
+                        days: daysOfChange,
+                        impact: impact 
                     });
                 }
             }
-        }
+        });
     
-        for (const weekId in weeklyRecords) {
-            const record = weeklyRecords[weekId];
-            const empData = record?.weekData?.[employeeId];
-            if (empData && getISOWeekYear(parseISO(weekId)) === year) {
-                for (const dayStr in empData.days) {
-                    if (suspensionAbsenceAbbrs.has(empData.days[dayStr].absence)) {
-                        const day = parseISO(dayStr);
-                        suspensionIntervals.push({ start: day, end: day });
-                    }
+        // 3. Adjust for suspensions
+        const suspensionTypeIds = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.id));
+        const suspensionDetails: any[] = [];
+        let totalSuspensionDays = 0;
+    
+        employee.employmentPeriods.forEach(p => {
+            (p.scheduledAbsences || []).forEach(absence => {
+                if (suspensionTypeIds.has(absence.absenceTypeId) && absence.endDate) {
+                    const effectiveStart = max([yearStart, parseISO(p.startDate as string), absence.startDate]);
+                    const effectiveEnd = min([yearEnd, absence.endDate]);
+                    
+                    if (isAfter(effectiveStart, effectiveEnd)) return;
+                    
+                    const days = differenceInDays(effectiveEnd, effectiveStart) + 1;
+                    totalSuspensionDays += days;
+                    suspensionDetails.push({ name: absenceTypes.find(at => at.id === absence.absenceTypeId)?.name, days });
                 }
-            }
-        }
+            });
+        });
     
-        // Iterate through each day of the year to calculate prorated hours
-        for (let day = new Date(yearStart); day <= yearEnd; day = addDays(day, 1)) {
-            // Check if the day is within any suspension interval
-            const isSuspended = suspensionIntervals.some(interval => isWithinInterval(day, interval));
-            if (isSuspended) continue;
-    
-            // Find the active employment period for the day
-            const activePeriod = getActivePeriod(employee.id, day);
-            if (!activePeriod) continue;
-    
-            // Prorate hours based on the weekly hours for that day
-            const dailyProratedHours = getEffectiveWeeklyHours(activePeriod, day) / 7;
-            totalProratedHours += dailyProratedHours;
+        if (totalSuspensionDays > 0) {
+            const hoursToDeduct = (annualConfig.maxAnnualHours / daysInYear) * totalSuspensionDays;
+            finalHours -= hoursToDeduct;
         }
     
         return {
-            theoreticalHours: roundToNearestQuarter(totalProratedHours),
+            theoreticalHours: roundToNearestQuarter(finalHours),
             baseTheoreticalHours: annualConfig.maxAnnualHours,
-            suspensionDetails: [], 
-            workHoursChangeDetails: [] 
+            suspensionDetails,
+            workHoursChangeDetails
         };
     };
     
