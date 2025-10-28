@@ -721,6 +721,14 @@ export default function VacationsPage() {
             <span className={cn("font-mono", isNegative && "text-destructive")}>{value}</span>
         </div>
     );
+    
+    const employeeAbsencesForYear = useMemo(() => {
+        if (!selectedEmployeeId || !selectedYear) return [];
+        return (employeesWithAbsences[selectedEmployeeId] || [])
+            .filter(a => getYear(a.startDate) === Number(selectedYear))
+            .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
+    }, [selectedEmployeeId, selectedYear, employeesWithAbsences]);
+
 
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
@@ -729,7 +737,7 @@ export default function VacationsPage() {
                     <div className="flex-grow">
                         <CardTitle>Planificar Nueva Ausencia</CardTitle>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => setIsHolidayEmployeeManagerOpen(true)}>
+                    <Button variant="outline" size="sm" onClick={()={() => setIsHolidayEmployeeManagerOpen(true)}}>
                         <UserPlus className="mr-2 h-4 w-4" />
                         Gestionar Empleados Eventuales
                     </Button>
@@ -814,6 +822,35 @@ export default function VacationsPage() {
                                 )}
                             </CardContent>
                         </Card>
+                        <Card>
+                             <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium">Periodos Programados en {selectedYear}</CardTitle>
+                            </CardHeader>
+                             <CardContent>
+                                {employeeAbsencesForYear.length > 0 ? (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="px-1 h-8 text-xs">Tipo</TableHead>
+                                                <TableHead className="px-1 h-8 text-xs">Inicio</TableHead>
+                                                <TableHead className="px-1 h-8 text-xs">Fin</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {employeeAbsencesForYear.map((absence) => (
+                                                <TableRow key={absence.id}>
+                                                    <TableCell className="px-1 py-1 text-xs">{absence.absenceAbbreviation}</TableCell>
+                                                    <TableCell className="px-1 py-1 text-xs">{format(absence.startDate, 'dd/MM/yy', { locale: es })}</TableCell>
+                                                    <TableCell className="px-1 py-1 text-xs">{format(absence.endDate, 'dd/MM/yy', { locale: es })}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                ) : (
+                                    <p className="text-xs text-muted-foreground text-center py-4">No hay ausencias programadas para este empleado en el año seleccionado.</p>
+                                )}
+                             </CardContent>
+                        </Card>
                     </div>
                 </CardContent>
             </Card>
@@ -843,6 +880,41 @@ export default function VacationsPage() {
                         />
                     </div>
                     <DialogFooter>
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" disabled={isGenerating}>Eliminar Ausencia</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Confirmas la eliminación?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Esta acción eliminará permanentemente el periodo de ausencia. Si alguna semana afectada ya está confirmada, deberás corregirla manualmente desde la página de Horario.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                        onClick={async () => {
+                                            if (!editingAbsence) return;
+                                            setIsGenerating(true);
+                                            try {
+                                                await deleteScheduledAbsence(editingAbsence.employee.id, editingAbsence.absence.periodId!, editingAbsence.absence.id, editingAbsence.employee, weeklyRecords);
+                                                toast({ title: "Ausencia eliminada", variant: "destructive"});
+                                                refreshData();
+                                                setEditingAbsence(null);
+                                            } catch (error) {
+                                                toast({ title: "Error", description: error instanceof Error ? error.message : "No se pudo eliminar la ausencia.", variant: "destructive"});
+                                            } finally {
+                                                setIsGenerating(false);
+                                            }
+                                        }}
+                                    >
+                                        Sí, eliminar
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                        <div className='flex-grow' />
                         <DialogClose asChild>
                             <Button variant="outline">Cancelar</Button>
                         </DialogClose>
@@ -915,5 +987,7 @@ export default function VacationsPage() {
         </div>
     );
 }
+
+    
 
     
