@@ -237,29 +237,33 @@ export default function VacationsPage() {
     
     const { allEmployeesForQuadrant, substituteEmployees } = useMemo(() => {
         if (loading) return { allEmployeesForQuadrant: [], substituteEmployees: [] };
-
-        const mainEmployeesWithGroup = employees.map(emp => {
-            const holidayInfo = holidayEmployees.find(he => he.id === emp.id);
-            return {
-                ...emp,
-                isEventual: false,
-                groupId: holidayInfo?.groupId ?? null, 
-                activeForQuadrant: holidayInfo?.active ?? true, 
-            };
+    
+        const mainEmployeesMap = new Map(employees.map(e => [e.id, e]));
+    
+        const holidayEmployeesData: Record<string, { groupId?: string | null }> = {};
+        holidayEmployees.forEach(he => {
+            holidayEmployeesData[he.id] = { groupId: he.groupId };
         });
-
+    
         const eventuals = holidayEmployees
-            .filter(he => !mainEmployeesWithGroup.some(me => me.id === he.id))
-            .map(he => ({ 
-                ...he, 
-                employmentPeriods: [], 
-                isEventual: true, 
-                activeForQuadrant: he.active 
+            .filter(he => !mainEmployeesMap.has(he.id))
+            .map(he => ({
+                id: he.id,
+                name: he.name,
+                employmentPeriods: [],
+                isEventual: true,
+                groupId: he.groupId || null,
             }));
     
-        const allEmployees = [...mainEmployeesWithGroup, ...eventuals] as (Employee & { isEventual: boolean, groupId: string | null, activeForQuadrant: boolean })[];
-
-        const sortedQuadrantEmployees = allEmployees.sort((a, b) => {
+        const mainEmployeesWithGroup = employees.map(emp => ({
+            ...emp,
+            isEventual: false,
+            groupId: holidayEmployeesData[emp.id]?.groupId || null,
+        }));
+    
+        const combinedList = [...mainEmployeesWithGroup, ...eventuals] as (Employee & { isEventual: boolean, groupId: string | null })[];
+    
+        const sortedQuadrantEmployees = combinedList.sort((a, b) => {
             const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
             const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
             if (groupA !== groupB) return groupA - groupB;
@@ -268,9 +272,10 @@ export default function VacationsPage() {
     
         return {
             allEmployeesForQuadrant: sortedQuadrantEmployees,
-            substituteEmployees: eventuals.filter(e => e.activeForQuadrant),
+            substituteEmployees: eventuals,
         };
     }, [employees, holidayEmployees, employeeGroups, loading]);
+    
     
     // Recalculate vacation data when employee or year changes
     useEffect(() => {
@@ -467,34 +472,6 @@ export default function VacationsPage() {
             setIsGenerating(false);
         }
     };
-    
-    const handleDeleteAbsence = async () => {
-        if (!editingAbsence) return;
-
-        const { employee, absence } = editingAbsence;
-
-        if (absence.id.startsWith('weekly-')) {
-            toast({ title: 'No editable', description: 'Las ausencias puntuales registradas en el horario semanal no se pueden borrar desde aquí.', variant: 'destructive' });
-            setEditingAbsence(null);
-            return;
-        }
-
-        setIsGenerating(true);
-        try {
-            const period = employee.employmentPeriods.find((p: EmploymentPeriod) => p.id === absence.periodId);
-            if (!period) throw new Error("Periodo laboral no encontrado para la ausencia.");
-
-            await deleteScheduledAbsence(employee.id, period.id, absence.id, employee, weeklyRecords);
-            toast({ title: 'Ausencia eliminada', description: `La ausencia de ${employee.name} ha sido eliminada.`, variant: 'destructive'});
-            refreshData();
-            setEditingAbsence(null);
-        } catch (error) {
-            console.error("Error deleting absence:", error);
-            toast({ title: 'Error al eliminar', description: error instanceof Error ? error.message : "No se pudo eliminar la ausencia.", variant: 'destructive' });
-        } finally {
-            setIsGenerating(false);
-        }
-    };
 
      const handleAddPeriod = async () => {
         const selectedEmployee = activeEmployees.find(e => e.id === selectedEmployeeId);
@@ -668,7 +645,7 @@ export default function VacationsPage() {
                           isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
                         );
                         return absence ? { employee: emp, absence } : null;
-                      }).filter((item): item is { employee: Employee & { isEventual: boolean, groupId: string | null, activeForQuadrant: boolean }, absence: FormattedAbsence } => item !== null);
+                      }).filter((item): item is { employee: Employee & { isEventual: boolean, groupId: string | null }, absence: FormattedAbsence } => item !== null);
   
                       const cellHasContent = employeesWithAbsenceInWeek.length > 0;
                        const cellBg = cellHasContent
@@ -864,25 +841,9 @@ export default function VacationsPage() {
                         />
                     </div>
                     <DialogFooter>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive" disabled={isGenerating}>Eliminar Ausencia</Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Esta acción eliminará la ausencia. Si alguna semana dentro de este periodo ya está confirmada, la eliminación fallará.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDeleteAbsence} disabled={isGenerating}>
-                                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sí, eliminar'}
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                        <DialogClose asChild>
+                            <Button variant="outline">Cancelar</Button>
+                        </DialogClose>
                         <Button onClick={handleUpdateAbsence} disabled={isGenerating || !editedDateRange?.from}>
                             {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Guardar Cambios
