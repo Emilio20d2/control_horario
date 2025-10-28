@@ -214,7 +214,7 @@ export default function VacationsPage() {
             Object.keys(weeklyRecords).forEach(id => years.add(getISOWeekYear(parseISO(id))));
         }
         employees.forEach(emp => {
-          emp.employmentPeriods.forEach(p => {
+          (emp.employmentPeriods || []).forEach(p => {
             if(p.scheduledAbsences) {
               p.scheduledAbsences.forEach(a => {
                 years.add(getYear(a.startDate));
@@ -237,24 +237,28 @@ export default function VacationsPage() {
     
     const { allEmployeesForQuadrant, substituteEmployees } = useMemo(() => {
         if (loading) return { allEmployeesForQuadrant: [], substituteEmployees: [] };
-    
-        const mainEmployeesActive = employees
-            .filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
-            .map(emp => {
-                const holidayInfo = holidayEmployees.find(he => he.id === emp.id);
-                return {
-                    ...emp,
-                    isEventual: false,
-                    groupId: holidayInfo?.groupId ?? null,
-                };
-            });
-    
+
+        const mainEmployeesWithGroup = employees.map(emp => {
+            const holidayInfo = holidayEmployees.find(he => he.id === emp.id);
+            return {
+                ...emp,
+                isEventual: false,
+                groupId: holidayInfo?.groupId ?? null, 
+                activeForQuadrant: holidayInfo?.active ?? true, 
+            };
+        });
+
         const eventuals = holidayEmployees
-            .filter(he => he.active && !mainEmployeesActive.some(me => me.id === he.id))
-            .map(he => ({...he, isEventual: true, employmentPeriods: [] }));
+            .filter(he => !mainEmployeesWithGroup.some(me => me.id === he.id))
+            .map(he => ({ 
+                ...he, 
+                employmentPeriods: [], 
+                isEventual: true, 
+                activeForQuadrant: he.active 
+            }));
     
-        const allEmployees = [...mainEmployeesActive, ...eventuals] as (Employee & { isEventual: boolean, groupId: string | null })[];
-    
+        const allEmployees = [...mainEmployeesWithGroup, ...eventuals] as (Employee & { isEventual: boolean, groupId: string | null, activeForQuadrant: boolean })[];
+
         const sortedQuadrantEmployees = allEmployees.sort((a, b) => {
             const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
             const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
@@ -264,7 +268,7 @@ export default function VacationsPage() {
     
         return {
             allEmployeesForQuadrant: sortedQuadrantEmployees,
-            substituteEmployees: eventuals,
+            substituteEmployees: eventuals.filter(e => e.activeForQuadrant),
         };
     }, [employees, holidayEmployees, employeeGroups, loading]);
     
@@ -294,8 +298,7 @@ export default function VacationsPage() {
         allEmployeesForQuadrant.forEach(emp => {
             const allAbsenceDays = new Map<string, { typeId: string; typeAbbr: string; periodId?: string; absenceId?: string; isRequest?: boolean; originalRequest?: { startDate: Date, endDate: Date | null } }>();
 
-            // 1. Get from scheduledAbsences (confirmed)
-            emp.employmentPeriods.forEach(period => {
+            (emp.employmentPeriods || []).forEach(period => {
                 (period.scheduledAbsences || []).filter(a => schedulableIds.has(a.absenceTypeId))
                     .forEach(absence => {
                         if (!absence.endDate) return;
@@ -314,7 +317,6 @@ export default function VacationsPage() {
                     });
             });
             
-            // 2. Get from weeklyRecords for point absences
             Object.values(weeklyRecords).forEach(record => {
                 const empWeekData = record.weekData[emp.id];
                 if (!empWeekData?.days) return;
@@ -328,7 +330,7 @@ export default function VacationsPage() {
                                 allAbsenceDays.set(dayStr, {
                                     typeId: absenceType.id,
                                     typeAbbr: absenceType.abbreviation,
-                                    absenceId: `weekly-${dayStr}` // Create a temporary unique ID
+                                    absenceId: `weekly-${dayStr}`
                                 });
                             }
                          }
@@ -437,6 +439,7 @@ export default function VacationsPage() {
         
         if (editingAbsence.absence.id.startsWith('weekly-')) {
             toast({ title: 'No editable', description: 'Las ausencias puntuales registradas en el horario semanal no se pueden editar desde aquí.', variant: 'destructive' });
+            setEditingAbsence(null);
             return;
         }
 
@@ -446,37 +449,33 @@ export default function VacationsPage() {
             const period = employee.employmentPeriods.find((p: EmploymentPeriod) => p.id === absence.periodId);
             if (!period) throw new Error("Periodo laboral no encontrado para la ausencia.");
             
-            // Re-use the existing original request from the absence being edited
-            const originalRequest = absence.originalRequest ? {
-                startDate: format(absence.originalRequest.startDate, 'yyyy-MM-dd'),
-                endDate: absence.originalRequest.endDate ? format(absence.originalRequest.endDate, 'yyyy-MM-dd') : null
-            } : undefined;
-
-
             await deleteScheduledAbsence(employee.id, period.id, absence.id, employee, weeklyRecords);
             
             await addScheduledAbsence(employee.id, period.id, {
                 absenceTypeId: absence.absenceTypeId,
                 startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
                 endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
-            }, employee, originalRequest);
+            }, employee, absence.originalRequest);
 
             toast({ title: 'Ausencia actualizada', description: `La ausencia de ${employee.name} ha sido modificada.` });
             refreshData();
             setEditingAbsence(null);
         } catch (error) {
             console.error("Error updating absence:", error);
-            toast({ title: 'Error al actualizar', description: 'No se pudo modificar la ausencia.', variant: 'destructive' });
+            toast({ title: 'Error al actualizar', description: error instanceof Error ? error.message : "No se pudo modificar la ausencia.", variant: 'destructive' });
         } finally {
             setIsGenerating(false);
         }
     };
     
-    const handleDeleteAbsence = async (absence: FormattedAbsence) => {
-        const employee = allEmployeesForQuadrant.find(e => e.id === selectedEmployeeId);
-        if (!employee) return;
+    const handleDeleteAbsence = async () => {
+        if (!editingAbsence) return;
+
+        const { employee, absence } = editingAbsence;
+
         if (absence.id.startsWith('weekly-')) {
             toast({ title: 'No editable', description: 'Las ausencias puntuales registradas en el horario semanal no se pueden borrar desde aquí.', variant: 'destructive' });
+            setEditingAbsence(null);
             return;
         }
 
@@ -488,6 +487,7 @@ export default function VacationsPage() {
             await deleteScheduledAbsence(employee.id, period.id, absence.id, employee, weeklyRecords);
             toast({ title: 'Ausencia eliminada', description: `La ausencia de ${employee.name} ha sido eliminada.`, variant: 'destructive'});
             refreshData();
+            setEditingAbsence(null);
         } catch (error) {
             console.error("Error deleting absence:", error);
             toast({ title: 'Error al eliminar', description: error instanceof Error ? error.message : "No se pudo eliminar la ausencia.", variant: 'destructive' });
@@ -556,6 +556,8 @@ export default function VacationsPage() {
 
     const { weeksOfYear } = useMemo(() => {
         const year = Number(selectedYear);
+        if (!year) return { weeksOfYear: [] };
+
         const yearStartBoundary = startOfYear(new Date(year, 0, 1));
         const yearEndBoundary = endOfYear(new Date(year, 11, 31));
         
@@ -666,7 +668,7 @@ export default function VacationsPage() {
                           isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
                         );
                         return absence ? { employee: emp, absence } : null;
-                      }).filter((item): item is { employee: Employee, absence: FormattedAbsence } => item !== null);
+                      }).filter((item): item is { employee: Employee & { isEventual: boolean, groupId: string | null, activeForQuadrant: boolean }, absence: FormattedAbsence } => item !== null);
   
                       const cellHasContent = employeesWithAbsenceInWeek.length > 0;
                        const cellBg = cellHasContent
@@ -833,62 +835,6 @@ export default function VacationsPage() {
                                 )}
                             </CardContent>
                         </Card>
-
-                       <div className="space-y-2 pt-2">
-                        <h4 className="font-medium text-sm">Historial de Ausencias ({selectedYear})</h4>
-                        <div className="border rounded-md max-h-40 overflow-y-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="text-xs h-8">Tipo</TableHead>
-                                        <TableHead className="text-xs h-8">Inicio</TableHead>
-                                        <TableHead className="text-xs h-8">Fin</TableHead>
-                                        <TableHead className="text-right text-xs h-8">Acciones</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {employeesWithAbsences[selectedEmployeeId]?.filter(a => getYear(a.startDate) === Number(selectedYear) || getYear(a.endDate) === Number(selectedYear)).map(absence => (
-                                        <TableRow key={absence.id}>
-                                            <TableCell className="text-xs py-1">{absenceTypes.find(at => at.id === absence.absenceTypeId)?.name || 'Desconocido'}</TableCell>
-                                            <TableCell className="text-xs py-1">{format(absence.startDate, 'dd/MM/yy')}</TableCell>
-                                            <TableCell className="text-xs py-1">{format(absence.endDate, 'dd/MM/yy')}</TableCell>
-                                            <TableCell className="text-right py-0">
-                                                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={isGenerating || absence.id.startsWith('weekly-')} onClick={() => setEditingAbsence({ employee: allEmployeesForQuadrant.find(e => e.id === selectedEmployeeId)!, absence })}>
-                                                    <Edit className="h-3 w-3"/>
-                                                </Button>
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={isGenerating || absence.id.startsWith('weekly-')}>
-                                                            <Trash2 className="h-3 w-3 text-destructive" />
-                                                        </Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                Esta acción eliminará la ausencia. Si alguna semana dentro de este periodo ya está confirmada, la eliminación fallará.
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleDeleteAbsence(absence)}>Sí, eliminar</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                    {(!employeesWithAbsences[selectedEmployeeId] || employeesWithAbsences[selectedEmployeeId].length === 0) && (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="text-center text-muted-foreground h-24 text-xs">
-                                                No hay ausencias programadas para este empleado en {selectedYear}.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                       </div>
                     </div>
                 </CardContent>
             </Card>
@@ -918,7 +864,25 @@ export default function VacationsPage() {
                         />
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditingAbsence(null)}>Cancelar</Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" disabled={isGenerating}>Eliminar Ausencia</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Esta acción eliminará la ausencia. Si alguna semana dentro de este periodo ya está confirmada, la eliminación fallará.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteAbsence} disabled={isGenerating}>
+                                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sí, eliminar'}
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                         <Button onClick={handleUpdateAbsence} disabled={isGenerating || !editedDateRange?.from}>
                             {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Guardar Cambios
@@ -988,5 +952,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-
-    
