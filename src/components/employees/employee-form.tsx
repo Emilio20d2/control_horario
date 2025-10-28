@@ -453,7 +453,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Agrupación</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value || 'ninguno'}>
                             <FormControl>
                                 <SelectTrigger>
                                 <SelectValue placeholder="Selecciona una agrupación" />

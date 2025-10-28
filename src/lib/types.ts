@@ -65,12 +65,11 @@ export interface Employee {
     id: string;
     name: string;
     employeeNumber?: string;
-    dni?: string;
-    phone?: string;
-    email?: string;
-    authId?: string;
+    dni?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    authId?: string | null;
     employmentPeriods: EmploymentPeriod[];
-    vacationDaysUsed?: number; // Campo añadido para la vista de lista
 }
   
 export interface Holiday {
@@ -121,7 +120,7 @@ export interface AnnualConfiguration {
 }
   
 export interface WeeklyRecord {
-    id: string; // Format: YYYY-W## (e.g., 2024-W44)
+    id: string; // Format: YYYY-MM-DD (start of week, Monday)
     weekData: Record<string, DailyEmployeeData>; // Key: employeeId
 }
 
@@ -172,12 +171,12 @@ export interface DailyEmployeeData {
 export interface DailyData {
     theoreticalHours: number;
     workedHours: number;
-    absence: string; // 'ninguna' or ID of AbsenceType
+    absence: string; // 'ninguna' or abbreviation of AbsenceType
     absenceHours: number;
     leaveHours: number;
     doublePay: boolean;
-    isHoliday?: boolean;
-    holidayType?: 'Nacional' | 'Regional' | 'Local' | 'Apertura' | null;
+    isHoliday: boolean;
+    holidayType: 'Nacional' | 'Regional' | 'Local' | 'Apertura' | null;
 }
 
 export interface EmployeeFormData {
@@ -202,7 +201,7 @@ export interface EmployeeFormData {
     initialOrdinaryHours?: number;
     initialHolidayHours?: number;
     initialLeaveHours?: number;
-    vacationDays?: number;
+    vacationDays2024?: number;
     weeklySchedules: WeeklyScheduleData[];
     newWeeklySchedule?: WeeklyScheduleData;
 };
@@ -263,6 +262,7 @@ export interface EmployeeGroup {
     id: string;
     name: string;
     order: number;
+    color?: string; // Add color property
 }
 
 export interface Ausencia {
