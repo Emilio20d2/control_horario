@@ -1,5 +1,3 @@
-
-
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -528,7 +526,7 @@ export const generateQuadrantReportPDF = (
 
 export const generateSignatureReportPDF = (
     year: number,
-    allEmployeesForQuadrant: Employee[],
+    allEmployeesForQuadrant: any[],
     employeesWithAbsences: Record<string, Ausencia[]>,
     absenceTypes: AbsenceType[],
 ) => {
@@ -544,10 +542,13 @@ export const generateSignatureReportPDF = (
 
     let finalY = 25;
 
-    allEmployeesForQuadrant.forEach((employee, index) => {
+    // Filter out eventual employees
+    const employeesForReport = allEmployeesForQuadrant.filter(emp => !emp.isEventual);
+
+    employeesForReport.forEach((employee) => {
         const vacationAbsences = (employeesWithAbsences[employee.id] || [])
             .filter(a => a.absenceTypeId === vacationType.id && getYear(a.startDate) === year)
-            .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
+            .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
 
         const vacationPeriodsText = vacationAbsences.length > 0
             ? vacationAbsences.map(v => `del ${format(v.startDate, 'dd/MM/yyyy', { locale: es })} al ${format(v.endDate, 'dd/MM/yyyy', { locale: es })}`).join('\n')
@@ -564,6 +565,7 @@ export const generateSignatureReportPDF = (
         autoTable(doc, {
             body: [
                 [
+                    { content: employee.employeeNumber || '', styles: { fontStyle: 'bold', halign: 'center' } },
                     { content: employee.name, styles: { fontStyle: 'bold' } },
                     { content: vacationPeriodsText, styles: { fontSize: 9 } },
                     { content: 'Firma:', styles: { halign: 'right', valign: 'bottom' } },
@@ -572,7 +574,12 @@ export const generateSignatureReportPDF = (
             startY: finalY,
             theme: 'grid',
             styles: { cellHeight: blockHeight, valign: 'top', lineColor: [0,0,0], lineWidth: 0.1 },
-            columnStyles: { 0: { cellWidth: 40 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 30 } }
+            columnStyles: { 
+                0: { cellWidth: 20 }, 
+                1: { cellWidth: 40 }, 
+                2: { cellWidth: 'auto' }, 
+                3: { cellWidth: 30 } 
+            }
         });
         finalY = doc.lastAutoTable.finalY + 5;
     });
@@ -683,4 +690,3 @@ export const generateRequestStatusReportPDF = (
     doc.save(`informe_peticiones_${safeTitle}.pdf`);
 };
     
-
