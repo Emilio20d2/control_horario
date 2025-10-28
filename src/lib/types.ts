@@ -187,6 +187,7 @@ export interface EmployeeFormData {
     phone?: string;
     email?: string;
     role?: string;
+    groupId?: string;
     startDate: string;
     endDate?: string | null;
     isTransfer?: boolean;
@@ -242,7 +243,7 @@ export interface HolidayEmployee {
     id: string;
     name: string;
     active: boolean;
-    groupId?: string;
+    groupId?: string | null;
     workShift?: string;
     employeeNumber?: string;
 }
@@ -305,3 +306,5 @@ export interface VacationCampaign {
     allowedAbsenceTypeIds: string[];
     isActive: boolean;
 }
+
+    

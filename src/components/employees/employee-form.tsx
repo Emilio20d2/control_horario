@@ -73,6 +73,7 @@ const formSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email({ message: "Correo electrónico no válido." }).optional().or(z.literal('')),
   role: z.string().optional(),
+  groupId: z.string().optional(),
   
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'La fecha debe estar en formato AAAA-MM-DD.' }),
   endDate: z.string().nullable().optional(),
@@ -137,15 +138,18 @@ const generateDefaultShift = (hours: number, days: string[]) => {
 export function EmployeeForm({ employee }: EmployeeFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { contractTypes, users, appUser, getEmployeeFinalBalances } = useDataProvider();
+  const { contractTypes, users, appUser, getEmployeeFinalBalances, employeeGroups, holidayEmployees } = useDataProvider();
   const { reauthenticateWithPassword } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const [password, setPassword] = useState('');
 
   const getInitialValues = () => {
     const userForEmployee = employee?.authId ? users.find(u => u.id === employee.authId) : undefined;
-    
     const role = userForEmployee?.role || 'employee';
+    
+    // Find groupId either from holidayEmployees or directly if available (future-proofing)
+    const holidayEmployee = employee ? holidayEmployees.find(he => he.id === employee.id) : undefined;
+    const groupId = holidayEmployee?.groupId;
 
     if (employee && employee.employmentPeriods?.length > 0) {
         const period = [...employee.employmentPeriods].sort((a,b) => {
@@ -156,7 +160,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         
         if (!period) {
              return {
-                name: '', employeeNumber: '', dni: '', phone: '', email: '', role: 'employee',
+                name: '', employeeNumber: '', dni: '', phone: '', email: '', role: 'employee', groupId: '',
                 startDate: new Date().toISOString().split('T')[0], endDate: null, isTransfer: false, vacationDaysUsedInAnotherCenter: undefined,
                 contractType: '', initialWeeklyWorkHours: 40, annualComputedHours: 0,
                 initialOrdinaryHours: undefined, initialHolidayHours: undefined, initialLeaveHours: undefined, vacationDays2024: undefined,
@@ -191,6 +195,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             phone: employee.phone,
             email: employee.email,
             role: role,
+            groupId: groupId,
             startDate: startDateString,
             endDate: endDateValue,
             isTransfer: period.isTransfer || false,
@@ -219,6 +224,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         phone: '',
         email: '',
         role: 'employee',
+        groupId: '',
         startDate: new Date().toISOString().split('T')[0],
         endDate: null,
         isTransfer: false,
@@ -436,6 +442,30 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             </SelectContent>
                             </Select>
                             <FormDescription>Define los permisos del usuario en la aplicación.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="groupId"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Agrupación Comercial</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                <SelectValue placeholder="Selecciona una agrupación" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="">Sin Agrupación</SelectItem>
+                                {employeeGroups.map(group => (
+                                    <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                            </Select>
+                            <FormDescription>Grupo para la planificación de vacaciones.</FormDescription>
                             <FormMessage />
                         </FormItem>
                         )}
@@ -852,4 +882,6 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
 }
 
     
+    
+
     

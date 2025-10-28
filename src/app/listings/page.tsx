@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -44,17 +45,43 @@ export default function ListingsPage() {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const unifiedEmployees = useMemo(() => {
-    const mainEmployeeNames = new Set(employees.map(e => e.name.trim().toLowerCase()));
-    const externalEmployees = holidayEmployees.filter(he => !mainEmployeeNames.has(he.name.trim().toLowerCase()));
+  const activeEmployeesForListing = useMemo(() => {
+    // 1. Unify main employees and holiday employees, keeping track of their active status from holidayEmployees
+    const allEmployeesTemp = employees.map(emp => {
+      const holidayInfo = holidayEmployees.find(he => he.id === emp.id);
+      return {
+        ...emp,
+        isEventual: false,
+        isActiveForReport: holidayInfo ? holidayInfo.active : true, // Default to true if no holiday record
+      };
+    });
 
-    const allEmployees = [
-        ...employees.map(e => ({...e, isExternal: false})), 
-        ...externalEmployees.map(e => ({...e, isExternal: true}))
-    ];
+    const eventualEmployees = holidayEmployees
+      .filter(he => !employees.some(e => e.id === he.id))
+      .map(he => ({
+        id: he.id,
+        name: he.name,
+        employmentPeriods: [], // Eventuals don't have employment periods in the main system
+        isEventual: true,
+        isActiveForReport: he.active,
+      }));
 
-    return allEmployees.sort((a,b) => a.name.localeCompare(b.name));
-  }, [employees, holidayEmployees]);
+    const combinedList = [...allEmployeesTemp, ...eventualEmployees];
+
+    // 2. Filter based on report activity and contract status for non-eventuals
+    const filteredEmployees = combinedList.filter(emp => {
+      if (emp.isEventual) {
+        return emp.isActiveForReport;
+      }
+      // For main employees, check both report active flag AND if they have an active contract
+      const hasActiveContract = emp.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
+      return emp.isActiveForReport && hasActiveContract;
+    });
+
+    // 3. Sort the final list by name
+    return filteredEmployees.sort((a, b) => a.name.localeCompare(b.name));
+}, [employees, holidayEmployees]);
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -115,7 +142,7 @@ export default function ListingsPage() {
 
     const head = [['Empleado', ...data.columns.map(c => c.name)]];
 
-    const body = unifiedEmployees.map(emp => [
+    const body = activeEmployeesForListing.map(emp => [
         emp.name,
         ...data.columns.map(col => '')
     ]);
@@ -204,7 +231,7 @@ export default function ListingsPage() {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="custom-forms">Formularios</TabsTrigger>
             <TabsTrigger value="personal-data">Datos Personales</TabsTrigger>
-            <TabsTrigger value="external-employees">Empleados Externos</TabsTrigger>
+            <TabsTrigger value="external-employees">Empleados Eventuales</TabsTrigger>
           </TabsList>
           <TabsContent value="custom-forms">
             <Card>
@@ -350,3 +377,5 @@ export default function ListingsPage() {
     </div>
   );
 }
+
+    

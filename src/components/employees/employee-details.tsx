@@ -50,7 +50,7 @@ const ShiftRow = ({ shift, shiftName }: { shift: Record<string, DaySchedule>, sh
                     </TableCell>
                 );
             })}
-            <TableCell className="text-right font-bold text-base">{totalHours.toFixed(2)}h</TableCell>
+            <TableCell className="text-right font-bold text-base">{totalTurnHours.toFixed(2)}h</TableCell>
         </TableRow>
     );
 };
@@ -352,3 +352,5 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
         </Card>
     );
 }
+
+    

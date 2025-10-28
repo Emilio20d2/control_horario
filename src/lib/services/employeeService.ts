@@ -8,9 +8,10 @@ import { isAfter, parseISO, startOfDay, addDays, subDays, format, eachDayOfInter
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { createUserAccount } from '../actions/userActions';
+import { addHolidayEmployee } from './settingsService';
 
 export const createEmployee = async (formData: EmployeeFormData & { authId: string | null }): Promise<string> => {
-    const { name, employeeNumber, dni, phone, email, role, startDate, isTransfer, vacationDaysUsedInAnotherCenter, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours, vacationDays2024 } = formData;
+    const { name, employeeNumber, dni, phone, email, role, groupId, startDate, isTransfer, vacationDaysUsedInAnotherCenter, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours, vacationDays2024 } = formData;
     
     if (!employeeNumber) {
         throw new Error("El número de empleado es obligatorio para crear un nuevo empleado.");
@@ -63,6 +64,12 @@ export const createEmployee = async (formData: EmployeeFormData & { authId: stri
 
     // Use employeeNumber as the document ID
     await setDocument('employees', employeeNumber, newEmployee);
+    
+    // Also create a record in holidayEmployees to manage group and active status
+    if (groupId) {
+        await addHolidayEmployee({ id: employeeNumber, name, active: true, groupId });
+    }
+
 
     // Now update the user document in 'users' collection with the correct employeeId
     if (authId && email) {
@@ -73,7 +80,7 @@ export const createEmployee = async (formData: EmployeeFormData & { authId: stri
 };
 
 export const updateEmployee = async (id: string, currentEmployee: Employee, formData: EmployeeFormData, finalBalances: { ordinary: number; holiday: number; leave: number; total: number; }): Promise<void> => {
-    const { name, employeeNumber, dni, phone, email, role, newWeeklyWorkHours, newWeeklyWorkHoursDate, endDate, newContractType, newContractTypeDate, newWeeklySchedule, weeklySchedules, isTransfer, vacationDays2024, vacationDaysUsedInAnotherCenter, annualComputedHours } = formData;
+    const { name, employeeNumber, dni, phone, email, role, groupId, newWeeklyWorkHours, newWeeklyWorkHoursDate, endDate, newContractType, newContractTypeDate, newWeeklySchedule, weeklySchedules, isTransfer, vacationDays2024, vacationDaysUsedInAnotherCenter, annualComputedHours } = formData;
 
     const updatedPeriods = [...(currentEmployee.employmentPeriods || [])];
     const periodToUpdate = updatedPeriods.sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
@@ -202,6 +209,10 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
     };
 
     await updateDocument('employees', id, finalData);
+
+    // Update group in holidayEmployees collection
+    await addHolidayEmployee({ id: id, name: name, groupId: groupId || null, active: true });
+
 
     // Update user role if authId exists and role is provided
     if (currentEmployee.authId && role) {
@@ -366,3 +377,5 @@ export const deleteScheduledAbsence = async (
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
+
+    
