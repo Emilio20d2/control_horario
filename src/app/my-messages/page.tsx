@@ -552,10 +552,10 @@ export default function MyMessagesPage() {
                             <div key={index} className={cn('flex items-end gap-2', message.senderId === employeeRecord.id ? 'justify-end' : 'justify-start')}>
                                 {message.senderId !== employeeRecord.id && <Avatar className="h-8 w-8 border-2 border-foreground"><AvatarFallback>D</AvatarFallback></Avatar>}
                                 <div className={cn(
-                                    'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg',
+                                    'max-w-[90%] p-3 rounded-lg',
                                     message.senderId === employeeRecord.id ? 'bg-primary text-primary-foreground' : 'bg-muted'
                                 )}>
-                                    <p className="whitespace-pre-wrap">{message.text}</p>
+                                    <p className="whitespace-pre-wrap break-words">{message.text}</p>
                                     {message.timestamp && (
                                          <p className="text-xs opacity-70 mt-1 text-right">
                                              {format(message.timestamp, 'HH:mm')}
