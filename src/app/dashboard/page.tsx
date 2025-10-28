@@ -80,9 +80,8 @@ export default function DashboardPage() {
 
 
     
-    const activeEmployeesForReport = useMemo(() => {
-        const today = startOfDay(new Date());
-        return employees.filter(e => e.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), today)));
+    const allEmployeesForReport = useMemo(() => {
+        return employees.sort((a, b) => a.name.localeCompare(b.name));
     }, [employees]);
 
     useEffect(() => {
@@ -98,12 +97,12 @@ export default function DashboardPage() {
                  setSelectedMonth(getMonth(initialDate));
             }
         }
-         if (activeEmployeesForReport.length > 0) {
-            if (!reportEmployeeId) setReportEmployeeId(activeEmployeesForReport[0].id);
-            if (!detailedReportEmployeeId) setDetailedReportEmployeeId(activeEmployeesForReport[0].id);
-            if (!absenceReportEmployeeId) setAbsenceReportEmployeeId(activeEmployeesForReport[0].id);
+         if (allEmployeesForReport.length > 0) {
+            if (!reportEmployeeId) setReportEmployeeId(allEmployeesForReport[0].id);
+            if (!detailedReportEmployeeId) setDetailedReportEmployeeId(allEmployeesForReport[0].id);
+            if (!absenceReportEmployeeId) setAbsenceReportEmployeeId(allEmployeesForReport[0].id);
         }
-    }, [loading, weeklyRecords, activeEmployeesForReport, reportEmployeeId, detailedReportEmployeeId, absenceReportEmployeeId]);
+    }, [loading, weeklyRecords, allEmployeesForReport, reportEmployeeId, detailedReportEmployeeId, absenceReportEmployeeId]);
 
 
     const months = Array.from({ length: 12 }, (_, i) => ({
@@ -181,7 +180,7 @@ export default function DashboardPage() {
             return;
         }
 
-        const reportData = employees.map(emp => {
+        const reportData = allEmployeesForReport.map(emp => {
             const empWeekData = complementaryHoursRecord.weekData[emp.id];
             const empComplementaryHours = empWeekData?.totalComplementaryHours || 0;
 
@@ -381,7 +380,7 @@ export default function DashboardPage() {
                                 <SelectValue placeholder="Seleccionar empleado..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {activeEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                                {allEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <Select value={String(reportYear)} onValueChange={v => setReportYear(Number(v))}>
@@ -409,7 +408,7 @@ export default function DashboardPage() {
                                 <SelectValue placeholder="Seleccionar empleado..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {activeEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                                {allEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <Select value={String(detailedReportYear)} onValueChange={v => setDetailedReportYear(Number(v))}>
@@ -439,7 +438,7 @@ export default function DashboardPage() {
                             <SelectValue placeholder="Seleccionar empleado..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {activeEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                            {allEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Select value={String(absenceReportYear)} onValueChange={v => setAbsenceReportYear(Number(v))}>
@@ -536,3 +535,5 @@ export default function DashboardPage() {
         </div>
       );
 }
+
+    

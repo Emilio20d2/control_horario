@@ -238,29 +238,24 @@ export default function VacationsPage() {
     const { allEmployeesForQuadrant, substituteEmployees } = useMemo(() => {
         if (loading) return { allEmployeesForQuadrant: [], substituteEmployees: [] };
     
-        const mainEmployeesActive = new Map(
-            employees
-                .filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
-                .map(e => [e.id, e])
-        );
-    
-        const holidayEmployeesMap = new Map(holidayEmployees.map(he => [he.id, he]));
-    
-        const quadrantEmployees = Array.from(mainEmployeesActive.values()).map(emp => {
-            const holidayInfo = holidayEmployeesMap.get(emp.id);
-            return {
-                ...emp,
-                isEventual: false,
-                groupId: holidayInfo?.groupId ?? null,
-                activeForQuadrant: holidayInfo ? holidayInfo.active : true,
-            };
-        }).filter(p => p.activeForQuadrant);
+        const mainEmployeesActive = employees
+            .filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
+            .map(emp => {
+                const holidayInfo = holidayEmployees.find(he => he.id === emp.id);
+                return {
+                    ...emp,
+                    isEventual: false,
+                    groupId: holidayInfo?.groupId ?? null,
+                };
+            });
     
         const eventuals = holidayEmployees
-            .filter(he => !mainEmployeesActive.has(he.id) && he.active)
-            .map(he => ({...he, isEventual: true}));
+            .filter(he => he.active && !mainEmployeesActive.some(me => me.id === he.id))
+            .map(he => ({...he, isEventual: true, employmentPeriods: [] }));
     
-        const sortedQuadrantEmployees = quadrantEmployees.sort((a, b) => {
+        const allEmployees = [...mainEmployeesActive, ...eventuals] as (Employee & { isEventual: boolean, groupId: string | null })[];
+    
+        const sortedQuadrantEmployees = allEmployees.sort((a, b) => {
             const groupA = employeeGroups.find(g => g.id === a.groupId)?.order ?? Infinity;
             const groupB = employeeGroups.find(g => g.id === b.groupId)?.order ?? Infinity;
             if (groupA !== groupB) return groupA - groupB;
@@ -993,3 +988,5 @@ export default function VacationsPage() {
         </div>
     );
 }
+
+    

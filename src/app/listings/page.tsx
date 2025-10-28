@@ -16,7 +16,7 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useToast } from '@/hooks/use-toast';
-import { format, isAfter, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HolidayEmployeeManager } from '@/components/settings/holiday-employee-manager';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,39 +46,36 @@ export default function ListingsPage() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const activeEmployeesForListing = useMemo(() => {
-    // 1. Unify main employees and holiday employees, keeping track of their active status from holidayEmployees
-    const allEmployeesTemp = employees.map(emp => {
-      const holidayInfo = holidayEmployees.find(he => he.id === emp.id);
-      return {
-        ...emp,
-        isEventual: false,
-        isActiveForReport: holidayInfo ? holidayInfo.active : true, // Default to true if no holiday record
-      };
-    });
+    // 1. Create a map of holiday employees for quick lookup.
+    const holidayEmployeesMap = new Map(holidayEmployees.map(he => [he.id, he]));
 
-    const eventualEmployees = holidayEmployees
-      .filter(he => !employees.some(e => e.id === he.id))
-      .map(he => ({
-        id: he.id,
-        name: he.name,
-        employmentPeriods: [], // Eventuals don't have employment periods in the main system
-        isEventual: true,
-        isActiveForReport: he.active,
-      }));
+    // 2. Unify main employees and eventuals, filtering by the "active for reports" flag.
+    const unifiedList = [
+        ...employees.map(emp => {
+            const holidayInfo = holidayEmployeesMap.get(emp.id);
+            return {
+                ...emp,
+                isEventual: false,
+                // If a main employee has a record in holidayEmployees, respect its active status.
+                // If not, they are considered active for reports by default.
+                isActiveForReport: holidayInfo ? holidayInfo.active : true,
+            };
+        }),
+        ...holidayEmployees
+            .filter(he => !employees.some(e => e.id === he.id)) // Add eventuals who are not main employees
+            .map(he => ({
+                id: he.id,
+                name: he.name,
+                employmentPeriods: [], // Eventuals don't have employment periods in the main system
+                isEventual: true,
+                isActiveForReport: he.active,
+            }))
+    ];
 
-    const combinedList = [...allEmployeesTemp, ...eventualEmployees];
+    // 3. Filter the final list based ONLY on the "active for reports" status.
+    const filteredEmployees = unifiedList.filter(emp => emp.isActiveForReport);
 
-    // 2. Filter based on report activity and contract status for non-eventuals
-    const filteredEmployees = combinedList.filter(emp => {
-      if (emp.isEventual) {
-        return emp.isActiveForReport;
-      }
-      // For main employees, check both report active flag AND if they have an active contract
-      const hasActiveContract = emp.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
-      return emp.isActiveForReport && hasActiveContract;
-    });
-
-    // 3. Sort the final list by name
+    // 4. Sort the final list by name.
     return filteredEmployees.sort((a, b) => a.name.localeCompare(b.name));
 }, [employees, holidayEmployees]);
 
@@ -231,7 +228,7 @@ export default function ListingsPage() {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="custom-forms">Formularios</TabsTrigger>
             <TabsTrigger value="personal-data">Datos Personales</TabsTrigger>
-            <TabsTrigger value="external-employees">Empleados Eventuales</TabsTrigger>
+            <TabsTrigger value="external-employees">Empleados para Informes</TabsTrigger>
           </TabsList>
           <TabsContent value="custom-forms">
             <Card>
@@ -377,7 +374,5 @@ export default function ListingsPage() {
     </div>
   );
 }
-
-    
 
     

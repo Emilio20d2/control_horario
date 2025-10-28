@@ -38,6 +38,7 @@ export function HolidayReportGenerator() {
     const unifiedEmployees = useMemo(() => {
         if (loading) return [];
         
+        // Use only employees with an active contract for this report.
         const mainEmployees = employees
           .filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
           .map(e => {
@@ -46,7 +47,6 @@ export function HolidayReportGenerator() {
             return {
                 id: e.id,
                 name: e.name,
-                active: true, // Main employees are active by default if they have an active period
                 isEventual: false,
             };
         });
@@ -58,20 +58,12 @@ export function HolidayReportGenerator() {
             .map(e => ({
                 id: e.id,
                 name: e.name,
-                active: e.active,
                 isEventual: true,
             }));
 
         const combinedList = [...mainEmployees, ...externalEmployees];
 
-        return combinedList.filter(e => {
-            if (e.isEventual) {
-                return e.active;
-            }
-            // For main employees, check if there's a corresponding holidayEmployee record and if it's active
-            const holidayEmpRecord = holidayEmployees.find(he => he.id === e.id);
-            return holidayEmpRecord ? holidayEmpRecord.active : true; // Default to active if no record exists
-        }).sort((a, b) => a.name.localeCompare(b.name));
+        return combinedList.sort((a, b) => a.name.localeCompare(b.name));
 
     }, [employees, holidayEmployees, loading, getEffectiveWeeklyHours]);
 
@@ -241,3 +233,5 @@ export function HolidayReportGenerator() {
         </Card>
     );
 }
+
+    
