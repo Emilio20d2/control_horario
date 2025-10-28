@@ -515,6 +515,13 @@ export default function VacationsPage() {
     const openingHolidays = holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date);
     const otherHolidays = holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date);
     
+    const employeeAbsencesForYear = useMemo(() => {
+        if (!selectedEmployeeId || !selectedYear) return [];
+        return (employeesWithAbsences[selectedEmployeeId] || [])
+            .filter(a => getYear(a.startDate) === Number(selectedYear))
+            .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
+    }, [selectedEmployeeId, selectedYear, employeesWithAbsences]);
+    
     const employeeAbsenceDays = useMemo(() => {
         if (!selectedEmployeeId) return [];
         return (employeesWithAbsences[selectedEmployeeId] || []).flatMap(p => {
@@ -722,14 +729,6 @@ export default function VacationsPage() {
         </div>
     );
     
-    const employeeAbsencesForYear = useMemo(() => {
-        if (!selectedEmployeeId || !selectedYear) return [];
-        return (employeesWithAbsences[selectedEmployeeId] || [])
-            .filter(a => getYear(a.startDate) === Number(selectedYear))
-            .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
-    }, [selectedEmployeeId, selectedYear, employeesWithAbsences]);
-
-
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
              <Card>
@@ -737,7 +736,7 @@ export default function VacationsPage() {
                     <div className="flex-grow">
                         <CardTitle>Planificar Nueva Ausencia</CardTitle>
                     </div>
-                    <Button variant="outline" size="sm" onClick={()={() => setIsHolidayEmployeeManagerOpen(true)}}>
+                    <Button variant="outline" size="sm" onClick={() => setIsHolidayEmployeeManagerOpen(true)}>
                         <UserPlus className="mr-2 h-4 w-4" />
                         Gestionar Empleados Eventuales
                     </Button>
@@ -987,6 +986,8 @@ export default function VacationsPage() {
         </div>
     );
 }
+
+    
 
     
 
