@@ -135,7 +135,7 @@ export default function MyMessagesPage() {
     useEffect(() => {
         const sendWelcomeMessage = async () => {
             if (employeeRecord && conversationId && !messagesLoading && formattedMessages.length === 0 && !activeCampaign) {
-                const welcomeText = `¡Hola, ${employeeRecord.name.split(' ')[0]}! Soy Z-Assist, tu asistente virtual. Estoy aquí para ayudarte con tus consultas sobre horarios y vacaciones. ¿En qué puedo ayudarte hoy?`;
+                const welcomeText = `Hola ${employeeRecord.name.split(' ')[0]}, este servicio de mensajería es exclusivamente para incidencias relacionadas con el control de horas semanales o con esta aplicación.\nPronto recibirás una contestación por este chat.\nPara cualquier otra consulta, ponte en contacto directamente con Dirección.`;
                 const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
                 await addDoc(messagesColRef, {
                     text: welcomeText,
@@ -147,7 +147,7 @@ export default function MyMessagesPage() {
                 await setDoc(convDocRef, {
                     employeeId: employeeRecord.id,
                     employeeName: employeeRecord.name,
-                    lastMessageText: welcomeText,
+                    lastMessageText: "Consulta de empleado",
                     lastMessageTimestamp: serverTimestamp(),
                     unreadByEmployee: true,
                 }, { merge: true });
@@ -617,3 +617,4 @@ export default function MyMessagesPage() {
 }
 
     
+
