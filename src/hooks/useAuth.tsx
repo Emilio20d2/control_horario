@@ -46,34 +46,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
+          
+          // Hardcoded override for specific admin user
+          const isAdminByEmail = user.email === 'mariaavg@inditex.com';
 
-          if (userDoc.exists()) {
+          if (userDoc.exists() && !isAdminByEmail) {
               const dbData = userDoc.data() as Omit<AppUser, 'id'>;
               // Set the definitive role and view mode from the database
               setAppUser({ id: user.uid, ...dbData, trueRole: dbData.role });
               setViewMode(dbData.role);
           } else {
-              // This is a fallback for users that exist in Auth but not in 'users' collection yet.
-              // This can happen during initial signup. Let's try to find them by email in employees.
+              // This is a fallback for users that exist in Auth but not in 'users' collection yet,
+              // or for the hardcoded admin user.
               if(user.email) {
                 const q = query(collection(db, 'employees'), where('email', '==', user.email));
                 const empSnapshot = await getDocs(q);
-                if (!empSnapshot.empty) {
-                    const empDoc = empSnapshot.docs[0];
-                    const defaultRole = 'employee';
-                    const newUserDocData = { email: user.email, employeeId: empDoc.id, role: defaultRole };
-                    await setDoc(userDocRef, newUserDocData); // Create the user doc
-                    setAppUser({ id: user.uid, ...newUserDocData, trueRole: defaultRole });
-                    setViewMode(defaultRole);
-                } else {
-                    // This handles the case of an admin-only user who might not have an employee record.
-                    // We'll create a minimal user profile for them if they don't exist.
-                    // The role should be assigned manually in Firestore for such users.
-                    const minimalUserData = { email: user.email, employeeId: null, role: 'employee' }; // Default to employee
-                    await setDoc(userDocRef, minimalUserData);
-                    setAppUser({ id: user.uid, ...minimalUserData, trueRole: 'employee' });
-                    setViewMode('employee');
-                }
+                
+                const defaultRole = isAdminByEmail ? 'admin' : 'employee';
+                const employeeId = !empSnapshot.empty ? empSnapshot.docs[0].id : null;
+                
+                const newUserDocData = { email: user.email, employeeId, role: defaultRole };
+                await setDoc(userDocRef, newUserDocData, { merge: true }); // Use merge to be safe
+                
+                setAppUser({ id: user.uid, ...newUserDocData, trueRole: defaultRole });
+                setViewMode(defaultRole);
               }
           }
         } catch (error) {
