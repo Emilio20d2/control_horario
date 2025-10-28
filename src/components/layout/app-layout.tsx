@@ -75,10 +75,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     } else if (appUser.trueRole === 'employee') {
       // For regular employees, ensure they don't access admin pages.
       const isAccessingAdminPage = adminPages.some(p => pathname.startsWith(p));
-      const isAccessingRoot = pathname === '/';
-      const isAllowed = employeePages.some(p => pathname.startsWith(p)) || isAccessingRoot;
-  
-      if (!isAllowed) {
+      if (isAccessingAdminPage) {
         router.replace('/my-profile');
       }
     }
