@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
-import { PlusCircle, Trash2, Loader2, Edit, Check, X } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Edit, Check, X, CheckCheck, XCircle } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
 import { HolidayEmployee } from '@/lib/types';
@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { isAfter, parseISO } from 'date-fns';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
+import { setAllHolidayEmployeesActiveStatus } from '@/lib/services/settingsService';
 
 
 export function HolidayEmployeeManager() {
@@ -26,6 +27,7 @@ export function HolidayEmployeeManager() {
 
     const [newEmployeeName, setNewEmployeeName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
+    const [isMassUpdating, setIsMassUpdating] = useState(false);
     
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingEmployee, setEditingEmployee] = useState<Partial<HolidayEmployee>>({});
@@ -141,6 +143,22 @@ export function HolidayEmployeeManager() {
         }
     };
 
+    const handleMassUpdate = async (activate: boolean) => {
+        setIsMassUpdating(true);
+        try {
+            await setAllHolidayEmployeesActiveStatus(unifiedEmployees, activate);
+            toast({
+                title: 'Actualización Masiva Completa',
+                description: `Todos los empleados han sido ${activate ? 'activados' : 'desactivados'} para los informes.`,
+            });
+        } catch (error) {
+            console.error(error);
+            toast({ title: 'Error', description: 'No se pudo completar la actualización masiva.', variant: 'destructive' });
+        } finally {
+            setIsMassUpdating(false);
+        }
+    };
+
     if (loading) {
         return <Skeleton className="h-96 w-full" />
     }
@@ -148,10 +166,50 @@ export function HolidayEmployeeManager() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Gestionar Empleados para Informes</CardTitle>
-                <CardDescription>
-                    Esta lista combina empleados fijos activos y eventuales. Gestiona su aparición en informes.
-                </CardDescription>
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <div>
+                        <CardTitle>Gestionar Empleados para Informes</CardTitle>
+                        <CardDescription>
+                            Esta lista combina empleados fijos y eventuales. Usa el interruptor 'Activo' para controlar qué empleados aparecerán en los informes de festivos y planificación.
+                        </CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm" disabled={isMassUpdating}><CheckCheck className="mr-2 h-4 w-4"/>Activar Todos</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Activar todos los empleados?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Esta acción marcará a todos los empleados de la lista como "activos" y aparecerán en los informes.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleMassUpdate(true)}>Sí, activar</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm" disabled={isMassUpdating}><XCircle className="mr-2 h-4 w-4"/>Desactivar Todos</Button>
+                            </AlertDialogTrigger>
+                             <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Desactivar todos los empleados?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Esta acción marcará a todos los empleados de la lista como "inactivos" y no aparecerán en los informes hasta que los reactives.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleMassUpdate(false)}>Sí, desactivar</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
+                </div>
             </CardHeader>
             <CardContent className="space-y-6">
                 <form onSubmit={handleAddEmployee} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
@@ -211,6 +269,7 @@ export function HolidayEmployeeManager() {
                                         <Switch
                                             checked={emp.active}
                                             onCheckedChange={() => handleToggleActive(emp)}
+                                            disabled={isMassUpdating}
                                         />
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -263,5 +322,3 @@ export function HolidayEmployeeManager() {
         </Card>
     );
 }
-
-    

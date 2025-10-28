@@ -4,7 +4,7 @@
 
 import { addDoc, collection, deleteDoc, doc, updateDoc, Timestamp, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { AbsenceType, Holiday, AnnualConfiguration, ContractType, HolidayFormData, HolidayEmployee, EmployeeGroup, VacationCampaign, HolidayReport } from '../types';
+import type { AbsenceType, Holiday, AnnualConfiguration, ContractType, HolidayFormData, HolidayEmployee, EmployeeGroup, VacationCampaign, HolidayReport, Employee } from '../types';
 
 
 export const createAbsenceType = async (data: Omit<AbsenceType, 'id'>): Promise<string> => {
@@ -107,9 +107,10 @@ export const addHolidayEmployee = async (data: Partial<Omit<HolidayEmployee, 'id
         workShift: rest.workShift || null,
     };
     
-    await setDoc(docRef, dataToSave);
+    await setDoc(docRef, dataToSave, { merge: true });
     return docRef.id;
 };
+
 
 export const updateHolidayEmployee = async (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>): Promise<void> => {
     const docRef = doc(db, 'holidayEmployees', id);
@@ -130,6 +131,23 @@ export const deleteHolidayEmployee = async (id: string): Promise<void> => {
     const docRef = doc(db, 'holidayEmployees', id);
     await deleteDoc(docRef);
 }
+
+export const setAllHolidayEmployeesActiveStatus = async (employees: (Employee & { isEventual: boolean })[], activeState: boolean) => {
+    const batch = writeBatch(db);
+
+    for (const emp of employees) {
+        const docRef = doc(db, 'holidayEmployees', emp.id);
+        const dataToSet = {
+            name: emp.name,
+            active: activeState
+        };
+        // Use merge:true to create the doc if it doesn't exist, or update it if it does.
+        batch.set(docRef, dataToSet, { merge: true });
+    }
+
+    await batch.commit();
+}
+
 
 export const seedHolidayEmployees = async (employeeNames: string[]): Promise<void> => {
     const batch = writeBatch(db);
