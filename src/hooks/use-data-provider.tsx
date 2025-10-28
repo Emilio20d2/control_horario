@@ -1,4 +1,5 @@
 
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -22,6 +23,7 @@ import type {
   Conversation,
   VacationCampaign,
   ScheduledAbsence,
+  CorrectionRequest,
 } from '../types';
 import { onCollectionUpdate, getDocumentById } from '@/lib/services/firestoreService';
 import { 
@@ -75,8 +77,10 @@ interface DataContextType {
   employeeGroups: EmployeeGroup[];
   conversations: Conversation[];
   vacationCampaigns: VacationCampaign[];
+  correctionRequests: CorrectionRequest[];
   loading: boolean;
   unreadMessageCount: number;
+  pendingCorrectionRequestCount: number;
   unconfirmedWeeksDetails: { weekId: string; employeeNames: string[] }[];
   refreshData: () => void;
   refreshUsers: () => Promise<void>;
@@ -147,8 +151,10 @@ const DataContext = createContext<DataContextType>({
   employeeGroups: [],
   conversations: [],
   vacationCampaigns: [],
+  correctionRequests: [],
   loading: true,
   unreadMessageCount: 0,
+  pendingCorrectionRequestCount: 0,
   unconfirmedWeeksDetails: [],
   refreshData: () => {},
   refreshUsers: async () => {},
@@ -217,6 +223,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [employeeGroups, setEmployeeGroups] = useState<EmployeeGroup[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [vacationCampaigns, setVacationCampaigns] = useState<VacationCampaign[]>([]);
+  const [correctionRequests, setCorrectionRequests] = useState<CorrectionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
   
@@ -280,7 +287,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setupSubscription<HolidayReport>('holidayReports', setHolidayReports),
         setupSubscription<EmployeeGroup>('employeeGroups', setEmployeeGroups, data => data.sort((a,b) => a.order - b.order)),
         setupSubscription<Conversation>('conversations', setConversations, data => data.sort((a, b) => b.lastMessageTimestamp.toDate().getTime() - a.lastMessageTimestamp.toDate().getTime())),
-        setupSubscription<VacationCampaign>('vacationCampaigns', setVacationCampaigns, data => data.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime()))
+        setupSubscription<VacationCampaign>('vacationCampaigns', setVacationCampaigns, data => data.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime())),
+        setupSubscription<CorrectionRequest>('correctionRequests', setCorrectionRequests)
     ];
 
     Promise.all(dataPromises).then(() => {
@@ -311,6 +319,11 @@ const unreadMessageCount = useMemo(() => {
     }
     return 0;
 }, [conversations, appUser, employeeRecord]);
+
+const pendingCorrectionRequestCount = useMemo(() => {
+    if (!appUser || appUser.role !== 'admin') return 0;
+    return correctionRequests.filter(r => r.status === 'pending').length;
+}, [correctionRequests, appUser]);
 
 
   const getWeekId = (d: Date): string => {
@@ -492,7 +505,7 @@ useEffect(() => {
         }
     }
     
-    details.sort((a, b) => a.weekId.localeCompare(b.weekId));
+    details.sort((a, b) => a.weekId.localeCompare(b.id));
     setUnconfirmedWeeksDetails(details);
 
 }, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
@@ -682,32 +695,22 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
     const calculateCurrentAnnualComputedHours = (employeeId: string, year: number): number => {
         const employee = getEmployeeById(employeeId);
         if (!employee) return 0;
-    
+
         let totalComputedHours = 0;
-    
+
         const relevantRecords = Object.values(weeklyRecords).filter(record => {
             const weekDate = parseISO(record.id);
             const isoYear = getISOWeekYear(weekDate);
             if (year === 2025) return isoYear === 2025 && record.weekData[employeeId]?.confirmed;
             return isoYear === year && record.weekData[employeeId]?.confirmed;
         });
-    
+
         relevantRecords.forEach(weekRecord => {
             const employeeData = weekRecord.weekData[employeeId];
             if (employeeData?.days) {
                 Object.entries(employeeData.days).forEach(([dayKey, dayData]) => {
-                    const dayDate = parseISO(dayKey);
-                    
-                    const isoYear = getISOWeekYear(dayDate);
-                    let isCorrectYear = (year === 2025) 
-                        ? (isoYear === 2025 || (getYear(dayDate) === 2024 && getISOWeek(dayDate) === 1))
-                        : (isoYear === year);
-
-                    if (!isCorrectYear) return;
-    
-                    // Skip Sundays and any type of holiday entirely
-                    if (getISODay(dayDate) === 7 || dayData.isHoliday) {
-                        return;
+                    if (dayData.isHoliday || getISODay(parseISO(dayKey)) === 7) {
+                        return; // Skip holidays and Sundays completely
                     }
                     
                     const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
@@ -723,18 +726,18 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
                     
                     totalComputedHours += dailyComputable;
                 });
-    
+
                 if (employeeData.totalComplementaryHours) {
                     totalComputedHours -= employeeData.totalComplementaryHours;
                 }
             }
         });
-    
+
         const activePeriod = getActivePeriod(employeeId, new Date(year, 0, 1));
         if (activePeriod) {
             totalComputedHours += activePeriod.annualComputedHours || 0;
         }
-    
+
         return totalComputedHours;
     };
 
@@ -1157,8 +1160,10 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     employeeGroups,
     conversations,
     vacationCampaigns,
+    correctionRequests,
     loading,
     unreadMessageCount,
+    pendingCorrectionRequestCount,
     unconfirmedWeeksDetails,
     refreshData,
     refreshUsers,

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -13,6 +14,8 @@ import { WeekNavigator } from '@/components/schedule/week-navigator';
 import { WeekRow } from '@/components/schedule/week-row';
 import type { Employee, DailyEmployeeData, DailyData } from '@/lib/types';
 import { CompletionDialog } from '@/components/schedule/completion-dialog';
+import { Badge } from '@/components/ui/badge';
+import { MessageSquareWarning } from 'lucide-react';
 
 export default function SchedulePage() {
     const { 
@@ -24,6 +27,7 @@ export default function SchedulePage() {
         processEmployeeWeekData,
         getActiveEmployeesForDate,
         findNextUnconfirmedWeek,
+        correctionRequests,
     } = useDataProvider();
     
     const [currentDate, setCurrentDate] = useState(new Date('2024-12-30'));
@@ -160,6 +164,9 @@ export default function SchedulePage() {
         
     }, [loading, selectedEmployeeId, selectedYear, employees, processEmployeeWeekData, getWeekId, isEmployeeActiveForWeek]);
 
+    const pendingRequestsForWeek = useMemo(() => {
+        return correctionRequests.filter(r => r.weekId === weekId && r.status === 'pending');
+    }, [correctionRequests, weekId]);
 
 
     if (loading) {
@@ -242,11 +249,16 @@ export default function SchedulePage() {
                                     return <TableRow key={currentWeekId}><TableCell colSpan={8} className="p-0"><Skeleton className="h-48 w-full rounded-none" /></TableCell></TableRow>;
                                 }
 
+                                const hasCorrectionRequest = correctionRequests.some(r => r.weekId === currentWeekId && r.employeeId === employee.id && r.status === 'pending');
+
                                 return (
                                     <React.Fragment key={currentWeekId}>
                                         <TableRow className="bg-muted/50 hover:bg-muted/50">
                                             <TableHead className="sticky left-0 bg-muted z-20 font-semibold p-2 text-xs w-[150px] sm:w-[200px] min-w-[150px] sm:min-w-[200px]" colSpan={1}>
-                                                {format(startOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM')} - {format(endOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM yyyy', {locale:es})}
+                                                <div className="flex items-center gap-2">
+                                                    {hasCorrectionRequest && <MessageSquareWarning className="h-4 w-4 text-destructive" />}
+                                                    {format(startOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM')} - {format(endOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM yyyy', {locale:es})}
+                                                </div>
                                             </TableHead>
                                             {currentWeekDays.map(d => <TableHead key={d.toISOString()} className={cn("text-left p-2 text-xs", holidays.some(h => isSameDay(h.date, d)) && "bg-blue-100")}><span className="sm:hidden">{format(d, 'E', {locale:es})}</span><span className="hidden sm:inline">{format(d, 'E dd/MM', {locale:es})}</span></TableHead>)}
                                         </TableRow>
@@ -263,7 +275,17 @@ export default function SchedulePage() {
     
     const renderWeeklyView = () => (
         <Card className="rounded-none border-0 border-t bg-card">
-            <CardHeader><WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} /></CardHeader>
+            <CardHeader>
+                <div className="flex flex-col gap-2 items-center">
+                    <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
+                    {pendingRequestsForWeek.length > 0 && (
+                        <Badge variant="destructive" className="mt-2 animate-pulse">
+                            <MessageSquareWarning className="mr-2 h-4 w-4" />
+                            {pendingRequestsForWeek.length} solicitud(es) de corrección para esta semana.
+                        </Badge>
+                    )}
+                </div>
+            </CardHeader>
             <CardContent className="p-0">
                 <div className="overflow-x-auto">
                     <Table>

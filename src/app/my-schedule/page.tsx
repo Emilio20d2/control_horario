@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -11,8 +12,14 @@ import { es } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import type { DailyData, WeeklyRecord, Employee } from '@/lib/types';
-import { Loader2 } from 'lucide-react';
+import type { DailyData, WeeklyRecord, Employee, CorrectionRequest } from '@/lib/types';
+import { Loader2, MessageSquareWarning, Send } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { setDocument } from '@/lib/services/firestoreService';
+import { Timestamp } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 interface ConfirmedWeek {
     weekId: string;
@@ -21,13 +28,81 @@ interface ConfirmedWeek {
     impact: { ordinary: number; holiday: number; leave: number; };
 }
 
+const CorrectionRequestDialog = ({ open, onOpenChange, weekId, employee, onSubmitted }: { open: boolean, onOpenChange: (open: boolean) => void, weekId: string, employee: Employee, onSubmitted: () => void }) => {
+    const [reason, setReason] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { toast } = useToast();
+
+    const handleSubmit = async () => {
+        if (!reason.trim()) {
+            toast({ title: "Motivo requerido", description: "Por favor, explica el motivo de la corrección.", variant: "destructive" });
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            const requestId = `${weekId}_${employee.id}`;
+            const requestData: Omit<CorrectionRequest, 'id'> = {
+                weekId,
+                employeeId: employee.id,
+                employeeName: employee.name,
+                reason: reason.trim(),
+                status: 'pending',
+                requestedAt: Timestamp.now(),
+            };
+            await setDocument('correctionRequests', requestId, requestData);
+            toast({ title: "Solicitud enviada", description: "Tu solicitud de corrección ha sido enviada al administrador." });
+            onSubmitted();
+            onOpenChange(false);
+            setReason('');
+        } catch (error) {
+            console.error("Error submitting correction request:", error);
+            toast({ title: "Error", description: "No se pudo enviar la solicitud. Inténtalo de nuevo.", variant: "destructive" });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Solicitar Corrección</DialogTitle>
+                    <DialogDescription>
+                        Semana del {format(parseISO(weekId), 'd MMM, yyyy', { locale: es })}.
+                        Explica el motivo por el que crees que hay un error en esta semana.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Textarea
+                        placeholder="Ej: Faltan horas en el día martes, trabajé de 8 a 14 y solo figuran 4 horas."
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        rows={4}
+                    />
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="outline">Cancelar</Button>
+                    </DialogClose>
+                    <Button onClick={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        Enviar Solicitud
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+};
+
 
 const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ employee, weekId, weekData, initialBalances, impact }) => {
     const { 
         absenceTypes,
         holidays,
-        getEffectiveWeeklyHours
+        getEffectiveWeeklyHours,
+        refreshData,
     } = useDataProvider();
+    const [dialogOpen, setDialogOpen] = useState(false);
 
     const weekStartDate = parseISO(weekId);
     const weekDays = eachDayOfInterval({ start: weekStartDate, end: endOfWeek(weekStartDate, { weekStartsOn: 1 }) });
@@ -67,86 +142,101 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
     };
 
     return (
-        <Card>
-            <CardHeader className="pb-4">
-                <CardTitle className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline gap-1">
-                    <span className="text-base font-bold">
-                        {format(weekStartDate, 'd MMM', { locale: es })} - {format(endOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM, yyyy', {locale:es})}
-                    </span>
-                    <span className="text-sm font-mono font-medium text-muted-foreground">{weekLabel}</span>
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col md:grid md:grid-cols-3 gap-4 px-0 sm:px-0 pt-0">
-                 <div className="md:col-span-2 overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                             <TableRow>
-                                <TableHead className="w-[40px]">Día</TableHead>
-                                <TableHead className="w-[70px]">Fecha</TableHead>
-                                <TableHead className="text-right">Trab.</TableHead>
-                                <TableHead>Aus.</TableHead>
-                                <TableHead className="text-right">H. Aus.</TableHead>
-                                <TableHead className="text-right">H. Lib.</TableHead>
-                                <TableHead className="text-center">P. Doble</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {weekDays.map(day => {
-                                const dayKey = format(day, 'yyyy-MM-dd');
-                                const dayData = weekData.days[dayKey];
-                                if (!dayData) return null;
-
-                                const absenceName = dayData.absence === 'ninguna' ? '' : (absenceTypes.find(at => at.abbreviation === dayData.absence)?.abbreviation || dayData.absence);
-                                const holiday = holidays.find(h => isSameDay(h.date, day));
-
-                                return (
-                                    <TableRow 
-                                        key={dayKey}
-                                        className={cn(
-                                            holiday?.type === 'Apertura' && 'bg-green-100',
-                                            holiday && holiday.type !== 'Apertura' && 'bg-blue-100',
-                                            !holiday && dayData.absence !== 'ninguna' && 'bg-destructive/10'
-                                        )}
-                                    >
-                                        <TableCell className="font-semibold p-1 text-xs">{format(day, 'E', { locale: es })}</TableCell>
-                                        <TableCell className="p-1 text-xs">{format(day, 'dd/MM/yy', { locale: es })}</TableCell>
-                                        <TableCell className="text-right p-1 text-xs font-mono">{dayData.workedHours > 0 ? dayData.workedHours.toFixed(2) : ''}</TableCell>
-                                        <TableCell className="p-1 text-xs">{absenceName}</TableCell>
-                                        <TableCell className="text-right p-1 text-xs font-mono">{dayData.absenceHours > 0 ? dayData.absenceHours.toFixed(2) : ''}</TableCell>
-                                        <TableCell className="text-right p-1 text-xs font-mono">{dayData.leaveHours > 0 ? dayData.leaveHours.toFixed(2) : ''}</TableCell>
-                                        <TableCell className="text-center p-1 text-xs">{dayData.doublePay ? 'Sí' : ''}</TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </div>
-                 <div className="space-y-2 border rounded-md p-3 bg-muted/20 mx-4 sm:mx-0 md:mx-4">
-                     <div className="grid grid-cols-4 gap-2 text-xs font-bold text-muted-foreground">
-                        <span className="col-span-1">Bolsa</span>
-                        <span className="text-right col-span-1">Inicial</span>
-                        <span className="text-right col-span-1">Impacto</span>
-                        <span className="text-right col-span-1">Final</span>
+        <>
+            <CorrectionRequestDialog 
+                open={dialogOpen} 
+                onOpenChange={setDialogOpen}
+                weekId={weekId}
+                employee={employee}
+                onSubmitted={refreshData}
+            />
+            <Card>
+                <CardHeader className="pb-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                         <CardTitle className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline gap-1">
+                            <span className="text-base font-bold">
+                                {format(weekStartDate, 'd MMM', { locale: es })} - {format(endOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM, yyyy', {locale:es})}
+                            </span>
+                            <span className="text-sm font-mono font-medium text-muted-foreground">{weekLabel}</span>
+                        </CardTitle>
+                        <Button variant="secondary" size="sm" onClick={() => setDialogOpen(true)}>
+                            <MessageSquareWarning className="mr-2 h-4 w-4"/>
+                            Solicitar Corrección
+                        </Button>
                     </div>
-                    {renderBalanceRow("Ordinaria", initialBalances.ordinary, impact.ordinary)}
-                    {renderBalanceRow("Festivos", initialBalances.holiday, impact.holiday)}
-                    {renderBalanceRow("Libranza", initialBalances.leave, impact.leave)}
-                    
-                    {(weekData.totalComplementaryHours ?? 0) > 0 && (
-                        <div className="pt-2 text-xs grid grid-cols-4 gap-2">
-                             <span className="font-semibold col-span-3">H. Complem.:</span>
-                             <span className="text-right font-mono font-bold col-span-1">{weekData.totalComplementaryHours?.toFixed(2)}h</span>
+                </CardHeader>
+                <CardContent className="flex flex-col md:grid md:grid-cols-3 gap-4 px-0 sm:px-0 pt-0">
+                    <div className="md:col-span-2 overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[40px]">Día</TableHead>
+                                    <TableHead className="w-[70px]">Fecha</TableHead>
+                                    <TableHead className="text-right">Trab.</TableHead>
+                                    <TableHead>Aus.</TableHead>
+                                    <TableHead className="text-right">H. Aus.</TableHead>
+                                    <TableHead className="text-right">H. Lib.</TableHead>
+                                    <TableHead className="text-center">P. Doble</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {weekDays.map(day => {
+                                    const dayKey = format(day, 'yyyy-MM-dd');
+                                    const dayData = weekData.days[dayKey];
+                                    if (!dayData) return null;
+
+                                    const absenceName = dayData.absence === 'ninguna' ? '' : (absenceTypes.find(at => at.abbreviation === dayData.absence)?.abbreviation || dayData.absence);
+                                    const holiday = holidays.find(h => isSameDay(h.date, day));
+
+                                    return (
+                                        <TableRow 
+                                            key={dayKey}
+                                            className={cn(
+                                                holiday?.type === 'Apertura' && 'bg-green-100',
+                                                holiday && holiday.type !== 'Apertura' && 'bg-blue-100',
+                                                !holiday && dayData.absence !== 'ninguna' && 'bg-destructive/10'
+                                            )}
+                                        >
+                                            <TableCell className="font-semibold p-1 text-xs">{format(day, 'E', { locale: es })}</TableCell>
+                                            <TableCell className="p-1 text-xs">{format(day, 'dd/MM/yy', { locale: es })}</TableCell>
+                                            <TableCell className="text-right p-1 text-xs font-mono">{dayData.workedHours > 0 ? dayData.workedHours.toFixed(2) : ''}</TableCell>
+                                            <TableCell className="p-1 text-xs">{absenceName}</TableCell>
+                                            <TableCell className="text-right p-1 text-xs font-mono">{dayData.absenceHours > 0 ? dayData.absenceHours.toFixed(2) : ''}</TableCell>
+                                            <TableCell className="text-right p-1 text-xs font-mono">{dayData.leaveHours > 0 ? dayData.leaveHours.toFixed(2) : ''}</TableCell>
+                                            <TableCell className="text-center p-1 text-xs">{dayData.doublePay ? 'Sí' : ''}</TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </div>
+                    <div className="space-y-2 border rounded-md p-3 bg-muted/20 mx-4 sm:mx-0 md:mx-4">
+                        <div className="grid grid-cols-4 gap-2 text-xs font-bold text-muted-foreground">
+                            <span className="col-span-1">Bolsa</span>
+                            <span className="text-right col-span-1">Inicial</span>
+                            <span className="text-right col-span-1">Impacto</span>
+                            <span className="text-right col-span-1">Final</span>
                         </div>
-                    )}
-                    {weekData.generalComment && (
-                        <div className="pt-2">
-                            <p className="text-xs font-semibold">Comentarios:</p>
-                            <p className="text-xs text-muted-foreground whitespace-pre-wrap">{weekData.generalComment}</p>
-                        </div>
-                    )}
-                </div>
-            </CardContent>
-        </Card>
+                        {renderBalanceRow("Ordinaria", initialBalances.ordinary, impact.ordinary)}
+                        {renderBalanceRow("Festivos", initialBalances.holiday, impact.holiday)}
+                        {renderBalanceRow("Libranza", initialBalances.leave, impact.leave)}
+                        
+                        {(weekData.totalComplementaryHours ?? 0) > 0 && (
+                            <div className="pt-2 text-xs grid grid-cols-4 gap-2">
+                                <span className="font-semibold col-span-3">H. Complem.:</span>
+                                <span className="text-right font-mono font-bold col-span-1">{weekData.totalComplementaryHours?.toFixed(2)}h</span>
+                            </div>
+                        )}
+                        {weekData.generalComment && (
+                            <div className="pt-2">
+                                <p className="text-xs font-semibold">Comentarios:</p>
+                                <p className="text-xs text-muted-foreground whitespace-pre-wrap">{weekData.generalComment}</p>
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+        </>
     );
 };
 
@@ -288,3 +378,4 @@ export default function MySchedulePage() {
     
 
     
+

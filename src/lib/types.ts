@@ -307,4 +307,16 @@ export interface VacationCampaign {
     isActive: boolean;
 }
 
+export interface CorrectionRequest {
+    id: string; // weekId_employeeId
+    weekId: string;
+    employeeId: string;
+    employeeName: string;
+    reason: string;
+    status: 'pending' | 'resolved';
+    requestedAt: Timestamp;
+}
     
+
+    
+

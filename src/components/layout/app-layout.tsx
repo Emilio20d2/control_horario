@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -23,6 +24,7 @@ import {
   PlaneTakeoff,
   HelpCircle,
   Mail,
+  MessageSquareWarning,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -56,7 +58,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, appUser, viewMode, setViewMode, loading: authLoading } = useAuth();
-  const { unconfirmedWeeksDetails, employeeRecord, loading: dataLoading, unreadMessageCount } = useDataProvider();
+  const { unconfirmedWeeksDetails, employeeRecord, loading: dataLoading, unreadMessageCount, pendingCorrectionRequestCount } = useDataProvider();
   const isMobile = useIsMobile();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   
@@ -95,7 +97,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const adminMenuItems = [
     { href: '/dashboard', label: 'Panel', icon: LayoutDashboard },
-    { href: '/schedule', label: 'Horario', icon: CalendarDays },
+    { href: '/schedule', label: 'Horario', icon: CalendarDays, notification: pendingCorrectionRequestCount > 0 },
     { href: '/employees', label: 'Empleados', icon: Users },
     { href: '/listings', label: 'Formularios', icon: ListChecks },
     { href: '/vacations', label: 'Vacaciones', icon: Plane },
