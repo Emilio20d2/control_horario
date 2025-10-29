@@ -244,11 +244,11 @@ export default function MyMessagesPage() {
             const absenceName = absenceTypes.find(at => at.id === requestAbsenceTypeId)?.name || 'Ausencia';
             const requestMessage = `Hola,
 
-Quiero solicitar una ausencia dentro de la campaña **"${selectedCampaign.title}"**.
+Quiero solicitar una ausencia dentro de la campaña "${selectedCampaign.title}".
 
-- **Tipo**: ${absenceName}
-- **Desde**: ${format(requestDateRange.from, 'dd/MM/yyyy')}
-- **Hasta**: ${format(requestDateRange.to, 'dd/MM/yyyy')}
+- Tipo: ${absenceName}
+- Desde: ${format(requestDateRange.from, 'dd/MM/yyyy')}
+- Hasta: ${format(requestDateRange.to, 'dd/MM/yyyy')}
 
 La solicitud ha sido pre-aprobada y registrada en el planificador para su revisión.
 
@@ -281,13 +281,13 @@ Gracias.`;
         
         let extraInfo = '';
         if (selectedAbsenceType?.abbreviation === 'RJS') {
-            finalNotes = `Petición de **${seniorHoursTotal.toFixed(2)} horas** por reducción de jornada senior.`;
+            finalNotes = `Petición de ${seniorHoursTotal.toFixed(2)} horas por reducción de jornada senior.`;
         } else if (selectedAbsenceType?.abbreviation === 'HM') {
             if (!medicalAppointmentTime) {
                 toast({ title: 'Hora requerida', description: 'Por favor, especifica la hora de la consulta médica.', variant: 'destructive' });
                 return;
             }
-            extraInfo = `\n- **Hora Consulta**: ${medicalAppointmentTime}`;
+            extraInfo = `\n- Hora Consulta: ${medicalAppointmentTime}`;
             if (!finalNotes.trim()) {
                 toast({ title: 'Motivo Requerido', description: 'Por favor, explica el motivo de tu solicitud en las notas.', variant: 'destructive' });
                 return;
@@ -309,11 +309,11 @@ Gracias.`;
             const absenceName = selectedAbsenceName || 'Ausencia';
             const requestMessage = `Hola,
 
-Quiero solicitar un permiso que ya he comunicado a **${communicatedTo}**.
+Quiero solicitar un permiso que ya he comunicado a ${communicatedTo}.
 
-- **Tipo**: ${absenceName}
-- **Fecha(s)**: ${datesForMessage}${extraInfo}
-- **Motivo**: ${finalNotes}
+- Tipo: ${absenceName}
+- Fecha(s): ${datesForMessage}${extraInfo}
+- Motivo: ${finalNotes}
 
 Gracias.`;
 
@@ -615,6 +615,7 @@ Gracias.`;
                     <div className="py-4 flex justify-center">
                         <DayPicker
                             mode="multiple"
+                            min={0}
                             selected={otherRequestMultipleDates}
                             onSelect={(days) => setOtherRequestMultipleDates(days || [])}
                             locale={es}
