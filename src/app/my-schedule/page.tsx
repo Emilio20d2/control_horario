@@ -206,18 +206,18 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
                         </Button>
                     </div>
                 </CardHeader>
-                <CardContent className="flex flex-col md:grid md:grid-cols-3 gap-4 px-0 sm:px-0 pt-0">
+                <CardContent className="flex flex-col md:grid md:grid-cols-3 gap-4 px-2 sm:px-4 md:px-6 pt-0">
                     <div className="md:col-span-2 overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="w-[40px]">Día</TableHead>
-                                    <TableHead className="w-[70px]">Fecha</TableHead>
-                                    <TableHead className="text-right">Trab.</TableHead>
-                                    <TableHead>Aus.</TableHead>
-                                    <TableHead className="text-right">H. Aus.</TableHead>
-                                    <TableHead className="text-right">H. Lib.</TableHead>
-                                    <TableHead className="text-center">P. Doble</TableHead>
+                                    <TableHead className="w-[40px] p-1 text-xs">Día</TableHead>
+                                    <TableHead className="w-[70px] p-1 text-xs">Fecha</TableHead>
+                                    <TableHead className="text-right p-1 text-xs">Trab.</TableHead>
+                                    <TableHead className="p-1 text-xs">Aus.</TableHead>
+                                    <TableHead className="text-right p-1 text-xs">H. Aus.</TableHead>
+                                    <TableHead className="text-right p-1 text-xs">H. Lib.</TableHead>
+                                    <TableHead className="text-center p-1 text-xs">P. Doble</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>

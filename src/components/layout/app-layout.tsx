@@ -130,9 +130,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     onClick={() => isMobileNav && setMobileNavOpen(false)}
                     className={cn(
                         'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative',
-                        'flex-col text-center',
+                        'flex-col text-center h-16 w-16 sm:h-auto sm:w-auto',
                         isMobileNav ? 'w-full text-foreground' : '',
-                        viewMode === 'employee' && !isMobileNav && 'h-16',
                         isActive
                             ? 'bg-primary text-white font-semibold'
                             : 'text-foreground hover:bg-accent hover:text-accent-foreground'

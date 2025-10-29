@@ -170,7 +170,7 @@ export default function MyProfilePage() {
                 {employee.name} <span className="text-lg font-medium text-muted-foreground">({employee.employeeNumber})</span>
             </h1>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Card className="flex-1 min-w-[150px]">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Balance Total</CardTitle>
@@ -241,7 +241,7 @@ export default function MyProfilePage() {
                 <CardHeader>
                     <CardTitle className="text-base">Detalle de Bolsas de Horas</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-3 gap-4">
+                <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <BalanceItem title="B. Ordinaria" value={displayBalances?.ordinary} icon={Briefcase} isLoading={!displayBalances} />
                     <BalanceItem title="B. Festivos" value={displayBalances?.holiday} icon={Gift} isLoading={!displayBalances} />
                     <BalanceItem title="B. Libranza" value={displayBalances?.leave} icon={Wallet} isLoading={!displayBalances} />
