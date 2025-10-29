@@ -330,11 +330,14 @@ export default function VacationsPage() {
                 const originalRequests: ScheduledAbsence[] = [];
 
                 (p.scheduledAbsences || []).forEach(a => {
+                    const startDate = safeParseDate(a.startDate);
+                    if (!startDate) return;
+
                     if (a.isDefinitive) {
                         if (!a.originalRequest?.startDate) return;
-                        const startDate = safeParseDate(a.originalRequest.startDate);
-                        if (!startDate) return;
-                        const key = format(startDate, 'yyyy-MM-dd');
+                        const originalStartDate = safeParseDate(a.originalRequest.startDate);
+                        if (!originalStartDate) return;
+                        const key = format(originalStartDate, 'yyyy-MM-dd');
                         definitiveAbsences.set(key, a);
                     } else {
                         originalRequests.push(a);
@@ -549,10 +552,9 @@ export default function VacationsPage() {
 
 
     const editingAbsenceDays = useMemo(() => {
-        if (!editingAbsence?.absence) return [];
+        if (!editingAbsence?.absence?.startDate) return [];
         const { startDate, endDate } = editingAbsence.absence;
-        if (!startDate || !endDate) return [];
-        return eachDayOfInterval({ start: startDate, end: endDate });
+        return eachDayOfInterval({ start: startDate, end: endDate || startDate });
     }, [editingAbsence]);
 
     const plannerModifiers = { opening: openingHolidays, other: otherHolidays, employeeAbsence: employeeAbsenceDays, editing: editingAbsenceDays };
