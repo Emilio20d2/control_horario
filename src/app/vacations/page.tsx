@@ -251,7 +251,7 @@ export default function VacationsPage() {
             if(p.scheduledAbsences) {
               p.scheduledAbsences.forEach(a => {
                 if (a.startDate) {
-                    const startDate = a.startDate instanceof Date ? a.startDate : parseISO(a.startDate);
+                    const startDate = a.startDate instanceof Date ? a.startDate : parseISO(a.startDate as string);
                     const endDate = a.endDate ? (a.endDate instanceof Date ? a.endDate : parseISO(a.endDate as string)) : null;
                     if (isValid(startDate)) years.add(getYear(startDate));
                     if (endDate && isValid(endDate)) years.add(getYear(endDate));
@@ -267,11 +267,11 @@ export default function VacationsPage() {
     }, [allEmployeesForQuadrant]);
     
     useEffect(() => {
-        if (!loading && availableYears.length > 0) {
+        if (!loading && availableYears.length > 0 && !availableYears.includes(Number(selectedYear))) {
             const latestYearWithData = availableYears[0];
             setSelectedYear(String(latestYearWithData));
         }
-    }, [loading]);
+    }, [loading, availableYears, selectedYear]);
 
     useEffect(() => {
         if (activeEmployees.length > 0 && !selectedEmployeeId) {
@@ -295,19 +295,19 @@ export default function VacationsPage() {
         }
     }, [editingAbsence]);
 
-    const schedulableAbsenceTypes = absenceTypes.filter(at => ['Vacaciones', 'Excedencia', 'Permiso no retribuido'].includes(at.name));
+    const absenceTypesFiltered = absenceTypes.filter(at => ['Vacaciones', 'Excedencia', 'Permiso no retribuido'].includes(at.name));
 
     useEffect(() => {
-        if (schedulableAbsenceTypes.length > 0 && !selectedAbsenceTypeId) {
-            const vacationType = schedulableAbsenceTypes.find(at => at.name === 'Vacaciones');
+        if (absenceTypesFiltered.length > 0 && !selectedAbsenceTypeId) {
+            const vacationType = absenceTypesFiltered.find(at => at.name === 'Vacaciones');
             if (vacationType) {
                 setSelectedAbsenceTypeId(vacationType.id);
             }
         }
-    }, [schedulableAbsenceTypes, selectedAbsenceTypeId]);
+    }, [absenceTypesFiltered, selectedAbsenceTypeId]);
     
     const { employeesWithAbsences, weeklySummaries, employeesByWeek, allAbsences } = useMemo(() => {
-        const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
+        const schedulableIds = new Set(absenceTypesFiltered.map(at => at.id));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
 
         allEmployeesForQuadrant.forEach(emp => {
@@ -318,7 +318,7 @@ export default function VacationsPage() {
 
                 (p.scheduledAbsences || []).forEach(a => {
                     if (a.isDefinitive) {
-                        const key = a.originalRequest ? format(a.originalRequest.startDate as Date, 'yyyy-MM-dd') : a.id;
+                        const key = a.originalRequest?.startDate ? format(a.originalRequest.startDate as Date, 'yyyy-MM-dd') : a.id;
                         definitiveAbsences.set(key, a);
                     } else {
                         originalRequests.push(a);
@@ -326,6 +326,7 @@ export default function VacationsPage() {
                 });
 
                 originalRequests.forEach(orig => {
+                    if (!orig.startDate) return;
                     const key = format(orig.startDate, 'yyyy-MM-dd');
                     if (!definitiveAbsences.has(key)) {
                         definitiveAbsences.set(key, { ...orig, isDefinitive: true });
@@ -396,7 +397,7 @@ export default function VacationsPage() {
     
         return { employeesWithAbsences, weeklySummaries, employeesByWeek, allAbsences };
     
-    }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId]);
+    }, [allEmployeesForQuadrant, absenceTypesFiltered, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId]);
     
     // Recalculate vacation data when employee or year changes
     useEffect(() => {
@@ -518,9 +519,10 @@ export default function VacationsPage() {
     const employeeAbsenceDays = useMemo(() => {
         if (!selectedEmployeeId) return [];
         return (employeesWithAbsences[selectedEmployeeId] || []).flatMap(p => {
-             const startDate = p.startDate instanceof Date ? p.startDate : parseISO(p.startDate as string);
+            if (!p.startDate) return [];
+            const startDate = p.startDate;
             if (!p.endDate) return [startDate];
-            const endDate = p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string);
+            const endDate = p.endDate;
             return eachDayOfInterval({ start: startDate, end: endDate });
         });
     }, [selectedEmployeeId, employeesWithAbsences]);
@@ -766,7 +768,7 @@ export default function VacationsPage() {
                              <label className="text-sm font-medium">Tipo de Ausencia</label>
                             <Select value={selectedAbsenceTypeId} onValueChange={setSelectedAbsenceTypeId} disabled={!selectedEmployeeId}>
                                 <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                                <SelectContent>{schedulableAbsenceTypes.map(at => <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>)}</SelectContent>
+                                <SelectContent>{absenceTypesFiltered.map(at => <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <Calendar
