@@ -4,7 +4,7 @@
 'use client';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear, isWithinInterval, getISOWeek, isAfter, isBefore, isEqual } from 'date-fns';
+import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear, isWithinInterval, getISOWeek, isAfter, isBefore, isEqual, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Employee, WeeklyRecord, AbsenceType, Holiday, EmployeeGroup, Ausencia, Conversation, VacationCampaign, ScheduledAbsence } from './types';
 import { Timestamp } from 'firebase/firestore';
@@ -544,11 +544,22 @@ export const generateSignatureReportPDF = (
 
     let finalY = 25;
 
+    const safeParseDate = (date: any): Date | null => {
+        if (!date) return null;
+        if (date instanceof Date) return date;
+        if (date.toDate && typeof date.toDate === 'function') return date.toDate();
+        if (typeof date === 'string') {
+            const parsed = parseISO(date);
+            if (isValid(parsed)) return parsed;
+        }
+        return null;
+    };
+    
     // Filter out eventual employees and employees without active contract
     const employeesForReport = allEmployeesForQuadrant.filter(emp => {
       const fullEmployee = employees.find(e => e.id === emp.id);
       return !emp.isEventual && fullEmployee && fullEmployee.employmentPeriods?.some(p => {
-          const endDate = p.endDate ? (p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string)) : null;
+          const endDate = safeParseDate(p.endDate);
           return !endDate || isAfter(endDate, new Date());
       });
     });
@@ -559,11 +570,25 @@ export const generateSignatureReportPDF = (
         
         const vacationAbsences = (fullEmployeeData.employmentPeriods || [])
             .flatMap(p => p.scheduledAbsences || [])
-            .filter(a => a.isDefinitive && a.absenceTypeId === vacationType.id && getYear(a.startDate) === year)
-            .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+            .filter(a => {
+                const startDate = safeParseDate(a.startDate);
+                if (!startDate) return false;
+                return a.isDefinitive && a.absenceTypeId === vacationType.id && getYear(startDate) === year
+            })
+            .sort((a, b) => {
+                const dateA = safeParseDate(a.startDate);
+                const dateB = safeParseDate(b.startDate);
+                if (!dateA || !dateB) return 0;
+                return dateA.getTime() - dateB.getTime();
+            });
 
         const vacationPeriodsText = vacationAbsences.length > 0
-            ? vacationAbsences.map(v => `del ${format(v.startDate, 'dd/MM/yyyy', { locale: es })} al ${format(v.endDate, 'dd/MM/yyyy', { locale: es })}`).join('\n')
+            ? vacationAbsences.map(v => {
+                const startDate = safeParseDate(v.startDate);
+                const endDate = v.endDate ? safeParseDate(v.endDate) : startDate;
+                if (!startDate || !endDate) return '';
+                return `del ${format(startDate, 'dd/MM/yyyy', { locale: es })} al ${format(endDate, 'dd/MM/yyyy', { locale: es })}`
+            }).join('\n')
             : 'No tiene vacaciones programadas.';
         
         const textLines = doc.splitTextToSize(vacationPeriodsText, 180);
@@ -627,48 +652,46 @@ export const generateRequestStatusReportPDF = (
         const emp = allEmployees.find(e => e.id === quadrantEmp.id);
         if (!emp) return null;
 
-        const absencesFromRequest = (emp.employmentPeriods || [])
+        const originalRequests = (emp.employmentPeriods || [])
             .flatMap(p => p.scheduledAbsences || [])
-            .filter(a => !a.isDefinitive && a.originalRequest?.startDate);
+            .filter(a => !a.isDefinitive && a.originalRequest?.startDate && campaignAbsenceTypeIds.has(a.absenceTypeId));
             
         let originalRequestText = 'PENDIENTE DE SOLICITUD';
         let modifiedRequestText = '';
         let hasData = false;
 
-        if (absencesFromRequest.length > 0) {
-            const originalRequests: string[] = [];
-            const modifiedRequests: string[] = [];
+        if (originalRequests.length > 0) {
+            const originalRequestStrings: string[] = [];
+            const modifiedRequestStrings: string[] = [];
             
-            absencesFromRequest.forEach(absence => {
-                if (!campaignAbsenceTypeIds.has(absence.absenceTypeId)) return;
-
+            originalRequests.forEach(absence => {
                 hasData = true;
                 const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
                 const typeAbbr = absenceType?.abbreviation || '??';
 
-                const originalStartDate = toDate(absence.originalRequest.startDate);
-                const originalEndDate = absence.originalRequest.endDate ? toDate(absence.originalRequest.endDate) : null;
+                const originalStartDate = toDate(absence.originalRequest!.startDate);
+                const originalEndDate = absence.originalRequest!.endDate ? toDate(absence.originalRequest!.endDate) : null;
                 
                 // Find the corresponding definitive record
                 const definitiveAbsence = (emp.employmentPeriods || [])
                     .flatMap(p => p.scheduledAbsences || [])
                     .find(def => def.isDefinitive && def.originalRequest?.startDate === absence.originalRequest?.startDate);
                 
-                const definitiveStartDate = definitiveAbsence ? definitiveAbsence.startDate : originalStartDate;
-                const definitiveEndDate = definitiveAbsence ? definitiveAbsence.endDate : originalEndDate;
+                const definitiveStartDate = definitiveAbsence ? toDate(definitiveAbsence.startDate) : originalStartDate;
+                const definitiveEndDate = definitiveAbsence ? (definitiveAbsence.endDate ? toDate(definitiveAbsence.endDate) : null) : originalEndDate;
 
-                originalRequests.push(`${typeAbbr}: ${format(originalStartDate, 'dd/MM/yy')} - ${originalEndDate ? format(originalEndDate, 'dd/MM/yy') : ''}`);
+                originalRequestStrings.push(`${typeAbbr}: ${format(originalStartDate, 'dd/MM/yy')} - ${originalEndDate ? format(originalEndDate, 'dd/MM/yy') : ''}`);
                 
                 const isModified = definitiveAbsence && (!isEqual(definitiveStartDate, originalStartDate) || (originalEndDate && definitiveEndDate && !isEqual(definitiveEndDate, originalEndDate)));
 
                 if (isModified) {
-                    modifiedRequests.push(`${typeAbbr}: ${format(definitiveStartDate, 'dd/MM/yy')} - ${definitiveEndDate ? format(definitiveEndDate, 'dd/MM/yy') : ''}`);
+                    modifiedRequestStrings.push(`${typeAbbr}: ${format(definitiveStartDate, 'dd/MM/yy')} - ${definitiveEndDate ? format(definitiveEndDate, 'dd/MM/yy') : ''}`);
                 }
             });
 
             if (hasData) {
-                originalRequestText = originalRequests.join('\n');
-                modifiedRequestText = modifiedRequests.join('\n');
+                originalRequestText = originalRequestStrings.join('\n');
+                modifiedRequestText = modifiedRequestStrings.join('\n');
             }
         }
         
@@ -709,3 +732,4 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
