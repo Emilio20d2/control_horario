@@ -62,6 +62,22 @@ export default function MyMessagesPage() {
         return null;
     }, []);
 
+    const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
+    const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
+    
+    const dayPickerModifiers = {
+        opening: openingHolidays,
+        other: otherHolidays,
+        selected: otherRequestMultipleDates,
+    };
+
+    const dayPickerModifiersStyles = {
+        opening: { backgroundColor: '#a7f3d0' },
+        other: { backgroundColor: '#fecaca' },
+        selected: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }
+    };
+
+
     const conversation = useMemo(() => {
         if (!conversationId) return null;
         return conversations.find(c => c.id === conversationId);
@@ -94,21 +110,6 @@ export default function MyMessagesPage() {
     const [messagesSnapshot, messagesLoading] = useCollectionData(
         conversationId ? query(collection(db, 'conversations', conversationId, 'messages'), orderBy('timestamp', 'asc')) : null
     );
-
-    const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
-    const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
-    
-    const dayPickerModifiers = {
-        opening: openingHolidays,
-        other: otherHolidays,
-        selected: otherRequestMultipleDates,
-    };
-
-    const dayPickerModifiersStyles = {
-        opening: { backgroundColor: '#a7f3d0' },
-        other: { color: 'var(--destructive-foreground)', backgroundColor: 'var(--destructive)' },
-        selected: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }
-    };
     
     // Effect to calculate senior hours total
     useEffect(() => {
