@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Employee, EmploymentPeriod } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { addScheduledAbsence, deleteScheduledAbsence, hardDeleteScheduledAbsence } from '@/lib/services/employeeService';
+import { addScheduledAbsence, hardDeleteScheduledAbsence } from '@/lib/services/employeeService';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { Label } from '../ui/label';
@@ -64,11 +64,13 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
             if (!periodToUpdate) throw new Error("No se encontró el periodo del contrato para esta ausencia.");
 
             if (editingAbsence) {
-                // "Soft delete" para mantener el historial de la solicitud original.
-                await deleteScheduledAbsence(employee.id, periodToUpdate.id, editingAbsence.id, employee, weeklyRecords);
+                // To maintain history, we don't delete. We invalidate the old period by making it a zero-day event.
+                const absenceToInvalidate = periodToUpdate.scheduledAbsences?.find(a => a.id === editingAbsence!.id);
+                if(absenceToInvalidate){
+                    absenceToInvalidate.endDate = absenceToInvalidate.startDate;
+                }
             }
             
-            // Añade la nueva o actualizada. El `originalRequest` se preserva si existía.
             await addScheduledAbsence(
                 employee.id,
                 periodToUpdate.id,
@@ -214,7 +216,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                                                  <Button variant="ghost" size="icon" onClick={() => handleEditAbsence(absence)} disabled={isEditingCurrent}>
                                                      <Edit className="h-4 w-4" />
                                                  </Button>
-                                                 {appUser?.role === 'admin' && isEditingCurrent && (
+                                                 {appUser?.role === 'admin' && (
                                                     <AlertDialog onOpenChange={(open) => !open && setDeletePassword('')}>
                                                         <AlertDialogTrigger asChild>
                                                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive-foreground">
@@ -234,7 +236,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                                                             </div>
                                                             <AlertDialogFooter>
                                                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={handleHardDelete} disabled={isLoading}>
+                                                                <AlertDialogAction onClick={() => { setEditingAbsence(absence); handleHardDelete(); }} disabled={isLoading}>
                                                                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sí, eliminar permanentemente'}
                                                                 </AlertDialogAction>
                                                             </AlertDialogFooter>
