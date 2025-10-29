@@ -44,7 +44,6 @@ import { useAuth } from '@/hooks/useAuth';
 import type { EmployeeGroup } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { VacationCampaignManager } from '@/components/settings/vacation-campaign-manager';
-import { MigrationManager } from './migration-manager';
 
 
 export default function SettingsPageContent() {

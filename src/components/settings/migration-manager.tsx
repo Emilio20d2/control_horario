@@ -1,10 +1,7 @@
 
 'use client';
 
-/**
- * @fileOverview This component is no longer in use.
- * The one-time data migration functionality has been removed after completion.
- */
+// This component is no longer used and has been deprecated.
 
 export function MigrationManager() {
     return null;
