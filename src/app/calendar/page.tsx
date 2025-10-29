@@ -23,14 +23,13 @@ import {
   format,
   isWithinInterval,
   startOfDay,
-  endOfDay,
   eachDayOfInterval,
-  getISODay,
   startOfWeek,
   endOfWeek,
   parseISO,
   isSameDay,
-  isValid
+  isValid,
+  endOfDay
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -73,7 +72,6 @@ export default function CalendarPage() {
     if (loading) return [];
 
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
     const weekId = format(weekStart, 'yyyy-MM-dd');
 
     const substitutesMap: Record<string, string> = {};
@@ -83,12 +81,14 @@ export default function CalendarPage() {
         }
     });
 
-    return activeEmployeesForWeek.map((employee: Employee) => {
+    const employeesWithAbsences = activeEmployeesForWeek.map((employee: Employee) => {
         const info: WeeklyAbsenceInfo = {
             employeeId: employee.id,
             employeeName: employee.name,
             dayAbsences: {},
         };
+        
+        let hasAbsenceInWeek = false;
 
         weekDays.forEach(day => {
             const dayKey = format(day, 'yyyy-MM-dd');
@@ -108,7 +108,8 @@ export default function CalendarPage() {
             }
 
             if (foundAbsence) {
-                const absenceType = absenceTypes.find(at => at.id === foundAbsence.absenceTypeId);
+                hasAbsenceInWeek = true;
+                const absenceType = absenceTypes.find(at => at.id === foundAbsence!.absenceTypeId);
                 info.dayAbsences[dayKey] = {
                     abbreviation: absenceType?.abbreviation || '??',
                     substituteName: substitutesMap[employee.id]
@@ -118,8 +119,11 @@ export default function CalendarPage() {
             }
         });
 
-        return info;
-    });
+        return hasAbsenceInWeek ? info : null;
+    }).filter((item): item is WeeklyAbsenceInfo => item !== null);
+
+    return employeesWithAbsences;
+
   }, [loading, currentDate, activeEmployeesForWeek, holidayReports, absenceTypes, weekDays, safeParseDate]);
 
 
@@ -191,6 +195,13 @@ export default function CalendarPage() {
                                     })}
                                 </TableRow>
                             ))}
+                             {!loading && weeklyAbsenceData.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={8} className="text-center h-24 text-muted-foreground">
+                                        No hay empleados con ausencias programadas para esta semana.
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </div>
