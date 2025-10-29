@@ -39,7 +39,6 @@ import {
   parseISO,
   isSameDay,
   isValid,
-  endOfDay,
   addDays,
   isAfter,
 } from 'date-fns';
@@ -127,7 +126,7 @@ export default function CalendarPage() {
                     const absenceStart = safeParseDate(absence.startDate);
                     const absenceEnd = absence.endDate ? safeParseDate(absence.endDate) : absenceStart;
 
-                    if (absenceStart && absenceEnd && isWithinInterval(day, { start: startOfDay(absenceStart), end: endOfDay(absenceEnd) })) {
+                    if (absenceStart && absenceEnd && isValid(absenceStart) && isValid(absenceEnd) && isWithinInterval(day, { start: startOfDay(absenceStart), end: endOfWeek(absenceEnd) })) {
                         foundAbsence = absence;
                         break;
                     }
@@ -332,7 +331,7 @@ export default function CalendarPage() {
                                         return (
                                             <TableCell key={dayKey} className={cn("text-center p-1", absence && "bg-destructive/10", holiday && !absence && 'bg-blue-50/50')}>
                                                 {absence ? (
-                                                    <div className="flex flex-col items-center justify-center gap-0.5 p-1 rounded-md bg-secondary text-secondary-foreground min-h-[48px]">
+                                                    <div className="flex flex-col items-center justify-center gap-0.5 p-1 rounded-md bg-secondary text-secondary-foreground">
                                                         <div className="flex items-center gap-2">
                                                             <User className="h-4 w-4 text-destructive" />
                                                             <span className="font-bold text-base">{absence.abbreviation}</span>
