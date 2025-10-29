@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardFooter, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SendHorizonal, Loader2, PlaneTakeoff, Info, CalendarClock, Hourglass } from 'lucide-react';
 import { cn } from '@/lib/utils';
