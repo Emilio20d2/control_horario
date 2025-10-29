@@ -241,15 +241,18 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const unsubs: (() => void)[] = [];
 
     const safeParseDate = (date: any): Date | null => {
-        if (!date) return null;
-        if (date instanceof Date) return date;
-        if (date.toDate && typeof date.toDate === 'function') return date.toDate(); // Firestore Timestamp
-        if (typeof date === 'string') {
-            const parsed = parseISO(date);
-            return isValid(parsed) ? parsed : null;
-        }
-        return null;
+      if (!date) return null;
+      if (date instanceof Date) return date;
+      if (date.toDate && typeof date.toDate === 'function') return date.toDate();
+      // Handle string conversion carefully.
+      if (typeof date === 'string') {
+        const parsed = parseISO(date);
+        if (isValid(parsed)) return parsed;
+      }
+      // If all else fails, return null
+      return null;
     };
+
 
     const processScheduledAbsences = (absences: any[]): ScheduledAbsence[] => {
         if (!absences) return [];
@@ -557,7 +560,7 @@ const getEffectiveWeeklyHours = (period: EmploymentPeriod | null, date: Date): n
       return 0;
     }
     const targetDate = startOfDay(date);
-    const history = [...period.workHoursHistory].sort((a,b) => (b.effectiveDate as Date).getTime() - (a.effectiveDate as Date).getTime());
+    const history = [...period.workHoursHistory].sort((a,b) => ((b.effectiveDate as Date).getTime() - (a.effectiveDate as Date).getTime()));
     const effectiveRecord = history.find(record => !isAfter(startOfDay(record.effectiveDate as Date), targetDate));
     return effectiveRecord?.weeklyHours || 0;
 };
@@ -681,7 +684,7 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
     }
 
     const schedule = [...activePeriod.weeklySchedulesHistory]
-        .sort((a, b) => (b.effectiveDate as Date).getTime() - (a.effectiveDate as Date).getTime())
+        .sort((a, b) => ((b.effectiveDate as Date).getTime() - (a.effectiveDate as Date).getTime()))
         .find(s => !isAfter(startOfDay(s.effectiveDate as Date), startOfDay(dateInWeek)));
     
     if (!schedule) return defaultReturn;
@@ -798,7 +801,7 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
             
             let periodBaseHours = (baseTheoreticalHours / daysInYear) * contractDaysInYear;
             
-            const history = (period.workHoursHistory || []).sort((a,b) => (a.effectiveDate as Date).getTime() - (b.effectiveDate as Date).getTime());
+            const history = (period.workHoursHistory || []).sort((a,b) => ((a.effectiveDate as Date).getTime() - (b.effectiveDate as Date).getTime()));
             if (history.length > 0) {
                 for (let i = 0; i < history.length; i++) {
                     const currentChange = history[i];
