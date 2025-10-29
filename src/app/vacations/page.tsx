@@ -69,6 +69,7 @@ import { DateRange } from 'react-day-picker';
 import {
   addScheduledAbsence,
   deleteScheduledAbsence,
+  hardDeleteScheduledAbsence,
 } from '@/lib/services/employeeService';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -99,6 +100,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Timestamp } from 'firebase/firestore';
 import { HolidayEmployeeManager } from '@/components/settings/holiday-employee-manager';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { useAuth } from '@/hooks/useAuth';
 
 
 interface FormattedAbsence extends Ausencia {
@@ -127,11 +131,13 @@ export default function VacationsPage() {
         calculateEmployeeVacations,
     } = dataProvider;
     const { toast } = useToast();
+    const { appUser, reauthenticateWithPassword } = useAuth();
     
     const [selectedYear, setSelectedYear] = useState<string>('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [isHolidayEmployeeManagerOpen, setIsHolidayEmployeeManagerOpen] = useState(false);
+    const [password, setPassword] = useState('');
     
     // State for planner
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
@@ -456,8 +462,10 @@ export default function VacationsPage() {
             const period = employee.employmentPeriods.find((p: EmploymentPeriod) => p.id === absence.periodId);
             if (!period) throw new Error("Periodo laboral no encontrado para la ausencia.");
             
+            // This is a "soft delete" - it preserves the original request by just invalidating the period
             await deleteScheduledAbsence(employee.id, period.id, absence.id, employee, weeklyRecords);
             
+            // This adds the new, modified period
             await addScheduledAbsence(employee.id, period.id, {
                 absenceTypeId: absence.absenceTypeId,
                 startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
@@ -474,6 +482,41 @@ export default function VacationsPage() {
             setIsGenerating(false);
         }
     };
+    
+    const handleHardDeleteAbsence = async () => {
+        if (!editingAbsence) return;
+        
+        if (!password) {
+            toast({ title: 'Contraseña requerida', description: 'Por favor, introduce tu contraseña para confirmar.', variant: 'destructive' });
+            return;
+        }
+        setIsGenerating(true);
+    
+        try {
+            const isAuthenticated = await reauthenticateWithPassword(password);
+            if (!isAuthenticated) {
+                toast({ title: 'Error de autenticación', description: 'La contraseña no es correcta.', variant: 'destructive' });
+                setIsGenerating(false);
+                return;
+            }
+
+            await hardDeleteScheduledAbsence(
+                editingAbsence.employee.id,
+                editingAbsence.absence.periodId!,
+                editingAbsence.absence.id,
+                editingAbsence.employee,
+                weeklyRecords
+            );
+            toast({ title: "Ausencia eliminada permanentemente", variant: "destructive" });
+            refreshData();
+            setEditingAbsence(null);
+        } catch (error) {
+            toast({ title: "Error", description: error instanceof Error ? error.message : "No se pudo eliminar la ausencia.", variant: "destructive" });
+        } finally {
+            setIsGenerating(false);
+            setPassword('');
+        }
+    }
 
      const handleAddPeriod = async () => {
         const selectedEmployee = activeEmployees.find(e => e.id === selectedEmployeeId);
@@ -861,6 +904,7 @@ export default function VacationsPage() {
                         {editingAbsence && (
                             <DialogDescription>
                                 Modificando la ausencia de <strong>{editingAbsence.employee.name}</strong> del tipo <strong>{absenceTypes.find(at => at.id === editingAbsence.absence.absenceTypeId)?.name}</strong>.
+                                {editingAbsence.absence.originalRequest && <p className="text-xs text-muted-foreground pt-2">Solicitud Original: del {format(editingAbsence.absence.originalRequest.startDate, 'dd/MM/yy')} al {editingAbsence.absence.originalRequest.endDate ? format(editingAbsence.absence.originalRequest.endDate, 'dd/MM/yy') : ''}</p>}
                             </DialogDescription>
                         )}
                     </DialogHeader>
@@ -879,40 +923,31 @@ export default function VacationsPage() {
                         />
                     </div>
                     <DialogFooter>
-                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive" disabled={isGenerating}>Eliminar Ausencia</Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Confirmas la eliminación?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Esta acción eliminará permanentemente el periodo de ausencia. Si alguna semana afectada ya está confirmada, deberás corregirla manualmente desde la página de Horario.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction 
-                                        onClick={async () => {
-                                            if (!editingAbsence) return;
-                                            setIsGenerating(true);
-                                            try {
-                                                await deleteScheduledAbsence(editingAbsence.employee.id, editingAbsence.absence.periodId!, editingAbsence.absence.id, editingAbsence.employee, weeklyRecords);
-                                                toast({ title: "Ausencia eliminada", variant: "destructive"});
-                                                refreshData();
-                                                setEditingAbsence(null);
-                                            } catch (error) {
-                                                toast({ title: "Error", description: error instanceof Error ? error.message : "No se pudo eliminar la ausencia.", variant: "destructive"});
-                                            } finally {
-                                                setIsGenerating(false);
-                                            }
-                                        }}
-                                    >
-                                        Sí, eliminar
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                         {appUser?.role === 'admin' && (
+                             <AlertDialog onOpenChange={(open) => !open && setPassword('')}>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" disabled={isGenerating}>Eliminar Ausencia</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Confirmas la eliminación permanente?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Esta acción eliminará permanentemente el periodo de ausencia y su registro de solicitud original. No se podrá recuperar.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                     <div className="space-y-2 py-2">
+                                        <Label htmlFor="password-delete">Contraseña de Administrador</Label>
+                                        <Input id="password-delete" type="password" placeholder="Introduce tu contraseña" value={password} onChange={(e) => setPassword(e.target.value)} />
+                                    </div>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleHardDeleteAbsence} disabled={isGenerating}>
+                                            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sí, eliminar permanentemente'}
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                         )}
                         <div className='flex-grow' />
                         <DialogClose asChild>
                             <Button variant="outline">Cancelar</Button>
@@ -992,3 +1027,4 @@ export default function VacationsPage() {
     
 
     
+

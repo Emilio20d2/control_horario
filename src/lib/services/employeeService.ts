@@ -343,7 +343,10 @@ export const addScheduledAbsence = async (
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
 
-
+/**
+ * Soft deletes an absence by setting its end date to its start date,
+ * effectively making it a zero-duration event but preserving the record.
+ */
 export const deleteScheduledAbsence = async (
     employeeId: string, 
     periodId: string, 
@@ -354,10 +357,52 @@ export const deleteScheduledAbsence = async (
     const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
     if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
 
+    const absenceIndex = period.scheduledAbsences.findIndex(a => a.id === absenceId);
+    if (absenceIndex === -1) throw new Error("Ausencia no encontrada para eliminar");
+    
+    const absenceToModify = period.scheduledAbsences[absenceIndex];
+    
+    // This check is now optional based on context
+    if (weeklyRecords) {
+        const daysInAbsence = eachDayOfInterval({
+            start: startOfDay(absenceToModify.startDate),
+            end: startOfDay(absenceToModify.endDate || absenceToModify.startDate)
+        });
+
+        for(const day of daysInAbsence) {
+            const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+            const weekRecord = weeklyRecords[weekId]?.weekData?.[employeeId];
+            if (weekRecord?.confirmed) {
+                throw new Error(`No se puede modificar la ausencia. La semana del ${weekId} ya está confirmada y afecta a este periodo.`);
+            }
+        }
+    }
+    
+    // Instead of deleting, set end date to start date to invalidate it for calculations
+    // but keep it for historical/request tracking purposes.
+    period.scheduledAbsences[absenceIndex].endDate = period.scheduledAbsences[absenceIndex].startDate;
+    
+    await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
+};
+
+
+/**
+ * Performs a hard delete of the scheduled absence record.
+ * This should only be callable by an admin.
+ */
+export const hardDeleteScheduledAbsence = async (
+    employeeId: string, 
+    periodId: string, 
+    absenceId: string, 
+    currentEmployee: Employee,
+    weeklyRecords?: Record<string, WeeklyRecord>
+): Promise<void> => {
+    const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
+    if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
+
     const absenceToDelete = period.scheduledAbsences.find(a => a.id === absenceId);
     if (!absenceToDelete) throw new Error("Ausencia no encontrada para eliminar");
     
-    // This check is now optional based on context
     if (weeklyRecords) {
         const daysInAbsence = eachDayOfInterval({
             start: startOfDay(absenceToDelete.startDate),
