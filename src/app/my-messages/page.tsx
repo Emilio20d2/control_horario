@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizonal, Loader2, PlaneTakeoff, Info, CalendarClock } from 'lucide-react';
+import { SendHorizonal, Loader2, PlaneTakeoff, Info, CalendarClock, Hourglass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useDataProvider } from '@/hooks/use-data-provider';
@@ -28,7 +28,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
 export default function MyMessagesPage() {
-    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes } = useDataProvider();
+    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, getTheoreticalHoursAndTurn } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
     const conversationId = employeeRecord?.id;
     const viewportRef = useRef<HTMLDivElement>(null);
@@ -46,9 +46,11 @@ export default function MyMessagesPage() {
     const [otherRequestStep, setOtherRequestStep] = useState(1);
     const [communicatedTo, setCommunicatedTo] = useState('');
     const [otherRequestAbsenceTypeId, setOtherRequestAbsenceTypeId] = useState('');
-    const [otherRequestDate, setOtherRequestDate] = useState<Date | undefined>(undefined);
+    const [otherRequestSingleDate, setOtherRequestSingleDate] = useState<Date | undefined>(undefined);
+    const [otherRequestMultipleDates, setOtherRequestMultipleDates] = useState<Date[]>([]);
     const [otherRequestNotes, setOtherRequestNotes] = useState('');
     const [isSubmittingOtherRequest, setIsSubmittingOtherRequest] = useState(false);
+    const [seniorHoursTotal, setSeniorHoursTotal] = useState(0);
 
 
     const conversation = useMemo(() => {
@@ -164,10 +166,30 @@ export default function MyMessagesPage() {
         setOtherRequestStep(1);
         setCommunicatedTo('');
         setOtherRequestAbsenceTypeId('');
-        setOtherRequestDate(undefined);
+        setOtherRequestSingleDate(undefined);
+        setOtherRequestMultipleDates([]);
         setOtherRequestNotes('');
+        setSeniorHoursTotal(0);
         setIsOtherRequestDialogOpen(true);
     }
+    
+    // Effect to calculate senior hours total
+    useEffect(() => {
+        const selectedAbsenceName = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name;
+        if (selectedAbsenceName === 'Reducción Jornada Senior' && employeeRecord && otherRequestMultipleDates.length > 0) {
+            let total = 0;
+            otherRequestMultipleDates.forEach(date => {
+                const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(employeeRecord.id, date);
+                const dayData = weekDaysWithTheoreticalHours.find(d => d.dateKey === format(date, 'yyyy-MM-dd'));
+                if (dayData) {
+                    total += dayData.theoreticalHours;
+                }
+            });
+            setSeniorHoursTotal(total);
+        } else {
+            setSeniorHoursTotal(0);
+        }
+    }, [otherRequestMultipleDates, otherRequestAbsenceTypeId, employeeRecord, getTheoreticalHoursAndTurn, absenceTypes]);
 
     const handleSubmitRequest = async () => {
         if (!selectedCampaign || !requestAbsenceTypeId || !requestDateRange?.from || !requestDateRange?.to || !employeeRecord) {
@@ -215,15 +237,32 @@ export default function MyMessagesPage() {
     const handleSubmitOtherRequest = async () => {
         const selectedAbsenceName = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name;
         
-        if (!otherRequestAbsenceTypeId || !otherRequestDate || !communicatedTo) {
-            toast({ title: 'Datos incompletos', description: 'Selecciona tipo de ausencia, fecha y a quién has comunicado.', variant: 'destructive' });
+        let finalNotes = otherRequestNotes;
+        let datesForMessage = '';
+
+        if (selectedAbsenceName === 'Reducción Jornada Senior') {
+            if (otherRequestMultipleDates.length === 0) {
+                toast({ title: 'Datos incompletos', description: 'Selecciona al menos un día para la reducción de jornada.', variant: 'destructive' });
+                return;
+            }
+            finalNotes = `PETICION DE "${seniorHoursTotal.toFixed(2)}" HORAS REDUCCION JORNADA SENIOR`;
+            datesForMessage = otherRequestMultipleDates.map(d => format(d, 'dd/MM/yyyy')).join(', ');
+        } else {
+            if (!otherRequestSingleDate) {
+                 toast({ title: 'Datos incompletos', description: 'Selecciona una fecha para el permiso.', variant: 'destructive' });
+                return;
+            }
+            datesForMessage = format(otherRequestSingleDate, 'dd/MM/yyyy');
+            if (!finalNotes.trim()) {
+                toast({ title: 'Motivo Requerido', description: 'Por favor, explica el motivo de tu solicitud en las notas.', variant: 'destructive' });
+                return;
+            }
+        }
+         if (!otherRequestAbsenceTypeId || !communicatedTo) {
+            toast({ title: 'Datos incompletos', description: 'Completa todos los campos requeridos.', variant: 'destructive' });
             return;
         }
 
-        if (selectedAbsenceName !== 'Reducción Jornada Senior' && !otherRequestNotes.trim()) {
-            toast({ title: 'Motivo Requerido', description: 'Por favor, explica el motivo de tu solicitud en las notas.', variant: 'destructive' });
-            return;
-        }
 
         setIsSubmittingOtherRequest(true);
         try {
@@ -231,8 +270,8 @@ export default function MyMessagesPage() {
             const requestMessage = `**NUEVA SOLICITUD DE PERMISO**
             - **Comunicado a:** ${communicatedTo}
             - **Tipo:** ${absenceName}
-            - **Fecha:** ${format(otherRequestDate, 'dd/MM/yyyy')}
-            ${otherRequestNotes ? `- **Motivo:** ${otherRequestNotes}` : ''}
+            - **Fecha(s):** ${datesForMessage}
+            - **Motivo:** ${finalNotes}
             `;
 
             await sendMessage(requestMessage);
@@ -250,13 +289,23 @@ export default function MyMessagesPage() {
     
     const isSubmitOtherRequestDisabled = useMemo(() => {
         const selectedAbsenceName = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name;
-        const isNotesRequired = selectedAbsenceName !== 'Reducción Jornada Senior';
-
-        return isSubmittingOtherRequest || 
-               !otherRequestAbsenceTypeId || 
-               !otherRequestDate ||
-               (isNotesRequired && !otherRequestNotes.trim());
-    }, [isSubmittingOtherRequest, otherRequestAbsenceTypeId, otherRequestDate, otherRequestNotes, absenceTypes]);
+        if (isSubmittingOtherRequest || !otherRequestAbsenceTypeId || !communicatedTo) {
+            return true;
+        }
+        if (selectedAbsenceName === 'Reducción Jornada Senior') {
+            return otherRequestMultipleDates.length === 0;
+        } else {
+            return !otherRequestSingleDate || !otherRequestNotes.trim();
+        }
+    }, [
+        isSubmittingOtherRequest, 
+        otherRequestAbsenceTypeId, 
+        communicatedTo,
+        absenceTypes,
+        otherRequestMultipleDates,
+        otherRequestSingleDate,
+        otherRequestNotes
+    ]);
 
     if (loading) {
         return (
@@ -443,7 +492,7 @@ export default function MyMessagesPage() {
                         </div>
                     ) : (
                         <div className="space-y-4 py-4">
-                            <div className="space-y-2">
+                             <div className="space-y-2">
                                 <Label className="text-sm font-medium">Tipo de Permiso</Label>
                                 <Select value={otherRequestAbsenceTypeId} onValueChange={setOtherRequestAbsenceTypeId}>
                                     <SelectTrigger><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
@@ -454,30 +503,56 @@ export default function MyMessagesPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">Fecha del Permiso</Label>
-                                <DayPicker
-                                    mode="single"
-                                    selected={otherRequestDate}
-                                    onSelect={setOtherRequestDate}
-                                    locale={es}
-                                    disabled={isSubmittingOtherRequest}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="notes" className="text-sm font-medium">
-                                    Motivo <span className="text-destructive">*</span>
-                                </Label>
-                                <Textarea
-                                    id="notes"
-                                    placeholder="Añade aquí cualquier justificación o comentario necesario..."
-                                    value={otherRequestNotes}
-                                    onChange={(e) => setOtherRequestNotes(e.target.value)}
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    <span className="text-destructive">*</span> Obligatorio, excepto para "Reducción Jornada Senior".
-                                </p>
-                            </div>
+
+                            {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name === 'Reducción Jornada Senior' ? (
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium">Días del Permiso</Label>
+                                    <DayPicker
+                                        mode="multiple"
+                                        min={0}
+                                        selected={otherRequestMultipleDates}
+                                        onSelect={setOtherRequestMultipleDates}
+                                        locale={es}
+                                        disabled={isSubmittingOtherRequest}
+                                    />
+                                    <Card className="mt-2">
+                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                            <CardTitle className="text-sm font-medium">Total de Horas Solicitadas</CardTitle>
+                                            <Hourglass className="h-4 w-4 text-muted-foreground" />
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="text-2xl font-bold">{seniorHoursTotal.toFixed(2)}h</div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">Fecha del Permiso</Label>
+                                        <DayPicker
+                                            mode="single"
+                                            selected={otherRequestSingleDate}
+                                            onSelect={setOtherRequestSingleDate}
+                                            locale={es}
+                                            disabled={isSubmittingOtherRequest}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="notes" className="text-sm font-medium">
+                                            Motivo <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Textarea
+                                            id="notes"
+                                            placeholder="Añade aquí cualquier justificación o comentario necesario..."
+                                            value={otherRequestNotes}
+                                            onChange={(e) => setOtherRequestNotes(e.target.value)}
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            <span className="text-destructive">*</span> Obligatorio para este tipo de permiso.
+                                        </p>
+                                    </div>
+                                </>
+                            )}
                              <DialogFooter>
                                 <Button type="button" variant="ghost" onClick={() => setOtherRequestStep(1)}>Atrás</Button>
                                 <Button onClick={handleSubmitOtherRequest} disabled={isSubmitOtherRequestDisabled}>
