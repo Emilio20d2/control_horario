@@ -310,7 +310,8 @@ export default function VacationsPage() {
                     const definitiveAbsences = new Map<string, ScheduledAbsence>();
                     (p.scheduledAbsences || []).forEach(a => {
                         if (!schedulableIds.has(a.absenceTypeId)) return;
-                        const originalId = a.originalRequest ? JSON.stringify(a.originalRequest) : a.id;
+                        
+                        const originalId = a.originalRequest ? `${a.originalRequest.startDate}-${a.originalRequest.endDate}` : a.id;
                         
                         if (a.isDefinitive) {
                             definitiveAbsences.set(originalId, a);
@@ -362,8 +363,8 @@ export default function VacationsPage() {
             employeesByWeek[week.key] = [];
             
             allEmployeesForQuadrant.forEach(emp => {
-                const empAbsences = employeesWithAbsences[emp.id];
-                const absenceThisWeek = empAbsences?.find(a => 
+                const empAbsences = employeesWithAbsences[emp.id] || [];
+                const absenceThisWeek = empAbsences.find(a => 
                     a.endDate && isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
                 );
     
@@ -382,29 +383,23 @@ export default function VacationsPage() {
     }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId]);
     
     useEffect(() => {
-        if (!loading && employees.length > 0) {
-            let yearToSet = getYear(new Date());
-    
-            const allScheduledAbsences = employees.flatMap(e => e.employmentPeriods || []).flatMap(p => p.scheduledAbsences || []);
-            
-            if (allScheduledAbsences.length > 0) {
-                 const latestYearWithAbsence = allScheduledAbsences.reduce((latest, absence) => {
-                    if (!absence.startDate) return latest;
-                    const year = getYear(absence.startDate);
-                    return year > latest ? year : latest;
-                }, 0);
-                 if (latestYearWithAbsence > yearToSet) {
-                    yearToSet = latestYearWithAbsence;
-                }
-            } else {
-                 const yearsFromEmployees = employees.flatMap(e => e.employmentPeriods || []).map(p => getYear(parseISO(p.startDate as string)));
-                 if(yearsFromEmployees.length > 0) {
-                    yearToSet = Math.max(...yearsFromEmployees);
-                 }
+        if (loading) return;
+
+        const allScheduledAbsences = employees.flatMap(e => e.employmentPeriods || []).flatMap(p => p.scheduledAbsences || []);
+
+        let latestYear = getYear(new Date());
+        if (allScheduledAbsences.length > 0) {
+            const maxYear = allScheduledAbsences.reduce((max, absence) => {
+                if (!absence.startDate) return max;
+                const year = getYear(absence.startDate);
+                return year > max ? year : max;
+            }, 0);
+            if (maxYear > latestYear) {
+                latestYear = maxYear;
             }
-            
-            setSelectedYear(String(yearToSet));
         }
+        
+        setSelectedYear(String(latestYear));
     }, [loading, employees]);
 
 
@@ -978,5 +973,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-
-    
