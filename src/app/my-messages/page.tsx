@@ -73,7 +73,6 @@ export default function MyMessagesPage() {
             'DH', // Devolución Horas
             'DF', // Devolución Festivo
             'DL', // Devolución Libranza
-            'RHA', // Recuperación Horas
             'HS', // Horas Sindicales
             'RJS', // Reducción Jornada Senior
             'HM', // Petición de Horas Médicas
@@ -333,7 +332,7 @@ export default function MyMessagesPage() {
     }), [holidays]);
 
     const dayPickerModifiers = { holidays: holidayDates, selected: otherRequestMultipleDates };
-    const dayPickerModifiersStyles = { 
+    const dayPickerModifiersStyles = {
         holidays: { 
             color: 'var(--destructive-foreground)', 
             backgroundColor: 'var(--destructive)' 
