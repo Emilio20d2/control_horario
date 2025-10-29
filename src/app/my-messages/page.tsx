@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -266,7 +267,6 @@ Gracias.`;
     
     const handleSubmitOtherRequest = async () => {
         const selectedAbsenceType = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId);
-        const selectedAbsenceName = selectedAbsenceType?.name;
         
         if (!employeeRecord) {
             toast({ title: 'Error', description: 'No se pudo identificar tu ficha de empleado.', variant: 'destructive' });
@@ -279,43 +279,38 @@ Gracias.`;
             return;
         }
     
-        let finalNotes = otherRequestNotes;
-        let datesForMessage = '';
-    
         if (otherRequestMultipleDates.length === 0) {
             toast({ title: 'Datos incompletos', description: 'Selecciona al menos un día para el permiso.', variant: 'destructive' });
             return;
         }
-    
-        datesForMessage = otherRequestMultipleDates.map(d => format(d, 'dd/MM/yyyy')).sort().join(', ');
-        
-        let extraInfo = '';
-        if (selectedAbsenceType?.abbreviation === 'RJS') {
-            finalNotes = `Petición de ${seniorHoursTotal.toFixed(2)} horas por reducción de jornada senior.`;
-        } else if (selectedAbsenceType?.abbreviation === 'HM') {
-            if (!medicalAppointmentTime) {
-                toast({ title: 'Hora requerida', description: 'Por favor, especifica la hora de la consulta médica.', variant: 'destructive' });
-                return;
-            }
-            extraInfo = `\n- Hora Consulta: ${medicalAppointmentTime}`;
-            if (!finalNotes.trim()) {
-                toast({ title: 'Motivo Requerido', description: 'Por favor, explica el motivo de tu solicitud en las notas.', variant: 'destructive' });
-                return;
-            }
-        } else {
-            if (!finalNotes.trim()) {
-                toast({ title: 'Motivo Requerido', description: 'Por favor, explica el motivo de tu solicitud en las notas.', variant: 'destructive' });
-                return;
-            }
+
+        if (selectedAbsenceType?.abbreviation === 'HM' && !medicalAppointmentTime) {
+            toast({ title: 'Hora requerida', description: 'Por favor, especifica la hora de la consulta médica.', variant: 'destructive' });
+            return;
         }
-         if (!otherRequestAbsenceTypeId || !communicatedTo) {
+        
+        if (selectedAbsenceType?.abbreviation !== 'RJS' && !otherRequestNotes.trim()) {
+            toast({ title: 'Motivo Requerido', description: 'Por favor, explica el motivo de tu solicitud en las notas.', variant: 'destructive' });
+            return;
+        }
+
+        if (!otherRequestAbsenceTypeId || !communicatedTo) {
             toast({ title: 'Datos incompletos', description: 'Completa todos los campos requeridos.', variant: 'destructive' });
             return;
         }
     
         setIsSubmittingOtherRequest(true);
         try {
-            // Create scheduled absences for each selected day
+            let finalNotes = otherRequestNotes;
+            let extraInfoForMessage = '';
+
+            if (selectedAbsenceType?.abbreviation === 'RJS') {
+                finalNotes = `Petición de ${seniorHoursTotal.toFixed(2)} horas por reducción de jornada senior.`;
+            } else if (selectedAbsenceType?.abbreviation === 'HM') {
+                extraInfoForMessage = `\n- Hora Consulta: ${medicalAppointmentTime}`;
+                finalNotes = `Hora Consulta: ${medicalAppointmentTime}\n${otherRequestNotes}`;
+            }
+
             for (const day of otherRequestMultipleDates) {
                 await addScheduledAbsence(
                     employeeRecord.id,
@@ -324,20 +319,23 @@ Gracias.`;
                         absenceTypeId: otherRequestAbsenceTypeId,
                         startDate: format(day, 'yyyy-MM-dd'),
                         endDate: format(day, 'yyyy-MM-dd'),
+                        notes: selectedAbsenceType?.abbreviation === 'HM' ? `Hora Consulta: ${medicalAppointmentTime}` : finalNotes
                     },
                     employeeRecord,
-                    true // Create both original and definitive records
+                    true
                 );
             }
     
-            const absenceName = selectedAbsenceName || 'Ausencia';
+            const absenceName = selectedAbsenceType?.name || 'Ausencia';
+            const datesForMessage = otherRequestMultipleDates.map(d => format(d, 'dd/MM/yyyy')).sort().join(', ');
+            
             const requestMessage = `Hola,
 
 Quiero solicitar un permiso que ya he comunicado a ${communicatedTo}.
 
 - Tipo: ${absenceName}
-- Fecha(s): ${datesForMessage}${extraInfo}
-- Motivo: ${finalNotes}
+- Fecha(s): ${datesForMessage}${extraInfoForMessage}
+- Motivo: ${otherRequestNotes}
 
 Gracias.`;
     
@@ -592,15 +590,15 @@ Gracias.`;
                                 </Button>
                             </div>
                             {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.abbreviation === 'RJS' && (
-                                <div className="mt-2 border rounded-md p-3 bg-muted/20">
-                                    <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                        <p className="text-sm font-medium">Total de Horas Solicitadas</p>
+                                <Card className="mt-2 p-3 bg-muted/20">
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                        <CardTitle className="text-sm font-medium">Total de Horas Solicitadas</CardTitle>
                                         <Hourglass className="h-4 w-4 text-muted-foreground" />
-                                    </div>
-                                    <div>
+                                    </CardHeader>
+                                    <CardContent>
                                         <div className="text-2xl font-bold">{seniorHoursTotal.toFixed(2)}h</div>
-                                    </div>
-                                </div>
+                                    </CardContent>
+                                </Card>
                             )}
                             {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.abbreviation !== 'RJS' && (
                                 <div className="space-y-2">
@@ -655,4 +653,5 @@ Gracias.`;
         </>
     );
 }
+
 

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
@@ -26,7 +27,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowRight, User, Loader2, CalendarPlus, Trash2, CalendarRange, Info, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowRight, User, Loader2, CalendarPlus, Trash2, CalendarRange, Info, Calendar as CalendarIcon, MessageCircle } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import {
   format,
@@ -475,6 +476,15 @@ export default function CalendarPage() {
                             <strong>Periodo Completo:</strong> {format(selectedCell.absence.startDate, 'PPP', {locale: es})} - {selectedCell.absence.endDate ? format(selectedCell.absence.endDate, 'PPP', {locale: es}) : 'Indefinido'}
                         </p>
                     </div>
+                     {selectedCell.absence.notes && (
+                        <div className="flex items-start gap-3">
+                            <MessageCircle className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                            <div>
+                                <p><strong>Notas Adicionales:</strong></p>
+                                <p className="text-muted-foreground whitespace-pre-wrap">{selectedCell.absence.notes}</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
             <DialogFooter className="sm:justify-between">

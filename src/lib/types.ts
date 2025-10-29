@@ -33,6 +33,7 @@ export interface ScheduledAbsence {
     startDate: Date; 
     endDate: Date | null;
     isDefinitive: boolean; // True if it's the record to be shown on the planner
+    notes?: string | null; // For extra info like appointment time
     originalRequest?: {
         startDate: Date | string;
         endDate: Date | string | null;
