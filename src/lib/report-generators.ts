@@ -557,8 +557,10 @@ export const generateSignatureReportPDF = (
     const employeesForReport = allEmployeesForQuadrant.filter(emp => {
       const fullEmployee = employees.find(e => e.id === emp.id);
       return !emp.isEventual && fullEmployee && fullEmployee.employmentPeriods?.some(p => {
-          const endDate = safeParseDate(p.endDate);
-          return !endDate || isAfter(endDate, new Date());
+          const endDateValue = p.endDate;
+          if (!endDateValue) return true;
+          const endDate = endDateValue instanceof Date ? endDateValue : parseISO(endDateValue as string);
+          return isAfter(endDate, new Date());
       });
     });
 
@@ -586,7 +588,9 @@ export const generateSignatureReportPDF = (
                 
                 if (a.isDefinitive) {
                     const originalRequestKey = a.originalRequest?.startDate ? format(safeParseDate(a.originalRequest.startDate)!, 'yyyy-MM-dd') : format(startDate, 'yyyy-MM-dd');
-                    definitiveAbsences.set(originalRequestKey, a);
+                    if(!definitiveAbsences.has(originalRequestKey)) {
+                         definitiveAbsences.set(originalRequestKey, a);
+                    }
                 }
             });
         });
@@ -754,4 +758,5 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
