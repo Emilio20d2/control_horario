@@ -311,7 +311,7 @@ export const addScheduledAbsence = async (
         endDate: string | null;
     },
     currentEmployee: Employee,
-    originalRequest?: { startDate: string, endDate: string | null }
+    originalRequest?: { startDate: string | Date, endDate: string | Date | null }
 ): Promise<void> => {
     const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
     if (!period) throw new Error("Periodo laboral no encontrado");
@@ -326,8 +326,8 @@ export const addScheduledAbsence = async (
         startDate: parseISO(newAbsence.startDate),
         endDate: newAbsence.endDate ? parseISO(newAbsence.endDate) : null,
         originalRequest: originalRequest ? {
-            startDate: parseISO(originalRequest.startDate),
-            endDate: originalRequest.endDate ? parseISO(originalRequest.endDate) : null,
+            startDate: typeof originalRequest.startDate === 'string' ? parseISO(originalRequest.startDate) : originalRequest.startDate,
+            endDate: originalRequest.endDate ? (typeof originalRequest.endDate === 'string' ? parseISO(originalRequest.endDate) : originalRequest.endDate) : null,
         } : undefined
     };
     
@@ -344,15 +344,16 @@ export const addScheduledAbsence = async (
 };
 
 /**
- * Soft deletes an absence by setting its end date to its start date,
- * effectively making it a zero-duration event but preserving the record.
+ * Performs a "soft delete" by completely removing the absence record.
+ * This is safe because the 'addScheduledAbsence' function, called immediately after,
+ * preserves the original request data in the new, modified record.
  */
 export const deleteScheduledAbsence = async (
     employeeId: string, 
     periodId: string, 
     absenceId: string, 
     currentEmployee: Employee,
-    weeklyRecords?: Record<string, WeeklyRecord> // Optional to avoid breaking other calls
+    weeklyRecords?: Record<string, WeeklyRecord>
 ): Promise<void> => {
     const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
     if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
@@ -362,7 +363,6 @@ export const deleteScheduledAbsence = async (
     
     const absenceToModify = period.scheduledAbsences[absenceIndex];
     
-    // This check is now optional based on context
     if (weeklyRecords) {
         const daysInAbsence = eachDayOfInterval({
             start: startOfDay(absenceToModify.startDate),
@@ -378,9 +378,8 @@ export const deleteScheduledAbsence = async (
         }
     }
     
-    // Instead of deleting, set end date to start date to invalidate it for calculations
-    // but keep it for historical/request tracking purposes.
-    period.scheduledAbsences[absenceIndex].endDate = period.scheduledAbsences[absenceIndex].startDate;
+    // Remove the old record entirely. The 'originalRequest' data is passed to the new record.
+    period.scheduledAbsences.splice(absenceIndex, 1);
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
