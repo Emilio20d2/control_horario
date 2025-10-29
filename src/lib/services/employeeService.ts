@@ -313,33 +313,32 @@ export const addScheduledAbsence = async (
     currentEmployee: Employee,
     originalRequest?: { startDate: string | Date, endDate: string | Date | null }
 ): Promise<void> => {
-    const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
+    const employeeCopy = JSON.parse(JSON.stringify(currentEmployee));
+    const period = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => p.id === periodId);
     if (!period) throw new Error("Periodo laboral no encontrado");
 
     if (!period.scheduledAbsences) {
         period.scheduledAbsences = [];
     }
     
-    const absenceToAdd: ScheduledAbsence = {
-        id: `abs_${Date.now()}`,
+    const absenceToAdd: any = {
+        id: `abs_${Date.now()}_${Math.random()}`,
         absenceTypeId: newAbsence.absenceTypeId,
-        startDate: parseISO(newAbsence.startDate),
-        endDate: newAbsence.endDate ? parseISO(newAbsence.endDate) : null,
+        startDate: newAbsence.startDate,
+        endDate: newAbsence.endDate,
     };
     
-    // Only set originalRequest if it's explicitly passed (i.e., for campaign requests)
-    // For manual additions/edits in the planner, this will be undefined.
     if (originalRequest) {
         absenceToAdd.originalRequest = {
-            startDate: typeof originalRequest.startDate === 'string' ? parseISO(originalRequest.startDate) : originalRequest.startDate,
-            endDate: originalRequest.endDate ? (typeof originalRequest.endDate === 'string' ? parseISO(originalRequest.endDate) : originalRequest.endDate) : null,
+            startDate: originalRequest.startDate,
+            endDate: originalRequest.endDate
         }
     }
 
 
     period.scheduledAbsences.push(absenceToAdd);
 
-    await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
+    await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
 };
 
 
@@ -351,19 +350,16 @@ export const updateScheduledAbsence = async (
         startDate: string; 
         endDate: string; 
         absenceTypeId: string;
-        originalRequest?: { startDate: string | Date, endDate: string | Date | null } | null;
     },
     currentEmployee: Employee,
-    weeklyRecords?: Record<string, WeeklyRecord>
+    weeklyRecords?: Record<string, WeeklyRecord>,
+    originalRequest?: any
 ): Promise<void> => {
     
-    // Create a deep copy to avoid direct mutation of state
-    const employeeCopy = JSON.parse(JSON.stringify(currentEmployee));
-    
-    // First, perform a hard delete of the old absence to ensure clean state
-    await hardDeleteScheduledAbsence(employeeId, periodId, absenceId, employeeCopy, weeklyRecords);
+    // First, hard-delete the old absence to ensure a clean state
+    await hardDeleteScheduledAbsence(employeeId, periodId, absenceId, currentEmployee, weeklyRecords);
 
-    // Then, add the new, updated absence
+    // Then, add the new, updated absence, preserving the originalRequest if it exists
     await addScheduledAbsence(
         employeeId,
         periodId,
@@ -372,8 +368,8 @@ export const updateScheduledAbsence = async (
             startDate: newData.startDate,
             endDate: newData.endDate,
         },
-        employeeCopy, // Use the modified copy
-        newData.originalRequest || undefined
+        currentEmployee, 
+        originalRequest
     );
 };
 

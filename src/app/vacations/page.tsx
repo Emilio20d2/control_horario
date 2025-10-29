@@ -468,10 +468,10 @@ export default function VacationsPage() {
                     startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
                     endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
                     absenceTypeId: editingAbsence.absence.absenceTypeId,
-                    originalRequest: editingAbsence.absence.originalRequest
                 },
                 editingAbsence.employee,
-                weeklyRecords
+                weeklyRecords,
+                editingAbsence.absence.originalRequest
             );
     
             toast({ title: 'Ausencia actualizada', description: `La ausencia de ${editingAbsence.employee.name} ha sido modificada.` });
