@@ -43,8 +43,11 @@ export default function SchedulePage() {
         const weekEnd = endOfDay(endOfWeek(weekStart, { weekStartsOn: 1 }));
 
         return employee.employmentPeriods.some(p => {
-            const periodStart = startOfDay(parseISO(p.startDate as string));
-            const periodEnd = p.endDate ? endOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
+            const periodStartObj = typeof p.startDate === 'string' ? parseISO(p.startDate) : p.startDate;
+            const periodStart = startOfDay(periodStartObj as Date);
+
+            const periodEndObj = p.endDate ? (typeof p.endDate === 'string' ? parseISO(p.endDate) : p.endDate) : null;
+            const periodEnd = periodEndObj ? endOfDay(periodEndObj) : new Date('9999-12-31');
             
             return periodStart <= weekEnd && periodEnd >= weekStart;
         });
@@ -55,7 +58,11 @@ export default function SchedulePage() {
     }, [currentDate, employees, isEmployeeActiveForWeek]);
 
     const activeEmployeesForDropdown = useMemo(() => {
-        return employees.filter(e => e.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), startOfDay(new Date()))));
+        return employees.filter(e => e.employmentPeriods?.some(p => {
+            if (!p.endDate) return true;
+            const endDate = typeof p.endDate === 'string' ? parseISO(p.endDate) : p.endDate;
+            return isAfter(endDate, startOfDay(new Date()));
+        }));
     }, [employees]);
 
     const weekId = useMemo(() => {
@@ -342,3 +349,5 @@ export default function SchedulePage() {
     </>
   );
 }
+
+    
