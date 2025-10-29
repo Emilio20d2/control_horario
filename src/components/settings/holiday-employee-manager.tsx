@@ -45,7 +45,11 @@ export function HolidayEmployeeManager() {
             const holidayEmp = holidayEmployeesMap.get(id);
 
             if (mainEmp) {
-                const activePeriod = mainEmp.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
+                const activePeriod = mainEmp.employmentPeriods.find(p => {
+                    if (!p.endDate) return true;
+                    const endDate = typeof p.endDate === 'string' ? parseISO(p.endDate) : p.endDate;
+                    return isAfter(endDate, new Date());
+                });
                 if (!activePeriod) return null;
                 
                 return {
