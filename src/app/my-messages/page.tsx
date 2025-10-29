@@ -61,12 +61,19 @@ export default function MyMessagesPage() {
         return null;
     }, []);
 
-    const holidayDates = useMemo(() => (holidays || []).map(h => h.date as Date), [holidays]);
-    const dayPickerModifiers = { holidays: holidayDates };
-    const dayPickerModifiersStyles = { 
-        holidays: { color: 'var(--destructive-foreground)', backgroundColor: 'var(--destructive)' },
+    const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
+    const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
+    
+    const dayPickerModifiers = {
+        opening: openingHolidays,
+        other: otherHolidays,
+        selected: otherRequestMultipleDates,
     };
-
+    const dayPickerModifiersStyles = { 
+        opening: { backgroundColor: '#a7f3d0' }, 
+        other: { backgroundColor: '#fecaca' },
+        selected: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }
+    };
 
     const conversation = useMemo(() => {
         if (!conversationId) return null;
@@ -555,9 +562,6 @@ export default function MyMessagesPage() {
                                     onSelect={(days) => setOtherRequestMultipleDates(days || [])}
                                     modifiers={dayPickerModifiers}
                                     modifiersStyles={dayPickerModifiersStyles}
-                                    modifiersClassNames={{
-                                        selected: 'bg-primary text-primary-foreground hover:bg-primary/90',
-                                    }}
                                     locale={es}
                                 />
                             </div>
