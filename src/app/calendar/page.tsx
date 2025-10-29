@@ -17,6 +17,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+  DialogClose,
+} from '@/components/ui/dialog';
 import { ArrowRight, User, Loader2, CalendarPlus } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import {
@@ -29,7 +39,9 @@ import {
   parseISO,
   isSameDay,
   isValid,
-  endOfDay
+  endOfDay,
+  addDays,
+  isAfter,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -63,6 +75,7 @@ export default function CalendarPage() {
   const [selectedDays, setSelectedDays] = useState<Record<string, boolean>>({});
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const weekDays = useMemo(() => eachDayOfInterval({ start: currentDate, end: endOfWeek(currentDate, { weekStartsOn: 1 }) }), [currentDate]);
   
@@ -192,6 +205,7 @@ export default function CalendarPage() {
         toast({ title: 'Ausencia Programada', description: `Se ha guardado la ausencia para ${employee.name}.` });
         resetForm();
         refreshData();
+        setIsDialogOpen(false);
 
     } catch (error) {
         console.error("Error programming absence:", error);
@@ -213,30 +227,38 @@ export default function CalendarPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-        <Card>
-            <CardHeader>
-                <CardTitle>Programar Ausencia</CardTitle>
-                <CardDescription>Selecciona la semana, el empleado y los días para registrar una nueva ausencia.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+                 <Button>
+                    <CalendarPlus className="mr-2 h-4 w-4" />
+                    Agendar Ausencia
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[625px]">
+                <DialogHeader>
+                    <DialogTitle>Programar Nueva Ausencia</DialogTitle>
+                    <DialogDescription>
+                        Selecciona la semana, el empleado y los días para registrar una nueva ausencia.
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-6 py-4">
                     <div className="flex justify-center">
                         <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                          <div className="space-y-2">
-                             <Label htmlFor="employee-select">Empleado</Label>
+                             <Label htmlFor="employee-select-dialog">Empleado</Label>
                              <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-                                <SelectTrigger id="employee-select"><SelectValue placeholder="Seleccionar empleado..." /></SelectTrigger>
+                                <SelectTrigger id="employee-select-dialog"><SelectValue placeholder="Seleccionar empleado..." /></SelectTrigger>
                                 <SelectContent>
                                     {activeEmployees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                          </div>
                          <div className="space-y-2">
-                             <Label htmlFor="absence-select">Tipo de Ausencia</Label>
+                             <Label htmlFor="absence-select-dialog">Tipo de Ausencia</Label>
                              <Select value={selectedAbsenceTypeId} onValueChange={setSelectedAbsenceTypeId}>
-                                <SelectTrigger id="absence-select"><SelectValue placeholder="Seleccionar tipo de ausencia..." /></SelectTrigger>
+                                <SelectTrigger id="absence-select-dialog"><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
                                 <SelectContent>
                                     {absenceTypes.sort((a,b) => a.name.localeCompare(b.name)).map(at => <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>)}
                                 </SelectContent>
@@ -250,9 +272,9 @@ export default function CalendarPage() {
                                 const dayKey = format(day, 'yyyy-MM-dd');
                                 return (
                                     <div key={dayKey} className="flex items-center space-x-2">
-                                        <Checkbox id={dayKey} checked={selectedDays[dayKey] || false} onCheckedChange={() => handleDayToggle(dayKey)} />
-                                        <label htmlFor={dayKey} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                            {format(day, 'E, d MMM', {locale: es})}
+                                        <Checkbox id={`dialog-${dayKey}`} checked={selectedDays[dayKey] || false} onCheckedChange={() => handleDayToggle(dayKey)} />
+                                        <label htmlFor={`dialog-${dayKey}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                            {format(day, 'E, d', {locale: es})}
                                         </label>
                                     </div>
                                 )
@@ -263,15 +285,18 @@ export default function CalendarPage() {
                         <Label htmlFor="notes">Notas (Opcional)</Label>
                         <Textarea id="notes" placeholder="Añade un comentario sobre la ausencia..." value={notes} onChange={e => setNotes(e.target.value)} />
                     </div>
-                    <div className="flex justify-end">
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="secondary">Cancelar</Button>
+                        </DialogClose>
                         <Button type="submit" disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarPlus className="mr-2 h-4 w-4" />}
                             Guardar Ausencia
                         </Button>
-                    </div>
+                    </DialogFooter>
                 </form>
-            </CardContent>
-        </Card>
+            </DialogContent>
+        </Dialog>
 
 
         <Card>
@@ -279,6 +304,7 @@ export default function CalendarPage() {
                 <div className="text-center">
                     <CardTitle className="text-2xl font-bold tracking-tight font-headline">Resumen Semanal de Ausencias</CardTitle>
                 </div>
+                <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
             </CardHeader>
             <CardContent>
                 <div className="border rounded-lg overflow-auto">
@@ -344,7 +370,5 @@ export default function CalendarPage() {
     </div>
   );
 }
-
-
 
     
