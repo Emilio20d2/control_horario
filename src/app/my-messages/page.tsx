@@ -26,37 +26,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
-// Componente de Calendario Aislado
-const OtherRequestCalendar = ({ holidays, selectedDays, onDayChange }: { holidays: Holiday[], selectedDays: Date[], onDayChange: (days: Date[]) => void }) => {
-    const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => new Date(h.date)), [holidays]);
-    const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => new Date(h.date)), [holidays]);
-    
-    const modifiers = {
-        opening: openingHolidays,
-        other: otherHolidays,
-        selected: selectedDays,
-    };
-
-    const modifiersStyles = {
-        opening: { backgroundColor: '#a7f3d0' },
-        other: { color: 'var(--destructive-foreground)', backgroundColor: 'var(--destructive)' },
-        selected: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' },
-    };
-
-    return (
-        <DayPicker
-            mode="multiple"
-            min={0}
-            selected={selectedDays}
-            onSelect={(days) => onDayChange(days || [])}
-            locale={es}
-            modifiers={modifiers}
-            modifiersStyles={modifiersStyles}
-        />
-    );
-};
-
-
 export default function MyMessagesPage() {
     const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, getTheoreticalHoursAndTurn, holidays } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
@@ -109,15 +78,15 @@ export default function MyMessagesPage() {
 
     const otherRequestAbsenceTypes = useMemo(() => {
         const allowedAbbreviations = new Set([
-            'AP', // Día de Asuntos Propios
-            'B/C', // Boda/Comunión
-            'DH', // Devolución Horas
-            'DF', // Devolución Festivo
-            'DL', // Devolución Libranza
-            'LF', // Libranza de Festivo
-            'HS', // Horas Sindicales
-            'RJS', // Reducción Jornada Senior
-            'HM', // Petición de Horas Médicas
+            'AP',
+            'B/C',
+            'DH',
+            'DF',
+            'DL',
+            'LF',
+            'HS',
+            'RJS',
+            'HM',
         ]);
         return absenceTypes.filter(at => allowedAbbreviations.has(at.abbreviation));
     }, [absenceTypes]);
@@ -424,6 +393,21 @@ export default function MyMessagesPage() {
             </div>
         )
     }
+
+    const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
+    const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
+    
+    const dayPickerModifiers = {
+        opening: openingHolidays,
+        other: otherHolidays,
+        selected: otherRequestMultipleDates,
+    };
+
+    const dayPickerModifiersStyles = {
+        opening: { backgroundColor: '#a7f3d0' },
+        other: { color: 'var(--destructive-foreground)', backgroundColor: 'var(--destructive)' },
+        selected: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' },
+    };
     
     return (
         <>
@@ -574,10 +558,14 @@ export default function MyMessagesPage() {
                             )}
                             <div className="space-y-2">
                                 <Label className="text-sm font-medium">Días del Permiso</Label>
-                                <OtherRequestCalendar
-                                    holidays={holidays}
-                                    selectedDays={otherRequestMultipleDates}
-                                    onDayChange={setOtherRequestMultipleDates}
+                                <DayPicker
+                                    mode="multiple"
+                                    min={0}
+                                    selected={otherRequestMultipleDates}
+                                    onSelect={(days) => setOtherRequestMultipleDates(days || [])}
+                                    locale={es}
+                                    modifiers={dayPickerModifiers}
+                                    modifiersStyles={dayPickerModifiersStyles}
                                 />
                                 {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name === 'Reducción Jornada Senior' && (
                                     <Card className="mt-2">
@@ -621,3 +609,5 @@ export default function MyMessagesPage() {
         </>
     );
 }
+
+    
