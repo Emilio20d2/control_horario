@@ -325,18 +325,17 @@ export const addScheduledAbsence = async (
         absenceTypeId: newAbsence.absenceTypeId,
         startDate: parseISO(newAbsence.startDate),
         endDate: newAbsence.endDate ? parseISO(newAbsence.endDate) : null,
-        originalRequest: originalRequest ? {
-            startDate: typeof originalRequest.startDate === 'string' ? parseISO(originalRequest.startDate) : originalRequest.startDate,
-            endDate: originalRequest.endDate ? (typeof originalRequest.endDate === 'string' ? parseISO(originalRequest.endDate) : originalRequest.endDate) : null,
-        } : undefined
     };
     
-    if (!absenceToAdd.originalRequest) {
+    // Only set originalRequest if it's explicitly passed (i.e., for campaign requests)
+    // For manual additions/edits in the planner, this will be undefined.
+    if (originalRequest) {
         absenceToAdd.originalRequest = {
-            startDate: absenceToAdd.startDate,
-            endDate: absenceToAdd.endDate
-        };
+            startDate: typeof originalRequest.startDate === 'string' ? parseISO(originalRequest.startDate) : originalRequest.startDate,
+            endDate: originalRequest.endDate ? (typeof originalRequest.endDate === 'string' ? parseISO(originalRequest.endDate) : originalRequest.endDate) : null,
+        }
     }
+
 
     period.scheduledAbsences.push(absenceToAdd);
 
@@ -357,19 +356,15 @@ export const updateScheduledAbsence = async (
     const absenceIndex = period.scheduledAbsences.findIndex(a => a.id === absenceId);
     if (absenceIndex === -1) throw new Error("Ausencia no encontrada para actualizar");
 
-    const originalAbsence = period.scheduledAbsences[absenceIndex];
-
-    // 1. Invalidate old absence
+    // Invalidate the old record by making it a single day event.
     period.scheduledAbsences[absenceIndex].endDate = period.scheduledAbsences[absenceIndex].startDate;
-
-    // 2. Add new absence, preserving the original request info
+    
+    // Add a new record. Crucially, do NOT pass the originalRequest, effectively unlinking it.
     await addScheduledAbsence(employeeId, periodId, {
-        absenceTypeId: originalAbsence.absenceTypeId,
+        absenceTypeId: period.scheduledAbsences[absenceIndex].absenceTypeId,
         startDate: newData.startDate,
         endDate: newData.endDate,
-    }, currentEmployee, originalAbsence.originalRequest);
-
-    // The final update is handled by the addScheduledAbsence function
+    }, currentEmployee);
 };
 
 
@@ -407,7 +402,7 @@ export const deleteScheduledAbsence = async (
         }
     }
     
-    // Invalidate the record by setting end date to start date
+    // Invalidate the record by setting end date to start date, making it a zero-length interval for display
     period.scheduledAbsences[absenceIndex].endDate = period.scheduledAbsences[absenceIndex].startDate;
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });

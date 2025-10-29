@@ -487,7 +487,7 @@ export default function VacationsPage() {
         setIsGenerating(true);
         try {
             const { employee, absence } = editingAbsence;
-            await deleteScheduledAbsence(employee.id, absence.periodId!, absence.id, employee);
+            await deleteScheduledAbsence(employee.id, absence.periodId!, absence.id, employee, weeklyRecords);
             toast({ title: 'Ausencia Eliminada', description: `La ausencia de ${employee.name} ha sido eliminada.`, variant: 'destructive' });
             refreshData();
             setEditingAbsence(null);
@@ -515,16 +515,12 @@ export default function VacationsPage() {
 
         setIsGenerating(true);
         try {
-            const originalRequest = {
-                startDate: format(selectedDateRange.from, 'yyyy-MM-dd'),
-                endDate: format(selectedDateRange.to, 'yyyy-MM-dd'),
-            };
-            
+            // For manual additions, the originalRequest is not set, as it's not a formal campaign request
             await addScheduledAbsence(selectedEmployeeId, activePeriod.id, {
                 absenceTypeId: selectedAbsenceTypeId,
                 startDate: format(selectedDateRange.from, 'yyyy-MM-dd'),
                 endDate: format(selectedDateRange.to, 'yyyy-MM-dd'),
-            }, selectedEmployee, originalRequest);
+            }, selectedEmployee);
             
             toast({ title: 'Periodo de ausencia añadido', description: `Se ha guardado la ausencia para ${selectedEmployee?.name}.` });
             setSelectedDateRange(undefined);
@@ -1007,6 +1003,7 @@ export default function VacationsPage() {
     
 
     
+
 
 
 
