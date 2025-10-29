@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -241,13 +242,17 @@ export default function MyMessagesPage() {
             toast({ title: 'Solicitud Enviada', description: 'Tu solicitud de ausencia ha sido registrada.' });
     
             const absenceName = absenceTypes.find(at => at.id === requestAbsenceTypeId)?.name || 'Ausencia';
-            const requestMessage = `**NUEVA SOLICITUD DE AUSENCIA**
-            - **Campaña:** ${selectedCampaign.title}
-            - **Tipo:** ${absenceName}
-            - **Desde:** ${format(requestDateRange.from, 'dd/MM/yyyy')}
-            - **Hasta:** ${format(requestDateRange.to, 'dd/MM/yyyy')}
-    
-            Esta solicitud ha sido pre-aprobada y registrada en el planificador. Un administrador la revisará.`;
+            const requestMessage = `Hola,
+
+Quiero solicitar una ausencia dentro de la campaña **"${selectedCampaign.title}"**.
+
+- **Tipo**: ${absenceName}
+- **Desde**: ${format(requestDateRange.from, 'dd/MM/yyyy')}
+- **Hasta**: ${format(requestDateRange.to, 'dd/MM/yyyy')}
+
+La solicitud ha sido pre-aprobada y registrada en el planificador para su revisión.
+
+Gracias.`;
     
             await sendMessage(requestMessage);
     
@@ -276,13 +281,13 @@ export default function MyMessagesPage() {
         
         let extraInfo = '';
         if (selectedAbsenceName === 'Reducción Jornada Senior') {
-            finalNotes = `PETICION DE "${seniorHoursTotal.toFixed(2)}" HORAS REDUCCION JORNADA SENIOR`;
+            finalNotes = `Petición de **${seniorHoursTotal.toFixed(2)} horas** por reducción de jornada senior.`;
         } else if (selectedAbsenceName === 'Petición de Horas Médicas') {
             if (!medicalAppointmentTime) {
                 toast({ title: 'Hora requerida', description: 'Por favor, especifica la hora de la consulta médica.', variant: 'destructive' });
                 return;
             }
-            extraInfo = `\n- **Hora Consulta:** ${medicalAppointmentTime}`;
+            extraInfo = `\n- **Hora Consulta**: ${medicalAppointmentTime}`;
             if (!finalNotes.trim()) {
                 toast({ title: 'Motivo Requerido', description: 'Por favor, explica el motivo de tu solicitud en las notas.', variant: 'destructive' });
                 return;
@@ -302,12 +307,15 @@ export default function MyMessagesPage() {
         setIsSubmittingOtherRequest(true);
         try {
             const absenceName = selectedAbsenceName || 'Ausencia';
-            const requestMessage = `**NUEVA SOLICITUD DE PERMISO**
-            - **Comunicado a:** ${communicatedTo}
-            - **Tipo:** ${absenceName}
-            - **Fecha(s):** ${datesForMessage}${extraInfo}
-            - **Motivo:** ${finalNotes}
-            `;
+            const requestMessage = `Hola,
+
+Quiero solicitar un permiso que ya he comunicado a **${communicatedTo}**.
+
+- **Tipo**: ${absenceName}
+- **Fecha(s)**: ${datesForMessage}${extraInfo}
+- **Motivo**: ${finalNotes}
+
+Gracias.`;
 
             await sendMessage(requestMessage);
             
@@ -410,11 +418,9 @@ export default function MyMessagesPage() {
     return (
         <>
             <div className="flex flex-col gap-6 p-4 md:p-6 h-full">
-                <div className="flex-shrink-0">
-                    <h1 className="text-2xl font-bold tracking-tight font-headline">
-                        Mis Mensajes
-                    </h1>
-                </div>
+                <h1 className="text-2xl font-bold tracking-tight font-headline">
+                    Mis Mensajes
+                </h1>
                 
                 <Card className="flex flex-col flex-grow h-[calc(100vh-12rem)]">
                     <CardHeader className="p-4 border-b">
@@ -625,3 +631,4 @@ export default function MyMessagesPage() {
         </>
     );
 }
+
