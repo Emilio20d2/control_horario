@@ -26,7 +26,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowRight, User, Loader2, CalendarPlus, Trash2, CalendarRange, Info } from 'lucide-react';
+import { ArrowRight, User, Loader2, CalendarPlus, Trash2, CalendarRange, Info, Calendar as CalendarIcon } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import {
   format,
@@ -49,8 +49,6 @@ import type { Employee, ScheduledAbsence, HolidayReport, AbsenceType } from '@/l
 import { WeekNavigator } from '@/components/schedule/week-navigator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { addScheduledAbsence, hardDeleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Label } from '@/components/ui/label';
@@ -58,6 +56,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Input } from '@/components/ui/input';
+import { DayPicker } from 'react-day-picker';
 
 interface CellAbsenceInfo {
     employee: Employee;
@@ -78,8 +77,7 @@ export default function CalendarPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
   const [selectedAbsenceTypeId, setSelectedAbsenceTypeId] = useState<string>('');
-  const [selectedDays, setSelectedDays] = useState<Record<string, boolean>>({});
-  const [notes, setNotes] = useState('');
+  const [selectedDays, setSelectedDays] = useState<Date[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // State for absence details dialog
@@ -174,20 +172,28 @@ export default function CalendarPage() {
 
   }, [loading, currentDate, getActiveEmployeesForDate, holidayReports, absenceTypes, weekDays, safeParseDate]);
   
-  const handleDayToggle = (dayKey: string) => {
-    setSelectedDays(prev => ({ ...prev, [dayKey]: !prev[dayKey] }));
-  };
+  const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
+  const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
 
+  const dayPickerModifiers = {
+      opening: openingHolidays,
+      other: otherHolidays,
+  };
+  const dayPickerModifiersStyles = { 
+      opening: { backgroundColor: '#a7f3d0' }, 
+      other: { backgroundColor: '#fecaca' },
+      selected: { backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }
+  };
+  
   const resetForm = () => {
     setSelectedEmployeeId('');
     setSelectedAbsenceTypeId('');
-    setSelectedDays({});
-    setNotes('');
+    setSelectedDays([]);
   }
 
   const handleAddAbsenceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const daysToSave = Object.entries(selectedDays).filter(([, isSelected]) => isSelected).map(([dayKey]) => dayKey);
+    const daysToSave = selectedDays.map(day => format(day, 'yyyy-MM-dd'));
 
     if (!selectedEmployeeId || !selectedAbsenceTypeId || daysToSave.length === 0) {
       toast({ title: 'Datos incompletos', description: 'Debes seleccionar empleado, tipo de ausencia y al menos un día.', variant: 'destructive' });
@@ -333,17 +339,14 @@ export default function CalendarPage() {
                             Agendar Ausencia
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[625px]">
+                    <DialogContent className="sm:max-w-fit">
                         <DialogHeader>
                             <DialogTitle>Programar Nueva Ausencia</DialogTitle>
                             <DialogDescription>
-                                Selecciona la semana, el empleado y los días para registrar una nueva ausencia.
+                                Selecciona el empleado, tipo de ausencia y los días.
                             </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleAddAbsenceSubmit} className="space-y-6 py-4">
-                            <div className="flex justify-center">
-                                <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
-                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                                 <div className="space-y-2">
                                     <Label htmlFor="employee-select-dialog">Empleado</Label>
@@ -366,24 +369,19 @@ export default function CalendarPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label>Días de la Ausencia</Label>
-                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 rounded-lg border p-4">
-                                    {weekDays.map(day => {
-                                        const dayKey = format(day, 'yyyy-MM-dd');
-                                        return (
-                                            <div key={dayKey} className="flex items-center space-x-2">
-                                                <Checkbox id={`dialog-${dayKey}`} checked={selectedDays[dayKey] || false} onCheckedChange={() => handleDayToggle(dayKey)} />
-                                                <label htmlFor={`dialog-${dayKey}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                                    {format(day, 'E, d', {locale: es})}
-                                                </label>
-                                            </div>
-                                        )
-                                    })}
+                                <div className="rounded-md border flex justify-center">
+                                    <DayPicker
+                                        mode="multiple"
+                                        min={0}
+                                        selected={selectedDays}
+                                        onSelect={(days) => setSelectedDays(days || [])}
+                                        locale={es}
+                                        modifiers={dayPickerModifiers}
+                                        modifiersStyles={dayPickerModifiersStyles}
+                                    />
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="notes">Notas (Opcional)</Label>
-                                <Textarea id="notes" placeholder="Añade un comentario sobre la ausencia..." value={notes} onChange={e => setNotes(e.target.value)} />
-                            </div>
+                            
                             <DialogFooter>
                                 <DialogClose asChild>
                                     <Button type="button" variant="secondary">Cancelar</Button>
