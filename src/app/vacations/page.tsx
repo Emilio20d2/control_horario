@@ -63,6 +63,7 @@ import {
   eachWeekOfInterval,
   parse,
   isEqual,
+  isValid
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
@@ -234,6 +235,13 @@ export default function VacationsPage() {
         return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
     }, [employees]);
     
+    useEffect(() => {
+        if (!loading && availableYears.length > 0) {
+            const latestYearWithData = availableYears[0];
+            setSelectedYear(String(latestYearWithData));
+        }
+    }, [loading, availableYears]);
+    
     const schedulableAbsenceTypes = useMemo(() => {
         return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
     }, [absenceTypes]);
@@ -305,28 +313,47 @@ export default function VacationsPage() {
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
     
         allEmployeesForQuadrant.forEach(emp => {
-            const absences: FormattedAbsence[] = (emp.employmentPeriods || [])
-                .flatMap((p: EmploymentPeriod) => {
-                    const definitiveAbsences = new Map<string, ScheduledAbsence>();
-                    (p.scheduledAbsences || []).forEach(a => {
-                        if (!schedulableIds.has(a.absenceTypeId)) return;
-                        
-                        const originalId = a.originalRequest ? `${a.originalRequest.startDate}-${a.originalRequest.endDate}` : a.id;
-                        
-                        if (a.isDefinitive) {
-                            definitiveAbsences.set(originalId, a);
-                        } else if (!definitiveAbsences.has(originalId)) {
-                             definitiveAbsences.set(originalId, { ...a, isDefinitive: true });
-                        }
-                    });
-
-                    return Array.from(definitiveAbsences.values()).map(a => ({
-                        ...a,
-                        absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
-                        periodId: p.id,
-                    }));
+            const definitiveAbsences = new Map<string, ScheduledAbsence>();
+            const originalRequests = new Map<string, ScheduledAbsence>();
+    
+            (emp.employmentPeriods || []).forEach((p: EmploymentPeriod) => {
+                (p.scheduledAbsences || []).forEach(a => {
+                    if (!schedulableIds.has(a.absenceTypeId)) return;
+    
+                    const requestIdentifier = a.originalRequest 
+                        ? `${a.originalRequest.startDate}-${a.originalRequest.endDate}` 
+                        : `${format(a.startDate, 'yyyy-MM-dd')}-${a.endDate ? format(a.endDate, 'yyyy-MM-dd') : ''}`;
+    
+                    if (a.isDefinitive) {
+                        definitiveAbsences.set(requestIdentifier, a);
+                    } else {
+                        originalRequests.set(requestIdentifier, a);
+                    }
                 });
-            employeesWithAbsences[emp.id] = absences;
+            });
+    
+            const finalAbsences: FormattedAbsence[] = [];
+            originalRequests.forEach((orig, key) => {
+                const definitive = definitiveAbsences.get(key);
+                // Use the definitive record if it exists, otherwise, create a "virtual" definitive record from the original.
+                const recordToShow = definitive || { ...orig, isDefinitive: true };
+                finalAbsences.push({
+                    ...recordToShow,
+                    absenceAbbreviation: absenceTypes.find(at => at.id === recordToShow.absenceTypeId)?.abbreviation || '??',
+                    periodId: emp.employmentPeriods.find(p => p.scheduledAbsences?.some(pa => pa.id === recordToShow.id))?.id || '',
+                });
+            });
+             // Add definitive absences that might not have an original request (e.g., manually added by admin)
+            definitiveAbsences.forEach((def, key) => {
+                if (!originalRequests.has(key)) {
+                    finalAbsences.push({
+                        ...def,
+                        absenceAbbreviation: absenceTypes.find(at => at.id === def.absenceTypeId)?.abbreviation || '??',
+                        periodId: emp.employmentPeriods.find(p => p.scheduledAbsences?.some(pa => pa.id === def.id))?.id || '',
+                    });
+                }
+            });
+            employeesWithAbsences[emp.id] = finalAbsences;
         });
         
         const allAbsences = Object.values(employeesWithAbsences).flat();
@@ -382,27 +409,6 @@ export default function VacationsPage() {
     
     }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId]);
     
-    useEffect(() => {
-        if (loading) return;
-
-        const allScheduledAbsences = employees.flatMap(e => e.employmentPeriods || []).flatMap(p => p.scheduledAbsences || []);
-
-        let latestYear = getYear(new Date());
-        if (allScheduledAbsences.length > 0) {
-            const maxYear = allScheduledAbsences.reduce((max, absence) => {
-                if (!absence.startDate) return max;
-                const year = getYear(absence.startDate);
-                return year > max ? year : max;
-            }, 0);
-            if (maxYear > latestYear) {
-                latestYear = maxYear;
-            }
-        }
-        
-        setSelectedYear(String(latestYear));
-    }, [loading, employees]);
-
-
     const handleUpdateAbsence = async () => {
         if (!editingAbsence || !editedDateRange?.from) return;
         
@@ -717,6 +723,14 @@ export default function VacationsPage() {
             <span className={cn("font-mono", isNegative && "text-destructive")}>{value}</span>
         </div>
     );
+
+    const parseAndFormatDate = (date: Date | string | null | undefined, formatString: string): string => {
+        if (!date) return '';
+        const dateObj = typeof date === 'string' ? parseISO(date) : date;
+        if (!isValid(dateObj)) return '';
+        return format(dateObj, formatString, { locale: es });
+    };
+
     
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
@@ -856,7 +870,7 @@ export default function VacationsPage() {
                         {editingAbsence && (
                             <DialogDescription>
                                 Modificando la ausencia de <strong>{editingAbsence.employee.name}</strong> del tipo <strong>{absenceTypes.find(at => at.id === editingAbsence.absence.absenceTypeId)?.name}</strong>.
-                                {editingAbsence.absence.originalRequest && <p className="text-xs text-muted-foreground pt-2">Solicitud Original: del {format(parseISO(editingAbsence.absence.originalRequest.startDate as string), 'dd/MM/yy')} al {editingAbsence.absence.originalRequest.endDate ? format(parseISO(editingAbsence.absence.originalRequest.endDate as string), 'dd/MM/yy') : ''}</p>}
+                                {editingAbsence.absence.originalRequest && <p className="text-xs text-muted-foreground pt-2">Solicitud Original: del {parseAndFormatDate(editingAbsence.absence.originalRequest.startDate, 'dd/MM/yy')} al {parseAndFormatDate(editingAbsence.absence.originalRequest.endDate, 'dd/MM/yy')}</p>}
                             </DialogDescription>
                         )}
                     </DialogHeader>
@@ -973,3 +987,4 @@ export default function VacationsPage() {
         </div>
     );
 }
+
