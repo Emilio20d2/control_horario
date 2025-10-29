@@ -64,4 +64,8 @@
   body {
     @apply bg-background text-foreground;
   }
+  .rdp-day_selected {
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+  }
 }
