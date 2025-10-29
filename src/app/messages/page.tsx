@@ -75,8 +75,8 @@ export default function MessagesPage() {
 
     useEffect(() => {
         if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+            textareaRef.current.style.height = 'auto'; // Reset height
+            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 128)}px`; // Set new height, max 128px (8rem)
         }
     }, [newMessage]);
 
@@ -193,17 +193,17 @@ export default function MessagesPage() {
                         )}
                     </ScrollArea>
                     <div className="p-4 border-t">
-                        <form onSubmit={handleSendMessage} className="relative flex items-end gap-2">
+                        <form onSubmit={handleSendMessage} className="relative flex items-end w-full">
                            <Textarea
                                 ref={textareaRef}
                                 placeholder="Escribe tu mensaje..."
-                                className="pr-12 resize-none max-h-32 min-h-[40px] h-10"
+                                className="pr-12 resize-none flex-grow"
                                 value={newMessage}
                                 onChange={e => setNewMessage(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 rows={1}
                             />
-                            <Button type="submit" size="icon" className="h-10 w-10 shrink-0">
+                            <Button type="submit" size="icon" className="absolute right-2 bottom-2 h-8 w-8 shrink-0">
                                 <SendHorizonal className="h-4 w-4" />
                             </Button>
                         </form>
