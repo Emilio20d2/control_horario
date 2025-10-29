@@ -313,7 +313,7 @@ export default function MyMessagesPage() {
         return h.date as Date;
     }), [holidays]);
     const dayPickerModifiers = { holidays: holidayDates, selected: otherRequestMultipleDates };
-    const dayPickerModifiersStyles = { holidays: { color: 'var(--destructive-foreground)', backgroundColor: 'var(--destructive)' } };
+    const dayPickerModifiersStyles = { holidays: { color: 'var(--destructive-foreground)', backgroundColor: 'var(--destructive)' }, selected: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)'} };
 
     if (loading) {
         return (
@@ -565,10 +565,3 @@ export default function MyMessagesPage() {
         </>
     );
 }
-    
-
-    
-
-    
-
-    
