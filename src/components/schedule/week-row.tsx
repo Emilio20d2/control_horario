@@ -23,6 +23,7 @@ import { AbsenceEditor } from './absence-editor';
 import { HolidayEditor } from './holiday-editor';
 import { BalancePreviewDisplay } from './balance-preview';
 import { updateDocument } from '@/lib/services/firestoreService';
+import { addScheduledAbsence } from '@/lib/services/employeeService';
 
 interface WeekRowProps {
     employee: Employee;
@@ -145,57 +146,61 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
 
     const syncVacationsWithScheduledAbsences = async () => {
         if (!initialWeekData || !localWeekData || !employee) return;
-
+    
         const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
         if (!vacationType) return;
-
+    
         const updatedPeriods: EmploymentPeriod[] = JSON.parse(JSON.stringify(employee.employmentPeriods));
         let hasChanges = false;
-
+    
         for (const day of weekDays) {
             const dayKey = format(day, 'yyyy-MM-dd');
             const originalDay = initialWeekData.days[dayKey];
             const newDay = localWeekData.days[dayKey];
-
+    
             const wasVacation = originalDay?.absence === vacationType.abbreviation;
             const isNowVacation = newDay?.absence === vacationType.abbreviation;
-            
+    
             if (wasVacation === isNowVacation) continue;
-
+    
             const activePeriod = updatedPeriods.find(p => {
                 const pStart = startOfDay(parseISO(p.startDate as string));
                 const pEnd = p.endDate ? startOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
                 return !isAfter(pStart, day) && isAfter(pEnd, day);
             });
             if (!activePeriod) continue;
-
+    
             hasChanges = true;
-            
+    
             if (isNowVacation) { // Added vacation
                 if (!activePeriod.scheduledAbsences) activePeriod.scheduledAbsences = [];
-                activePeriod.scheduledAbsences.push({
+                 const newAbsence = {
                     id: `abs_${Date.now()}_${Math.random()}`,
                     absenceTypeId: vacationType.id,
                     startDate: startOfDay(day),
                     endDate: startOfDay(day),
-                });
+                    isDefinitive: true,
+                };
+                await addScheduledAbsence(employee.id, activePeriod.id, newAbsence, employee, undefined, true);
 
             } else { // Removed vacation
-                const absenceIndex = activePeriod.scheduledAbsences?.findIndex(a => 
+                const absenceIndex = activePeriod.scheduledAbsences?.findIndex(a =>
                     a.absenceTypeId === vacationType.id &&
                     !isAfter(startOfDay(a.startDate), startOfDay(day)) &&
                     a.endDate && !isBefore(startOfDay(a.endDate), startOfDay(day))
                 );
-
+    
                 if (absenceIndex !== undefined && absenceIndex > -1 && activePeriod.scheduledAbsences) {
                     const absenceToRemove = activePeriod.scheduledAbsences[absenceIndex];
-                    
+    
                     const originalStartDate = startOfDay(absenceToRemove.startDate);
                     const originalEndDate = startOfDay(absenceToRemove.endDate!);
                     const dayToRemove = startOfDay(day);
-
+    
+                    // Remove the old absence from the local copy
                     activePeriod.scheduledAbsences.splice(absenceIndex, 1);
-
+    
+                    // Re-add the parts of the absence that were not removed
                     if (isAfter(dayToRemove, originalStartDate)) {
                         activePeriod.scheduledAbsences.push({ ...absenceToRemove, endDate: subDays(dayToRemove, 1) });
                     }
@@ -205,9 +210,9 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 }
             }
         }
-        
+    
         if (hasChanges) {
-             // Merge overlapping/adjacent intervals
+             // Merge overlapping/adjacent intervals in the local copy
              updatedPeriods.forEach(p => {
                 if (p.scheduledAbsences) {
                     p.scheduledAbsences.sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
@@ -226,6 +231,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     p.scheduledAbsences = merged;
                 }
             });
+            // Update the employee document in Firestore with the modified periods
             await updateDocument('employees', employee.id, { employmentPeriods: updatedPeriods });
         }
     };
