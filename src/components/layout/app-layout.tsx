@@ -95,14 +95,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
   }
 
 
-  const adminMenuItems = [
+  const adminNavItems = [
     { href: '/dashboard', label: 'Panel', icon: LayoutDashboard },
     { href: '/schedule', label: 'Horario', icon: CalendarDays, notification: pendingCorrectionRequestCount > 0 },
     { href: '/employees', label: 'Empleados', icon: Users },
     { href: '/listings', label: 'Formularios', icon: ListChecks },
     { href: '/vacations', label: 'Vacaciones', icon: Plane },
-    { href: '/calendar', label: 'Calendario', icon: CalendarClock },
-    { href: '/messages', label: 'Mensajes', icon: Mail, notification: unreadMessageCount > 0 },
     { href: '/settings', label: 'Ajustes', icon: Settings },
   ];
   
@@ -113,7 +111,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/help', label: 'Ayuda', icon: HelpCircle },
   ];
 
-  const menuItems = viewMode === 'admin' ? adminMenuItems : employeeMenuItems;
+  // The mobile nav will contain all items
+  const mobileAdminNavItems = [
+    ...adminNavItems,
+    { href: '/calendar', label: 'Calendario', icon: CalendarClock },
+    { href: '/messages', label: 'Mensajes', icon: Mail, notification: unreadMessageCount > 0 },
+  ];
+
+  const menuItems = viewMode === 'admin' ? (isMobile ? mobileAdminNavItems : adminNavItems) : employeeMenuItems;
 
   const MainNav = ({className, isMobileNav}: {className?: string, isMobileNav?: boolean}) => (
     <nav className={cn(
@@ -185,50 +190,83 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
         
         <div className="flex items-center gap-2 ml-auto">
-            {viewMode === 'admin' && !isMobile && (
-              <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="rounded-full relative">
-                          <Bell className="h-5 w-5" />
-                          {unconfirmedWeeksDetails.length > 0 && (
-                              <span className="absolute top-1.5 right-1.5 flex h-3 w-3">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
-                              </span>
-                          )}
-                          <span className="sr-only">Alternar notificaciones</span>
-                      </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-80">
-                      <DropdownMenuLabel>Semanas Anteriores Sin Confirmar</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      {unconfirmedWeeksDetails.length > 0 ? (
-                          unconfirmedWeeksDetails.map(detail => (
-                              <TooltipProvider key={detail.weekId}>
-                                  <Tooltip>
-                                      <TooltipTrigger asChild>
-                                          <Link href={`/schedule?week=${detail.weekId}`} passHref>
-                                              <DropdownMenuItem>
-                                                  Semana del {format(parseISO(detail.weekId), 'd MMM, yyyy', { locale: es })}
-                                              </DropdownMenuItem>
-                                          </Link>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="left">
-                                          <p className='font-medium'>Empleados pendientes:</p>
-                                          <ul className="list-disc pl-4 text-muted-foreground">
-                                              {detail.employeeNames.map(name => <li key={name}>{name}</li>)}
-                                          </ul>
-                                      </TooltipContent>
-                                  </Tooltip>
-                              </TooltipProvider>
-                          ))
-                      ) : (
-                          <DropdownMenuItem disabled>No hay semanas pendientes.</DropdownMenuItem>
-                      )}
-                  </DropdownMenuContent>
-              </DropdownMenu>
+             {viewMode === 'admin' && !isMobile && (
+              <TooltipProvider>
+                <div className="flex items-center gap-1">
+                   <Tooltip>
+                    <TooltipTrigger asChild>
+                       <Link href="/calendar">
+                         <Button variant={pathname.startsWith('/calendar') ? 'secondary' : 'ghost'} size="icon">
+                            <CalendarClock className="h-5 w-5" />
+                         </Button>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent>Calendario de Ausencias</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                       <Link href="/messages">
+                         <Button variant={pathname.startsWith('/messages') ? 'secondary' : 'ghost'} size="icon" className="relative">
+                            <Mail className="h-5 w-5" />
+                             {unreadMessageCount > 0 && (
+                                <span className="absolute top-1.5 right-1.5 flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
+                                </span>
+                            )}
+                         </Button>
+                       </Link>
+                    </TooltipTrigger>
+                    <TooltipContent>Mensajes</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="relative">
+                                  <Bell className="h-5 w-5" />
+                                  {unconfirmedWeeksDetails.length > 0 && (
+                                      <span className="absolute top-1.5 right-1.5 flex h-3 w-3">
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                                          <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
+                                      </span>
+                                  )}
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-80">
+                              <DropdownMenuLabel>Semanas Anteriores Sin Confirmar</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {unconfirmedWeeksDetails.length > 0 ? (
+                                  unconfirmedWeeksDetails.map(detail => (
+                                      <TooltipProvider key={detail.weekId}>
+                                          <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                  <Link href={`/schedule?week=${detail.weekId}`} passHref>
+                                                      <DropdownMenuItem>
+                                                          Semana del {format(parseISO(detail.weekId), 'd MMM, yyyy', { locale: es })}
+                                                      </DropdownMenuItem>
+                                                  </Link>
+                                              </TooltipTrigger>
+                                              <TooltipContent side="left">
+                                                  <p className='font-medium'>Empleados pendientes:</p>
+                                                  <ul className="list-disc pl-4 text-muted-foreground">
+                                                      {detail.employeeNames.map(name => <li key={name}>{name}</li>)}
+                                                  </ul>
+                                              </TooltipContent>
+                                          </Tooltip>
+                                      </TooltipProvider>
+                                  ))
+                              ) : (
+                                  <DropdownMenuItem disabled>No hay semanas pendientes.</DropdownMenuItem>
+                              )}
+                          </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TooltipTrigger>
+                    <TooltipContent>Notificaciones</TooltipContent>
+                  </Tooltip>
+                </div>
+              </TooltipProvider>
             )}
-
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
