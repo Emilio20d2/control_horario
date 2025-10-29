@@ -336,23 +336,31 @@ export default function MyMessagesPage() {
         return null;
     };
 
-    const holidayDates = useMemo(() => {
-        return (holidays || []).map(h => safeParseDate(h.date)).filter((d): d is Date => d !== null);
-    }, [holidays]);
+    const openingHolidays = useMemo(() => {
+        return holidays
+          .filter(h => h.type === 'Apertura')
+          .map(h => safeParseDate(h.date))
+          .filter((d): d is Date => d !== null);
+    }, [holidays, safeParseDate]);
+    
+    const otherHolidays = useMemo(() => {
+        return holidays
+          .filter(h => h.type !== 'Apertura')
+          .map(h => safeParseDate(h.date))
+          .filter((d): d is Date => d !== null);
+    }, [holidays, safeParseDate]);
     
     const dayPickerModifiers = {
-        holidays: holidayDates,
-        selected: otherRequestMultipleDates,
+        opening: openingHolidays,
+        other: otherHolidays,
     };
     
     const dayPickerModifiersStyles = {
-        holidays: {
-            color: 'var(--destructive-foreground)',
-            backgroundColor: 'var(--destructive)',
-        },
-        selected: {
+        opening: { backgroundColor: '#a7f3d0' },
+        other: { backgroundColor: '#fecaca' },
+        selected: { 
             backgroundColor: 'var(--primary)',
-            color: 'var(--primary-foreground)',
+            color: 'var(--primary-foreground)'
         },
     };
 
@@ -614,3 +622,5 @@ export default function MyMessagesPage() {
         </>
     );
 }
+
+    
