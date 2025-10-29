@@ -83,10 +83,10 @@ export default function MyMessagesPage() {
             'DH',
             'DF',
             'DL',
-            'LF',
             'HS',
             'RJS',
             'HM',
+            'LF'
         ]);
         return absenceTypes.filter(at => allowedAbbreviations.has(at.abbreviation));
     }, [absenceTypes]);
@@ -94,6 +94,39 @@ export default function MyMessagesPage() {
     const [messagesSnapshot, messagesLoading] = useCollectionData(
         conversationId ? query(collection(db, 'conversations', conversationId, 'messages'), orderBy('timestamp', 'asc')) : null
     );
+
+    const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
+    const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
+    
+    const dayPickerModifiers = {
+        opening: openingHolidays,
+        other: otherHolidays,
+        selected: otherRequestMultipleDates,
+    };
+
+    const dayPickerModifiersStyles = {
+        opening: { backgroundColor: '#a7f3d0' },
+        other: { color: 'var(--destructive-foreground)', backgroundColor: 'var(--destructive)' },
+        selected: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }
+    };
+    
+    // Effect to calculate senior hours total
+    useEffect(() => {
+        const selectedAbsenceName = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name;
+        if (selectedAbsenceName === 'Reducción Jornada Senior' && employeeRecord && otherRequestMultipleDates.length > 0) {
+            let total = 0;
+            otherRequestMultipleDates.forEach(date => {
+                const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(employeeRecord.id, date);
+                const dayData = weekDaysWithTheoreticalHours.find(d => d.dateKey === format(date, 'yyyy-MM-dd'));
+                if (dayData) {
+                    total += dayData.theoreticalHours;
+                }
+            });
+            setSeniorHoursTotal(total);
+        } else {
+            setSeniorHoursTotal(0);
+        }
+    }, [otherRequestMultipleDates, otherRequestAbsenceTypeId, employeeRecord, getTheoreticalHoursAndTurn, absenceTypes]);
 
      // Effect to mark conversation as read
     useEffect(() => {
@@ -185,24 +218,6 @@ export default function MyMessagesPage() {
         setIsOtherRequestDialogOpen(true);
     }
     
-    // Effect to calculate senior hours total
-    useEffect(() => {
-        const selectedAbsenceName = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name;
-        if (selectedAbsenceName === 'Reducción Jornada Senior' && employeeRecord && otherRequestMultipleDates.length > 0) {
-            let total = 0;
-            otherRequestMultipleDates.forEach(date => {
-                const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(employeeRecord.id, date);
-                const dayData = weekDaysWithTheoreticalHours.find(d => d.dateKey === format(date, 'yyyy-MM-dd'));
-                if (dayData) {
-                    total += dayData.theoreticalHours;
-                }
-            });
-            setSeniorHoursTotal(total);
-        } else {
-            setSeniorHoursTotal(0);
-        }
-    }, [otherRequestMultipleDates, otherRequestAbsenceTypeId, employeeRecord, getTheoreticalHoursAndTurn, absenceTypes]);
-
     const handleSubmitRequest = async () => {
         if (!selectedCampaign || !requestAbsenceTypeId || !requestDateRange?.from || !requestDateRange?.to || !employeeRecord) {
             toast({ title: 'Datos incompletos', description: 'Selecciona tipo de ausencia y rango de fechas.', variant: 'destructive' });
@@ -335,8 +350,7 @@ export default function MyMessagesPage() {
         medicalAppointmentTime,
         absenceTypes
     ]);
-    
-    
+
     if (loading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
@@ -394,21 +408,6 @@ export default function MyMessagesPage() {
         )
     }
 
-    const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
-    const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
-    
-    const dayPickerModifiers = {
-        opening: openingHolidays,
-        other: otherHolidays,
-        selected: otherRequestMultipleDates,
-    };
-
-    const dayPickerModifiersStyles = {
-        opening: { backgroundColor: '#a7f3d0' },
-        other: { color: 'var(--destructive-foreground)', backgroundColor: 'var(--destructive)' },
-        selected: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' },
-    };
-    
     return (
         <>
             <div className="flex flex-col gap-6 p-4 md:p-6 h-full">
@@ -609,6 +608,8 @@ export default function MyMessagesPage() {
         </>
     );
 }
+
+    
 
     
 
