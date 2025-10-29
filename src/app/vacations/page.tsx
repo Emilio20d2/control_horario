@@ -465,7 +465,7 @@ export default function VacationsPage() {
             // This is a "soft delete" - it preserves the original request by just invalidating the period
             await deleteScheduledAbsence(employee.id, period.id, absence.id, employee, weeklyRecords);
             
-            // This adds the new, modified period
+            // This adds the new, modified period, preserving the original request info
             await addScheduledAbsence(employee.id, period.id, {
                 absenceTypeId: absence.absenceTypeId,
                 startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
@@ -1027,4 +1027,5 @@ export default function VacationsPage() {
     
 
     
+
 
