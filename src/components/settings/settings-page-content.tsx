@@ -465,4 +465,3 @@ export default function SettingsPageContent() {
     </div>
   );
 }
-
