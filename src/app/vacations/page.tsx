@@ -69,6 +69,7 @@ import { DateRange } from 'react-day-picker';
 import {
   addScheduledAbsence,
   deleteScheduledAbsence,
+  updateScheduledAbsence,
 } from '@/lib/services/employeeService';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -458,15 +459,10 @@ export default function VacationsPage() {
         try {
             const { employee, absence } = editingAbsence;
             
-            // Invalidate the old absence first
-            await deleteScheduledAbsence(employee.id, absence.periodId!, absence.id, employee);
-    
-            // Add the new one
-            await addScheduledAbsence(employee.id, absence.periodId!, {
-                absenceTypeId: absence.absenceTypeId,
+            await updateScheduledAbsence(employee.id, absence.periodId!, absence.id, {
                 startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
                 endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
-            }, employee, absence.originalRequest);
+            }, employee);
     
             toast({ title: 'Ausencia actualizada', description: `La ausencia de ${employee.name} ha sido modificada.` });
             refreshData();
@@ -481,6 +477,13 @@ export default function VacationsPage() {
 
     const handleDeleteAbsence = async () => {
         if (!editingAbsence) return;
+        
+        if (editingAbsence.absence.id.startsWith('weekly-')) {
+            toast({ title: 'No editable', description: 'Las ausencias puntuales del horario no se pueden eliminar desde aquí.', variant: 'destructive' });
+            setEditingAbsence(null);
+            return;
+        }
+
         setIsGenerating(true);
         try {
             const { employee, absence } = editingAbsence;
@@ -1004,5 +1007,6 @@ export default function VacationsPage() {
     
 
     
+
 
 

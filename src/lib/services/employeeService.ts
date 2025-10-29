@@ -344,6 +344,35 @@ export const addScheduledAbsence = async (
 };
 
 
+export const updateScheduledAbsence = async (
+    employeeId: string,
+    periodId: string,
+    absenceId: string,
+    newData: { startDate: string, endDate: string },
+    currentEmployee: Employee
+): Promise<void> => {
+    const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
+    if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
+
+    const absenceIndex = period.scheduledAbsences.findIndex(a => a.id === absenceId);
+    if (absenceIndex === -1) throw new Error("Ausencia no encontrada para actualizar");
+
+    const originalAbsence = period.scheduledAbsences[absenceIndex];
+
+    // 1. Invalidate old absence
+    period.scheduledAbsences[absenceIndex].endDate = period.scheduledAbsences[absenceIndex].startDate;
+
+    // 2. Add new absence, preserving the original request info
+    await addScheduledAbsence(employeeId, periodId, {
+        absenceTypeId: originalAbsence.absenceTypeId,
+        startDate: newData.startDate,
+        endDate: newData.endDate,
+    }, currentEmployee, originalAbsence.originalRequest);
+
+    // The final update is handled by the addScheduledAbsence function
+};
+
+
 /**
  * Performs a "soft delete" by invalidating the absence period.
  * The record is kept for historical/reporting purposes.
@@ -378,7 +407,44 @@ export const deleteScheduledAbsence = async (
         }
     }
     
+    // Invalidate the record by setting end date to start date
     period.scheduledAbsences[absenceIndex].endDate = period.scheduledAbsences[absenceIndex].startDate;
+    
+    await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
+};
+
+
+export const hardDeleteScheduledAbsence = async (
+    employeeId: string, 
+    periodId: string, 
+    absenceId: string, 
+    currentEmployee: Employee,
+    weeklyRecords?: Record<string, WeeklyRecord>
+): Promise<void> => {
+    const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
+    if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
+
+    const absenceIndex = period.scheduledAbsences.findIndex(a => a.id === absenceId);
+    if (absenceIndex === -1) throw new Error("Ausencia no encontrada para eliminar");
+
+    const absenceToModify = period.scheduledAbsences[absenceIndex];
+    
+    if (weeklyRecords) {
+        const daysInAbsence = eachDayOfInterval({
+            start: startOfDay(absenceToModify.startDate),
+            end: startOfDay(absenceToModify.endDate || absenceToModify.startDate)
+        });
+
+        for(const day of daysInAbsence) {
+            const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+            const weekRecord = weeklyRecords[weekId]?.weekData?.[employeeId];
+            if (weekRecord?.confirmed) {
+                throw new Error(`No se puede eliminar la ausencia. La semana del ${weekId} ya está confirmada y afecta a este periodo.`);
+            }
+        }
+    }
+
+    period.scheduledAbsences.splice(absenceIndex, 1);
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
