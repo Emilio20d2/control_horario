@@ -72,7 +72,6 @@ export default function MyMessagesPage() {
             "Devolución Horas",
             "Devolución Festivo",
             "Devolución Libranza",
-            "Permiso Adaptación Escolar",
             "Reducción Jornada Senior"
         ];
         return absenceTypes.filter(at => allowedNames.includes(at.name));
@@ -214,19 +213,26 @@ export default function MyMessagesPage() {
     };
     
     const handleSubmitOtherRequest = async () => {
-        if (!otherRequestAbsenceTypeId || !otherRequestDate || !employeeRecord || !communicatedTo) {
+        const selectedAbsenceName = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name;
+        
+        if (!otherRequestAbsenceTypeId || !otherRequestDate || !communicatedTo) {
             toast({ title: 'Datos incompletos', description: 'Selecciona tipo de ausencia, fecha y a quién has comunicado.', variant: 'destructive' });
+            return;
+        }
+
+        if (selectedAbsenceName !== 'Reducción Jornada Senior' && !otherRequestNotes.trim()) {
+            toast({ title: 'Motivo Requerido', description: 'Por favor, explica el motivo de tu solicitud en las notas.', variant: 'destructive' });
             return;
         }
 
         setIsSubmittingOtherRequest(true);
         try {
-            const absenceName = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name || 'Ausencia';
+            const absenceName = selectedAbsenceName || 'Ausencia';
             const requestMessage = `**NUEVA SOLICITUD DE PERMISO**
             - **Comunicado a:** ${communicatedTo}
             - **Tipo:** ${absenceName}
             - **Fecha:** ${format(otherRequestDate, 'dd/MM/yyyy')}
-            ${otherRequestNotes ? `- **Notas:** ${otherRequestNotes}` : ''}
+            ${otherRequestNotes ? `- **Motivo:** ${otherRequestNotes}` : ''}
             `;
 
             await sendMessage(requestMessage);
@@ -241,6 +247,16 @@ export default function MyMessagesPage() {
             setIsSubmittingOtherRequest(false);
         }
     };
+    
+    const isSubmitOtherRequestDisabled = useMemo(() => {
+        const selectedAbsenceName = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name;
+        const isNotesRequired = selectedAbsenceName !== 'Reducción Jornada Senior';
+
+        return isSubmittingOtherRequest || 
+               !otherRequestAbsenceTypeId || 
+               !otherRequestDate ||
+               (isNotesRequired && !otherRequestNotes.trim());
+    }, [isSubmittingOtherRequest, otherRequestAbsenceTypeId, otherRequestDate, otherRequestNotes, absenceTypes]);
 
     if (loading) {
         return (
@@ -449,16 +465,22 @@ export default function MyMessagesPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-sm font-medium">Notas (opcional)</Label>
+                                <Label htmlFor="notes" className="text-sm font-medium">
+                                    Motivo <span className="text-destructive">*</span>
+                                </Label>
                                 <Textarea
+                                    id="notes"
                                     placeholder="Añade aquí cualquier justificación o comentario necesario..."
                                     value={otherRequestNotes}
                                     onChange={(e) => setOtherRequestNotes(e.target.value)}
                                 />
+                                <p className="text-xs text-muted-foreground">
+                                    <span className="text-destructive">*</span> Obligatorio, excepto para "Reducción Jornada Senior".
+                                </p>
                             </div>
                              <DialogFooter>
                                 <Button type="button" variant="ghost" onClick={() => setOtherRequestStep(1)}>Atrás</Button>
-                                <Button onClick={handleSubmitOtherRequest} disabled={isSubmittingOtherRequest || !otherRequestAbsenceTypeId || !otherRequestDate}>
+                                <Button onClick={handleSubmitOtherRequest} disabled={isSubmitOtherRequestDisabled}>
                                     {isSubmittingOtherRequest ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                     Enviar Solicitud
                                 </Button>
@@ -470,4 +492,6 @@ export default function MyMessagesPage() {
         </>
     );
 }
+    
+
     
