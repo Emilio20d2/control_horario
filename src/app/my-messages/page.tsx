@@ -61,7 +61,7 @@ export default function MyMessagesPage() {
         }
         return null;
     };
-
+    
     const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
     const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
     
