@@ -547,7 +547,10 @@ export const generateSignatureReportPDF = (
     // Filter out eventual employees and employees without active contract
     const employeesForReport = allEmployeesForQuadrant.filter(emp => {
       const fullEmployee = employees.find(e => e.id === emp.id);
-      return !emp.isEventual && fullEmployee && fullEmployee.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()))
+      return !emp.isEventual && fullEmployee && fullEmployee.employmentPeriods?.some(p => {
+          const endDate = p.endDate ? (p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string)) : null;
+          return !endDate || isAfter(endDate, new Date());
+      });
     });
 
     employeesForReport.forEach((employee) => {
@@ -626,7 +629,7 @@ export const generateRequestStatusReportPDF = (
 
         const absencesFromRequest = (emp.employmentPeriods || [])
             .flatMap(p => p.scheduledAbsences || [])
-            .filter(a => a.originalRequest?.startDate && !a.isDefinitive); // Filter for original requests only
+            .filter(a => !a.isDefinitive && a.originalRequest?.startDate);
             
         let originalRequestText = 'PENDIENTE DE SOLICITUD';
         let modifiedRequestText = '';
