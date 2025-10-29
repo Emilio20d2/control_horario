@@ -237,6 +237,7 @@ export default function MyMessagesPage() {
                 absenceTypeId: requestAbsenceTypeId,
                 startDate: format(requestDateRange.from, 'yyyy-MM-dd'),
                 endDate: format(requestDateRange.to, 'yyyy-MM-dd'),
+                notes: null,
             }, employeeRecord, true);
     
             toast({ title: 'Solicitud Enviada', description: 'Tu solicitud de ausencia ha sido registrada.' });
@@ -319,7 +320,7 @@ Gracias.`;
                         absenceTypeId: otherRequestAbsenceTypeId,
                         startDate: format(day, 'yyyy-MM-dd'),
                         endDate: format(day, 'yyyy-MM-dd'),
-                        notes: selectedAbsenceType?.abbreviation === 'HM' ? `Hora Consulta: ${medicalAppointmentTime}` : finalNotes
+                        notes: finalNotes
                     },
                     employeeRecord,
                     true
@@ -422,17 +423,11 @@ Gracias.`;
                         <AlertDescription className="flex items-center justify-between">
                             Periodo de solicitud abierto. ¡Puedes enviar tus peticiones!
                              <div className="flex gap-2">
-                                <Button size="sm" variant="secondary" onClick={handleOpenOtherRequestDialog}><CalendarClock className="mr-2 h-4 w-4"/>Otras Solicitudes</Button>
                                 <Button size="sm" onClick={() => handleOpenRequestDialog(activeCampaign)}>Hacer Solicitud</Button>
                             </div>
                         </AlertDescription>
                     </Alert>
                 )}
-                 {!activeCampaign && (
-                    <div className="flex justify-end">
-                        <Button size="sm" variant="secondary" onClick={handleOpenOtherRequestDialog}><CalendarClock className="mr-2 h-4 w-4"/>Otras Solicitudes</Button>
-                    </div>
-                 )}
             </div>
         )
     }
@@ -440,9 +435,12 @@ Gracias.`;
     return (
         <>
             <div className="flex flex-col gap-6 p-4 md:p-6 h-full">
-                <h1 className="text-2xl font-bold tracking-tight font-headline">
-                    Mis Mensajes
-                </h1>
+                 <div className="flex justify-between items-center">
+                    <h1 className="text-2xl font-bold tracking-tight font-headline">
+                        Mis Mensajes
+                    </h1>
+                     <Button size="sm" variant="secondary" onClick={handleOpenOtherRequestDialog}><CalendarClock className="mr-2 h-4 w-4"/>Otras Solicitudes</Button>
+                </div>
                 
                 <Card className="flex flex-col flex-grow h-[calc(100vh-12rem)]">
                     <CardHeader className="p-4 border-b">
@@ -653,5 +651,6 @@ Gracias.`;
         </>
     );
 }
+
 
 
