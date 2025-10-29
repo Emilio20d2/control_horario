@@ -79,7 +79,7 @@ export interface Holiday {
     type: 'Nacional' | 'Regional' | 'Local' | 'Apertura';
 }
 
-export type HolidayFormData = {
+export interface HolidayFormData {
     id?: string;
     name: string;
     date: string; // YYYY-MM-DD
