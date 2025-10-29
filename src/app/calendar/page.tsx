@@ -23,12 +23,14 @@ import {
   format,
   isWithinInterval,
   startOfDay,
+  endOfDay,
   eachDayOfInterval,
   getISODay,
   startOfWeek,
   endOfWeek,
   parseISO,
   isSameDay,
+  isValid
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
