@@ -28,7 +28,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
 export default function MyMessagesPage() {
-    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, getTheoreticalHoursAndTurn } = useDataProvider();
+    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, getTheoreticalHoursAndTurn, holidays } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
     const conversationId = employeeRecord?.id;
     const viewportRef = useRef<HTMLDivElement>(null);
@@ -73,9 +73,9 @@ export default function MyMessagesPage() {
             "Devolución Horas",
             "Devolución Festivo",
             "Devolución Libranza",
-            "Reducción Jornada Senior",
             "Recuperación Horas",
-            "Horas Sindicales"
+            "Horas Sindicales",
+            "Reducción Jornada Senior"
         ]);
         return absenceTypes.filter(at => allowedNames.has(at.name));
     }, [absenceTypes]);
@@ -308,6 +308,10 @@ export default function MyMessagesPage() {
         otherRequestNotes
     ]);
 
+    const holidayDates = useMemo(() => (holidays || []).map(h => (h.date as Timestamp).toDate()), [holidays]);
+    const dayPickerModifiers = { holidays: holidayDates, selected: otherRequestMultipleDates };
+    const dayPickerModifiersStyles = { holidays: { color: 'var(--destructive-foreground)', backgroundColor: 'var(--destructive)' } };
+
     if (loading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
@@ -513,6 +517,8 @@ export default function MyMessagesPage() {
                                     onSelect={(days) => setOtherRequestMultipleDates(days || [])}
                                     locale={es}
                                     disabled={isSubmittingOtherRequest}
+                                    modifiers={dayPickerModifiers}
+                                    modifiersStyles={dayPickerModifiersStyles}
                                 />
                                 {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name === 'Reducción Jornada Senior' && (
                                     <Card className="mt-2">
