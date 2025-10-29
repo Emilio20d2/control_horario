@@ -3,7 +3,7 @@
 'use server';
 
 import { getAuthAdmin } from '@/lib/firebase-admin';
-import { setDocument, updateDocument } from './firestoreAdminService';
+import { getDbAdmin } from '../firebase-admin';
 
 export interface AppUser {
     id: string; // Corresponds to Firebase Auth UID
@@ -62,4 +62,16 @@ export const deleteUser = async (uid: string) => {
     // This would also call a Cloud Function to delete the user from Firebase Auth
     // and handle cleanup in Firestore (e.g., remove authId from employee).
     console.log(`Deleting user ${uid} - functionality to be implemented.`);
+};
+
+export const updateDocument = async (collectionName: string, docId: string, data: any): Promise<void> => {
+    const dbAdmin = getDbAdmin();
+    const docRef = dbAdmin.collection(collectionName).doc(docId);
+    await docRef.update(data);
+};
+
+export const setDocument = async (collectionName: string, docId: string, data: any, options: { merge?: boolean } = {}): Promise<void> => {
+    const dbAdmin = getDbAdmin();
+    const docRef = dbAdmin.collection(collectionName).doc(docId);
+    await docRef.set(data, { merge: true, ...options });
 };
