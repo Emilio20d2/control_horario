@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import type { Holiday, HolidayFormData } from '../types';
+import type { Holiday, HolidayFormData } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
 const formSchema = z.object({
