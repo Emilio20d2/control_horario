@@ -180,6 +180,7 @@ export default function VacationsPage() {
     const activeEmployees = useMemo(() => {
         return employees.filter(e => e.employmentPeriods.some(p => {
             if (!p.endDate) return true;
+            // Use instanceof Date check to satisfy TypeScript
             const endDate = p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string);
             return isAfter(endDate, new Date());
         }));
@@ -268,6 +269,7 @@ export default function VacationsPage() {
             setSelectedYear(String(latestYearWithData));
         }
       }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loading, availableYears]);
 
     useEffect(() => {
@@ -293,9 +295,9 @@ export default function VacationsPage() {
     }, [editingAbsence]);
 
     const schedulableAbsenceTypes = useMemo(() => {
-      return absenceTypes.filter(at => ['Vacaciones', 'Excedencia', 'Permiso no retribuido'].includes(at.name));
-    }, [absenceTypes]);
-    
+        return absenceTypes.filter(at => ['Vacaciones', 'Excedencia', 'Permiso no retribuido'].includes(at.name));
+      }, [absenceTypes]);
+
     useEffect(() => {
         if (schedulableAbsenceTypes.length > 0 && !selectedAbsenceTypeId) {
             const vacationType = schedulableAbsenceTypes.find(at => at.name === 'Vacaciones');
@@ -313,9 +315,6 @@ export default function VacationsPage() {
             const absences: FormattedAbsence[] = [];
             (emp.employmentPeriods || []).forEach((p: EmploymentPeriod) => {
                 (p.scheduledAbsences || []).forEach(a => {
-                    const absenceYear = getYear(a.startDate);
-                    // This logic ensures that if only the original request exists, it's used for display.
-                    // But if a definitive version exists, that one is used instead.
                     const isDefinitivePresent = (p.scheduledAbsences || []).some(def => def.isDefinitive && def.originalRequest?.startDate === a.originalRequest?.startDate);
                     
                     if ( (a.isDefinitive || !isDefinitivePresent) && schedulableIds.has(a.absenceTypeId)) {
@@ -970,6 +969,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-
-
-

@@ -251,6 +251,25 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         return null;
     };
 
+    const processScheduledAbsences = (absences: any[]): ScheduledAbsence[] => {
+        if (!absences) return [];
+        return absences.map(a => {
+            const processedAbsence: any = {
+                ...a,
+                startDate: safeParseDate(a.startDate),
+                endDate: safeParseDate(a.endDate),
+            };
+            if (a.originalRequest) {
+                processedAbsence.originalRequest = {
+                    ...a.originalRequest,
+                    startDate: safeParseDate(a.originalRequest.startDate),
+                    endDate: safeParseDate(a.originalRequest.endDate),
+                };
+            }
+            return processedAbsence;
+        });
+    };
+
     const setupSubscription = <T extends { id: string }>(collectionName: string, setter: React.Dispatch<React.SetStateAction<T[]>>, processor?: (data: any[]) => T[]) => {
         const { unsubscribe, ready } = onCollectionUpdate<T>(collectionName, (data) => {
             const processedData = processor ? processor(data) : data;
@@ -267,11 +286,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
                 ...p, 
                 startDate: safeParseDate(p.startDate), 
                 endDate: safeParseDate(p.endDate), 
-                scheduledAbsences: (p.scheduledAbsences || []).map((a: any) => ({
-                    ...a, 
-                    startDate: safeParseDate(a.startDate), 
-                    endDate: safeParseDate(a.endDate),
-                })),
+                scheduledAbsences: processScheduledAbsences(p.scheduledAbsences),
                 workHoursHistory: (p.workHoursHistory || []).map(wh => ({
                     ...wh,
                     effectiveDate: safeParseDate(wh.effectiveDate)
@@ -510,7 +525,7 @@ useEffect(() => {
         }
     }
     
-    details.sort((a, b) => a.weekId.localeCompare(b.id));
+    details.sort((a, b) => a.weekId.localeCompare(b.weekId));
     setUnconfirmedWeeksDetails(details);
 
 }, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
