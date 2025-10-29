@@ -24,7 +24,8 @@ import { es } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
-
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 export default function MyMessagesPage() {
     const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes } = useDataProvider();
@@ -42,6 +43,8 @@ export default function MyMessagesPage() {
     
     // State for other requests
     const [isOtherRequestDialogOpen, setIsOtherRequestDialogOpen] = useState(false);
+    const [otherRequestStep, setOtherRequestStep] = useState(1);
+    const [communicatedTo, setCommunicatedTo] = useState('');
     const [otherRequestAbsenceTypeId, setOtherRequestAbsenceTypeId] = useState('');
     const [otherRequestDate, setOtherRequestDate] = useState<Date | undefined>(undefined);
     const [otherRequestNotes, setOtherRequestNotes] = useState('');
@@ -158,6 +161,15 @@ export default function MyMessagesPage() {
         setIsRequestDialogOpen(true);
     };
 
+    const handleOpenOtherRequestDialog = () => {
+        setOtherRequestStep(1);
+        setCommunicatedTo('');
+        setOtherRequestAbsenceTypeId('');
+        setOtherRequestDate(undefined);
+        setOtherRequestNotes('');
+        setIsOtherRequestDialogOpen(true);
+    }
+
     const handleSubmitRequest = async () => {
         if (!selectedCampaign || !requestAbsenceTypeId || !requestDateRange?.from || !requestDateRange?.to || !employeeRecord) {
             toast({ title: 'Datos incompletos', description: 'Selecciona tipo de ausencia y rango de fechas.', variant: 'destructive' });
@@ -202,8 +214,8 @@ export default function MyMessagesPage() {
     };
     
     const handleSubmitOtherRequest = async () => {
-        if (!otherRequestAbsenceTypeId || !otherRequestDate || !employeeRecord) {
-            toast({ title: 'Datos incompletos', description: 'Selecciona tipo de ausencia y fecha.', variant: 'destructive' });
+        if (!otherRequestAbsenceTypeId || !otherRequestDate || !employeeRecord || !communicatedTo) {
+            toast({ title: 'Datos incompletos', description: 'Selecciona tipo de ausencia, fecha y a quién has comunicado.', variant: 'destructive' });
             return;
         }
 
@@ -211,6 +223,7 @@ export default function MyMessagesPage() {
         try {
             const absenceName = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name || 'Ausencia';
             const requestMessage = `**NUEVA SOLICITUD DE PERMISO**
+            - **Comunicado a:** ${communicatedTo}
             - **Tipo:** ${absenceName}
             - **Fecha:** ${format(otherRequestDate, 'dd/MM/yyyy')}
             ${otherRequestNotes ? `- **Notas:** ${otherRequestNotes}` : ''}
@@ -220,9 +233,6 @@ export default function MyMessagesPage() {
             
             toast({ title: 'Solicitud Enviada', description: 'Tu petición ha sido enviada al administrador.' });
             setIsOtherRequestDialogOpen(false);
-            setOtherRequestAbsenceTypeId('');
-            setOtherRequestDate(undefined);
-            setOtherRequestNotes('');
 
         } catch (error) {
             console.error('Error submitting other request:', error);
@@ -274,7 +284,7 @@ export default function MyMessagesPage() {
                         <AlertDescription className="flex items-center justify-between">
                             Periodo de solicitud abierto. ¡Puedes enviar tus peticiones!
                              <div className="flex gap-2">
-                                <Button size="sm" variant="secondary" onClick={() => setIsOtherRequestDialogOpen(true)}><CalendarClock className="mr-2 h-4 w-4"/>Otras Solicitudes</Button>
+                                <Button size="sm" variant="secondary" onClick={handleOpenOtherRequestDialog}><CalendarClock className="mr-2 h-4 w-4"/>Otras Solicitudes</Button>
                                 <Button size="sm" onClick={() => handleOpenRequestDialog(activeCampaign)}>Hacer Solicitud</Button>
                             </div>
                         </AlertDescription>
@@ -282,7 +292,7 @@ export default function MyMessagesPage() {
                 )}
                  {!activeCampaign && (
                     <div className="flex justify-end">
-                        <Button size="sm" variant="secondary" onClick={() => setIsOtherRequestDialogOpen(true)}><CalendarClock className="mr-2 h-4 w-4"/>Otras Solicitudes</Button>
+                        <Button size="sm" variant="secondary" onClick={handleOpenOtherRequestDialog}><CalendarClock className="mr-2 h-4 w-4"/>Otras Solicitudes</Button>
                     </div>
                  )}
             </div>
@@ -388,53 +398,76 @@ export default function MyMessagesPage() {
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Solicitar Permiso</DialogTitle>
-                        <DialogDescription>Selecciona un tipo de permiso y la fecha para enviar tu solicitud.</DialogDescription>
+                        <DialogDescription>
+                            {otherRequestStep === 1
+                                ? "Confirma que has comunicado tu petición antes de continuar."
+                                : "Selecciona un tipo de permiso y la fecha para enviar tu solicitud."}
+                        </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                             <label className="text-sm font-medium">Tipo de Permiso</label>
-                            <Select value={otherRequestAbsenceTypeId} onValueChange={setOtherRequestAbsenceTypeId}>
-                                <SelectTrigger><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
-                                <SelectContent>
-                                    {otherRequestAbsenceTypes.map(at => (
-                                        <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                    
+                    {otherRequestStep === 1 ? (
+                        <div className="py-4 space-y-6">
+                            <div className="space-y-4">
+                                <Label className="font-semibold">Antes de hacer una petición, ¿has tenido que comunicarlo a la dirección de la tienda?</Label>
+                                <RadioGroup onValueChange={setCommunicatedTo} value={communicatedTo}>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="Arantxa Villacampa" id="r1" />
+                                        <Label htmlFor="r1">Arantxa Villacampa</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="Rebeca Pascual" id="r2" />
+                                        <Label htmlFor="r2">Rebeca Pascual</Label>
+                                    </div>
+                                </RadioGroup>
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild><Button type="button" variant="secondary">Cancelar</Button></DialogClose>
+                                <Button onClick={() => setOtherRequestStep(2)} disabled={!communicatedTo}>Siguiente</Button>
+                            </DialogFooter>
                         </div>
-                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Fecha del Permiso</label>
-                            <DayPicker
-                                mode="single"
-                                selected={otherRequestDate}
-                                onSelect={setOtherRequestDate}
-                                locale={es}
-                                disabled={isSubmittingOtherRequest}
-                            />
+                    ) : (
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Tipo de Permiso</Label>
+                                <Select value={otherRequestAbsenceTypeId} onValueChange={setOtherRequestAbsenceTypeId}>
+                                    <SelectTrigger><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {otherRequestAbsenceTypes.map(at => (
+                                            <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Fecha del Permiso</Label>
+                                <DayPicker
+                                    mode="single"
+                                    selected={otherRequestDate}
+                                    onSelect={setOtherRequestDate}
+                                    locale={es}
+                                    disabled={isSubmittingOtherRequest}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Notas (opcional)</Label>
+                                <Textarea
+                                    placeholder="Añade aquí cualquier justificación o comentario necesario..."
+                                    value={otherRequestNotes}
+                                    onChange={(e) => setOtherRequestNotes(e.target.value)}
+                                />
+                            </div>
+                             <DialogFooter>
+                                <Button type="button" variant="ghost" onClick={() => setOtherRequestStep(1)}>Atrás</Button>
+                                <Button onClick={handleSubmitOtherRequest} disabled={isSubmittingOtherRequest || !otherRequestAbsenceTypeId || !otherRequestDate}>
+                                    {isSubmittingOtherRequest ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    Enviar Solicitud
+                                </Button>
+                            </DialogFooter>
                         </div>
-                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Notas (opcional)</label>
-                            <Textarea
-                                placeholder="Añade aquí cualquier justificación o comentario necesario..."
-                                value={otherRequestNotes}
-                                onChange={(e) => setOtherRequestNotes(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button type="button" variant="secondary">Cancelar</Button>
-                        </DialogClose>
-                        <Button onClick={handleSubmitOtherRequest} disabled={isSubmittingOtherRequest || !otherRequestAbsenceTypeId || !otherRequestDate}>
-                            {isSubmittingOtherRequest ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Enviar Solicitud
-                        </Button>
-                    </DialogFooter>
+                    )}
                 </DialogContent>
             </Dialog>
         </>
     );
 }
-    
-
     
