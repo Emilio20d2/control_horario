@@ -324,34 +324,36 @@ export default function MyMessagesPage() {
         medicalAppointmentTime,
         absenceTypes
     ]);
+    
+    const safeParseDate = (date: any): Date | null => {
+        if (!date) return null;
+        if (date instanceof Date) return date;
+        if (date instanceof Timestamp) return date.toDate();
+        if (typeof date === 'string') {
+            const parsed = parseISO(date);
+            return isValid(parsed) ? parsed : null;
+        }
+        return null;
+    };
 
     const holidayDates = useMemo(() => {
-        return (holidays || []).map(h => {
-            const date = h.date;
-            if (date instanceof Date) return date;
-            if (date instanceof Timestamp) return date.toDate();
-            if (typeof date === 'string') {
-                const parsed = parseISO(date);
-                if (isValid(parsed)) return parsed;
-            }
-            return null;
-        }).filter((d): d is Date => d !== null);
+        return (holidays || []).map(h => safeParseDate(h.date)).filter((d): d is Date => d !== null);
     }, [holidays]);
     
-    const dayPickerModifiers = { 
-        holidays: holidayDates, 
-        selected: otherRequestMultipleDates 
+    const dayPickerModifiers = {
+        holidays: holidayDates,
+        selected: otherRequestMultipleDates,
     };
     
     const dayPickerModifiersStyles = {
-        holidays: { 
-            color: 'var(--destructive-foreground)', 
-            backgroundColor: 'var(--destructive)' 
+        holidays: {
+            color: 'var(--destructive-foreground)',
+            backgroundColor: 'var(--destructive)',
         },
         selected: {
             backgroundColor: 'var(--primary)',
-            color: 'var(--primary-foreground)'
-        }
+            color: 'var(--primary-foreground)',
+        },
     };
 
     if (loading) {
@@ -612,4 +614,3 @@ export default function MyMessagesPage() {
         </>
     );
 }
-
