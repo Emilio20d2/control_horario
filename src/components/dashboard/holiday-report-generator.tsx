@@ -40,7 +40,11 @@ export function HolidayReportGenerator() {
         
         // Use only employees with an active contract for this report.
         const mainEmployees = employees
-          .filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())))
+          .filter(e => e.employmentPeriods.some(p => {
+              if (!p.endDate) return true;
+              const endDate = p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string);
+              return isAfter(endDate, new Date());
+          }))
           .map(e => ({
                 id: e.id,
                 name: e.name,
@@ -229,3 +233,5 @@ export function HolidayReportGenerator() {
         </Card>
     );
 }
+
+    

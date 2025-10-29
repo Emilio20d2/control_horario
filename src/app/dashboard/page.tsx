@@ -82,7 +82,11 @@ export default function DashboardPage() {
     
     const allEmployeesForReport = useMemo(() => {
         return employees
-            .filter(e => e.employmentPeriods?.some(p => !p.endDate || isAfter(p.endDate as Date, new Date())))
+            .filter(e => e.employmentPeriods?.some(p => {
+                if (!p.endDate) return true;
+                const endDate = p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string);
+                return isAfter(endDate, new Date());
+            }))
             .sort((a, b) => a.name.localeCompare(b.name));
     }, [employees]);
 
@@ -545,3 +549,5 @@ export default function DashboardPage() {
     
 
   
+
+    

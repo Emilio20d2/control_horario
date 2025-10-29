@@ -159,7 +159,7 @@ export default function MyProfilePage() {
 
     const activePeriod = employee.employmentPeriods?.find(p => {
         if (!p.endDate) return true;
-        const endDate = typeof p.endDate === 'string' ? parseISO(p.endDate) : p.endDate as Date;
+        const endDate = p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string);
         return isAfter(endDate, startOfDay(new Date()));
     });
     
@@ -340,5 +340,7 @@ export default function MyProfilePage() {
 }
 
 
+
+    
 
     

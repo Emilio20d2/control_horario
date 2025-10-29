@@ -42,7 +42,11 @@ export default function EmployeesPage() {
         const active: Employee[] = [];
         const inactive: Employee[] = [];
         employees.forEach(e => {
-            if (e.employmentPeriods?.some(p => !p.endDate || isAfter(p.endDate as Date, startOfDay(new Date())))) {
+            if (e.employmentPeriods?.some(p => {
+                if (!p.endDate) return true;
+                const endDate = p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string);
+                return isAfter(endDate, startOfDay(new Date()));
+            })) {
                 active.push(e);
             } else {
                 inactive.push(e);
@@ -250,3 +254,5 @@ export default function EmployeesPage() {
 }
 
   
+
+    
