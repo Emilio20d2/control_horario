@@ -178,8 +178,8 @@ export default function VacationsPage() {
 
     const activeEmployees = useMemo(() => {
         return employees.filter(e => e.employmentPeriods.some(p => {
-            if (!p.endDate) return true;
-            return isAfter(p.endDate as Date, new Date());
+            const endDate = p.endDate ? safeParseDate(p.endDate as string) : null;
+            return !endDate || isAfter(endDate, new Date());
         }));
     }, [employees]);
 
@@ -200,7 +200,10 @@ export default function VacationsPage() {
     const { allEmployeesForQuadrant, substituteEmployees } = useMemo(() => {
         if (loading) return { allEmployeesForQuadrant: [], substituteEmployees: [] };
 
-        const activeEmployeesForQuadrant = employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(p.endDate as Date, new Date())));
+        const activeEmployeesForQuadrant = employees.filter(e => e.employmentPeriods.some(p => {
+             const endDate = p.endDate ? safeParseDate(p.endDate as string) : null;
+             return !endDate || isAfter(endDate, new Date());
+        }));
 
         const mainEmployeesMap = new Map(activeEmployeesForQuadrant.map(e => [e.id, e]));
 
@@ -248,8 +251,8 @@ export default function VacationsPage() {
             if(p.scheduledAbsences) {
               p.scheduledAbsences.forEach(a => {
                 if (!a.startDate) return; // Safety check
-                const startDate = a.startDate as Date;
-                const endDate = a.endDate as Date | null;
+                const startDate = a.startDate instanceof Date ? a.startDate : parseISO(a.startDate);
+                const endDate = a.endDate ? (a.endDate instanceof Date ? a.endDate : parseISO(a.endDate)) : null;
                 if (isValid(startDate)) years.add(getYear(startDate));
                 if (endDate && isValid(endDate)) years.add(getYear(endDate));
               })
@@ -293,19 +296,19 @@ export default function VacationsPage() {
         }
     }, [editingAbsence]);
 
-    const absenceTypesFiltered = useMemo(() => absenceTypes.filter(at => ['Vacaciones', 'Excedencia', 'Permiso no retribuido'].includes(at.name)), [absenceTypes]);
+    const schedulableAbsenceTypes = useMemo(() => absenceTypes.filter(at => ['Vacaciones', 'Excedencia', 'Permiso no retribuido'].includes(at.name)), [absenceTypes]);
 
     useEffect(() => {
-        if (absenceTypesFiltered.length > 0 && !selectedAbsenceTypeId) {
-            const vacationType = absenceTypesFiltered.find(at => at.name === 'Vacaciones');
+        if (schedulableAbsenceTypes.length > 0 && !selectedAbsenceTypeId) {
+            const vacationType = schedulableAbsenceTypes.find(at => at.name === 'Vacaciones');
             if (vacationType) {
                 setSelectedAbsenceTypeId(vacationType.id);
             }
         }
-    }, [absenceTypesFiltered, selectedAbsenceTypeId]);
+    }, [schedulableAbsenceTypes, selectedAbsenceTypeId]);
     
     const { employeesWithAbsences, weeklySummaries, employeesByWeek, allAbsences } = useMemo(() => {
-        const schedulableIds = new Set(absenceTypesFiltered.map(at => at.id));
+        const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
 
         allEmployeesForQuadrant.forEach(emp => {
@@ -317,7 +320,9 @@ export default function VacationsPage() {
                 (p.scheduledAbsences || []).forEach(a => {
                     if (a.isDefinitive) {
                         if (!a.originalRequest?.startDate) return;
-                        const key = format(a.originalRequest.startDate as Date, 'yyyy-MM-dd');
+                        const startDate = a.originalRequest.startDate;
+                        if (!startDate) return;
+                        const key = format(startDate, 'yyyy-MM-dd');
                         definitiveAbsences.set(key, a);
                     } else {
                         originalRequests.push(a);
@@ -325,8 +330,9 @@ export default function VacationsPage() {
                 });
 
                 originalRequests.forEach(orig => {
-                    if (!orig.startDate) return;
-                    const key = format(orig.startDate as Date, 'yyyy-MM-dd');
+                    const startDate = orig.startDate;
+                    if (!startDate) return;
+                    const key = format(startDate, 'yyyy-MM-dd');
                     if (!definitiveAbsences.has(key)) {
                         definitiveAbsences.set(key, { ...orig, isDefinitive: true });
                     }
@@ -396,7 +402,7 @@ export default function VacationsPage() {
     
         return { employeesWithAbsences, weeklySummaries, employeesByWeek, allAbsences };
     
-    }, [allEmployeesForQuadrant, absenceTypesFiltered, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId]);
+    }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId]);
     
     // Recalculate vacation data when employee or year changes
     useEffect(() => {
@@ -474,7 +480,10 @@ export default function VacationsPage() {
             return;
         }
 
-        const activePeriod = selectedEmployee.employmentPeriods.find(p => !p.endDate || isAfter(p.endDate as Date, new Date()));
+        const activePeriod = selectedEmployee.employmentPeriods.find(p => {
+            const endDate = p.endDate ? safeParseDate(p.endDate as string) : null;
+            return !endDate || isAfter(endDate, new Date());
+        });
         if (!activePeriod) {
              toast({ title: 'Error', description: 'El empleado seleccionado no tiene un periodo laboral activo.', variant: 'destructive' });
             return;
@@ -519,20 +528,28 @@ export default function VacationsPage() {
         if (!selectedEmployeeId) return [];
         return (employeesWithAbsences[selectedEmployeeId] || []).flatMap(p => {
             if (!p.startDate || !isValid(p.startDate)) return [];
-            const startDate = p.startDate as Date;
-            if (!p.endDate || !isValid(p.endDate as Date)) return [startDate];
-            const endDate = p.endDate as Date;
+            const startDate = p.startDate;
+            if (!p.endDate || !isValid(p.endDate)) return [startDate];
+            const endDate = p.endDate;
             return eachDayOfInterval({ start: startDate, end: endDate });
         });
     }, [selectedEmployeeId, employeesWithAbsences]);
 
 
-    const plannerModifiers = { opening: openingHolidays, other: otherHolidays, employeeAbsence: employeeAbsenceDays };
+    const editingAbsenceDays = useMemo(() => {
+        if (!editingAbsence?.absence) return [];
+        const { startDate, endDate } = editingAbsence.absence;
+        if (!startDate || !endDate) return [];
+        return eachDayOfInterval({ start: startDate, end: endDate });
+    }, [editingAbsence]);
+
+    const plannerModifiers = { opening: openingHolidays, other: otherHolidays, employeeAbsence: employeeAbsenceDays, editing: editingAbsenceDays };
     const editModifiers = { opening: openingHolidays, other: otherHolidays };
     const plannerModifiersStyles = { 
         opening: { backgroundColor: '#a7f3d0' }, 
         other: { backgroundColor: '#fecaca' }, 
         employeeAbsence: { backgroundColor: '#dbeafe' },
+        editing: { backgroundColor: '#bfdbfe', color: '#1e3a8a', fontWeight: 'bold' }
     };
     const editModifiersStyles = { ...plannerModifiersStyles };
 
@@ -659,10 +676,17 @@ export default function VacationsPage() {
                         return absence ? { employee: emp, absence } : null;
                       }).filter((item): item is { employee: Employee & { isEventual: boolean, groupId: string | null }, absence: FormattedAbsence } => item !== null);
   
-                      const cellHasContent = employeesWithAbsenceInWeek.length > 0;
-                       const cellBg = cellHasContent
-                          ? (groupColors[group.id] || '#f0f0f0')
-                          : 'transparent';
+                      let cellBg = 'transparent';
+                      if (editingAbsence) {
+                          const isEditingInThisCell = employeesWithAbsenceInWeek.some(item => item.absence.id === editingAbsence.absence.id);
+                          if (isEditingInThisCell) {
+                              cellBg = '#bfdbfe'; // Light blue for editing
+                          } else if (employeesWithAbsenceInWeek.length > 0) {
+                              cellBg = groupColors[group.id] || '#f0f0f0';
+                          }
+                      } else if (employeesWithAbsenceInWeek.length > 0) {
+                          cellBg = groupColors[group.id] || '#f0f0f0';
+                      }
   
                       return (
                         <td key={`${group.id}-${week.key}`} className="border align-top py-1 px-0.5" style={{ backgroundColor: cellBg }}>
@@ -675,40 +699,43 @@ export default function VacationsPage() {
 
                                     return (
                                         <div key={item.employee.id} className="group/cell flex items-center justify-between gap-1 w-full text-left truncate rounded-sm text-[11px] leading-tight hover:bg-black/5" >
-                                            <button onClick={() => setEditingAbsence({employee: item.employee, absence: item.absence})} className="flex-grow text-left truncate">
+                                            <div className="flex-grow text-left truncate">
                                                 <span className={cn(isSpecialAbsence && 'text-blue-600 font-semibold')}>
                                                     {`${item.employee.name} (${item.absence.absenceAbbreviation})`}
                                                 </span>
-                                            </button>
-                                            <div className="flex-shrink-0">
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <button className="p-0.5 rounded-full hover:bg-slate-200">
-                                                            {substituteInfo ? (
-                                                                <span className="text-red-600 font-bold">{substituteInfo.substituteName}</span>
-                                                            ) : (
-                                                                <Plus className="h-3 w-3" />
-                                                            )}
-                                                    </button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-48 p-1">
-                                                    <div className="flex flex-col">
-                                                        {substituteEmployees.map(sub => (
-                                                            <button key={sub.id} onClick={() => handleSelectSubstitute(week.key, item.employee.id, sub)} className="text-sm text-left p-1 rounded-sm hover:bg-accent">
-                                                                {sub.name}
-                                                            </button>
-                                                        ))}
-                                                        {substituteInfo && (
-                                                            <>
-                                                                <hr className="my-1"/>
-                                                                <button onClick={() => handleSelectSubstitute(week.key, item.employee.id, null)} className="flex items-center gap-2 text-sm text-left p-1 rounded-sm text-destructive hover:bg-destructive/10">
-                                                                <UserX className="h-4 w-4" /> Quitar Sustituto
+                                            </div>
+                                            <div className="flex-shrink-0 flex items-center">
+                                                <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover/cell:opacity-100" onClick={() => setEditingAbsence({employee: item.employee, absence: item.absence})}>
+                                                    <Edit className="h-3 w-3" />
+                                                </Button>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <button className="p-0.5 rounded-full hover:bg-slate-200">
+                                                                {substituteInfo ? (
+                                                                    <span className="text-red-600 font-bold">{substituteInfo.substituteName}</span>
+                                                                ) : (
+                                                                    <Plus className="h-3 w-3" />
+                                                                )}
+                                                        </button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-48 p-1">
+                                                        <div className="flex flex-col">
+                                                            {substituteEmployees.map(sub => (
+                                                                <button key={sub.id} onClick={() => handleSelectSubstitute(week.key, item.employee.id, sub)} className="text-sm text-left p-1 rounded-sm hover:bg-accent">
+                                                                    {sub.name}
                                                                 </button>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </PopoverContent>
-                                            </Popover>
+                                                            ))}
+                                                            {substituteInfo && (
+                                                                <>
+                                                                    <hr className="my-1"/>
+                                                                    <button onClick={() => handleSelectSubstitute(week.key, item.employee.id, null)} className="flex items-center gap-2 text-sm text-left p-1 rounded-sm text-destructive hover:bg-destructive/10">
+                                                                    <UserX className="h-4 w-4" /> Quitar Sustituto
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </PopoverContent>
+                                                </Popover>
                                             </div>
                                         </div>
                                     );
@@ -767,7 +794,7 @@ export default function VacationsPage() {
                              <label className="text-sm font-medium">Tipo de Ausencia</label>
                             <Select value={selectedAbsenceTypeId} onValueChange={setSelectedAbsenceTypeId} disabled={!selectedEmployeeId}>
                                 <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                                <SelectContent>{absenceTypesFiltered.map(at => <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>)}</SelectContent>
+                                <SelectContent>{schedulableAbsenceTypes.map(at => <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <Calendar
@@ -847,31 +874,9 @@ export default function VacationsPage() {
                                                     <TableCell className="px-1 py-1 text-xs">{format(absence.startDate, 'dd/MM/yy', { locale: es })}</TableCell>
                                                     <TableCell className="px-1 py-1 text-xs">{absence.endDate ? format(absence.endDate, 'dd/MM/yy', { locale: es }) : 'N/A'}</TableCell>
                                                     <TableCell className="px-1 py-1 text-xs text-right">
-                                                        <AlertDialog>
-                                                            <AlertDialogTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive-foreground">
-                                                                    <Trash2 className="h-3 w-3" />
-                                                                </Button>
-                                                            </AlertDialogTrigger>
-                                                            <AlertDialogContent>
-                                                                <AlertDialogHeader>
-                                                                    <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
-                                                                    <AlertDialogDescription>
-                                                                        Se eliminará el periodo de ausencia. Esta acción no se puede deshacer. Introduce tu contraseña para confirmar.
-                                                                    </AlertDialogDescription>
-                                                                </AlertDialogHeader>
-                                                                <div className="py-2 space-y-2">
-                                                                    <Label htmlFor="password-delete-row">Contraseña</Label>
-                                                                    <Input id="password-delete-row" type="password" placeholder="Contraseña de Administrador" onChange={(e) => setDeletePassword(e.target.value)} />
-                                                                </div>
-                                                                <AlertDialogFooter>
-                                                                    <AlertDialogCancel onClick={() => setDeletePassword('')}>Cancelar</AlertDialogCancel>
-                                                                    <AlertDialogAction onClick={() => handleDeleteAbsence(selectedEmployeeId, absence.periodId, absence.id)}>
-                                                                        Eliminar
-                                                                    </AlertDialogAction>
-                                                                </AlertDialogFooter>
-                                                            </AlertDialogContent>
-                                                        </AlertDialog>
+                                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingAbsence({ employee: employees.find(e => e.id === selectedEmployeeId), absence })}>
+                                                            <Edit className="h-3 w-3" />
+                                                        </Button>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
@@ -1010,5 +1015,4 @@ export default function VacationsPage() {
         </div>
     );
 }
-
   

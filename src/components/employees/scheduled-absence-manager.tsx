@@ -117,9 +117,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
         setEndDate(absence.endDate ? format(absence.endDate, 'yyyy-MM-dd') : '');
     };
 
-    const handleHardDelete = async () => {
-        if (!editingAbsence) return;
-
+    const handleHardDelete = async (absenceId: string, periodId: string) => {
         if (!deletePassword) {
             toast({ title: 'Contraseña requerida', description: 'Introduce tu contraseña para confirmar.', variant: 'destructive' });
             return;
@@ -134,7 +132,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                 return;
             }
 
-            await hardDeleteScheduledAbsence(employee.id, editingAbsence.periodId, editingAbsence.id, employee, weeklyRecords);
+            await hardDeleteScheduledAbsence(employee.id, periodId, absenceId);
             toast({ title: 'Ausencia eliminada permanentemente', variant: 'destructive' });
             
             resetForm();
@@ -236,7 +234,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                                                             </div>
                                                             <AlertDialogFooter>
                                                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => { setEditingAbsence(absence); handleHardDelete(); }} disabled={isLoading}>
+                                                                <AlertDialogAction onClick={() => handleHardDelete(absence.id, absence.periodId)} disabled={isLoading}>
                                                                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sí, eliminar permanentemente'}
                                                                 </AlertDialogAction>
                                                             </AlertDialogFooter>
