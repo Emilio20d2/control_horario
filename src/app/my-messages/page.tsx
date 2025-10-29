@@ -285,11 +285,20 @@ export default function MyMessagesPage() {
         try {
             for (const range of selectedDateRanges) {
                 if (range.from && range.to) {
-                    await addScheduledAbsence(employeeRecord.id, activePeriod.id, {
-                        absenceTypeId: absenceType.id,
+                    const originalRequestPayload = {
                         startDate: format(range.from, 'yyyy-MM-dd'),
                         endDate: format(range.to, 'yyyy-MM-dd'),
-                    }, employeeRecord as Employee);
+                    };
+                    const absencePayload = {
+                        absenceTypeId: absenceType.id,
+                        ...originalRequestPayload,
+                    };
+
+                    // Create the original request record (for the report)
+                    await addScheduledAbsence(employeeRecord.id, activePeriod.id, absencePayload, employeeRecord, originalRequestPayload, false);
+                    
+                    // Create the definitive, editable record (for the planner)
+                    await addScheduledAbsence(employeeRecord.id, activePeriod.id, absencePayload, employeeRecord, originalRequestPayload, true);
                 }
             }
             
@@ -592,5 +601,7 @@ export default function MyMessagesPage() {
     
 
 
+
+    
 
     
