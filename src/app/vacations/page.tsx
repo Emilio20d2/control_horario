@@ -307,95 +307,30 @@ export default function VacationsPage() {
     
     const { employeesWithAbsences, weeklySummaries, employeesByWeek, allAbsences } = useMemo(() => {
         const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
-        const schedulableAbbrs = new Set(schedulableAbsenceTypes.map(at => at.abbreviation));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
         const allAbsences: FormattedAbsence[] = [];
-
+    
         allEmployeesForQuadrant.forEach(emp => {
-            const allAbsenceDays = new Map<string, { typeId: string; typeAbbr: string; periodId?: string; absenceId?: string; isRequest?: boolean; originalRequest?: { startDate: Date, endDate: Date | null }; isDefinitive: boolean }>();
-
-            (emp.employmentPeriods || []).forEach(period => {
-                (period.scheduledAbsences || []).filter(a => schedulableIds.has(a.absenceTypeId))
-                    .forEach(absence => {
-                        if (!absence.endDate) return;
-
-                        // Only process definitive records for the main logic
-                        if (absence.isDefinitive) {
-                            const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
-                            if (!absenceType) return;
-                            eachDayOfInterval({ start: startOfDay(absence.startDate), end: startOfDay(absence.endDate) }).forEach(day => {
-                               allAbsenceDays.set(format(day, 'yyyy-MM-dd'), {
-                                    typeId: absenceType.id,
-                                    typeAbbr: absenceType.abbreviation,
-                                    periodId: period.id,
-                                    absenceId: absence.id,
-                                    isRequest: false, 
-                                    originalRequest: absence.originalRequest,
-                                    isDefinitive: true,
-                                });
-                            });
-                        }
-                    });
-            });
+            const empAbsences: ScheduledAbsence[] = (emp.employmentPeriods || []).flatMap(p => p.scheduledAbsences || []);
             
-            Object.values(weeklyRecords).forEach(record => {
-                const empWeekData = record.weekData[emp.id];
-                if (!empWeekData?.days) return;
-
-                Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
-                    const day = parseISO(dayStr);
-                    if (dayData.absence && schedulableAbbrs.has(dayData.absence)) {
-                         if (!allAbsenceDays.has(dayStr)) {
-                            const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
-                            if (absenceType) {
-                                allAbsenceDays.set(dayStr, {
-                                    typeId: absenceType.id,
-                                    typeAbbr: absenceType.abbreviation,
-                                    absenceId: `weekly-${dayStr}`,
-                                    isDefinitive: true,
-                                });
-                            }
-                         }
-                    }
-                });
-            });
-            
-            const sortedDays = Array.from(allAbsenceDays.keys()).map(d => parseISO(d)).sort((a,b) => a.getTime() - b.getTime());
-            const periods: FormattedAbsence[] = [];
-
-            if (sortedDays.length > 0) {
-                let currentStart = sortedDays[0];
-                let currentInfo = allAbsenceDays.get(format(currentStart, 'yyyy-MM-dd'))!;
-                for (let i = 1; i < sortedDays.length; i++) {
-                    const dayInfo = allAbsenceDays.get(format(sortedDays[i], 'yyyy-MM-dd'))!;
-                    if (differenceInDays(sortedDays[i], sortedDays[i-1]) > 1 || dayInfo.typeId !== currentInfo.typeId || dayInfo.isRequest !== currentInfo.isRequest) {
-                        const newAbsence = {
-                            id: currentInfo.absenceId!, startDate: currentStart, endDate: sortedDays[i-1],
-                            absenceTypeId: currentInfo.typeId, absenceAbbreviation: currentInfo.typeAbbr, periodId: currentInfo.periodId,
-                            isRequest: currentInfo.isRequest, originalRequest: currentInfo.originalRequest, isDefinitive: currentInfo.isDefinitive,
-                        };
-                        periods.push(newAbsence);
-                        allAbsences.push(newAbsence);
-                        currentStart = sortedDays[i];
-                        currentInfo = dayInfo;
-                    }
-                }
-                const finalAbsence = {
-                    id: currentInfo.absenceId!, startDate: currentStart, endDate: sortedDays[sortedDays.length - 1],
-                    absenceTypeId: currentInfo.typeId, absenceAbbreviation: currentInfo.typeAbbr, periodId: currentInfo.periodId,
-                    isRequest: currentInfo.isRequest, originalRequest: currentInfo.originalRequest, isDefinitive: currentInfo.isDefinitive,
-                };
-                periods.push(finalAbsence);
-                allAbsences.push(finalAbsence);
-            }
-            employeesWithAbsences[emp.id] = periods;
+            const definitiveAbsences = empAbsences
+                .filter(a => schedulableIds.has(a.absenceTypeId) && a.isDefinitive)
+                .map(a => ({
+                    ...a,
+                    startDate: a.startDate,
+                    endDate: a.endDate!,
+                    absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
+                    isRequest: false,
+                    isDefinitive: true,
+                }));
+    
+            employeesWithAbsences[emp.id] = definitiveAbsences;
+            allAbsences.push(...definitiveAbsences);
         });
         
         let year = Number(selectedYear);
-        if (!year) { // Default to current year if none is selected
-            year = getYear(new Date());
-        }
-
+        if (!year) year = getYear(new Date());
+    
         const yearStartBoundary = startOfYear(new Date(year, 0, 1));
         const yearEndBoundary = endOfYear(new Date(year, 11, 31));
         
@@ -416,7 +351,7 @@ export default function VacationsPage() {
             end: endOfWeek(weekStart, { weekStartsOn: 1 }),
             key: getWeekId(weekStart)
         }));
-
+    
         const weeklySummaries: Record<string, { employeeCount: number; hourImpact: number }> = {};
         const employeesByWeek: Record<string, { employeeId: string; employeeName: string; groupId?: string | null; absenceAbbreviation: string }[]> = {};
         
@@ -427,9 +362,9 @@ export default function VacationsPage() {
             allEmployeesForQuadrant.forEach(emp => {
                 const empAbsences = employeesWithAbsences[emp.id];
                 const absenceThisWeek = empAbsences?.find(a => 
-                    isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end) && a.isDefinitive
+                    isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
                 );
-
+    
                 if (absenceThisWeek) {
                     weeklySummaries[week.key].employeeCount++;
                     const weeklyHours = getEffectiveWeeklyHours(emp.employmentPeriods?.[0] || null, week.start);
@@ -438,34 +373,35 @@ export default function VacationsPage() {
                 }
             });
         });
-
+    
         return { employeesWithAbsences, weeklySummaries, employeesByWeek, allAbsences };
-
-    }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords]);
+    
+    }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId]);
     
     // This effect runs once on initial load to set the default year.
     const isInitialLoad = useRef(true);
     useEffect(() => {
-        if (!loading && isInitialLoad.current && availableYears.length > 0) {
-            let yearToSet = new Date().getFullYear(); // Default to current year
+        if (!loading && isInitialLoad.current && employees.length > 0) {
+            let yearToSet = new Date().getFullYear();
 
-            // Find the highest year with any absence data
-            const latestYearWithAbsence = allAbsences.reduce((latest, absence) => {
+            const allScheduledAbsences = employees.flatMap(e => e.employmentPeriods || []).flatMap(p => p.scheduledAbsences || []);
+
+            const latestYearWithAbsence = allScheduledAbsences.reduce((latest, absence) => {
+                if (!absence.startDate) return latest;
                 const year = getYear(absence.startDate);
                 return year > latest ? year : latest;
             }, 0);
 
             if (latestYearWithAbsence > 0) {
                 yearToSet = latestYearWithAbsence;
-            } else {
-                // If no absences, find the highest available year in the dropdown
-                yearToSet = Math.max(...availableYears);
+            } else if (availableYears.length > 0) {
+                yearToSet = Math.max(...availableYears.filter(y => isFinite(y)));
             }
             
             setSelectedYear(String(yearToSet));
             isInitialLoad.current = false;
         }
-    }, [loading, allAbsences, availableYears]);
+    }, [loading, employees, availableYears]);
 
 
     const handleUpdateAbsence = async () => {
@@ -485,6 +421,7 @@ export default function VacationsPage() {
                     absenceTypeId: absence.absenceTypeId,
                 },
                 employee,
+                weeklyRecords,
                 absence.originalRequest
             );
     
@@ -622,7 +559,7 @@ export default function VacationsPage() {
             toast({ title: 'Error', description: 'Por favor, selecciona una campaña válida.', variant: 'destructive' });
             return;
         }
-        generateRequestStatusReportPDF(campaign, allEmployeesForQuadrant, employeesWithAbsences, absenceTypes);
+        generateRequestStatusReportPDF(campaign, allEmployeesForQuadrant, employees, absenceTypes);
     };
 
     const handleSelectSubstitute = async (weekKey: string, employeeId: string, substitute: {id: string, name: string} | null) => {
@@ -699,7 +636,7 @@ export default function VacationsPage() {
                     {weeksOfYear.map(week => {
                       const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
                         const absence = (employeesWithAbsences[emp.id] || []).find(a =>
-                          isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end) && a.isDefinitive
+                          isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
                         );
                         return absence ? { employee: emp, absence } : null;
                       }).filter((item): item is { employee: Employee & { isEventual: boolean, groupId: string | null }, absence: FormattedAbsence } => item !== null);
@@ -1020,7 +957,7 @@ export default function VacationsPage() {
                             <Button onClick={() => generateQuadrantReportPDF(Number(selectedYear), weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, substitutes, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost" className="h-9 md:h-8">
                                 <FileDown className="mr-2 h-4 w-4" /> Cuadrante
                             </Button>
-                            <Button onClick={() => generateSignatureReportPDF(Number(selectedYear), allEmployeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost" className="h-9 md:h-8">
+                            <Button onClick={() => generateSignatureReportPDF(Number(selectedYear), allEmployeesForQuadrant, employees, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost" className="h-9 md:h-8">
                                 <FileSignature className="mr-2 h-4 w-4" /> Firmas
                             </Button>
                             {allCampaignsSorted.length > 0 && (
@@ -1053,3 +990,4 @@ export default function VacationsPage() {
         </div>
     );
 }
+
