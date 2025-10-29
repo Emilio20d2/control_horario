@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardContent, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SendHorizonal, Loader2, PlaneTakeoff, Info, CalendarClock, Hourglass } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -51,6 +51,16 @@ export default function MyMessagesPage() {
     const [isSubmittingOtherRequest, setIsSubmittingOtherRequest] = useState(false);
     const [seniorHoursTotal, setSeniorHoursTotal] = useState(0);
 
+    const safeParseDate = useCallback((date: any): Date | null => {
+        if (!date) return null;
+        if (date instanceof Date) return date;
+        if (date instanceof Timestamp) return date.toDate();
+        if (typeof date === 'string') {
+            const parsed = parseISO(date);
+            return isValid(parsed) ? parsed : null;
+        }
+        return null;
+    }, []);
 
     const conversation = useMemo(() => {
         if (!conversationId) return null;
@@ -73,6 +83,7 @@ export default function MyMessagesPage() {
             'DH', // Devolución Horas
             'DF', // Devolución Festivo
             'DL', // Devolución Libranza
+            'LF', // Libranza de Festivo
             'HS', // Horas Sindicales
             'RJS', // Reducción Jornada Senior
             'HM', // Petición de Horas Médicas
@@ -325,17 +336,6 @@ export default function MyMessagesPage() {
         absenceTypes
     ]);
     
-    const safeParseDate = (date: any): Date | null => {
-        if (!date) return null;
-        if (date instanceof Date) return date;
-        if (date instanceof Timestamp) return date.toDate();
-        if (typeof date === 'string') {
-            const parsed = parseISO(date);
-            return isValid(parsed) ? parsed : null;
-        }
-        return null;
-    };
-
     const openingHolidays = useMemo(() => {
         return holidays
           .filter(h => h.type === 'Apertura')
@@ -353,6 +353,7 @@ export default function MyMessagesPage() {
     const dayPickerModifiers = {
         opening: openingHolidays,
         other: otherHolidays,
+        selected: otherRequestMultipleDates,
     };
     
     const dayPickerModifiersStyles = {
@@ -458,7 +459,7 @@ export default function MyMessagesPage() {
                             ))
                         )}
                     </ScrollArea>
-                    <div className="p-4 border-t bg-background space-y-4">
+                    <CardFooter className="p-4 border-t bg-background space-y-4">
                         <form onSubmit={handleSendMessage} className="relative">
                             <Input 
                                 placeholder="Escribe tu mensaje para cualquier otra consulta..." 
@@ -470,7 +471,7 @@ export default function MyMessagesPage() {
                                 <SendHorizonal className="h-4 w-4" />
                             </Button>
                         </form>
-                    </div>
+                    </CardFooter>
                 </Card>
             </div>
              <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
@@ -622,5 +623,3 @@ export default function MyMessagesPage() {
         </>
     );
 }
-
-    
