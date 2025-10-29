@@ -180,7 +180,7 @@ export default function VacationsPage() {
     const activeEmployees = useMemo(() => {
         return employees.filter(e => e.employmentPeriods.some(p => {
             if (!p.endDate) return true;
-            const endDate = p.endDate instanceof Date ? p.endDate : parseISO(p.endDate);
+            const endDate = p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string);
             return isAfter(endDate, new Date());
         }));
     }, [employees]);
@@ -258,7 +258,7 @@ export default function VacationsPage() {
         const currentYear = new Date().getFullYear();
         years.add(currentYear);
         years.add(currentYear + 1);
-        return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
+        return Array.from(years).sort((a,b) => b - a);
     }, [allEmployeesForQuadrant]);
     
     useEffect(() => {
@@ -268,7 +268,7 @@ export default function VacationsPage() {
             setSelectedYear(String(latestYearWithData));
         }
       }
-    }, [loading, availableYears, selectedYear]);
+    }, [loading, availableYears]);
 
     useEffect(() => {
         if (activeEmployees.length > 0 && !selectedEmployeeId) {
@@ -292,6 +292,9 @@ export default function VacationsPage() {
         }
     }, [editingAbsence]);
 
+    const schedulableAbsenceTypes = useMemo(() => {
+      return absenceTypes.filter(at => ['Vacaciones', 'Excedencia', 'Permiso no retribuido'].includes(at.name));
+    }, [absenceTypes]);
     
     useEffect(() => {
         if (schedulableAbsenceTypes.length > 0 && !selectedAbsenceTypeId) {
@@ -310,7 +313,12 @@ export default function VacationsPage() {
             const absences: FormattedAbsence[] = [];
             (emp.employmentPeriods || []).forEach((p: EmploymentPeriod) => {
                 (p.scheduledAbsences || []).forEach(a => {
-                    if (a.isDefinitive && schedulableIds.has(a.absenceTypeId)) {
+                    const absenceYear = getYear(a.startDate);
+                    // This logic ensures that if only the original request exists, it's used for display.
+                    // But if a definitive version exists, that one is used instead.
+                    const isDefinitivePresent = (p.scheduledAbsences || []).some(def => def.isDefinitive && def.originalRequest?.startDate === a.originalRequest?.startDate);
+                    
+                    if ( (a.isDefinitive || !isDefinitivePresent) && schedulableIds.has(a.absenceTypeId)) {
                          absences.push({
                             ...a,
                             absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
@@ -962,5 +970,6 @@ export default function VacationsPage() {
         </div>
     );
 }
+
 
 
