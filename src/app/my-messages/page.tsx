@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -62,8 +61,8 @@ export default function MyMessagesPage() {
         return null;
     }, []);
 
-    const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
-    const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
+    const openingHolidays = useMemo(() => (holidays || []).filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
+    const otherHolidays = useMemo(() => (holidays || []).filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
     
     const dayPickerModifiers = {
         opening: openingHolidays,
@@ -225,7 +224,7 @@ export default function MyMessagesPage() {
             return;
         }
     
-        const activePeriod = employeeRecord.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
+        const activePeriod = employeeRecord.employmentPeriods.find(p => !p.endDate || isWithinInterval(new Date(), { start: safeParseDate(p.startDate)!, end: safeParseDate(p.endDate) || new Date('9999-12-31') }));
         if (!activePeriod) {
             toast({ title: 'Error', description: 'No tienes un periodo laboral activo.', variant: 'destructive' });
             return;
@@ -609,9 +608,3 @@ export default function MyMessagesPage() {
         </>
     );
 }
-
-    
-
-    
-
-    
