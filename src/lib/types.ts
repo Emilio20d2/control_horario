@@ -34,8 +34,8 @@ export interface ScheduledAbsence {
     endDate: Date | null;
     isDefinitive: boolean; // True if it's the record to be shown on the planner
     originalRequest?: {
-        startDate: Date;
-        endDate: Date | null;
+        startDate: Date | string;
+        endDate: Date | string | null;
     }
 }
 

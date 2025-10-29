@@ -308,14 +308,15 @@ export default function VacationsPage() {
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
 
         allEmployeesForQuadrant.forEach(emp => {
-            const definitiveAbsences = (emp.employmentPeriods || [])
-                .flatMap((p: EmploymentPeriod) => (p.scheduledAbsences || []).map(a => ({...a, periodId: p.id})))
-                .filter((a: ScheduledAbsence) => schedulableIds.has(a.absenceTypeId) && a.isDefinitive);
-
-            employeesWithAbsences[emp.id] = definitiveAbsences.map((a: ScheduledAbsence & { periodId: string }) => ({
-                ...a,
-                absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
-            }));
+            employeesWithAbsences[emp.id] = (emp.employmentPeriods || [])
+                .flatMap((p: EmploymentPeriod) => 
+                    (p.scheduledAbsences || []).map(a => ({...a, periodId: p.id}))
+                )
+                .filter((a: ScheduledAbsence) => schedulableIds.has(a.absenceTypeId) && a.isDefinitive)
+                .map((a: ScheduledAbsence & { periodId: string }) => ({
+                    ...a,
+                    absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
+                }));
         });
         
         const allAbsences = Object.values(employeesWithAbsences).flat();
@@ -374,7 +375,7 @@ export default function VacationsPage() {
     const isInitialLoad = useRef(true);
     useEffect(() => {
         if (!loading && isInitialLoad.current && employees.length > 0) {
-            let yearToSet = new Date().getFullYear();
+            let yearToSet = getYear(new Date());
     
             const allScheduledAbsences = employees.flatMap(e => e.employmentPeriods || []).flatMap(p => p.scheduledAbsences || []);
             
@@ -414,7 +415,6 @@ export default function VacationsPage() {
                     endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
                 },
                 employee,
-                weeklyRecords,
                 absence.originalRequest
             );
     
@@ -473,11 +473,16 @@ export default function VacationsPage() {
 
         setIsGenerating(true);
         try {
-            await addScheduledAbsence(selectedEmployeeId, activePeriod.id, {
-                absenceTypeId: selectedAbsenceTypeId,
-                startDate: format(selectedDateRange.from, 'yyyy-MM-dd'),
-                endDate: format(selectedDateRange.to, 'yyyy-MM-dd'),
-            }, selectedEmployee, undefined, true);
+            await addScheduledAbsence(
+                selectedEmployeeId, 
+                activePeriod.id, 
+                {
+                    absenceTypeId: selectedAbsenceTypeId,
+                    startDate: format(selectedDateRange.from, 'yyyy-MM-dd'),
+                    endDate: format(selectedDateRange.to, 'yyyy-MM-dd'),
+                }, 
+                selectedEmployee
+            );
             
             toast({ title: 'Periodo de ausencia añadido', description: `Se ha guardado la ausencia para ${selectedEmployee?.name}.` });
             setSelectedDateRange(undefined);
@@ -845,7 +850,7 @@ export default function VacationsPage() {
                         {editingAbsence && (
                             <DialogDescription>
                                 Modificando la ausencia de <strong>{editingAbsence.employee.name}</strong> del tipo <strong>{absenceTypes.find(at => at.id === editingAbsence.absence.absenceTypeId)?.name}</strong>.
-                                {editingAbsence.absence.originalRequest && <p className="text-xs text-muted-foreground pt-2">Solicitud Original: del {format(editingAbsence.absence.originalRequest.startDate, 'dd/MM/yy')} al {editingAbsence.absence.originalRequest.endDate ? format(editingAbsence.absence.originalRequest.endDate, 'dd/MM/yy') : ''}</p>}
+                                {editingAbsence.absence.originalRequest && <p className="text-xs text-muted-foreground pt-2">Solicitud Original: del {format(parseISO(editingAbsence.absence.originalRequest.startDate as string), 'dd/MM/yy')} al {editingAbsence.absence.originalRequest.endDate ? format(parseISO(editingAbsence.absence.originalRequest.endDate as string), 'dd/MM/yy') : ''}</p>}
                             </DialogDescription>
                         )}
                     </DialogHeader>
@@ -962,6 +967,7 @@ export default function VacationsPage() {
         </div>
     );
 }
+
 
 
 

@@ -310,9 +310,7 @@ export const addScheduledAbsence = async (
         startDate: string; // YYYY-MM-DD
         endDate: string | null;
     },
-    currentEmployee: Employee,
-    originalRequest?: { startDate: string | Date, endDate: string | Date | null },
-    isDefinitive: boolean = false
+    currentEmployee: Employee
 ): Promise<void> => {
     const employeeCopy = JSON.parse(JSON.stringify(currentEmployee));
     const period = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => p.id === periodId);
@@ -322,29 +320,32 @@ export const addScheduledAbsence = async (
         period.scheduledAbsences = [];
     }
     
-    const absenceToAdd: any = {
+    const absenceForReport: any = {
         id: `abs_${Date.now()}_${Math.random()}`,
         absenceTypeId: newAbsence.absenceTypeId,
         startDate: newAbsence.startDate,
         endDate: newAbsence.endDate,
-        isDefinitive: isDefinitive,
+        isDefinitive: false, // This is the original, immutable record for the report
+        originalRequest: { // Self-reference for clarity
+            startDate: newAbsence.startDate,
+            endDate: newAbsence.endDate
+        }
     };
     
-    if (originalRequest) {
-        absenceToAdd.originalRequest = {
-            startDate: originalRequest.startDate,
-            endDate: originalRequest.endDate
+    const absenceForPlanner: any = {
+        id: `abs_def_${Date.now()}_${Math.random()}`,
+        absenceTypeId: newAbsence.absenceTypeId,
+        startDate: newAbsence.startDate,
+        endDate: newAbsence.endDate,
+        isDefinitive: true, // This is the editable copy for the planner
+        originalRequest: {
+            startDate: newAbsence.startDate,
+            endDate: newAbsence.endDate
         }
-    }
+    };
 
-    period.scheduledAbsences.push(absenceToAdd);
-    
-    // If it's a campaign request, create a second, definitive record
-    if (!isDefinitive && originalRequest) {
-        const definitiveAbsence = { ...absenceToAdd, id: `abs_def_${Date.now()}_${Math.random()}`, isDefinitive: true };
-        period.scheduledAbsences.push(definitiveAbsence);
-    }
-
+    period.scheduledAbsences.push(absenceForReport);
+    period.scheduledAbsences.push(absenceForPlanner);
 
     await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
 };
@@ -360,25 +361,25 @@ export const updateScheduledAbsence = async (
         absenceTypeId: string;
     },
     currentEmployee: Employee,
-    weeklyRecords?: Record<string, WeeklyRecord>,
     originalRequest?: any
 ): Promise<void> => {
-    // First, hard-delete the old absence to ensure a clean state
-    await deleteScheduledAbsence(employeeId, periodId, absenceId, weeklyRecords);
+    const employeeCopy = JSON.parse(JSON.stringify(currentEmployee));
+    const period = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => p.id === periodId);
+    if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
 
-    // Then, add the new, updated absence, preserving the originalRequest if it exists
-    await addScheduledAbsence(
-        employeeId,
-        periodId,
-        {
-            absenceTypeId: newData.absenceTypeId,
-            startDate: newData.startDate,
-            endDate: newData.endDate,
-        },
-        currentEmployee, 
-        originalRequest,
-        true // Mark as definitive
-    );
+    const absenceIndex = period.scheduledAbsences.findIndex((a: ScheduledAbsence) => a.id === absenceId);
+    if (absenceIndex === -1) {
+        throw new Error(`Absence with id ${absenceId} not found for update.`);
+    }
+
+    // Replace the old definitive absence with the new data
+    period.scheduledAbsences[absenceIndex] = {
+        ...period.scheduledAbsences[absenceIndex],
+        ...newData,
+        originalRequest: originalRequest || period.scheduledAbsences[absenceIndex].originalRequest, // Preserve original request link
+    };
+
+    await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
 };
 
 
@@ -416,11 +417,60 @@ export const deleteScheduledAbsence = async (
             const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
             const weekRecord = weeklyRecords[weekId]?.weekData?.[employeeId];
             if (weekRecord?.confirmed) {
-                throw new Error(`No se puede eliminar la ausencia. La semana del ${weekId} ya está confirmada y afecta a este periodo.`);
+                // Instead of throwing, we just modify the week record
+                const dayKey = format(day, 'yyyy-MM-dd');
+                const docRef = doc(db, 'weeklyRecords', weekId);
+                await updateDoc(docRef, {
+                    [`weekData.${employeeId}.days.${dayKey}.absence`]: 'ninguna',
+                    [`weekData.${employeeId}.days.${dayKey}.absenceHours`]: 0,
+                });
             }
         }
     }
 
+    // Invalidate the absence by setting its end date to its start date
+    period.scheduledAbsences[absenceIndex].endDate = period.scheduledAbsences[absenceIndex].startDate;
+    
+    await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
+};
+
+
+export const hardDeleteScheduledAbsence = async (
+    employeeId: string, 
+    periodId: string, 
+    absenceId: string,
+    weeklyRecords?: Record<string, WeeklyRecord>
+): Promise<void> => {
+    const employeeDoc = await getDoc(doc(db, 'employees', employeeId));
+    if (!employeeDoc.exists()) throw new Error("Employee not found");
+    
+    const employeeCopy = JSON.parse(JSON.stringify(employeeDoc.data()));
+    const period = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => p.id === periodId);
+    if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
+
+    const absenceIndex = period.scheduledAbsences.findIndex((a: ScheduledAbsence) => a.id === absenceId);
+    if (absenceIndex === -1) {
+        console.warn(`Absence with id ${absenceId} not found for hard delete.`);
+        return; // Exit if not found
+    }
+    
+    const absenceToDelete = period.scheduledAbsences[absenceIndex];
+
+    // Check confirmed weeks
+    if (weeklyRecords) {
+        const startDate = absenceToDelete.startDate instanceof Date ? absenceToDelete.startDate : parseISO(absenceToDelete.startDate as string);
+        const endDate = absenceToDelete.endDate ? (absenceToDelete.endDate instanceof Date ? absenceToDelete.endDate : parseISO(absenceToDelete.endDate as string)) : startDate;
+        const daysInAbsence = eachDayOfInterval({ start: startOfDay(startDate), end: startOfDay(endDate) });
+
+        for(const day of daysInAbsence) {
+            const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+            if (weeklyRecords[weekId]?.weekData?.[employeeId]?.confirmed) {
+                throw new Error(`No se puede eliminar. La semana del ${weekId} ya está confirmada.`);
+            }
+        }
+    }
+
+    // Remove the absence from the array
     period.scheduledAbsences.splice(absenceIndex, 1);
     
     await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
