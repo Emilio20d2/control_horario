@@ -25,6 +25,7 @@ import {
   HelpCircle,
   Mail,
   MessageSquareWarning,
+  CalendarClock,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -66,7 +67,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     if (authLoading || !appUser) return;
   
     const employeePages = ['/my-profile', '/my-schedule', '/my-messages', '/help'];
-    const adminPages = ['/dashboard', '/schedule', '/employees', '/listings', '/vacations', '/messages', '/settings'];
+    const adminPages = ['/dashboard', '/schedule', '/employees', '/listings', '/vacations', '/calendar', '/messages', '/settings'];
   
     if (appUser.trueRole === 'admin') {
       if (viewMode === 'employee' && adminPages.some(p => pathname.startsWith(p))) {
@@ -101,6 +102,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/employees', label: 'Empleados', icon: Users },
     { href: '/listings', label: 'Formularios', icon: ListChecks },
     { href: '/vacations', label: 'Vacaciones', icon: Plane },
+    { href: '/calendar', label: 'Calendario', icon: CalendarClock },
     { href: '/messages', label: 'Mensajes', icon: Mail, notification: unreadMessageCount > 0 },
     { href: '/settings', label: 'Ajustes', icon: Settings },
   ];
