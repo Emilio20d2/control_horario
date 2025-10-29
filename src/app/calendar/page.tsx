@@ -175,21 +175,21 @@ export default function CalendarPage() {
                                         const holiday = holidays.find(h => isSameDay(h.date, day));
                                         
                                         return (
-                                            <TableCell key={dayKey} className={cn("text-center p-2", absence && "bg-destructive/10", holiday && !absence && 'bg-blue-50/50')}>
+                                            <TableCell key={dayKey} className={cn("text-center p-1", absence && "bg-destructive/10", holiday && !absence && 'bg-blue-50/50')}>
                                                 {absence ? (
-                                                    <div className="flex flex-col items-center justify-center gap-1.5 p-1 rounded-md bg-secondary text-secondary-foreground min-h-[60px]">
+                                                    <div className="flex flex-col items-center justify-center gap-1 p-1 rounded-md bg-secondary text-secondary-foreground">
                                                         <div className="flex items-center gap-2">
                                                             <User className="h-4 w-4 text-destructive" />
                                                             <span className="font-bold text-lg">{absence.abbreviation}</span>
                                                         </div>
                                                         {absence.substituteName && (
-                                                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                                                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                                                 <ArrowRight className="h-3 w-3 text-primary" />
                                                                 <span className="font-semibold truncate">{absence.substituteName}</span>
                                                             </div>
                                                         )}
                                                     </div>
-                                                ) : <div className="min-h-[60px]"></div>}
+                                                ) : <div className="h-12"></div>}
                                             </TableCell>
                                         );
                                     })}
@@ -210,3 +210,4 @@ export default function CalendarPage() {
     </div>
   );
 }
+
