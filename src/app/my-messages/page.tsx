@@ -280,9 +280,9 @@ Gracias.`;
         datesForMessage = otherRequestMultipleDates.map(d => format(d, 'dd/MM/yyyy')).sort().join(', ');
         
         let extraInfo = '';
-        if (selectedAbsenceName === 'Reducción Jornada Senior') {
+        if (selectedAbsenceType?.abbreviation === 'RJS') {
             finalNotes = `Petición de **${seniorHoursTotal.toFixed(2)} horas** por reducción de jornada senior.`;
-        } else if (selectedAbsenceName === 'Petición de Horas Médicas') {
+        } else if (selectedAbsenceType?.abbreviation === 'HM') {
             if (!medicalAppointmentTime) {
                 toast({ title: 'Hora requerida', description: 'Por favor, especifica la hora de la consulta médica.', variant: 'destructive' });
                 return;
@@ -337,11 +337,11 @@ Gracias.`;
             return true;
         }
         
-        if (selectedAbsenceType?.name === 'Reducción Jornada Senior') {
+        if (selectedAbsenceType?.abbreviation === 'RJS') {
             return false; // Only needs dates
         }
 
-        if (selectedAbsenceType?.name === 'Petición de Horas Médicas') {
+        if (selectedAbsenceType?.abbreviation === 'HM') {
              return !otherRequestNotes.trim() || !medicalAppointmentTime;
         }
 
@@ -552,7 +552,7 @@ Gracias.`;
                                     </SelectContent>
                                 </Select>
                             </div>
-                            {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name === 'Petición de Horas Médicas' && (
+                            {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.abbreviation === 'HM' && (
                                 <div className="space-y-2">
                                     <Label htmlFor="appointment-time" className="text-sm font-medium">
                                         Hora de la Consulta <span className="text-destructive">*</span>
@@ -567,7 +567,7 @@ Gracias.`;
                                     {otherRequestMultipleDates.length > 0 ? `${otherRequestMultipleDates.length} día(s) seleccionado(s)` : "Seleccionar días..."}
                                 </Button>
                             </div>
-                            {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name === 'Reducción Jornada Senior' && (
+                            {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.abbreviation === 'RJS' && (
                                 <div className="mt-2 border rounded-md p-3 bg-muted/20">
                                     <div className="flex flex-row items-center justify-between space-y-0 pb-2">
                                         <p className="text-sm font-medium">Total de Horas Solicitadas</p>
@@ -578,7 +578,7 @@ Gracias.`;
                                     </div>
                                 </div>
                             )}
-                            {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name !== 'Reducción Jornada Senior' && (
+                            {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.abbreviation !== 'RJS' && (
                                 <div className="space-y-2">
                                     <Label htmlFor="notes" className="text-sm font-medium">
                                         Motivo <span className="text-destructive">*</span>
@@ -615,7 +615,6 @@ Gracias.`;
                     <div className="py-4 flex justify-center">
                         <DayPicker
                             mode="multiple"
-                            min={0}
                             selected={otherRequestMultipleDates}
                             onSelect={(days) => setOtherRequestMultipleDates(days || [])}
                             locale={es}
