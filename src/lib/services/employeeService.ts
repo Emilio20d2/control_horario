@@ -320,9 +320,11 @@ export const addScheduledAbsence = async (
         period.scheduledAbsences = [];
     }
     
+    const finalEndDate = newAbsence.endDate || newAbsence.startDate;
+
     const originalRequestData = {
         startDate: newAbsence.startDate,
-        endDate: newAbsence.endDate,
+        endDate: finalEndDate,
     };
 
     if (createDefinitiveCopy) {
@@ -506,3 +508,4 @@ export const hardDeleteScheduledAbsence = async (
 };
     
 
+    
