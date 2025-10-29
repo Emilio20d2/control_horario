@@ -344,6 +344,41 @@ export const addScheduledAbsence = async (
 };
 
 /**
+ * Updates an existing scheduled absence.
+ */
+export const updateScheduledAbsence = async (
+    employeeId: string,
+    periodId: string,
+    absenceId: string,
+    updatedAbsence: {
+        absenceTypeId: string;
+        startDate: string; // YYYY-MM-DD
+        endDate: string | null;
+    },
+    currentEmployee: Employee
+): Promise<void> => {
+    const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
+    if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
+
+    const absenceIndex = period.scheduledAbsences.findIndex(a => a.id === absenceId);
+    if (absenceIndex === -1) throw new Error("Ausencia no encontrada para actualizar");
+
+    // Preserve originalRequest if it exists
+    const originalRequest = period.scheduledAbsences[absenceIndex].originalRequest;
+
+    // Update the absence in the array
+    period.scheduledAbsences[absenceIndex] = {
+        ...period.scheduledAbsences[absenceIndex],
+        absenceTypeId: updatedAbsence.absenceTypeId,
+        startDate: parseISO(updatedAbsence.startDate),
+        endDate: updatedAbsence.endDate ? parseISO(updatedAbsence.endDate) : null,
+        originalRequest: originalRequest, // Persist the original request data
+    };
+
+    await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
+};
+
+/**
  * Performs a "soft delete" by invalidating the absence period.
  * The record is kept for historical/reporting purposes.
  */

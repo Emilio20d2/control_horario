@@ -70,6 +70,7 @@ import {
   addScheduledAbsence,
   deleteScheduledAbsence,
   hardDeleteScheduledAbsence,
+  updateScheduledAbsence,
 } from '@/lib/services/employeeService';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -448,27 +449,25 @@ export default function VacationsPage() {
 
     const handleUpdateAbsence = async () => {
         if (!editingAbsence || !editedDateRange?.from) return;
-        
+    
         if (editingAbsence.absence.id.startsWith('weekly-')) {
             toast({ title: 'No editable', description: 'Las ausencias puntuales registradas en el horario semanal no se pueden editar desde aquí.', variant: 'destructive' });
             setEditingAbsence(null);
             return;
         }
-
+    
         setIsGenerating(true);
         try {
             const { employee, absence } = editingAbsence;
-            const period = employee.employmentPeriods.find((p: EmploymentPeriod) => p.id === absence.periodId);
-            if (!period) throw new Error("Periodo laboral no encontrado para la ausencia.");
             
-            await deleteScheduledAbsence(employee.id, period.id, absence.id, employee, weeklyRecords);
-            
-            await addScheduledAbsence(employee.id, period.id, {
+            const newAbsenceData = {
                 absenceTypeId: absence.absenceTypeId,
                 startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
                 endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
-            }, employee, absence.originalRequest);
-
+            };
+    
+            await updateScheduledAbsence(employee.id, absence.periodId!, absence.id, newAbsenceData, employee);
+    
             toast({ title: 'Ausencia actualizada', description: `La ausencia de ${employee.name} ha sido modificada.` });
             refreshData();
             setEditingAbsence(null);
@@ -963,3 +962,4 @@ export default function VacationsPage() {
     
 
     
+
