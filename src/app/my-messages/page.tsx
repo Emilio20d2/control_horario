@@ -336,33 +336,11 @@ export default function MyMessagesPage() {
         absenceTypes
     ]);
     
-    const openingHolidays = useMemo(() => {
-        return holidays
-          .filter(h => h.type === 'Apertura')
-          .map(h => safeParseDate(h.date))
-          .filter((d): d is Date => d !== null);
-    }, [holidays, safeParseDate]);
-    
-    const otherHolidays = useMemo(() => {
-        return holidays
-          .filter(h => h.type !== 'Apertura')
-          .map(h => safeParseDate(h.date))
-          .filter((d): d is Date => d !== null);
-    }, [holidays, safeParseDate]);
-    
-    const dayPickerModifiers = {
-        opening: openingHolidays,
-        other: otherHolidays,
-        selected: otherRequestMultipleDates,
-    };
-    
-    const dayPickerModifiersStyles = {
-        opening: { backgroundColor: '#a7f3d0' },
-        other: { backgroundColor: '#fecaca' },
-        selected: { 
-            backgroundColor: 'var(--primary)',
-            color: 'var(--primary-foreground)'
-        },
+    const holidayDates = useMemo(() => (holidays || []).map(h => h.date as Date), [holidays]);
+    const dayPickerModifiers = { holidays: holidayDates, selected: otherRequestMultipleDates };
+    const dayPickerModifiersStyles = { 
+        holidays: { color: 'var(--destructive-foreground)', backgroundColor: 'var(--destructive)' },
+        selected: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' } 
     };
 
     if (loading) {
