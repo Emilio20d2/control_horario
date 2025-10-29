@@ -232,7 +232,6 @@ export default function MyMessagesPage() {
     
         setIsSubmittingRequest(true);
         try {
-            // Create both the original and definitive records
             await addScheduledAbsence(employeeRecord.id, activePeriod.id, {
                 absenceTypeId: requestAbsenceTypeId,
                 startDate: format(requestDateRange.from, 'yyyy-MM-dd'),
@@ -269,14 +268,25 @@ Gracias.`;
         const selectedAbsenceType = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId);
         const selectedAbsenceName = selectedAbsenceType?.name;
         
+        if (!employeeRecord) {
+            toast({ title: 'Error', description: 'No se pudo identificar tu ficha de empleado.', variant: 'destructive' });
+            return;
+        }
+    
+        const activePeriod = employeeRecord.employmentPeriods.find(p => !p.endDate || isWithinInterval(new Date(), { start: safeParseDate(p.startDate)!, end: safeParseDate(p.endDate) || new Date('9999-12-31') }));
+        if (!activePeriod) {
+            toast({ title: 'Error', description: 'No tienes un periodo laboral activo.', variant: 'destructive' });
+            return;
+        }
+    
         let finalNotes = otherRequestNotes;
         let datesForMessage = '';
-
+    
         if (otherRequestMultipleDates.length === 0) {
             toast({ title: 'Datos incompletos', description: 'Selecciona al menos un día para el permiso.', variant: 'destructive' });
             return;
         }
-
+    
         datesForMessage = otherRequestMultipleDates.map(d => format(d, 'dd/MM/yyyy')).sort().join(', ');
         
         let extraInfo = '';
@@ -302,10 +312,24 @@ Gracias.`;
             toast({ title: 'Datos incompletos', description: 'Completa todos los campos requeridos.', variant: 'destructive' });
             return;
         }
-
-
+    
         setIsSubmittingOtherRequest(true);
         try {
+            // Create scheduled absences for each selected day
+            for (const day of otherRequestMultipleDates) {
+                await addScheduledAbsence(
+                    employeeRecord.id,
+                    activePeriod.id,
+                    {
+                        absenceTypeId: otherRequestAbsenceTypeId,
+                        startDate: format(day, 'yyyy-MM-dd'),
+                        endDate: format(day, 'yyyy-MM-dd'),
+                    },
+                    employeeRecord,
+                    true // Create both original and definitive records
+                );
+            }
+    
             const absenceName = selectedAbsenceName || 'Ausencia';
             const requestMessage = `Hola,
 
@@ -316,12 +340,12 @@ Quiero solicitar un permiso que ya he comunicado a ${communicatedTo}.
 - Motivo: ${finalNotes}
 
 Gracias.`;
-
+    
             await sendMessage(requestMessage);
             
-            toast({ title: 'Solicitud Enviada', description: 'Tu petición ha sido enviada al administrador.' });
+            toast({ title: 'Solicitud Enviada', description: 'Tu petición ha sido registrada y enviada al administrador.' });
             setIsOtherRequestDialogOpen(false);
-
+    
         } catch (error) {
             console.error('Error submitting other request:', error);
             toast({ title: 'Error al enviar', description: error instanceof Error ? error.message : 'No se pudo enviar la solicitud.', variant: 'destructive' });
