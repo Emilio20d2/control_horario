@@ -227,83 +227,78 @@ export default function CalendarPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-                 <Button>
-                    <CalendarPlus className="mr-2 h-4 w-4" />
-                    Agendar Ausencia
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[625px]">
-                <DialogHeader>
-                    <DialogTitle>Programar Nueva Ausencia</DialogTitle>
-                    <DialogDescription>
-                        Selecciona la semana, el empleado y los días para registrar una nueva ausencia.
-                    </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-6 py-4">
-                    <div className="flex justify-center">
-                        <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                         <div className="space-y-2">
-                             <Label htmlFor="employee-select-dialog">Empleado</Label>
-                             <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-                                <SelectTrigger id="employee-select-dialog"><SelectValue placeholder="Seleccionar empleado..." /></SelectTrigger>
-                                <SelectContent>
-                                    {activeEmployees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                         </div>
-                         <div className="space-y-2">
-                             <Label htmlFor="absence-select-dialog">Tipo de Ausencia</Label>
-                             <Select value={selectedAbsenceTypeId} onValueChange={setSelectedAbsenceTypeId}>
-                                <SelectTrigger id="absence-select-dialog"><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
-                                <SelectContent>
-                                    {absenceTypes.sort((a,b) => a.name.localeCompare(b.name)).map(at => <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                         </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Días de la Ausencia</Label>
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 rounded-lg border p-4">
-                            {weekDays.map(day => {
-                                const dayKey = format(day, 'yyyy-MM-dd');
-                                return (
-                                    <div key={dayKey} className="flex items-center space-x-2">
-                                        <Checkbox id={`dialog-${dayKey}`} checked={selectedDays[dayKey] || false} onCheckedChange={() => handleDayToggle(dayKey)} />
-                                        <label htmlFor={`dialog-${dayKey}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                            {format(day, 'E, d', {locale: es})}
-                                        </label>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="notes">Notas (Opcional)</Label>
-                        <Textarea id="notes" placeholder="Añade un comentario sobre la ausencia..." value={notes} onChange={e => setNotes(e.target.value)} />
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button type="button" variant="secondary">Cancelar</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarPlus className="mr-2 h-4 w-4" />}
-                            Guardar Ausencia
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-
-
         <Card>
-            <CardHeader className="flex flex-col items-center gap-4">
-                <div className="text-center">
-                    <CardTitle className="text-2xl font-bold tracking-tight font-headline">Resumen Semanal de Ausencias</CardTitle>
-                </div>
+            <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <CalendarPlus className="mr-2 h-4 w-4" />
+                            Agendar Ausencia
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[625px]">
+                        <DialogHeader>
+                            <DialogTitle>Programar Nueva Ausencia</DialogTitle>
+                            <DialogDescription>
+                                Selecciona la semana, el empleado y los días para registrar una nueva ausencia.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleSubmit} className="space-y-6 py-4">
+                            <div className="flex justify-center">
+                                <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                                <div className="space-y-2">
+                                    <Label htmlFor="employee-select-dialog">Empleado</Label>
+                                    <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                                        <SelectTrigger id="employee-select-dialog"><SelectValue placeholder="Seleccionar empleado..." /></SelectTrigger>
+                                        <SelectContent>
+                                            {activeEmployees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="absence-select-dialog">Tipo de Ausencia</Label>
+                                    <Select value={selectedAbsenceTypeId} onValueChange={setSelectedAbsenceTypeId}>
+                                        <SelectTrigger id="absence-select-dialog"><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
+                                        <SelectContent>
+                                            {absenceTypes.sort((a,b) => a.name.localeCompare(b.name)).map(at => <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Días de la Ausencia</Label>
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 rounded-lg border p-4">
+                                    {weekDays.map(day => {
+                                        const dayKey = format(day, 'yyyy-MM-dd');
+                                        return (
+                                            <div key={dayKey} className="flex items-center space-x-2">
+                                                <Checkbox id={`dialog-${dayKey}`} checked={selectedDays[dayKey] || false} onCheckedChange={() => handleDayToggle(dayKey)} />
+                                                <label htmlFor={`dialog-${dayKey}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                    {format(day, 'E, d', {locale: es})}
+                                                </label>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="notes">Notas (Opcional)</Label>
+                                <Textarea id="notes" placeholder="Añade un comentario sobre la ausencia..." value={notes} onChange={e => setNotes(e.target.value)} />
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button type="button" variant="secondary">Cancelar</Button>
+                                </DialogClose>
+                                <Button type="submit" disabled={isSubmitting}>
+                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarPlus className="mr-2 h-4 w-4" />}
+                                    Guardar Ausencia
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
                 <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
             </CardHeader>
             <CardContent>
@@ -370,5 +365,3 @@ export default function CalendarPage() {
     </div>
   );
 }
-
-    
