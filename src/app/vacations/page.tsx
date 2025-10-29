@@ -306,17 +306,21 @@ export default function VacationsPage() {
     const { employeesWithAbsences, weeklySummaries, employeesByWeek, allAbsences } = useMemo(() => {
         const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
-
+    
         allEmployeesForQuadrant.forEach(emp => {
-            employeesWithAbsences[emp.id] = (emp.employmentPeriods || [])
-                .flatMap((p: EmploymentPeriod) => 
-                    (p.scheduledAbsences || []).map(a => ({...a, periodId: p.id}))
+            const allScheduled = (emp.employmentPeriods || [])
+                .flatMap((p: EmploymentPeriod) =>
+                    (p.scheduledAbsences || []).map(a => ({ ...a, periodId: p.id }))
                 )
-                .filter((a: ScheduledAbsence) => schedulableIds.has(a.absenceTypeId) && a.isDefinitive)
-                .map((a: ScheduledAbsence & { periodId: string }) => ({
-                    ...a,
-                    absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
-                }));
+                .filter((a: ScheduledAbsence) => schedulableIds.has(a.absenceTypeId));
+    
+            // We only want to display the definitive, editable records in the planner
+            const definitiveAbsences = allScheduled.filter(a => a.isDefinitive);
+    
+            employeesWithAbsences[emp.id] = definitiveAbsences.map((a: ScheduledAbsence & { periodId: string }) => ({
+                ...a,
+                absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
+            }));
         });
         
         const allAbsences = Object.values(employeesWithAbsences).flat();
@@ -414,8 +418,7 @@ export default function VacationsPage() {
                     startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
                     endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
                 },
-                employee,
-                absence.originalRequest
+                employee
             );
     
             toast({ title: 'Ausencia actualizada', description: `La ausencia de ${employee.name} ha sido modificada.` });
@@ -473,6 +476,7 @@ export default function VacationsPage() {
 
         setIsGenerating(true);
         try {
+            // This function now creates both the original and definitive records
             await addScheduledAbsence(
                 selectedEmployeeId, 
                 activePeriod.id, 
@@ -481,7 +485,8 @@ export default function VacationsPage() {
                     startDate: format(selectedDateRange.from, 'yyyy-MM-dd'),
                     endDate: format(selectedDateRange.to, 'yyyy-MM-dd'),
                 }, 
-                selectedEmployee
+                selectedEmployee,
+                true // Explicitly create both records
             );
             
             toast({ title: 'Periodo de ausencia añadido', description: `Se ha guardado la ausencia para ${selectedEmployee?.name}.` });
@@ -501,7 +506,7 @@ export default function VacationsPage() {
     const employeeAbsencesForYear = useMemo(() => {
         if (!selectedEmployeeId || !selectedYear) return [];
         return (employeesWithAbsences[selectedEmployeeId] || [])
-            .filter(a => getYear(a.startDate) === Number(selectedYear) && a.isDefinitive)
+            .filter(a => getYear(a.startDate) === Number(selectedYear))
             .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
     }, [selectedEmployeeId, selectedYear, employeesWithAbsences]);
     
@@ -967,6 +972,7 @@ export default function VacationsPage() {
         </div>
     );
 }
+
 
 
 
