@@ -306,15 +306,16 @@ export default function VacationsPage() {
     const { employeesWithAbsences, weeklySummaries, employeesByWeek, allAbsences } = useMemo(() => {
         const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
-    
+
         allEmployeesForQuadrant.forEach(emp => {
-            employeesWithAbsences[emp.id] = (emp.employmentPeriods || [])
+            const definitiveAbsences = (emp.employmentPeriods || [])
                 .flatMap((p: EmploymentPeriod) => (p.scheduledAbsences || []).map(a => ({...a, periodId: p.id})))
-                .filter((a: ScheduledAbsence) => schedulableIds.has(a.absenceTypeId) && a.isDefinitive)
-                .map((a: ScheduledAbsence & { periodId: string }) => ({
-                    ...a,
-                    absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
-                }));
+                .filter((a: ScheduledAbsence) => schedulableIds.has(a.absenceTypeId) && a.isDefinitive);
+
+            employeesWithAbsences[emp.id] = definitiveAbsences.map((a: ScheduledAbsence & { periodId: string }) => ({
+                ...a,
+                absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
+            }));
         });
         
         const allAbsences = Object.values(employeesWithAbsences).flat();
@@ -961,6 +962,7 @@ export default function VacationsPage() {
         </div>
     );
 }
+
 
 
 
