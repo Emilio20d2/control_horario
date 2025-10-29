@@ -178,6 +178,7 @@ export default function CalendarPage() {
   const dayPickerModifiers = {
       opening: openingHolidays,
       other: otherHolidays,
+      selected: selectedDays,
   };
   const dayPickerModifiersStyles = { 
       opening: { backgroundColor: '#a7f3d0' }, 
@@ -193,9 +194,8 @@ export default function CalendarPage() {
 
   const handleAddAbsenceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const daysToSave = selectedDays.map(day => format(day, 'yyyy-MM-dd'));
 
-    if (!selectedEmployeeId || !selectedAbsenceTypeId || daysToSave.length === 0) {
+    if (!selectedEmployeeId || !selectedAbsenceTypeId || selectedDays.length === 0) {
       toast({ title: 'Datos incompletos', description: 'Debes seleccionar empleado, tipo de ausencia y al menos un día.', variant: 'destructive' });
       return;
     }
@@ -208,23 +208,12 @@ export default function CalendarPage() {
             throw new Error('No se encontró un periodo de contrato activo para el empleado.');
         }
 
-        const sortedDays = daysToSave.sort();
-        let currentPeriodStart = sortedDays[0];
-
-        for (let i = 1; i <= sortedDays.length; i++) {
-            if (i === sortedDays.length || isAfter(parseISO(sortedDays[i]), addDays(parseISO(sortedDays[i - 1]), 1))) {
-                const periodEnd = sortedDays[i - 1];
-                
-                await addScheduledAbsence(employee.id, activePeriod.id, {
-                    absenceTypeId: selectedAbsenceTypeId,
-                    startDate: currentPeriodStart,
-                    endDate: periodEnd,
-                }, employee, true);
-                
-                if (i < sortedDays.length) {
-                    currentPeriodStart = sortedDays[i];
-                }
-            }
+        for (const day of selectedDays) {
+            await addScheduledAbsence(employee.id, activePeriod.id, {
+                absenceTypeId: selectedAbsenceTypeId,
+                startDate: format(day, 'yyyy-MM-dd'),
+                endDate: format(day, 'yyyy-MM-dd'),
+            }, employee, true);
         }
         
         toast({ title: 'Ausencia Programada', description: `Se ha guardado la ausencia para ${employee.name}.` });
