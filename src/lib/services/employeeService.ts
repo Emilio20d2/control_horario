@@ -347,28 +347,29 @@ export const updateScheduledAbsence = async (
     employeeId: string,
     periodId: string,
     absenceId: string,
-    newData: { startDate: string, endDate: string },
-    currentEmployee: Employee
+    newData: { 
+        startDate: string; 
+        endDate: string; 
+        absenceTypeId: string;
+        originalRequest?: { startDate: string | Date, endDate: string | Date | null } | null;
+    },
+    currentEmployee: Employee,
+    weeklyRecords?: Record<string, WeeklyRecord>
 ): Promise<void> => {
-    const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
-    if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
+    // First, perform a hard delete of the old absence to ensure clean state
+    await hardDeleteScheduledAbsence(employeeId, periodId, absenceId, currentEmployee, weeklyRecords);
 
-    const absenceIndex = period.scheduledAbsences.findIndex(a => a.id === absenceId);
-    if (absenceIndex === -1) throw new Error("Ausencia no encontrada para actualizar");
-
-    // Invalidate the old record by setting end date to start date.
-    period.scheduledAbsences[absenceIndex].endDate = period.scheduledAbsences[absenceIndex].startDate;
-
-    // Create a new absence without the originalRequest link.
+    // Then, add the new, updated absence
     await addScheduledAbsence(
         employeeId,
         periodId,
         {
-            absenceTypeId: period.scheduledAbsences[absenceIndex].absenceTypeId,
+            absenceTypeId: newData.absenceTypeId,
             startDate: newData.startDate,
             endDate: newData.endDate,
         },
-        currentEmployee
+        currentEmployee,
+        newData.originalRequest || undefined
     );
 };
 
@@ -448,4 +449,3 @@ export const hardDeleteScheduledAbsence = async (
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
-

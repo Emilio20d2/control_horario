@@ -151,6 +151,7 @@ export default function VacationsPage() {
     const [editingAbsence, setEditingAbsence] = useState<{ employee: any; absence: FormattedAbsence; } | null>(null);
     const [editedDateRange, setEditedDateRange] = useState<DateRange | undefined>(undefined);
     const [editCalendarMonth, setEditCalendarMonth] = useState<Date>(new Date());
+    const [deletePassword, setDeletePassword] = useState('');
         
     // State for status report
     const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
@@ -211,6 +212,7 @@ export default function VacationsPage() {
             setEditCalendarMonth(editingAbsence.absence.startDate);
         } else {
             setEditedDateRange(undefined);
+            setDeletePassword('');
         }
     }, [editingAbsence]);
 
@@ -465,8 +467,11 @@ export default function VacationsPage() {
                 {
                     startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
                     endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
+                    absenceTypeId: editingAbsence.absence.absenceTypeId,
+                    originalRequest: editingAbsence.absence.originalRequest
                 },
-                editingAbsence.employee
+                editingAbsence.employee,
+                weeklyRecords
             );
     
             toast({ title: 'Ausencia actualizada', description: `La ausencia de ${editingAbsence.employee.name} ha sido modificada.` });
@@ -482,15 +487,27 @@ export default function VacationsPage() {
 
     const handleDeleteAbsence = async () => {
         if (!editingAbsence) return;
-        
+    
         if (editingAbsence.absence.id.startsWith('weekly-')) {
             toast({ title: 'No editable', description: 'Las ausencias puntuales del horario no se pueden eliminar desde aquí.', variant: 'destructive' });
             setEditingAbsence(null);
             return;
         }
-
+    
+        if (!deletePassword) {
+            toast({ title: 'Contraseña requerida', description: 'Introduce tu contraseña para confirmar la eliminación.', variant: 'destructive' });
+            return;
+        }
+    
         setIsGenerating(true);
         try {
+            const isAuthenticated = await reauthenticateWithPassword(deletePassword);
+            if (!isAuthenticated) {
+                toast({ title: 'Error de autenticación', description: 'La contraseña no es correcta.', variant: 'destructive' });
+                setIsGenerating(false);
+                return;
+            }
+    
             await hardDeleteScheduledAbsence(editingAbsence.employee.id, editingAbsence.absence.periodId!, editingAbsence.absence.id, editingAbsence.employee, weeklyRecords);
             toast({ title: 'Ausencia Eliminada', description: `La ausencia de ${editingAbsence.employee.name} ha sido eliminada.`, variant: 'destructive' });
             refreshData();
@@ -916,13 +933,17 @@ export default function VacationsPage() {
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        Se eliminará el periodo de ausencia seleccionado. Esta acción no se puede deshacer.
+                                        Se eliminará el periodo de ausencia seleccionado. Esta acción no se puede deshacer. Introduce tu contraseña para confirmar.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
+                                 <div className="space-y-2 py-2">
+                                    <Label htmlFor="password-delete">Contraseña de Administrador</Label>
+                                    <Input id="password-delete" type="password" placeholder="Introduce tu contraseña" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
+                                </div>
                                 <AlertDialogFooter>
                                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDeleteAbsence} disabled={isGenerating}>
-                                        {isGenerating ? 'Eliminando...' : 'Sí, eliminar'}
+                                    <AlertDialogAction onClick={handleDeleteAbsence} disabled={isGenerating || !deletePassword}>
+                                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sí, eliminar'}
                                     </AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
@@ -1001,14 +1022,3 @@ export default function VacationsPage() {
         </div>
     );
 }
-
-    
-
-    
-
-    
-
-
-
-
-
