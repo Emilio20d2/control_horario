@@ -1,12 +1,10 @@
-
-
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear, isWithinInterval, getISOWeek, isAfter, isBefore, isEqual, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { Employee, WeeklyRecord, AbsenceType, Holiday, EmployeeGroup, Ausencia, Conversation, VacationCampaign, ScheduledAbsence } from './types';
+import type { Employee, WeeklyRecord, AbsenceType, Holiday, EmployeeGroup, Ausencia, Conversation, VacationCampaign, ScheduledAbsence, EmploymentPeriod } from './types';
 import { Timestamp } from 'firebase/firestore';
 
 // Helper function to add headers and footers to PDF
@@ -539,23 +537,23 @@ export const generateSignatureReportPDF = (
         return;
     }
 
-    doc.setFontSize(16).setFont('helvetica', 'bold');
-    doc.text(`Listado para Firmas de Vacaciones - ${year}`, 15, 20);
-
-    let finalY = 25;
-
     const safeParseDate = (date: any): Date | null => {
         if (!date) return null;
         if (date instanceof Date) return date;
         if (date.toDate && typeof date.toDate === 'function') return date.toDate();
         if (typeof date === 'string') {
             const parsed = parseISO(date);
-            if (isValid(parsed)) return parsed;
+            return isValid(parsed) ? parsed : null;
         }
         return null;
     };
     
-    // Filter out eventual employees and employees without active contract
+    doc.setFontSize(16).setFont('helvetica', 'bold');
+    doc.text(`Listado para Firmas de Vacaciones - ${year}`, 15, 20);
+
+    let finalY = 25;
+
+    // Filter out eventual employees and employees without an active contract
     const employeesForReport = allEmployeesForQuadrant.filter(emp => {
       const fullEmployee = employees.find(e => e.id === emp.id);
       return !emp.isEventual && fullEmployee && fullEmployee.employmentPeriods?.some(p => {
@@ -568,12 +566,36 @@ export const generateSignatureReportPDF = (
         const fullEmployeeData = employees.find(e => e.id === employee.id);
         if (!fullEmployeeData) return;
         
-        const vacationAbsences = (fullEmployeeData.employmentPeriods || [])
-            .flatMap(p => p.scheduledAbsences || [])
+        const definitiveAbsences = new Map<string, ScheduledAbsence>();
+
+        (fullEmployeeData.employmentPeriods || []).forEach((p: EmploymentPeriod) => {
+            const originalRequests = new Map<string, ScheduledAbsence>();
+
+            (p.scheduledAbsences || []).forEach(a => {
+                const startDate = safeParseDate(a.startDate);
+                if (!startDate || !isValid(startDate)) return;
+
+                if (!a.isDefinitive) {
+                    originalRequests.set(format(startDate, 'yyyy-MM-dd'), a);
+                }
+            });
+
+            (p.scheduledAbsences || []).forEach(a => {
+                const startDate = safeParseDate(a.startDate);
+                if (!startDate || !isValid(startDate)) return;
+                
+                if (a.isDefinitive) {
+                    const originalRequestKey = a.originalRequest?.startDate ? format(safeParseDate(a.originalRequest.startDate)!, 'yyyy-MM-dd') : format(startDate, 'yyyy-MM-dd');
+                    definitiveAbsences.set(originalRequestKey, a);
+                }
+            });
+        });
+        
+        const vacationAbsences = Array.from(definitiveAbsences.values())
             .filter(a => {
                 const startDate = safeParseDate(a.startDate);
                 if (!startDate) return false;
-                return a.isDefinitive && a.absenceTypeId === vacationType.id && getYear(startDate) === year
+                return a.absenceTypeId === vacationType.id && getYear(startDate) === year
             })
             .sort((a, b) => {
                 const dateA = safeParseDate(a.startDate);
