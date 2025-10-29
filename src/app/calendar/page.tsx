@@ -2,47 +2,59 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import {
-  ChevronLeft,
-  ChevronRight,
-  ArrowRight,
-  User,
-} from 'lucide-react';
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { ArrowRight, User } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import {
   format,
-  isAfter,
-  parseISO,
   isWithinInterval,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-  addMonths,
-  subMonths,
-  getISODay,
   startOfDay,
-  isValid,
+  eachDayOfInterval,
+  getISODay,
+  startOfWeek,
+  endOfWeek,
+  parseISO,
+  isSameDay,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { Employee, ScheduledAbsence, HolidayReport, AbsenceType } from '@/lib/types';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getYear } from 'date-fns';
+import { WeekNavigator } from '@/components/schedule/week-navigator';
 
-interface AbsenceInfo {
+interface WeeklyAbsenceInfo {
   employeeId: string;
   employeeName: string;
-  absenceAbbreviation: string;
-  substituteName?: string;
+  dayAbsences: Record<string, {
+    abbreviation: string;
+    substituteName?: string;
+  } | null>; // key: yyyy-MM-dd
 }
 
 export default function CalendarPage() {
-  const { employees, holidayReports, absenceTypes, loading } = useDataProvider();
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const { employees, holidayReports, absenceTypes, loading, getActiveEmployeesForDate, holidays } = useDataProvider();
+  const [currentDate, setCurrentDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+
+  const weekDays = useMemo(() => eachDayOfInterval({ start: currentDate, end: endOfWeek(currentDate, { weekStartsOn: 1 }) }), [currentDate]);
+  
+  const activeEmployeesForWeek = useMemo(() => {
+    return getActiveEmployeesForDate(currentDate).sort((a,b) => a.name.localeCompare(b.name));
+  }, [currentDate, getActiveEmployeesForDate]);
+
 
   const safeParseDate = useCallback((date: any): Date | null => {
     if (!date) return null;
@@ -55,75 +67,64 @@ export default function CalendarPage() {
     return null;
   }, []);
 
-  const absencesByDay = useMemo(() => {
-    if (loading) return {};
+  const weeklyAbsenceData = useMemo(() => {
+    if (loading) return [];
 
-    const absences: Record<string, AbsenceInfo[]> = {};
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
+    const weekId = format(weekStart, 'yyyy-MM-dd');
 
     const substitutesMap: Record<string, string> = {};
     holidayReports.forEach((report: HolidayReport) => {
-        const weekKey = report.weekId;
-        const employeeId = report.employeeId;
-        const substituteName = report.substituteName;
-        substitutesMap[`${weekKey}-${employeeId}`] = substituteName;
+        if (report.weekId === weekId) {
+            substitutesMap[report.employeeId] = report.substituteName;
+        }
     });
 
-    employees.forEach((employee: Employee) => {
-      employee.employmentPeriods?.forEach(period => {
-        period.scheduledAbsences?.forEach((absence: ScheduledAbsence) => {
-            const absenceStart = safeParseDate(absence.startDate);
-            const absenceEnd = absence.endDate ? safeParseDate(absence.endDate) : absenceStart;
+    return activeEmployeesForWeek.map((employee: Employee) => {
+        const info: WeeklyAbsenceInfo = {
+            employeeId: employee.id,
+            employeeName: employee.name,
+            dayAbsences: {},
+        };
 
-            if (!absenceStart || !absenceEnd) return;
+        weekDays.forEach(day => {
+            const dayKey = format(day, 'yyyy-MM-dd');
+            let foundAbsence: ScheduledAbsence | null = null;
             
-            if (isAfter(absenceEnd, monthStart) && isAfter(monthEnd, absenceStart)) {
-                eachDayOfInterval({ start: absenceStart, end: absenceEnd }).forEach(day => {
-                    const dayKey = format(day, 'yyyy-MM-dd');
-                    if (isWithinInterval(day, { start: monthStart, end: monthEnd })) {
-                        if (!absences[dayKey]) {
-                            absences[dayKey] = [];
-                        }
+            for (const period of employee.employmentPeriods || []) {
+                for (const absence of period.scheduledAbsences || []) {
+                    const absenceStart = safeParseDate(absence.startDate);
+                    const absenceEnd = absence.endDate ? safeParseDate(absence.endDate) : absenceStart;
 
-                        const weekId = format(startOfDay(day), 'yyyy-MM-dd', { weekStartsOn: 1 });
-                        const substituteName = substitutesMap[`${weekId}-${employee.id}`];
-                        const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
-
-                        absences[dayKey].push({
-                            employeeId: employee.id,
-                            employeeName: employee.name,
-                            absenceAbbreviation: absenceType?.abbreviation || '??',
-                            substituteName: substituteName
-                        });
+                    if (absenceStart && absenceEnd && isWithinInterval(day, { start: startOfDay(absenceStart), end: endOfDay(absenceEnd) })) {
+                        foundAbsence = absence;
+                        break;
                     }
-                });
+                }
+                if (foundAbsence) break;
+            }
+
+            if (foundAbsence) {
+                const absenceType = absenceTypes.find(at => at.id === foundAbsence.absenceTypeId);
+                info.dayAbsences[dayKey] = {
+                    abbreviation: absenceType?.abbreviation || '??',
+                    substituteName: substitutesMap[employee.id]
+                };
+            } else {
+                info.dayAbsences[dayKey] = null;
             }
         });
-      });
+
+        return info;
     });
-    // Sort absences within each day by employee name
-    for (const day in absences) {
-        absences[day].sort((a, b) => a.employeeName.localeCompare(b.employeeName));
-    }
-    return absences;
-  }, [loading, currentDate, employees, holidayReports, absenceTypes, safeParseDate]);
+  }, [loading, currentDate, activeEmployeesForWeek, holidayReports, absenceTypes, weekDays, safeParseDate]);
 
-
-  const daysInMonth = useMemo(() => {
-    const start = startOfMonth(currentDate);
-    const end = endOfMonth(currentDate);
-    return eachDayOfInterval({ start, end });
-  }, [currentDate]);
-
-  const weekDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-  const firstDayOfMonth = getISODay(startOfMonth(currentDate));
-  const emptyDays = Array(firstDayOfMonth - 1).fill(null);
 
   if (loading) {
     return (
-        <div className="p-4 md:p-6">
-            <Skeleton className="h-10 w-64 mb-4" />
+        <div className="p-4 md:p-6 space-y-4">
+            <Skeleton className="h-10 w-full max-w-md mx-auto" />
             <Skeleton className="h-[600px] w-full" />
         </div>
     );
@@ -132,83 +133,64 @@ export default function CalendarPage() {
   return (
     <div className="p-4 md:p-6">
         <Card>
-            <CardHeader className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                <CardTitle className="text-2xl font-bold tracking-tight font-headline">Calendario de Ausencias</CardTitle>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => setCurrentDate(subMonths(currentDate, 1))}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Select
-                        value={format(currentDate, 'yyyy-MM')}
-                        onValueChange={(value) => {
-                            const [year, month] = value.split('-');
-                            setCurrentDate(new Date(parseInt(year), parseInt(month) - 1, 1));
-                        }}
-                    >
-                        <SelectTrigger className="w-48 text-lg font-semibold">
-                            <SelectValue>
-                                {format(currentDate, 'MMMM yyyy', { locale: es })}
-                            </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                            {Array.from({ length: 24 }, (_, i) => {
-                                const date = subMonths(new Date(), 12 - i);
-                                return (
-                                    <SelectItem key={i} value={format(date, 'yyyy-MM')}>
-                                        {format(date, 'MMMM yyyy', { locale: es })}
-                                    </SelectItem>
-                                );
-                            })}
-                        </SelectContent>
-                    </Select>
-                    <Button variant="outline" size="icon" onClick={() => setCurrentDate(addMonths(currentDate, 1))}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
+            <CardHeader className="flex flex-col items-center gap-4">
+                <div className="text-center">
+                    <CardTitle className="text-2xl font-bold tracking-tight font-headline">Calendario Semanal de Ausencias</CardTitle>
+                    <CardDescription>Visualiza las ausencias y sustituciones de un vistazo.</CardDescription>
                 </div>
+                <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-7 border-t border-l">
-                    {weekDays.map(day => (
-                        <div key={day} className="p-2 text-center font-semibold border-r border-b bg-muted/50 text-sm">
-                            {day}
-                        </div>
-                    ))}
-                    {emptyDays.map((_, index) => (
-                        <div key={`empty-${index}`} className="border-r border-b bg-muted/20"></div>
-                    ))}
-                    {daysInMonth.map(day => {
-                        const dayKey = format(day, 'yyyy-MM-dd');
-                        const dayAbsences = absencesByDay[dayKey] || [];
-                        const dayOfWeek = getISODay(day);
-                        
-                        return (
-                            <div key={dayKey} className={cn(
-                                "p-2 border-r border-b min-h-[120px] flex flex-col",
-                                (dayOfWeek === 6 || dayOfWeek === 7) && 'bg-muted/30'
-                            )}>
-                                <div className="font-bold text-sm">{format(day, 'd')}</div>
-                                <div className="flex-grow space-y-1 mt-1">
-                                    {dayAbsences.map(absence => (
-                                        <div key={absence.employeeId} className="text-xs p-1 rounded-md bg-secondary text-secondary-foreground">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-1.5 truncate">
-                                                    <User className="h-3 w-3 flex-shrink-0" />
-                                                    <span className="truncate font-medium">{absence.employeeName}</span>
-                                                </div>
-                                                <Badge variant="outline" className="text-[10px] px-1">{absence.absenceAbbreviation}</Badge>
+                <div className="border rounded-lg overflow-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="sticky left-0 bg-card z-10 w-[200px] min-w-[200px]">Empleado</TableHead>
+                                {weekDays.map(day => {
+                                    const holiday = holidays.find(h => isSameDay(h.date, day));
+                                    return (
+                                        <TableHead key={day.toISOString()} className={cn("text-center min-w-[150px]", holiday && 'bg-blue-50')}>
+                                            <div className="flex flex-col items-center">
+                                                <span>{format(day, 'E', { locale: es })}</span>
+                                                <span className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</span>
                                             </div>
-                                            {absence.substituteName && (
-                                                <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
-                                                    <ArrowRight className="h-3 w-3 text-primary" />
-                                                    <span className="font-semibold truncate">{absence.substituteName}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        );
-                    })}
+                                        </TableHead>
+                                    );
+                                })}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {weeklyAbsenceData.map(empData => (
+                                <TableRow key={empData.employeeId}>
+                                    <TableCell className="sticky left-0 bg-card z-10 font-medium">{empData.employeeName}</TableCell>
+                                    {weekDays.map(day => {
+                                        const dayKey = format(day, 'yyyy-MM-dd');
+                                        const absence = empData.dayAbsences[dayKey];
+                                        const holiday = holidays.find(h => isSameDay(h.date, day));
+                                        
+                                        return (
+                                            <TableCell key={dayKey} className={cn("text-center p-2", absence && "bg-destructive/10", holiday && !absence && 'bg-blue-50/50')}>
+                                                {absence ? (
+                                                    <div className="flex flex-col items-center justify-center gap-1.5 p-1 rounded-md bg-secondary text-secondary-foreground min-h-[60px]">
+                                                        <div className="flex items-center gap-2">
+                                                            <User className="h-4 w-4 text-destructive" />
+                                                            <span className="font-bold text-lg">{absence.abbreviation}</span>
+                                                        </div>
+                                                        {absence.substituteName && (
+                                                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                                                                <ArrowRight className="h-3 w-3 text-primary" />
+                                                                <span className="font-semibold truncate">{absence.substituteName}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : <div className="min-h-[60px]"></div>}
+                                            </TableCell>
+                                        );
+                                    })}
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 </div>
             </CardContent>
         </Card>
