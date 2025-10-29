@@ -134,7 +134,7 @@ export default function VacationsPage() {
     const { toast } = useToast();
     const { appUser, reauthenticateWithPassword } = useAuth();
     
-    const [selectedYear, setSelectedYear] = useState<string>('');
+    const [selectedYear, setSelectedYear] = useState<string>(() => String(getYear(new Date())));
     const [isGenerating, setIsGenerating] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [isHolidayEmployeeManagerOpen, setIsHolidayEmployeeManagerOpen] = useState(false);
@@ -218,9 +218,6 @@ export default function VacationsPage() {
 
     const availableYears = useMemo(() => {
         const years = new Set<number>();
-        if (weeklyRecords) {
-            Object.keys(weeklyRecords).forEach(id => years.add(getISOWeekYear(parseISO(id))));
-        }
         employees.forEach(emp => {
           (emp.employmentPeriods || []).forEach(p => {
             if(p.scheduledAbsences) {
@@ -235,7 +232,7 @@ export default function VacationsPage() {
         years.add(currentYear);
         years.add(currentYear + 1);
         return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
-    }, [weeklyRecords, employees]);
+    }, [employees]);
     
     const schedulableAbsenceTypes = useMemo(() => {
         return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
@@ -314,13 +311,14 @@ export default function VacationsPage() {
                 )
                 .filter((a: ScheduledAbsence) => schedulableIds.has(a.absenceTypeId));
     
-            // We only want to display the definitive, editable records in the planner
-            const definitiveAbsences = allScheduled.filter(a => a.isDefinitive);
+            const definitiveAbsences = allScheduled
+                .filter(a => a.isDefinitive)
+                .map(a => ({
+                    ...a,
+                    absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
+                }));
     
-            employeesWithAbsences[emp.id] = definitiveAbsences.map((a: ScheduledAbsence & { periodId: string }) => ({
-                ...a,
-                absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
-            }));
+            employeesWithAbsences[emp.id] = definitiveAbsences;
         });
         
         const allAbsences = Object.values(employeesWithAbsences).flat();
@@ -376,9 +374,8 @@ export default function VacationsPage() {
     
     }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId]);
     
-    const isInitialLoad = useRef(true);
     useEffect(() => {
-        if (!loading && isInitialLoad.current && employees.length > 0) {
+        if (!loading && employees.length > 0) {
             let yearToSet = getYear(new Date());
     
             const allScheduledAbsences = employees.flatMap(e => e.employmentPeriods || []).flatMap(p => p.scheduledAbsences || []);
@@ -397,7 +394,6 @@ export default function VacationsPage() {
             }
             
             setSelectedYear(String(yearToSet));
-            isInitialLoad.current = false;
         }
     }, [loading, employees, availableYears]);
 
@@ -972,6 +968,7 @@ export default function VacationsPage() {
         </div>
     );
 }
+
 
 
 
