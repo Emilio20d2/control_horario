@@ -13,7 +13,7 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
-import type { Message, VacationCampaign, AbsenceType } from '@/lib/types';
+import type { Message, VacationCampaign, AbsenceType, Holiday } from '@/lib/types';
 import { format, isWithinInterval, parseISO, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -25,6 +25,37 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+
+// Componente de Calendario Aislado
+const OtherRequestCalendar = ({ holidays, selectedDays, onDayChange }: { holidays: Holiday[], selectedDays: Date[], onDayChange: (days: Date[]) => void }) => {
+    const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => new Date(h.date)), [holidays]);
+    const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => new Date(h.date)), [holidays]);
+    
+    const modifiers = {
+        opening: openingHolidays,
+        other: otherHolidays,
+        selected: selectedDays,
+    };
+
+    const modifiersStyles = {
+        opening: { backgroundColor: '#a7f3d0' },
+        other: { color: 'var(--destructive-foreground)', backgroundColor: 'var(--destructive)' },
+        selected: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' },
+    };
+
+    return (
+        <DayPicker
+            mode="multiple"
+            min={0}
+            selected={selectedDays}
+            onSelect={(days) => onDayChange(days || [])}
+            locale={es}
+            modifiers={modifiers}
+            modifiersStyles={modifiersStyles}
+        />
+    );
+};
+
 
 export default function MyMessagesPage() {
     const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, getTheoreticalHoursAndTurn, holidays } = useDataProvider();
@@ -336,13 +367,7 @@ export default function MyMessagesPage() {
         absenceTypes
     ]);
     
-    const holidayDates = useMemo(() => (holidays || []).map(h => h.date as Date), [holidays]);
-    const dayPickerModifiers = { holidays: holidayDates, selected: otherRequestMultipleDates };
-    const dayPickerModifiersStyles = { 
-        holidays: { color: 'var(--destructive-foreground)', backgroundColor: 'var(--destructive)' },
-        selected: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' } 
-    };
-
+    
     if (loading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
@@ -549,15 +574,10 @@ export default function MyMessagesPage() {
                             )}
                             <div className="space-y-2">
                                 <Label className="text-sm font-medium">Días del Permiso</Label>
-                                <DayPicker
-                                    mode="multiple"
-                                    min={0}
-                                    selected={otherRequestMultipleDates}
-                                    onSelect={(days) => setOtherRequestMultipleDates(days || [])}
-                                    locale={es}
-                                    disabled={isSubmittingOtherRequest}
-                                    modifiers={dayPickerModifiers}
-                                    modifiersStyles={dayPickerModifiersStyles}
+                                <OtherRequestCalendar
+                                    holidays={holidays}
+                                    selectedDays={otherRequestMultipleDates}
+                                    onDayChange={setOtherRequestMultipleDates}
                                 />
                                 {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name === 'Reducción Jornada Senior' && (
                                     <Card className="mt-2">
