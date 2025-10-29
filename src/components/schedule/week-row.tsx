@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, isSameDay, getISODay, isBefore, parseISO, isAfter, eachDayOfInterval, subDays, addDays, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { InputStepper } from '@/components/ui/input-stepper';
 import { useDataProvider } from '@/hooks/use-data-provider';
@@ -186,15 +186,15 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             } else { // Removed vacation
                 const absenceIndex = activePeriod.scheduledAbsences?.findIndex(a =>
                     a.absenceTypeId === vacationType.id &&
-                    !isAfter(startOfDay(a.startDate), startOfDay(day)) &&
-                    a.endDate && !isBefore(startOfDay(a.endDate), startOfDay(day))
+                    !isAfter(startOfDay(parseISO(a.startDate as string)), startOfDay(day)) &&
+                    a.endDate && !isBefore(startOfDay(parseISO(a.endDate as string)), startOfDay(day))
                 );
     
                 if (absenceIndex !== undefined && absenceIndex > -1 && activePeriod.scheduledAbsences) {
                     const absenceToRemove = activePeriod.scheduledAbsences[absenceIndex];
     
-                    const originalStartDate = startOfDay(absenceToRemove.startDate);
-                    const originalEndDate = startOfDay(absenceToRemove.endDate!);
+                    const originalStartDate = startOfDay(parseISO(absenceToRemove.startDate as string));
+                    const originalEndDate = startOfDay(parseISO(absenceToRemove.endDate as string));
                     const dayToRemove = startOfDay(day);
     
                     // Remove the old absence from the local copy
@@ -202,10 +202,10 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
     
                     // Re-add the parts of the absence that were not removed
                     if (isAfter(dayToRemove, originalStartDate)) {
-                        activePeriod.scheduledAbsences.push({ ...absenceToRemove, endDate: subDays(dayToRemove, 1) });
+                        activePeriod.scheduledAbsences.push({ ...absenceToRemove, endDate: format(subDays(dayToRemove, 1), 'yyyy-MM-dd') });
                     }
                     if (isBefore(dayToRemove, originalEndDate)) {
-                        activePeriod.scheduledAbsences.push({ ...absenceToRemove, startDate: addDays(dayToRemove, 1) });
+                        activePeriod.scheduledAbsences.push({ ...absenceToRemove, startDate: format(addDays(dayToRemove, 1), 'yyyy-MM-dd') });
                     }
                 }
             }
@@ -215,13 +215,15 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
              // Merge overlapping/adjacent intervals in the local copy
              updatedPeriods.forEach(p => {
                 if (p.scheduledAbsences) {
-                    p.scheduledAbsences.sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
+                    p.scheduledAbsences.sort((a,b) => parseISO(a.startDate as string).getTime() - parseISO(b.startDate as string).getTime());
                     const merged: ScheduledAbsence[] = [];
                     for(const abs of p.scheduledAbsences) {
+                        const absStartDate = parseISO(abs.startDate as string);
+                        const absEndDate = abs.endDate ? parseISO(abs.endDate as string) : null;
                         if (merged.length > 0 && 
                             merged[merged.length - 1].absenceTypeId === abs.absenceTypeId && 
-                            abs.endDate && merged[merged.length-1].endDate &&
-                            isSameDay(addDays(merged[merged.length-1].endDate!, 1), abs.startDate)) {
+                            absEndDate && merged[merged.length-1].endDate &&
+                            isSameDay(addDays(parseISO(merged[merged.length-1].endDate as string), 1), absStartDate)) {
                             
                             merged[merged.length-1].endDate = abs.endDate;
                         } else {
@@ -246,7 +248,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             const activePeriod = getActivePeriod(employee.id, weekDays[0]);
             if (!activePeriod) throw new Error("No active period found");
     
-            const currentDbHours = [...(activePeriod.workHoursHistory || [])].sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate))[0]?.weeklyHours;
+            const currentDbHours = [...(activePeriod.workHoursHistory || [])].sort((a, b) => (parseISO(b.effectiveDate as string)).getTime() - (parseISO(a.effectiveDate as string)).getTime())[0]?.weeklyHours;
             const formHours = localWeekData.weeklyHoursOverride ?? currentDbHours ?? 0;
     
             if (formHours !== currentDbHours && localWeekData.weeklyHoursOverride !== null) {
