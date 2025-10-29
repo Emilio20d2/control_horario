@@ -70,6 +70,7 @@ import {
   addScheduledAbsence,
   deleteScheduledAbsence,
   updateScheduledAbsence,
+  hardDeleteScheduledAbsence,
 } from '@/lib/services/employeeService';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -304,31 +305,36 @@ export default function VacationsPage() {
         }
     }, [schedulableAbsenceTypes, selectedAbsenceTypeId]);
     
-    const { employeesWithAbsences, weeklySummaries, employeesByWeek } = useMemo(() => {
+    const { employeesWithAbsences, weeklySummaries, employeesByWeek, allAbsences } = useMemo(() => {
         const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
         const schedulableAbbrs = new Set(schedulableAbsenceTypes.map(at => at.abbreviation));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
+        const allAbsences: FormattedAbsence[] = [];
 
         allEmployeesForQuadrant.forEach(emp => {
             const allAbsenceDays = new Map<string, { typeId: string; typeAbbr: string; periodId?: string; absenceId?: string; isRequest?: boolean; originalRequest?: { startDate: Date, endDate: Date | null }; isDefinitive: boolean }>();
 
             (emp.employmentPeriods || []).forEach(period => {
-                (period.scheduledAbsences || []).filter(a => schedulableIds.has(a.absenceTypeId) && a.isDefinitive)
+                (period.scheduledAbsences || []).filter(a => schedulableIds.has(a.absenceTypeId))
                     .forEach(absence => {
                         if (!absence.endDate) return;
-                        const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
-                        if (!absenceType) return;
-                        eachDayOfInterval({ start: startOfDay(absence.startDate), end: startOfDay(absence.endDate) }).forEach(day => {
-                           allAbsenceDays.set(format(day, 'yyyy-MM-dd'), {
-                                typeId: absenceType.id,
-                                typeAbbr: absenceType.abbreviation,
-                                periodId: period.id,
-                                absenceId: absence.id,
-                                isRequest: false,
-                                originalRequest: absence.originalRequest,
-                                isDefinitive: true,
+
+                        // Only process definitive records for the main logic
+                        if (absence.isDefinitive) {
+                            const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
+                            if (!absenceType) return;
+                            eachDayOfInterval({ start: startOfDay(absence.startDate), end: startOfDay(absence.endDate) }).forEach(day => {
+                               allAbsenceDays.set(format(day, 'yyyy-MM-dd'), {
+                                    typeId: absenceType.id,
+                                    typeAbbr: absenceType.abbreviation,
+                                    periodId: period.id,
+                                    absenceId: absence.id,
+                                    isRequest: false, 
+                                    originalRequest: absence.originalRequest,
+                                    isDefinitive: true,
+                                });
                             });
-                        });
+                        }
                     });
             });
             
@@ -363,25 +369,33 @@ export default function VacationsPage() {
                 for (let i = 1; i < sortedDays.length; i++) {
                     const dayInfo = allAbsenceDays.get(format(sortedDays[i], 'yyyy-MM-dd'))!;
                     if (differenceInDays(sortedDays[i], sortedDays[i-1]) > 1 || dayInfo.typeId !== currentInfo.typeId || dayInfo.isRequest !== currentInfo.isRequest) {
-                        periods.push({
+                        const newAbsence = {
                             id: currentInfo.absenceId!, startDate: currentStart, endDate: sortedDays[i-1],
                             absenceTypeId: currentInfo.typeId, absenceAbbreviation: currentInfo.typeAbbr, periodId: currentInfo.periodId,
                             isRequest: currentInfo.isRequest, originalRequest: currentInfo.originalRequest, isDefinitive: currentInfo.isDefinitive,
-                        });
+                        };
+                        periods.push(newAbsence);
+                        allAbsences.push(newAbsence);
                         currentStart = sortedDays[i];
                         currentInfo = dayInfo;
                     }
                 }
-                periods.push({
+                const finalAbsence = {
                     id: currentInfo.absenceId!, startDate: currentStart, endDate: sortedDays[sortedDays.length - 1],
                     absenceTypeId: currentInfo.typeId, absenceAbbreviation: currentInfo.typeAbbr, periodId: currentInfo.periodId,
                     isRequest: currentInfo.isRequest, originalRequest: currentInfo.originalRequest, isDefinitive: currentInfo.isDefinitive,
-                });
+                };
+                periods.push(finalAbsence);
+                allAbsences.push(finalAbsence);
             }
             employeesWithAbsences[emp.id] = periods;
         });
         
-        const year = Number(selectedYear);
+        let year = Number(selectedYear);
+        if (!year) { // Default to current year if none is selected
+            year = getYear(new Date());
+        }
+
         const yearStartBoundary = startOfYear(new Date(year, 0, 1));
         const yearEndBoundary = endOfYear(new Date(year, 11, 31));
         
@@ -425,57 +439,58 @@ export default function VacationsPage() {
             });
         });
 
-        return { employeesWithAbsences, weeklySummaries, employeesByWeek };
+        return { employeesWithAbsences, weeklySummaries, employeesByWeek, allAbsences };
 
-    }, [allEmployeesForQuadrant, substituteEmployees, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords, holidayReports, conversations]);
+    }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords]);
     
     const isInitialLoad = useRef(true);
     useEffect(() => {
-        if (!loading && isInitialLoad.current) {
-            const latestYearWithAbsence = Object.values(employeesWithAbsences)
-                .flat()
-                .reduce((latest, absence) => {
-                    const year = getYear(absence.startDate);
-                    return year > latest ? year : latest;
-                }, 0);
-            
-            const currentYear = new Date().getFullYear();
-            const yearToSet = latestYearWithAbsence > 0 ? latestYearWithAbsence : currentYear;
+    if (!loading && isInitialLoad.current) {
+        const latestYearWithAbsence = allAbsences.reduce((latest, absence) => {
+            const year = getYear(absence.startDate);
+            return year > latest ? year : latest;
+        }, 0);
+        
+        const currentYear = new Date().getFullYear();
+        // If there are no absences, default to a future year or current year if it's the highest available
+        const yearToSet = latestYearWithAbsence > 0 
+            ? latestYearWithAbsence 
+            : Math.max(...availableYears, currentYear);
 
-            if (availableYears.includes(yearToSet)) {
-                setSelectedYear(String(yearToSet));
-            }
-            isInitialLoad.current = false;
+        if (availableYears.includes(yearToSet)) {
+            setSelectedYear(String(yearToSet));
+        } else if (availableYears.length > 0) {
+            setSelectedYear(String(availableYears[0]));
+        } else {
+            setSelectedYear(String(currentYear));
         }
-    }, [loading, employeesWithAbsences, availableYears]);
+        
+        isInitialLoad.current = false;
+    }
+}, [loading, allAbsences, availableYears]);
 
 
     const handleUpdateAbsence = async () => {
         if (!editingAbsence || !editedDateRange?.from) return;
-    
-        if (editingAbsence.absence.id.startsWith('weekly-')) {
-            toast({ title: 'No editable', description: 'Las ausencias puntuales registradas en el horario semanal no se pueden editar desde aquí.', variant: 'destructive' });
-            setEditingAbsence(null);
-            return;
-        }
-    
+        
+        const { employee, absence } = editingAbsence;
+
         setIsGenerating(true);
         try {
             await updateScheduledAbsence(
-                editingAbsence.employee.id,
-                editingAbsence.absence.periodId!,
-                editingAbsence.absence.id,
+                employee.id,
+                absence.periodId!,
+                absence.id,
                 {
                     startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
                     endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
-                    absenceTypeId: editingAbsence.absence.absenceTypeId,
+                    absenceTypeId: absence.absenceTypeId,
                 },
-                editingAbsence.employee,
-                weeklyRecords,
-                editingAbsence.absence.originalRequest
+                employee,
+                absence.originalRequest
             );
     
-            toast({ title: 'Ausencia actualizada', description: `La ausencia de ${editingAbsence.employee.name} ha sido modificada.` });
+            toast({ title: 'Ausencia actualizada', description: `La ausencia de ${employee.name} ha sido modificada.` });
             refreshData();
             setEditingAbsence(null);
         } catch (error) {
@@ -501,8 +516,8 @@ export default function VacationsPage() {
                 return;
             }
     
-            await deleteScheduledAbsence(employeeId, periodId, absenceId, weeklyRecords);
-            toast({ title: 'Ausencia Eliminada', description: `La ausencia ha sido eliminada.`, variant: 'destructive' });
+            await hardDeleteScheduledAbsence(employeeId, periodId, absenceId);
+            toast({ title: 'Ausencia Eliminada', description: `La ausencia ha sido eliminada permanentemente.`, variant: 'destructive' });
             refreshData();
             setEditingAbsence(null);
         } catch (error) {
@@ -530,12 +545,11 @@ export default function VacationsPage() {
 
         setIsGenerating(true);
         try {
-            // For manual additions, the originalRequest is not set, as it's not a formal campaign request
             await addScheduledAbsence(selectedEmployeeId, activePeriod.id, {
                 absenceTypeId: selectedAbsenceTypeId,
                 startDate: format(selectedDateRange.from, 'yyyy-MM-dd'),
                 endDate: format(selectedDateRange.to, 'yyyy-MM-dd'),
-            }, selectedEmployee, undefined, true); // Mark as definitive
+            }, selectedEmployee, undefined, true);
             
             toast({ title: 'Periodo de ausencia añadido', description: `Se ha guardado la ausencia para ${selectedEmployee?.name}.` });
             setSelectedDateRange(undefined);
@@ -610,7 +624,7 @@ export default function VacationsPage() {
             toast({ title: 'Error', description: 'Por favor, selecciona una campaña válida.', variant: 'destructive' });
             return;
         }
-        generateRequestStatusReportPDF(campaign, allEmployeesForQuadrant, employeesWithAbsences, absenceTypes);
+        generateRequestStatusReportPDF(campaign, allEmployeesForQuadrant, employees, absenceTypes);
     };
 
     const handleSelectSubstitute = async (weekKey: string, employeeId: string, substitute: {id: string, name: string} | null) => {
@@ -942,7 +956,31 @@ export default function VacationsPage() {
                             onMonthChange={setEditCalendarMonth}
                         />
                     </div>
-                    <DialogFooter className="justify-end sm:justify-end w-full">
+                    <DialogFooter className="justify-between sm:justify-between w-full">
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" type="button">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Eliminar
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
+                                    <AlertDialogDescription>Se eliminará el periodo de ausencia seleccionado del planificador. Esta acción no se puede deshacer.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <div className="space-y-2 py-2">
+                                    <Label htmlFor="password-delete-dialog">Contraseña de Administrador</Label>
+                                    <Input id="password-delete-dialog" type="password" placeholder="Introduce tu contraseña" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
+                                </div>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel onClick={() => setDeletePassword('')}>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => editingAbsence && handleDeleteAbsence(editingAbsence.employee.id, editingAbsence.absence.periodId!, editingAbsence.absence.id)} disabled={isGenerating || !deletePassword}>
+                                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sí, eliminar'}
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                         <div className="flex gap-2">
                              <DialogClose asChild>
                                 <Button variant="outline">Cancelar</Button>
