@@ -14,7 +14,7 @@ import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDo
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
 import type { Message, VacationCampaign, AbsenceType } from '@/lib/types';
-import { format, isWithinInterval, parseISO } from 'date-fns';
+import { format, isWithinInterval, parseISO, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { addScheduledAbsence } from '@/lib/services/employeeService';
@@ -325,13 +325,24 @@ export default function MyMessagesPage() {
         absenceTypes
     ]);
 
-    const holidayDates = useMemo(() => (holidays || []).map(h => {
-        if (h.date instanceof Timestamp) return h.date.toDate();
-        if (h.date instanceof Date) return h.date;
-        return new Date(); // Should not happen
-    }), [holidays]);
-
-    const dayPickerModifiers = { holidays: holidayDates, selected: otherRequestMultipleDates };
+    const holidayDates = useMemo(() => {
+        return (holidays || []).map(h => {
+            const date = h.date;
+            if (date instanceof Date) return date;
+            if (date instanceof Timestamp) return date.toDate();
+            if (typeof date === 'string') {
+                const parsed = parseISO(date);
+                if (isValid(parsed)) return parsed;
+            }
+            return null;
+        }).filter((d): d is Date => d !== null);
+    }, [holidays]);
+    
+    const dayPickerModifiers = { 
+        holidays: holidayDates, 
+        selected: otherRequestMultipleDates 
+    };
+    
     const dayPickerModifiersStyles = {
         holidays: { 
             color: 'var(--destructive-foreground)', 
@@ -601,3 +612,4 @@ export default function MyMessagesPage() {
         </>
     );
 }
+
