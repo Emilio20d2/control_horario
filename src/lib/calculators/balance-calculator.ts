@@ -1,16 +1,31 @@
-import { getISODay, isAfter, parseISO, startOfDay } from "date-fns";
+
+import { getISODay, isAfter, parseISO, startOfDay, isValid } from "date-fns";
 import type { AbsenceType, ContractType, DailyData, EmploymentPeriod } from "../types";
 
 const roundToNearestQuarter = (num: number) => {
     return Math.round(num * 4) / 4;
 };
 
+const safeParseISO = (date: string | Date | null | undefined): Date | null => {
+    if (!date) return null;
+    if (date instanceof Date) return date;
+    try {
+        const parsed = parseISO(date);
+        return isValid(parsed) ? parsed : null;
+    } catch (e) {
+        return null;
+    }
+}
+
 const getActivePeriodForCalc = (periods: EmploymentPeriod[], date: Date): EmploymentPeriod | null => {
     if (!periods) return null;
     return periods.find(p => {
-        const periodStart = startOfDay(parseISO(p.startDate as string));
-        const periodEnd = p.endDate ? startOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
-        return !isAfter(periodStart, date) && isAfter(periodEnd, date);
+        const periodStart = safeParseISO(p.startDate);
+        const periodEnd = p.endDate ? safeParseISO(p.endDate) : new Date('9999-12-31');
+        
+        if (!periodStart) return false;
+
+        return !isAfter(startOfDay(periodStart), date) && isAfter(periodEnd, date);
     }) || null;
 };
 
@@ -19,8 +34,20 @@ const getEffectiveWeeklyHoursForCalc = (period: EmploymentPeriod | null, date: D
       return 0;
     }
     const targetDate = startOfDay(date);
-    const history = [...period.workHoursHistory].sort((a,b) => parseISO(b.effectiveDate).getTime() - parseISO(a.effectiveDate).getTime());
-    const effectiveRecord = history.find(record => !isAfter(startOfDay(parseISO(record.effectiveDate)), targetDate));
+
+    const history = [...period.workHoursHistory].sort((a,b) => {
+        const dateA = safeParseISO(a.effectiveDate);
+        const dateB = safeParseISO(b.effectiveDate);
+        if (!dateA || !dateB) return 0;
+        return dateB.getTime() - dateA.getTime();
+    });
+
+    const effectiveRecord = history.find(record => {
+        const recordDate = safeParseISO(record.effectiveDate);
+        if (!recordDate) return false;
+        return !isAfter(startOfDay(recordDate), targetDate);
+    });
+    
     return effectiveRecord?.weeklyHours || 0;
 };
 
