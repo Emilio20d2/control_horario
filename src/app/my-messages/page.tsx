@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SendHorizonal, Loader2, PlaneTakeoff, Info, CalendarClock, Hourglass } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -310,8 +310,10 @@ export default function MyMessagesPage() {
 
     const holidayDates = useMemo(() => (holidays || []).map(h => {
         if (h.date instanceof Timestamp) return h.date.toDate();
-        return h.date as Date;
+        if (h.date instanceof Date) return h.date;
+        return new Date(); // Should not happen
     }), [holidays]);
+
     const dayPickerModifiers = { holidays: holidayDates, selected: otherRequestMultipleDates };
     const dayPickerModifiersStyles = { holidays: { color: 'var(--destructive-foreground)', backgroundColor: 'var(--destructive)' }, selected: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)'} };
 
