@@ -19,7 +19,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { addScheduledAbsence } from '@/lib/services/employeeService';
 import { DateRange, DayPicker } from 'react-day-picker';
-import { Calendar } from '@/components/ui/calendar';
 import { es } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -68,18 +67,18 @@ export default function MyMessagesPage() {
     }, [vacationCampaigns]);
 
     const otherRequestAbsenceTypes = useMemo(() => {
-        const allowedNames = new Set([
-            "Día de Asuntos Propios",
-            "Boda/Comunión",
-            "Devolución Horas",
-            "Devolución Festivo",
-            "Devolución Libranza",
-            "Recuperación Horas",
-            "Horas Sindicales",
-            "Reducción Jornada Senior",
-            "Petición de Horas Médicas"
+        const allowedAbbreviations = new Set([
+            'AP', // Día de Asuntos Propios
+            'B/C', // Boda/Comunión
+            'DH', // Devolución Horas
+            'DF', // Devolución Festivo
+            'DL', // Devolución Libranza
+            'RHA', // Recuperación Horas
+            'HS', // Horas Sindicales
+            'RJS', // Reducción Jornada Senior
+            'HM', // Petición de Horas Médicas
         ]);
-        return absenceTypes.filter(at => allowedNames.has(at.name));
+        return absenceTypes.filter(at => allowedAbbreviations.has(at.abbreviation));
     }, [absenceTypes]);
 
     const [messagesSnapshot, messagesLoading] = useCollectionData(
@@ -465,7 +464,7 @@ export default function MyMessagesPage() {
                         </div>
                          <div className="space-y-2">
                             <label className="text-sm font-medium">Periodo de la Ausencia</label>
-                            <Calendar
+                            <DayPicker
                                 mode="range"
                                 selected={requestDateRange}
                                 onSelect={setRequestDateRange}
