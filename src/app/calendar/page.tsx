@@ -6,8 +6,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
-  CardDescription,
 } from '@/components/ui/card';
 import {
   Table,
@@ -27,7 +25,8 @@ import {
   DialogTrigger,
   DialogClose,
 } from '@/components/ui/dialog';
-import { ArrowRight, User, Loader2, CalendarPlus } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { ArrowRight, User, Loader2, CalendarPlus, Trash2, CalendarRange, Info } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import {
   format,
@@ -53,29 +52,41 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { addScheduledAbsence } from '@/lib/services/employeeService';
+import { addScheduledAbsence, hardDeleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/hooks/useAuth';
+import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Input } from '@/components/ui/input';
 
-interface WeeklyAbsenceInfo {
-  employeeId: string;
-  employeeName: string;
-  dayAbsences: Record<string, {
-    abbreviation: string;
+interface CellAbsenceInfo {
+    employee: Employee;
+    absence: ScheduledAbsence;
+    absenceType: AbsenceType;
     substituteName?: string;
-  } | null>; // key: yyyy-MM-dd
+    periodId: string;
 }
 
 export default function CalendarPage() {
   const { employees, holidayReports, absenceTypes, loading, getActiveEmployeesForDate, holidays, refreshData } = useDataProvider();
+  const { reauthenticateWithPassword } = useAuth();
   const { toast } = useToast();
   
   const [currentDate, setCurrentDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  
+  // State for new absence dialog
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
   const [selectedAbsenceTypeId, setSelectedAbsenceTypeId] = useState<string>('');
   const [selectedDays, setSelectedDays] = useState<Record<string, boolean>>({});
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // State for absence details dialog
+  const [selectedCell, setSelectedCell] = useState<CellAbsenceInfo | null>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
 
   const weekDays = useMemo(() => eachDayOfInterval({ start: currentDate, end: endOfWeek(currentDate, { weekStartsOn: 1 }) }), [currentDate]);
   
@@ -110,9 +121,8 @@ export default function CalendarPage() {
     });
 
     const employeesWithAbsences = activeEmployeesForWeek.map((employee: Employee) => {
-        const info: WeeklyAbsenceInfo = {
-            employeeId: employee.id,
-            employeeName: employee.name,
+        const info: { employee: Employee; dayAbsences: Record<string, CellAbsenceInfo | null> } = {
+            employee: employee,
             dayAbsences: {},
         };
         
@@ -121,6 +131,7 @@ export default function CalendarPage() {
         weekDays.forEach(day => {
             const dayKey = format(day, 'yyyy-MM-dd');
             let foundAbsence: ScheduledAbsence | null = null;
+            let foundPeriodId: string | null = null;
             
             for (const period of employee.employmentPeriods || []) {
                 for (const absence of period.scheduledAbsences || []) {
@@ -129,27 +140,35 @@ export default function CalendarPage() {
 
                     if (absenceStart && absenceEnd && isValid(absenceStart) && isValid(absenceEnd) && isWithinInterval(day, { start: startOfDay(absenceStart), end: endOfDay(absenceEnd) })) {
                         foundAbsence = absence;
+                        foundPeriodId = period.id;
                         break;
                     }
                 }
                 if (foundAbsence) break;
             }
 
-            if (foundAbsence) {
+            if (foundAbsence && foundPeriodId) {
                 hasAbsenceInWeek = true;
                 const absenceType = absenceTypes.find(at => at.id === foundAbsence!.absenceTypeId);
-                info.dayAbsences[dayKey] = {
-                    abbreviation: absenceType?.abbreviation || '??',
-                    substituteName: substitutesMap[employee.id]
-                };
+                if (absenceType) {
+                    info.dayAbsences[dayKey] = {
+                        employee: employee,
+                        absence: foundAbsence,
+                        absenceType: absenceType,
+                        substituteName: substitutesMap[employee.id],
+                        periodId: foundPeriodId
+                    };
+                } else {
+                     info.dayAbsences[dayKey] = null;
+                }
             } else {
                 info.dayAbsences[dayKey] = null;
             }
         });
 
         return hasAbsenceInWeek ? info : null;
-    }).filter((item): item is WeeklyAbsenceInfo => item !== null)
-      .sort((a,b) => a.employeeName.localeCompare(b.employeeName));
+    }).filter((item): item is { employee: Employee; dayAbsences: Record<string, CellAbsenceInfo | null> } => item !== null)
+      .sort((a,b) => a.employee.name.localeCompare(b.employee.name));
 
     return employeesWithAbsences;
 
@@ -166,7 +185,7 @@ export default function CalendarPage() {
     setNotes('');
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAddAbsenceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const daysToSave = Object.entries(selectedDays).filter(([, isSelected]) => isSelected).map(([dayKey]) => dayKey);
 
@@ -205,13 +224,90 @@ export default function CalendarPage() {
         toast({ title: 'Ausencia Programada', description: `Se ha guardado la ausencia para ${employee.name}.` });
         resetForm();
         refreshData();
-        setIsDialogOpen(false);
+        setIsAddDialogOpen(false);
 
     } catch (error) {
         console.error("Error programming absence:", error);
         toast({ title: 'Error', description: error instanceof Error ? error.message : "No se pudo guardar la ausencia.", variant: 'destructive' });
     } finally {
         setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenDetails = (cellInfo: CellAbsenceInfo) => {
+    setSelectedCell(cellInfo);
+    setIsDetailDialogOpen(true);
+  };
+  
+    const sendMessage = async (employee: Employee, text: string) => {
+        if (!employee) return;
+        const conversationId = employee.id;
+        
+        const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
+        const adminMessageData = {
+            text: text,
+            senderId: 'admin',
+            timestamp: serverTimestamp()
+        };
+
+        const convDocRef = doc(db, 'conversations', conversationId);
+        const convDoc = await getDoc(convDocRef);
+
+        if (!convDoc.exists()) {
+            await setDoc(convDocRef, {
+                employeeId: employee.id,
+                employeeName: employee.name,
+                lastMessageText: text,
+                lastMessageTimestamp: serverTimestamp(),
+                unreadByAdmin: false,
+                unreadByEmployee: true,
+            });
+        } else {
+             await updateDoc(convDocRef, {
+                lastMessageText: text,
+                lastMessageTimestamp: serverTimestamp(),
+                unreadByAdmin: false,
+                unreadByEmployee: true,
+            });
+        }
+
+        await addDoc(messagesColRef, adminMessageData);
+    };
+
+  const handleRejectAbsence = async () => {
+    if (!selectedCell) return;
+    if (!deletePassword) {
+      toast({ title: 'Contraseña requerida', description: 'Introduce tu contraseña para confirmar la eliminación.', variant: 'destructive' });
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const isAuthenticated = await reauthenticateWithPassword(deletePassword);
+      if (!isAuthenticated) {
+        toast({ title: 'Error de autenticación', description: 'La contraseña no es correcta.', variant: 'destructive' });
+        setIsDeleting(false);
+        return;
+      }
+      
+      const { employee, absence, periodId } = selectedCell;
+
+      await hardDeleteScheduledAbsence(employee.id, periodId, absence.id, absence.originalRequest);
+
+      const rejectionMessage = `Tu solicitud de ${selectedCell.absenceType.name} del ${format(absence.startDate, 'dd/MM/yyyy')} al ${format(absence.endDate!, 'dd/MM/yyyy')} ha sido rechazada y eliminada del planificador.`;
+      await sendMessage(employee, rejectionMessage);
+
+      toast({ title: 'Ausencia Rechazada', description: `La solicitud de ${employee.name} ha sido eliminada y se le ha notificado.`, variant: 'destructive' });
+      refreshData();
+      setIsDetailDialogOpen(false);
+      setSelectedCell(null);
+
+    } catch (error) {
+      console.error("Error rejecting absence:", error);
+      toast({ title: 'Error al Rechazar', description: error instanceof Error ? error.message : "No se pudo completar la acción.", variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
+      setDeletePassword('');
     }
   };
 
@@ -226,10 +322,11 @@ export default function CalendarPage() {
   }
 
   return (
+    <>
     <div className="p-4 md:p-6 space-y-6">
         <Card>
             <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                     <DialogTrigger asChild>
                         <Button>
                             <CalendarPlus className="mr-2 h-4 w-4" />
@@ -243,7 +340,7 @@ export default function CalendarPage() {
                                 Selecciona la semana, el empleado y los días para registrar una nueva ausencia.
                             </DialogDescription>
                         </DialogHeader>
-                        <form onSubmit={handleSubmit} className="space-y-6 py-4">
+                        <form onSubmit={handleAddAbsenceSubmit} className="space-y-6 py-4">
                             <div className="flex justify-center">
                                 <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
                             </div>
@@ -310,7 +407,7 @@ export default function CalendarPage() {
                                 {weekDays.map(day => {
                                     const holiday = holidays.find(h => isSameDay(h.date, day));
                                     return (
-                                        <TableHead key={day.toISOString()} className={cn("text-center", holiday && 'bg-blue-50')}>
+                                        <TableHead key={day.toISOString()} className={cn("text-center", holiday && 'bg-blue-50/70')}>
                                             <div className="flex flex-col items-center">
                                                 <span>{format(day, 'E', { locale: es })}</span>
                                                 <span className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</span>
@@ -322,23 +419,31 @@ export default function CalendarPage() {
                         </TableHeader>
                         <TableBody>
                             {weeklyAbsenceData.map(empData => (
-                                <TableRow key={empData.employeeId}>
-                                    <TableCell className="sticky left-0 bg-card z-10 font-medium">{empData.employeeName}</TableCell>
+                                <TableRow key={empData.employee.id}>
+                                    <TableCell className="sticky left-0 bg-card z-10 font-medium">{empData.employee.name}</TableCell>
                                     {weekDays.map(day => {
                                         const dayKey = format(day, 'yyyy-MM-dd');
-                                        const absence = empData.dayAbsences[dayKey];
+                                        const cellInfo = empData.dayAbsences[dayKey];
                                         const holiday = holidays.find(h => isSameDay(h.date, day));
                                         
                                         return (
-                                            <TableCell key={dayKey} className={cn("text-center p-2 align-middle", absence && "bg-destructive/10", holiday && !absence && 'bg-blue-50/50')}>
-                                                {absence ? (
+                                            <TableCell 
+                                                key={dayKey} 
+                                                onClick={() => cellInfo && handleOpenDetails(cellInfo)}
+                                                className={cn(
+                                                    "text-center p-2 align-middle", 
+                                                    cellInfo && "bg-destructive/10 cursor-pointer hover:bg-destructive/20", 
+                                                    holiday && !cellInfo && 'bg-blue-50/50'
+                                                )}
+                                            >
+                                                {cellInfo ? (
                                                     <div className="flex flex-col items-center justify-center gap-1">
                                                         <div className="flex items-center gap-1 text-destructive">
                                                             <User className="h-4 w-4" />
-                                                            <span className="font-bold text-sm">{absence.abbreviation}</span>
+                                                            <span className="font-bold text-sm">{cellInfo.absenceType.abbreviation}</span>
                                                         </div>
-                                                        {absence.substituteName && (
-                                                            <span className="text-xs text-muted-foreground font-semibold truncate">{absence.substituteName}</span>
+                                                        {cellInfo.substituteName && (
+                                                            <span className="text-xs text-muted-foreground font-semibold truncate">{cellInfo.substituteName}</span>
                                                         )}
                                                     </div>
                                                 ) : null}
@@ -360,9 +465,63 @@ export default function CalendarPage() {
             </CardContent>
         </Card>
     </div>
+    
+    <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Detalle de la Ausencia</DialogTitle>
+                <DialogDescription>Revisa la información de la ausencia y toma una acción si es necesario.</DialogDescription>
+            </DialogHeader>
+            {selectedCell && (
+                <div className="space-y-4 py-4">
+                    <div className="flex items-center gap-3">
+                        <User className="h-5 w-5 text-muted-foreground" />
+                        <p><strong>Empleado:</strong> {selectedCell.employee.name}</p>
+                    </div>
+                     <div className="flex items-center gap-3">
+                        <Info className="h-5 w-5 text-muted-foreground" />
+                        <p><strong>Tipo:</strong> {selectedCell.absenceType.name}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <CalendarRange className="h-5 w-5 text-muted-foreground" />
+                        <p>
+                            <strong>Periodo Completo:</strong> {format(selectedCell.absence.startDate, 'PPP', {locale: es})} - {selectedCell.absence.endDate ? format(selectedCell.absence.endDate, 'PPP', {locale: es}) : 'Indefinido'}
+                        </p>
+                    </div>
+                </div>
+            )}
+            <DialogFooter className="sm:justify-between">
+                <DialogClose asChild>
+                    <Button variant="secondary">Cerrar</Button>
+                </DialogClose>
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" disabled={isDeleting}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Rechazar y Notificar
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>¿Confirmas el rechazo?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Esta acción eliminará la ausencia del planificador y enviará un mensaje al empleado informándole del rechazo.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                         <div className="space-y-2 py-2">
+                            <Label htmlFor="password-reject">Contraseña de Administrador</Label>
+                            <Input id="password-reject" type="password" placeholder="Introduce tu contraseña" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
+                        </div>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setDeletePassword('')}>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleRejectAbsence} disabled={isDeleting}>
+                                {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Sí, Rechazar'}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
-
-    
-
-    
