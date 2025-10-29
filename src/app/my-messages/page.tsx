@@ -48,6 +48,7 @@ export default function MyMessagesPage() {
     const [otherRequestAbsenceTypeId, setOtherRequestAbsenceTypeId] = useState('');
     const [otherRequestMultipleDates, setOtherRequestMultipleDates] = useState<Date[]>([]);
     const [otherRequestNotes, setOtherRequestNotes] = useState('');
+    const [medicalAppointmentTime, setMedicalAppointmentTime] = useState('');
     const [isSubmittingOtherRequest, setIsSubmittingOtherRequest] = useState(false);
     const [seniorHoursTotal, setSeniorHoursTotal] = useState(0);
 
@@ -75,7 +76,8 @@ export default function MyMessagesPage() {
             "Devolución Libranza",
             "Recuperación Horas",
             "Horas Sindicales",
-            "Reducción Jornada Senior"
+            "Reducción Jornada Senior",
+            "Petición de Horas Médicas"
         ]);
         return absenceTypes.filter(at => allowedNames.has(at.name));
     }, [absenceTypes]);
@@ -170,6 +172,7 @@ export default function MyMessagesPage() {
         setOtherRequestMultipleDates([]);
         setOtherRequestNotes('');
         setSeniorHoursTotal(0);
+        setMedicalAppointmentTime('');
         setIsOtherRequestDialogOpen(true);
     }
     
@@ -235,7 +238,8 @@ export default function MyMessagesPage() {
     };
     
     const handleSubmitOtherRequest = async () => {
-        const selectedAbsenceName = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name;
+        const selectedAbsenceType = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId);
+        const selectedAbsenceName = selectedAbsenceType?.name;
         
         let finalNotes = otherRequestNotes;
         let datesForMessage = '';
@@ -246,9 +250,20 @@ export default function MyMessagesPage() {
         }
 
         datesForMessage = otherRequestMultipleDates.map(d => format(d, 'dd/MM/yyyy')).sort().join(', ');
-
+        
+        let extraInfo = '';
         if (selectedAbsenceName === 'Reducción Jornada Senior') {
             finalNotes = `PETICION DE "${seniorHoursTotal.toFixed(2)}" HORAS REDUCCION JORNADA SENIOR`;
+        } else if (selectedAbsenceName === 'Petición de Horas Médicas') {
+            if (!medicalAppointmentTime) {
+                toast({ title: 'Hora requerida', description: 'Por favor, especifica la hora de la consulta médica.', variant: 'destructive' });
+                return;
+            }
+            extraInfo = `\n- **Hora Consulta:** ${medicalAppointmentTime}`;
+            if (!finalNotes.trim()) {
+                toast({ title: 'Motivo Requerido', description: 'Por favor, explica el motivo de tu solicitud en las notas.', variant: 'destructive' });
+                return;
+            }
         } else {
             if (!finalNotes.trim()) {
                 toast({ title: 'Motivo Requerido', description: 'Por favor, explica el motivo de tu solicitud en las notas.', variant: 'destructive' });
@@ -267,7 +282,7 @@ export default function MyMessagesPage() {
             const requestMessage = `**NUEVA SOLICITUD DE PERMISO**
             - **Comunicado a:** ${communicatedTo}
             - **Tipo:** ${absenceName}
-            - **Fecha(s):** ${datesForMessage}
+            - **Fecha(s):** ${datesForMessage}${extraInfo}
             - **Motivo:** ${finalNotes}
             `;
 
@@ -285,27 +300,31 @@ export default function MyMessagesPage() {
     };
     
     const isSubmitOtherRequestDisabled = useMemo(() => {
-        const selectedAbsenceName = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name;
-        if (isSubmittingOtherRequest || !otherRequestAbsenceTypeId || !communicatedTo) {
+        const selectedAbsenceType = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId);
+
+        if (isSubmittingOtherRequest || !otherRequestAbsenceTypeId || !communicatedTo || otherRequestMultipleDates.length === 0) {
             return true;
         }
         
-        if (otherRequestMultipleDates.length === 0) {
-            return true;
+        if (selectedAbsenceType?.name === 'Reducción Jornada Senior') {
+            return false; // Only needs dates
         }
 
-        if (selectedAbsenceName !== 'Reducción Jornada Senior') {
-            return !otherRequestNotes.trim();
+        if (selectedAbsenceType?.name === 'Petición de Horas Médicas') {
+             return !otherRequestNotes.trim() || !medicalAppointmentTime;
         }
-        
-        return false;
+
+        // For all other types
+        return !otherRequestNotes.trim();
+
     }, [
         isSubmittingOtherRequest, 
         otherRequestAbsenceTypeId, 
         communicatedTo,
-        absenceTypes,
         otherRequestMultipleDates,
-        otherRequestNotes
+        otherRequestNotes,
+        medicalAppointmentTime,
+        absenceTypes
     ]);
 
     const holidayDates = useMemo(() => (holidays || []).map(h => {
@@ -513,6 +532,14 @@ export default function MyMessagesPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name === 'Petición de Horas Médicas' && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="appointment-time" className="text-sm font-medium">
+                                        Hora de la Consulta <span className="text-destructive">*</span>
+                                    </Label>
+                                    <Input id="appointment-time" type="time" value={medicalAppointmentTime} onChange={(e) => setMedicalAppointmentTime(e.target.value)} />
+                                </div>
+                            )}
                             <div className="space-y-2">
                                 <Label className="text-sm font-medium">Días del Permiso</Label>
                                 <DayPicker
