@@ -13,7 +13,6 @@ import {
     updateDoc
 } from 'firebase/firestore';
 import type { DocumentData, QueryDocumentSnapshot, DocumentReference } from 'firebase/firestore';
-import type { AbsenceType, AnnualConfiguration, ContractType, Employee, Holiday } from '../types';
 
 
 export const getCollection = async <T extends {id: string}>(collectionName: string): Promise<T[]> => {
