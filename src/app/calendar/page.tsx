@@ -330,21 +330,18 @@ export default function CalendarPage() {
                                         const holiday = holidays.find(h => isSameDay(h.date, day));
                                         
                                         return (
-                                            <TableCell key={dayKey} className={cn("text-center p-1", absence && "bg-destructive/10", holiday && !absence && 'bg-blue-50/50')}>
+                                            <TableCell key={dayKey} className={cn("text-center p-2 align-middle", absence && "bg-destructive/10", holiday && !absence && 'bg-blue-50/50')}>
                                                 {absence ? (
-                                                    <div className="flex flex-col items-center justify-center gap-0.5 p-1 rounded-md bg-secondary text-secondary-foreground">
-                                                        <div className="flex items-center gap-2">
-                                                            <User className="h-4 w-4 text-destructive" />
-                                                            <span className="font-bold text-base">{absence.abbreviation}</span>
+                                                    <div className="flex flex-col items-center justify-center gap-1">
+                                                        <div className="flex items-center gap-1 text-destructive">
+                                                            <User className="h-4 w-4" />
+                                                            <span className="font-bold text-sm">{absence.abbreviation}</span>
                                                         </div>
                                                         {absence.substituteName && (
-                                                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                                                <ArrowRight className="h-3 w-3 text-primary" />
-                                                                <span className="font-semibold truncate">{absence.substituteName}</span>
-                                                            </div>
+                                                            <span className="text-xs text-muted-foreground font-semibold truncate">{absence.substituteName}</span>
                                                         )}
                                                     </div>
-                                                ) : <div className="h-12"></div>}
+                                                ) : null}
                                             </TableCell>
                                         );
                                     })}
@@ -365,5 +362,7 @@ export default function CalendarPage() {
     </div>
   );
 }
+
+    
 
     
