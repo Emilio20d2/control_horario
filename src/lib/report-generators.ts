@@ -553,16 +553,17 @@ export const generateSignatureReportPDF = (
 
     let finalY = 25;
 
-    // Filter out eventual employees and employees without an active contract
+    // Filter out eventual employees and employees without an active contract, AND sort them alphabetically
     const employeesForReport = allEmployeesForQuadrant.filter(emp => {
-      const fullEmployee = employees.find(e => e.id === emp.id);
-      return !emp.isEventual && fullEmployee && fullEmployee.employmentPeriods?.some(p => {
-          const endDateValue = p.endDate;
-          if (!endDateValue) return true;
-          const endDate = endDateValue instanceof Date ? endDateValue : parseISO(endDateValue as string);
-          return isAfter(endDate, new Date());
-      });
-    });
+        const fullEmployee = employees.find(e => e.id === emp.id);
+        if (!fullEmployee) return false; // Ensure the employee exists in the main list
+        return !emp.isEventual && fullEmployee.employmentPeriods?.some(p => {
+            const endDateValue = p.endDate;
+            if (!endDateValue) return true; // Active if no end date
+            const endDate = endDateValue instanceof Date ? endDateValue : parseISO(endDateValue as string);
+            return isAfter(endDate, new Date());
+        });
+    }).sort((a, b) => a.name.localeCompare(b.name));
 
     employeesForReport.forEach((employee) => {
         const fullEmployeeData = employees.find(e => e.id === employee.id);
@@ -571,25 +572,12 @@ export const generateSignatureReportPDF = (
         const definitiveAbsences = new Map<string, ScheduledAbsence>();
 
         (fullEmployeeData.employmentPeriods || []).forEach((p: EmploymentPeriod) => {
-            const originalRequests = new Map<string, ScheduledAbsence>();
-
+            // Logic to correctly identify definitive absences, mirroring the quadrant logic
             (p.scheduledAbsences || []).forEach(a => {
-                const startDate = safeParseDate(a.startDate);
-                if (!startDate || !isValid(startDate)) return;
-
-                if (!a.isDefinitive) {
-                    originalRequests.set(format(startDate, 'yyyy-MM-dd'), a);
-                }
-            });
-
-            (p.scheduledAbsences || []).forEach(a => {
-                const startDate = safeParseDate(a.startDate);
-                if (!startDate || !isValid(startDate)) return;
-                
                 if (a.isDefinitive) {
-                    const originalRequestKey = a.originalRequest?.startDate ? format(safeParseDate(a.originalRequest.startDate)!, 'yyyy-MM-dd') : format(startDate, 'yyyy-MM-dd');
-                    if(!definitiveAbsences.has(originalRequestKey)) {
-                         definitiveAbsences.set(originalRequestKey, a);
+                    const originalStartDate = safeParseDate(a.originalRequest?.startDate ?? a.startDate);
+                    if (originalStartDate && isValid(originalStartDate)) {
+                         definitiveAbsences.set(format(originalStartDate, 'yyyy-MM-dd'), a);
                     }
                 }
             });
@@ -758,5 +746,6 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
