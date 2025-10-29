@@ -308,7 +308,10 @@ export default function MyMessagesPage() {
         otherRequestNotes
     ]);
 
-    const holidayDates = useMemo(() => (holidays || []).map(h => (h.date as Timestamp).toDate()), [holidays]);
+    const holidayDates = useMemo(() => (holidays || []).map(h => {
+        if (h.date instanceof Timestamp) return h.date.toDate();
+        return h.date as Date;
+    }), [holidays]);
     const dayPickerModifiers = { holidays: holidayDates, selected: otherRequestMultipleDates };
     const dayPickerModifiersStyles = { holidays: { color: 'var(--destructive-foreground)', backgroundColor: 'var(--destructive)' } };
 
