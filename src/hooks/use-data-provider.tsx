@@ -240,11 +240,16 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     
     const unsubs: (() => void)[] = [];
 
-    const safeFormat = (date: Date | Timestamp | string | null | undefined): string | null => {
+    const safeParseDate = (date: any): Date | null => {
         if (!date) return null;
-        const d = (date as Timestamp)?.toDate ? (date as Timestamp).toDate() : (typeof date === 'string' ? parseISO(date) : date);
-        return isValid(d) ? format(d, 'yyyy-MM-dd') : null;
-    }
+        if (date instanceof Date) return date;
+        if (date.toDate && typeof date.toDate === 'function') return date.toDate(); // Firestore Timestamp
+        if (typeof date === 'string') {
+            const parsed = parseISO(date);
+            return isValid(parsed) ? parsed : null;
+        }
+        return null;
+    };
 
     const setupSubscription = <T extends { id: string }>(collectionName: string, setter: React.Dispatch<React.SetStateAction<T[]>>, processor?: (data: any[]) => T[]) => {
         const { unsubscribe, ready } = onCollectionUpdate<T>(collectionName, (data) => {
@@ -260,25 +265,25 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             ...emp, 
             employmentPeriods: emp.employmentPeriods.map(p => ({
                 ...p, 
-                startDate: safeFormat(p.startDate), 
-                endDate: p.endDate ? safeFormat(p.endDate) : null, 
+                startDate: safeParseDate(p.startDate), 
+                endDate: safeParseDate(p.endDate), 
                 scheduledAbsences: (p.scheduledAbsences || []).map(a => ({
                     ...a, 
-                    startDate: (a.startDate as any)?.toDate ? (a.startDate as any).toDate() : parseISO(a.startDate as string), 
-                    endDate: a.endDate ? ((a.endDate as any)?.toDate ? (a.endDate as any).toDate() : parseISO(a.endDate as string)) : null,
+                    startDate: safeParseDate(a.startDate), 
+                    endDate: safeParseDate(a.endDate),
                 })),
                 workHoursHistory: (p.workHoursHistory || []).map(wh => ({
                     ...wh,
-                    effectiveDate: safeFormat(wh.effectiveDate as any)
+                    effectiveDate: safeParseDate(wh.effectiveDate)
                 })),
                 weeklySchedulesHistory: (p.weeklySchedulesHistory || []).map(ws => ({
                     ...ws,
-                    effectiveDate: safeFormat(ws.effectiveDate as any)
+                    effectiveDate: safeParseDate(ws.effectiveDate)
                 }))
             }))
         })).sort((a,b) => a.name.localeCompare(b.name))),
         setupSubscription<AbsenceType>('absenceTypes', setAbsenceTypes, data => data.sort((a,b) => a.name.localeCompare(b.name))),
-        setupSubscription<Holiday>('holidays', setHolidays, data => data.map(h => ({ ...h, date: (h.date as Timestamp).toDate() })).sort((a,b) => a.date.getTime() - b.date.getTime())),
+        setupSubscription<Holiday>('holidays', setHolidays, data => data.map(h => ({ ...h, date: safeParseDate(h.date) })).sort((a,b) => (a.date as Date).getTime() - (b.date as Date).getTime())),
         setupSubscription<ContractType>('contractTypes', setContractTypes),
         setupSubscription<AnnualConfiguration>('annualConfigurations', setAnnualConfigs, data => data.sort((a,b) => a.year - b.year)),
         setupSubscription<WeeklyRecord>('weeklyRecords', (data) => setWeeklyRecords(data.reduce((acc, record) => ({ ...acc, [record.id]: record }), {}))),
@@ -460,8 +465,8 @@ const pendingCorrectionRequestCount = useMemo(() => {
 
     return employees.filter(emp => 
         emp.employmentPeriods.some(p => {
-            const periodStart = startOfDay(parseISO(p.startDate as string));
-            const periodEnd = p.endDate ? endOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
+            const periodStart = startOfDay(p.startDate as Date);
+            const periodEnd = p.endDate ? endOfDay(p.endDate as Date) : new Date('9999-12-31');
             return periodStart <= weekEnd && periodEnd >= weekStart;
         })
     );
@@ -522,8 +527,8 @@ useEffect(() => {
     const weekEnd = endOfDay(endOfWeek(date, { weekStartsOn: 1 }));
 
     return employee.employmentPeriods.find(p => {
-        const periodStart = startOfDay(parseISO(p.startDate as string));
-        const periodEnd = p.endDate ? startOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
+        const periodStart = startOfDay(p.startDate as Date);
+        const periodEnd = p.endDate ? startOfDay(p.endDate as Date) : new Date('9999-12-31');
         
         return periodStart <= weekEnd && periodEnd >= weekStart;
     }) || null;
@@ -537,8 +542,8 @@ const getEffectiveWeeklyHours = (period: EmploymentPeriod | null, date: Date): n
       return 0;
     }
     const targetDate = startOfDay(date);
-    const history = [...period.workHoursHistory].sort((a,b) => parseISO(b.effectiveDate as string).getTime() - parseISO(a.effectiveDate as string).getTime());
-    const effectiveRecord = history.find(record => !isAfter(startOfDay(parseISO(record.effectiveDate as string)), targetDate));
+    const history = [...period.workHoursHistory].sort((a,b) => (b.effectiveDate as Date).getTime() - (a.effectiveDate as Date).getTime());
+    const effectiveRecord = history.find(record => !isAfter(startOfDay(record.effectiveDate as Date), targetDate));
     return effectiveRecord?.weeklyHours || 0;
 };
 
@@ -572,7 +577,7 @@ const calculateBalancePreviewCallback = useCallback((employeeId: string, weekDat
       .sort((a, b) => a.id.localeCompare(b.id)); 
       
     const firstPeriod = [...(employee.employmentPeriods || [])]
-        .sort((a, b) => parseISO(a.startDate as string).getTime() - parseISO(b.startDate as string).getTime())[0];
+        .sort((a, b) => (a.startDate as Date).getTime() - (b.startDate as Date).getTime())[0];
 
     let currentBalances = {
         ordinary: firstPeriod?.initialOrdinaryHours ?? 0,
@@ -633,7 +638,7 @@ const getEmployeeFinalBalances = useCallback((employeeId: string): { ordinary: n
     }
     
     const earliestPeriod = [...(employee.employmentPeriods || [])]
-        .sort((a, b) => parseISO(a.startDate as string).getTime() - parseISO(b.startDate as string).getTime())[0];
+        .sort((a, b) => (a.startDate as Date).getTime() - (b.startDate as Date).getTime())[0];
 
     if (earliestPeriod) {
         const balances = {
@@ -661,8 +666,8 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
     }
 
     const schedule = [...activePeriod.weeklySchedulesHistory]
-        .sort((a, b) => parseISO(b.effectiveDate as string).getTime() - parseISO(a.effectiveDate as string).getTime())
-        .find(s => !isAfter(startOfDay(parseISO(s.effectiveDate as string)), startOfDay(dateInWeek)));
+        .sort((a, b) => (b.effectiveDate as Date).getTime() - (a.effectiveDate as Date).getTime())
+        .find(s => !isAfter(startOfDay(s.effectiveDate as Date), startOfDay(dateInWeek)));
     
     if (!schedule) return defaultReturn;
     
@@ -761,8 +766,8 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
         const allSuspensionDetails: any[] = [];
     
         employee.employmentPeriods.forEach(period => {
-            const pStart = parseISO(period.startDate as string);
-            const pEnd = period.endDate ? parseISO(period.endDate as string) : yearEnd;
+            const pStart = period.startDate as Date;
+            const pEnd = period.endDate ? (period.endDate as Date) : yearEnd;
     
             // Skip period if it doesn't overlap with the year
             if (isAfter(pStart, yearEnd) || isBefore(pEnd, yearStart)) {
@@ -778,14 +783,14 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
             
             let periodBaseHours = (baseTheoreticalHours / daysInYear) * contractDaysInYear;
             
-            const history = (period.workHoursHistory || []).sort((a,b) => parseISO(a.effectiveDate as string).getTime() - parseISO(b.effectiveDate as string).getTime());
+            const history = (period.workHoursHistory || []).sort((a,b) => (a.effectiveDate as Date).getTime() - (b.effectiveDate as Date).getTime());
             if (history.length > 0) {
                 for (let i = 0; i < history.length; i++) {
                     const currentChange = history[i];
                     const nextChange = history[i + 1];
     
-                    const changeStart = max([effectivePeriodStart, parseISO(currentChange.effectiveDate as string)]);
-                    const changeEnd = min([effectivePeriodEnd, nextChange ? subDays(parseISO(nextChange.effectiveDate as string), 1) : effectivePeriodEnd]);
+                    const changeStart = max([effectivePeriodStart, currentChange.effectiveDate as Date]);
+                    const changeEnd = min([effectivePeriodEnd, nextChange ? subDays(nextChange.effectiveDate as Date, 1) : effectivePeriodEnd]);
                     
                     if (isAfter(changeStart, changeEnd)) continue;
     
@@ -868,8 +873,8 @@ const getProcessedAnnualDataForEmployee = async (employeeId: string, year: numbe
         const weekEnd = startOfDay(endOfWeek(weekStartDate, { weekStartsOn: 1 }));
 
         const activePeriod = employee.employmentPeriods.find(p => {
-            const periodStart = startOfDay(parseISO(p.startDate as string));
-            const periodEnd = p.endDate ? startOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
+            const periodStart = startOfDay(p.startDate as Date);
+            const periodEnd = p.endDate ? startOfDay(p.endDate as Date) : new Date('9999-12-31');
             return periodStart <= weekEnd && periodEnd >= weekStart;
         });
 
@@ -921,9 +926,9 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
     });
     
     employee.employmentPeriods.forEach(p => {
-        yearsWithActivity.add(getISOWeekYear(parseISO(p.startDate as string)));
+        yearsWithActivity.add(getISOWeekYear(p.startDate as Date));
         if (p.endDate) {
-            yearsWithActivity.add(getISOWeekYear(parseISO(p.endDate as string)));
+            yearsWithActivity.add(getISOWeekYear(p.endDate as Date));
         }
     });
 
@@ -1038,7 +1043,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         weekDaysWithTheoreticalHours.forEach(d => {
             const dayDate = parseISO(d.dateKey);
             const dayOfWeek = getISODay(dayDate);
-            const holidayDetails = holidays.find(h => isSameDay(h.date, dayDate));
+            const holidayDetails = holidays.find(h => isSameDay(h.date as Date, dayDate));
     
             const definitiveAbsence = activePeriod.scheduledAbsences?.find(a =>
                 a.isDefinitive && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: a.endDate ? startOfDay(a.endDate) : new Date('9999-12-31') })
