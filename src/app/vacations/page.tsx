@@ -250,10 +250,12 @@ export default function VacationsPage() {
           (emp.employmentPeriods || []).forEach(p => {
             if(p.scheduledAbsences) {
               p.scheduledAbsences.forEach(a => {
-                const startDate = a.startDate instanceof Date ? a.startDate : parseISO(a.startDate);
-                const endDate = a.endDate ? (a.endDate instanceof Date ? a.endDate : parseISO(a.endDate)) : null;
-                if (isValid(startDate)) years.add(getYear(startDate));
-                if (endDate && isValid(endDate)) years.add(getYear(endDate));
+                if (a.startDate) {
+                    const startDate = a.startDate instanceof Date ? a.startDate : parseISO(a.startDate);
+                    const endDate = a.endDate ? (a.endDate instanceof Date ? a.endDate : parseISO(a.endDate as string)) : null;
+                    if (isValid(startDate)) years.add(getYear(startDate));
+                    if (endDate && isValid(endDate)) years.add(getYear(endDate));
+                }
               })
             }
           })
@@ -265,13 +267,11 @@ export default function VacationsPage() {
     }, [allEmployeesForQuadrant]);
     
     useEffect(() => {
-      if (!loading && availableYears.length > 0) {
-        const latestYearWithData = availableYears[0];
-        if (String(latestYearWithData) !== selectedYear) {
+        if (!loading && availableYears.length > 0) {
+            const latestYearWithData = availableYears[0];
             setSelectedYear(String(latestYearWithData));
         }
-      }
-    }, [loading, availableYears]);
+    }, [loading]);
 
     useEffect(() => {
         if (activeEmployees.length > 0 && !selectedEmployeeId) {
@@ -518,9 +518,9 @@ export default function VacationsPage() {
     const employeeAbsenceDays = useMemo(() => {
         if (!selectedEmployeeId) return [];
         return (employeesWithAbsences[selectedEmployeeId] || []).flatMap(p => {
-             const startDate = p.startDate instanceof Date ? p.startDate : parseISO(p.startDate);
+             const startDate = p.startDate instanceof Date ? p.startDate : parseISO(p.startDate as string);
             if (!p.endDate) return [startDate];
-            const endDate = p.endDate instanceof Date ? p.endDate : parseISO(p.endDate);
+            const endDate = p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string);
             return eachDayOfInterval({ start: startDate, end: endDate });
         });
     }, [selectedEmployeeId, employeesWithAbsences]);
