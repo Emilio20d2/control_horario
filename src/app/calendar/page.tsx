@@ -41,6 +41,7 @@ import {
   isValid,
   addDays,
   isAfter,
+  endOfDay,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -126,7 +127,7 @@ export default function CalendarPage() {
                     const absenceStart = safeParseDate(absence.startDate);
                     const absenceEnd = absence.endDate ? safeParseDate(absence.endDate) : absenceStart;
 
-                    if (absenceStart && absenceEnd && isValid(absenceStart) && isValid(absenceEnd) && isWithinInterval(day, { start: startOfDay(absenceStart), end: endOfWeek(absenceEnd) })) {
+                    if (absenceStart && absenceEnd && isValid(absenceStart) && isValid(absenceEnd) && isWithinInterval(day, { start: startOfDay(absenceStart), end: endOfDay(absenceEnd) })) {
                         foundAbsence = absence;
                         break;
                     }
@@ -364,3 +365,5 @@ export default function CalendarPage() {
     </div>
   );
 }
+
+    
