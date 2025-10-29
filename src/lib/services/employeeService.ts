@@ -310,7 +310,8 @@ export const addScheduledAbsence = async (
         startDate: string; // YYYY-MM-DD
         endDate: string | null;
     },
-    currentEmployee: Employee
+    currentEmployee: Employee,
+    createDefinitiveCopy: boolean = false
 ): Promise<void> => {
     const employeeCopy = JSON.parse(JSON.stringify(currentEmployee));
     const period = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => p.id === periodId);
@@ -320,35 +321,36 @@ export const addScheduledAbsence = async (
         period.scheduledAbsences = [];
     }
     
-    const absenceForReport: any = {
-        id: `abs_${Date.now()}_${Math.random()}`,
-        absenceTypeId: newAbsence.absenceTypeId,
+    const originalRequestData = {
         startDate: newAbsence.startDate,
         endDate: newAbsence.endDate,
-        isDefinitive: false, // This is the original, immutable record for the report
-        originalRequest: { // Self-reference for clarity
-            startDate: newAbsence.startDate,
-            endDate: newAbsence.endDate
-        }
-    };
-    
-    const absenceForPlanner: any = {
-        id: `abs_def_${Date.now()}_${Math.random()}`,
-        absenceTypeId: newAbsence.absenceTypeId,
-        startDate: newAbsence.startDate,
-        endDate: newAbsence.endDate,
-        isDefinitive: true, // This is the editable copy for the planner
-        originalRequest: {
-            startDate: newAbsence.startDate,
-            endDate: newAbsence.endDate
-        }
     };
 
-    period.scheduledAbsences.push(absenceForReport);
-    period.scheduledAbsences.push(absenceForPlanner);
+    if (createDefinitiveCopy) {
+        // Create the original, non-definitive record for reporting
+        const originalRecord: any = {
+            id: `abs_${Date.now()}_${Math.random()}`,
+            absenceTypeId: newAbsence.absenceTypeId,
+            ...originalRequestData,
+            isDefinitive: false,
+            originalRequest: { ...originalRequestData }
+        };
+        period.scheduledAbsences.push(originalRecord);
+    }
+
+    // Create the definitive, editable record for the planner
+    const definitiveRecord: any = {
+        id: `abs_def_${Date.now()}_${Math.random()}`,
+        absenceTypeId: newAbsence.absenceTypeId,
+        ...originalRequestData,
+        isDefinitive: true,
+        originalRequest: { ...originalRequestData }
+    };
+    period.scheduledAbsences.push(definitiveRecord);
 
     await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
 };
+
 
 
 export const updateScheduledAbsence = async (
@@ -360,26 +362,46 @@ export const updateScheduledAbsence = async (
         endDate: string; 
         absenceTypeId: string;
     },
-    currentEmployee: Employee,
-    originalRequest?: any
+    currentEmployee: Employee
 ): Promise<void> => {
-    const employeeCopy = JSON.parse(JSON.stringify(currentEmployee));
-    const period = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => p.id === periodId);
-    if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
+    // This function now replaces the old absence with a new one to ensure clean updates.
+    
+    // First, delete the old definitive absence.
+    await hardDeleteScheduledAbsence(employeeId, periodId, absenceId);
 
-    const absenceIndex = period.scheduledAbsences.findIndex((a: ScheduledAbsence) => a.id === absenceId);
-    if (absenceIndex === -1) {
-        throw new Error(`Absence with id ${absenceId} not found for update.`);
+    // Then, add a new one with the updated data, preserving the original request info.
+    const employeeDoc = await getDoc(doc(db, 'employees', employeeId));
+    if (!employeeDoc.exists()) throw new Error("Employee not found after delete");
+    const refreshedEmployee = employeeDoc.data() as Employee;
+    
+    const originalAbsence = currentEmployee.employmentPeriods
+        .find(p => p.id === periodId)
+        ?.scheduledAbsences?.find(a => a.id === absenceId);
+
+    await addScheduledAbsence(
+        employeeId, 
+        periodId, 
+        newData, 
+        refreshedEmployee,
+        false // We are only creating the definitive copy here
+    );
+    
+    // Manually link the original request data to the newly created definitive record
+    const finalEmployeeDoc = await getDoc(doc(db, 'employees', employeeId));
+    const finalEmployeeData = JSON.parse(JSON.stringify(finalEmployeeDoc.data()));
+    const finalPeriod = finalEmployeeData.employmentPeriods.find((p: EmploymentPeriod) => p.id === periodId);
+    
+    if (finalPeriod && finalPeriod.scheduledAbsences) {
+        // Find the newly created definitive absence (it will be the last one)
+        const newDefinitiveAbsence = finalPeriod.scheduledAbsences
+            .filter((a: ScheduledAbsence) => a.isDefinitive)
+            .sort((a: ScheduledAbsence, b: ScheduledAbsence) => (b.id > a.id) ? 1 : -1)[0];
+        
+        if (newDefinitiveAbsence && originalAbsence) {
+            newDefinitiveAbsence.originalRequest = originalAbsence.originalRequest;
+            await updateDocument('employees', employeeId, { employmentPeriods: finalEmployeeData.employmentPeriods });
+        }
     }
-
-    // Replace the old definitive absence with the new data
-    period.scheduledAbsences[absenceIndex] = {
-        ...period.scheduledAbsences[absenceIndex],
-        ...newData,
-        originalRequest: originalRequest || period.scheduledAbsences[absenceIndex].originalRequest, // Preserve original request link
-    };
-
-    await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
 };
 
 
@@ -404,6 +426,8 @@ export const deleteScheduledAbsence = async (
 
     const absenceToModify = period.scheduledAbsences[absenceIndex];
     
+    // If a week within the absence is already confirmed, we can't fully delete.
+    // Instead, we invalidate the absence by setting its end date to its start date.
     if (weeklyRecords) {
         const startDate = absenceToModify.startDate instanceof Date ? absenceToModify.startDate : parseISO(absenceToModify.startDate as string);
         const endDate = absenceToModify.endDate ? (absenceToModify.endDate instanceof Date ? absenceToModify.endDate : parseISO(absenceToModify.endDate as string)) : startDate;
@@ -428,7 +452,6 @@ export const deleteScheduledAbsence = async (
         }
     }
 
-    // Invalidate the absence by setting its end date to its start date
     period.scheduledAbsences[absenceIndex].endDate = period.scheduledAbsences[absenceIndex].startDate;
     
     await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
@@ -475,3 +498,6 @@ export const hardDeleteScheduledAbsence = async (
     
     await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
 };
+
+
+    

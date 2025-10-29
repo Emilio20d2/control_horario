@@ -4,31 +4,55 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizonal, Loader2 } from 'lucide-react';
+import { SendHorizonal, Loader2, PlaneTakeoff, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
-import type { Message } from '@/lib/types';
-import { format } from 'date-fns';
+import type { Message, VacationCampaign, AbsenceType } from '@/lib/types';
+import { format, isWithinInterval, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { addScheduledAbsence } from '@/lib/services/employeeService';
+import { DateRange } from 'react-day-picker';
+import { Calendar } from '@/components/ui/calendar';
+import { es } from 'date-fns/locale';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 export default function MyMessagesPage() {
-    const { employeeRecord, loading, conversations } = useDataProvider();
+    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
     const conversationId = employeeRecord?.id;
     const viewportRef = useRef<HTMLDivElement>(null);
-    const autoReplyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const { toast } = useToast();
+
+    // State for vacation request dialog
+    const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+    const [selectedCampaign, setSelectedCampaign] = useState<VacationCampaign | null>(null);
+    const [requestDateRange, setRequestDateRange] = useState<DateRange | undefined>(undefined);
+    const [requestAbsenceTypeId, setRequestAbsenceTypeId] = useState<string>('');
+    const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+
 
     const conversation = useMemo(() => {
         if (!conversationId) return null;
         return conversations.find(c => c.id === conversationId);
     }, [conversations, conversationId]);
+
+    const activeCampaign = useMemo(() => {
+        const now = new Date();
+        return vacationCampaigns.find(c => {
+            const startDate = c.submissionStartDate instanceof Timestamp ? c.submissionStartDate.toDate() : c.submissionStartDate;
+            const endDate = c.submissionEndDate instanceof Timestamp ? c.submissionEndDate.toDate() : c.submissionEndDate;
+            return c.isActive && isWithinInterval(now, { start: startDate, end: endDate });
+        });
+    }, [vacationCampaigns]);
 
     const [messagesSnapshot, messagesLoading] = useCollectionData(
         conversationId ? query(collection(db, 'conversations', conversationId, 'messages'), orderBy('timestamp', 'asc')) : null
@@ -69,15 +93,6 @@ export default function MyMessagesPage() {
         setNewMessage('');
 
         await sendMessage(messageText);
-        
-        if (autoReplyTimeoutRef.current) {
-            clearTimeout(autoReplyTimeoutRef.current);
-        }
-
-        autoReplyTimeoutRef.current = setTimeout(() => {
-            const autoReplyText = `Hola ${employeeRecord.name.split(' ')[0]}, hemos recibido tu consulta. Un responsable la revisará y te responderá por este mismo medio tan pronto como sea posible. Gracias por tu paciencia.`;
-            sendBotMessage(autoReplyText, true);
-        }, 30000); // 30 second delay
     };
 
     const sendMessage = async (text: string) => {
@@ -113,24 +128,57 @@ export default function MyMessagesPage() {
 
         await addDoc(messagesColRef, userMessageData);
     };
+    
+    const handleOpenRequestDialog = (campaign: VacationCampaign) => {
+        setSelectedCampaign(campaign);
+        const defaultAbsenceType = absenceTypes.find(at => at.name === 'Vacaciones');
+        setRequestAbsenceTypeId(defaultAbsenceType?.id || '');
+        setRequestDateRange(undefined);
+        setIsRequestDialogOpen(true);
+    };
 
-    const sendBotMessage = async (text: string, unreadByEmployee: boolean) => {
-        if (!conversationId) return;
-        const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
-        const botMessageData = {
-            text,
-            senderId: 'admin',
-            timestamp: serverTimestamp()
-        };
-        await addDoc(messagesColRef, botMessageData);
-
-        const convDocRef = doc(db, 'conversations', conversationId);
-        await updateDoc(convDocRef, {
-            lastMessageText: text,
-            lastMessageTimestamp: serverTimestamp(),
-            unreadByEmployee: unreadByEmployee,
-        });
-    }
+    const handleSubmitRequest = async () => {
+        if (!selectedCampaign || !requestAbsenceTypeId || !requestDateRange?.from || !requestDateRange?.to || !employeeRecord) {
+            toast({ title: 'Datos incompletos', description: 'Selecciona tipo de ausencia y rango de fechas.', variant: 'destructive' });
+            return;
+        }
+    
+        const activePeriod = employeeRecord.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
+        if (!activePeriod) {
+            toast({ title: 'Error', description: 'No tienes un periodo laboral activo.', variant: 'destructive' });
+            return;
+        }
+    
+        setIsSubmittingRequest(true);
+        try {
+            // Create both the original and definitive records
+            await addScheduledAbsence(employeeRecord.id, activePeriod.id, {
+                absenceTypeId: requestAbsenceTypeId,
+                startDate: format(requestDateRange.from, 'yyyy-MM-dd'),
+                endDate: format(requestDateRange.to, 'yyyy-MM-dd'),
+            }, employeeRecord, true);
+    
+            toast({ title: 'Solicitud Enviada', description: 'Tu solicitud de ausencia ha sido registrada.' });
+    
+            const absenceName = absenceTypes.find(at => at.id === requestAbsenceTypeId)?.name || 'Ausencia';
+            const requestMessage = `**NUEVA SOLICITUD DE AUSENCIA**
+            - **Campaña:** ${selectedCampaign.title}
+            - **Tipo:** ${absenceName}
+            - **Desde:** ${format(requestDateRange.from, 'dd/MM/yyyy')}
+            - **Hasta:** ${format(requestDateRange.to, 'dd/MM/yyyy')}
+    
+            Esta solicitud ha sido pre-aprobada y registrada en el planificador. Un administrador la revisará.`;
+    
+            await sendMessage(requestMessage);
+    
+            setIsRequestDialogOpen(false);
+        } catch (error) {
+            console.error('Error submitting request:', error);
+            toast({ title: 'Error al enviar', description: error instanceof Error ? error.message : 'No se pudo enviar la solicitud.', variant: 'destructive' });
+        } finally {
+            setIsSubmittingRequest(false);
+        }
+    };
     
     if (loading) {
         return (
@@ -153,72 +201,130 @@ export default function MyMessagesPage() {
         )
     }
 
+    const campaignAbsenceTypes = absenceTypes.filter(at => selectedCampaign?.allowedAbsenceTypeIds.includes(at.id));
+
     const renderChatHeader = () => {
         return (
-            <div className="flex items-center gap-4">
-                <Avatar className="border-2 border-foreground"><AvatarFallback>D</AvatarFallback></Avatar>
-                <div>
-                    <h2 className="text-lg font-bold">Dirección</h2>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        Este servicio de mensajería es exclusivamente para incidencias relacionadas con el control de horas semanales o con esta aplicación.
-                        {'\n'}Para cualquier otra consulta, ponte en contacto directamente con Dirección.
-                    </p>
+            <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-4">
+                    <Avatar className="border-2 border-foreground"><AvatarFallback>D</AvatarFallback></Avatar>
+                    <div>
+                        <h2 className="text-lg font-bold">Dirección</h2>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            Canal para comunicar incidencias sobre tus horas o la aplicación.
+                        </p>
+                    </div>
                 </div>
+                 {activeCampaign && (
+                    <Alert>
+                        <PlaneTakeoff className="h-4 w-4" />
+                        <AlertTitle>{activeCampaign.title}</AlertTitle>
+                        <AlertDescription className="flex items-center justify-between">
+                            Periodo de solicitud abierto. ¡Puedes enviar tus peticiones!
+                            <Button size="sm" onClick={() => handleOpenRequestDialog(activeCampaign)}>Hacer Solicitud</Button>
+                        </AlertDescription>
+                    </Alert>
+                )}
             </div>
         )
     }
     
     return (
-        <div className="flex flex-col gap-6 p-4 md:p-6 h-full">
-            <div className="flex-shrink-0">
-                <h1 className="text-2xl font-bold tracking-tight font-headline">
-                    Mis Mensajes
-                </h1>
-            </div>
-            
-            <Card className="flex flex-col flex-grow h-[calc(100vh-12rem)]">
-                <div className="p-4 border-b">
-                    {renderChatHeader()}
+        <>
+            <div className="flex flex-col gap-6 p-4 md:p-6 h-full">
+                <div className="flex-shrink-0">
+                    <h1 className="text-2xl font-bold tracking-tight font-headline">
+                        Mis Mensajes
+                    </h1>
                 </div>
-                <ScrollArea className="flex-1 p-4 space-y-4" viewportRef={viewportRef}>
-                     {messagesLoading ? (
-                        <div className="flex h-full items-center justify-center">
-                            <Loader2 className="h-8 w-8 animate-spin" />
-                        </div>
-                     ) : (
-                        formattedMessages.map((message, index) => (
-                            <div key={index} className={cn('flex items-end gap-2', message.senderId === employeeRecord.id ? 'justify-end' : 'justify-start')}>
-                                {message.senderId !== employeeRecord.id && <Avatar className="h-8 w-8 border-2 border-foreground"><AvatarFallback>D</AvatarFallback></Avatar>}
-                                <div className={cn(
-                                    'max-w-[90%] p-3 rounded-lg',
-                                    message.senderId === employeeRecord.id ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                                )}>
-                                    <p className="whitespace-pre-wrap break-words">{message.text}</p>
-                                    {message.timestamp && (
-                                         <p className="text-xs opacity-70 mt-1 text-right">
-                                             {format(message.timestamp, 'HH:mm')}
-                                         </p>
-                                    )}
-                                </div>
+                
+                <Card className="flex flex-col flex-grow h-[calc(100vh-12rem)]">
+                    <CardHeader className="p-4 border-b">
+                        {renderChatHeader()}
+                    </CardHeader>
+                    <ScrollArea className="flex-1 p-4 space-y-4" viewportRef={viewportRef}>
+                        {messagesLoading ? (
+                            <div className="flex h-full items-center justify-center">
+                                <Loader2 className="h-8 w-8 animate-spin" />
                             </div>
-                        ))
-                     )}
-                </ScrollArea>
-                <div className="p-4 border-t bg-background space-y-4">
-                    <form onSubmit={handleSendMessage} className="relative">
-                        <Input 
-                            placeholder="Escribe tu mensaje para cualquier otra consulta..." 
-                            className="pr-12 h-10" 
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                        />
-                        <Button type="submit" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-8 w-8">
-                            <SendHorizonal className="h-4 w-4" />
+                        ) : (
+                            formattedMessages.map((message, index) => (
+                                <div key={index} className={cn('flex items-end gap-2', message.senderId === employeeRecord.id ? 'justify-end' : 'justify-start')}>
+                                    {message.senderId !== employeeRecord.id && <Avatar className="h-8 w-8 border-2 border-foreground"><AvatarFallback>D</AvatarFallback></Avatar>}
+                                    <div className={cn(
+                                        'max-w-[90%] p-3 rounded-lg',
+                                        message.senderId === employeeRecord.id ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                                    )}>
+                                        <p className="whitespace-pre-wrap break-words">{message.text}</p>
+                                        {message.timestamp && (
+                                            <p className="text-xs opacity-70 mt-1 text-right">
+                                                {format(message.timestamp, 'HH:mm')}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </ScrollArea>
+                    <div className="p-4 border-t bg-background space-y-4">
+                        <form onSubmit={handleSendMessage} className="relative">
+                            <Input 
+                                placeholder="Escribe tu mensaje para cualquier otra consulta..." 
+                                className="pr-12 h-10" 
+                                value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)}
+                            />
+                            <Button type="submit" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-8 w-8">
+                                <SendHorizonal className="h-4 w-4" />
+                            </Button>
+                        </form>
+                    </div>
+                </Card>
+            </div>
+             <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{selectedCampaign?.title}</DialogTitle>
+                        <DialogDescription>{selectedCampaign?.description}</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                             <label className="text-sm font-medium">Tipo de Ausencia</label>
+                            <Select value={requestAbsenceTypeId} onValueChange={setRequestAbsenceTypeId}>
+                                <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                                <SelectContent>
+                                    {campaignAbsenceTypes.map(at => (
+                                        <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                         <div className="space-y-2">
+                            <label className="text-sm font-medium">Periodo de la Ausencia</label>
+                            <Calendar
+                                mode="range"
+                                selected={requestDateRange}
+                                onSelect={setRequestDateRange}
+                                locale={es}
+                                disabled={isSubmittingRequest}
+                                fromDate={selectedCampaign ? (selectedCampaign.absenceStartDate as Timestamp).toDate() : undefined}
+                                toDate={selectedCampaign ? (selectedCampaign.absenceEndDate as Timestamp).toDate() : undefined}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="secondary">Cancelar</Button>
+                        </DialogClose>
+                        <Button onClick={handleSubmitRequest} disabled={isSubmittingRequest || !requestDateRange?.from}>
+                            {isSubmittingRequest ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Enviar Solicitud
                         </Button>
-                    </form>
-                </div>
-            </Card>
-
-        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
+
+    
