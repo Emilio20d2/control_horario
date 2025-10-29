@@ -76,7 +76,6 @@ export default function MyMessagesPage() {
         selected: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }
     };
 
-
     const conversation = useMemo(() => {
         if (!conversationId) return null;
         return conversations.find(c => c.id === conversationId);
@@ -560,24 +559,23 @@ export default function MyMessagesPage() {
                                 <DayPicker
                                     mode="multiple"
                                     min={0}
-                                    selected={otherRequestMultipleDates}
                                     onSelect={(days) => setOtherRequestMultipleDates(days || [])}
-                                    locale={es}
                                     modifiers={dayPickerModifiers}
                                     modifiersStyles={dayPickerModifiersStyles}
+                                    locale={es}
                                 />
-                                {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name === 'Reducción Jornada Senior' && (
-                                    <Card className="mt-2">
-                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                            <CardTitle className="text-sm font-medium">Total de Horas Solicitadas</CardTitle>
-                                            <Hourglass className="h-4 w-4 text-muted-foreground" />
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="text-2xl font-bold">{seniorHoursTotal.toFixed(2)}h</div>
-                                        </CardContent>
-                                    </Card>
-                                )}
                             </div>
+                            {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name === 'Reducción Jornada Senior' && (
+                                <Card className="mt-2">
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                        <CardTitle className="text-sm font-medium">Total de Horas Solicitadas</CardTitle>
+                                        <Hourglass className="h-4 w-4 text-muted-foreground" />
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="text-2xl font-bold">{seniorHoursTotal.toFixed(2)}h</div>
+                                    </CardContent>
+                                </Card>
+                            )}
                             {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name !== 'Reducción Jornada Senior' && (
                                 <div className="space-y-2">
                                     <Label htmlFor="notes" className="text-sm font-medium">
