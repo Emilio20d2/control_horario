@@ -413,6 +413,7 @@ export default function VacationsPage() {
                     endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
                 },
                 employee,
+                weeklyRecords,
                 absence.originalRequest
             );
     
@@ -960,5 +961,6 @@ export default function VacationsPage() {
         </div>
     );
 }
+
 
 
