@@ -31,7 +31,8 @@ export interface ScheduledAbsence {
     id: string;
     absenceTypeId: string;
     startDate: Date; 
-    endDate: Date | null; 
+    endDate: Date | null;
+    isDefinitive: boolean; // True if it's the record to be shown on the planner
     originalRequest?: {
         startDate: Date;
         endDate: Date | null;
@@ -275,7 +276,8 @@ export interface Ausencia {
     originalRequest?: {
         startDate: Date;
         endDate: Date | null;
-    }
+    },
+    isDefinitive: boolean;
   }
 
 export interface Conversation {

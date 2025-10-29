@@ -70,7 +70,6 @@ import {
   addScheduledAbsence,
   deleteScheduledAbsence,
   updateScheduledAbsence,
-  hardDeleteScheduledAbsence,
 } from '@/lib/services/employeeService';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -311,10 +310,10 @@ export default function VacationsPage() {
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
 
         allEmployeesForQuadrant.forEach(emp => {
-            const allAbsenceDays = new Map<string, { typeId: string; typeAbbr: string; periodId?: string; absenceId?: string; isRequest?: boolean; originalRequest?: { startDate: Date, endDate: Date | null } }>();
+            const allAbsenceDays = new Map<string, { typeId: string; typeAbbr: string; periodId?: string; absenceId?: string; isRequest?: boolean; originalRequest?: { startDate: Date, endDate: Date | null }; isDefinitive: boolean }>();
 
             (emp.employmentPeriods || []).forEach(period => {
-                (period.scheduledAbsences || []).filter(a => schedulableIds.has(a.absenceTypeId))
+                (period.scheduledAbsences || []).filter(a => schedulableIds.has(a.absenceTypeId) && a.isDefinitive)
                     .forEach(absence => {
                         if (!absence.endDate) return;
                         const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
@@ -327,6 +326,7 @@ export default function VacationsPage() {
                                 absenceId: absence.id,
                                 isRequest: false,
                                 originalRequest: absence.originalRequest,
+                                isDefinitive: true,
                             });
                         });
                     });
@@ -345,7 +345,8 @@ export default function VacationsPage() {
                                 allAbsenceDays.set(dayStr, {
                                     typeId: absenceType.id,
                                     typeAbbr: absenceType.abbreviation,
-                                    absenceId: `weekly-${dayStr}`
+                                    absenceId: `weekly-${dayStr}`,
+                                    isDefinitive: true,
                                 });
                             }
                          }
@@ -365,7 +366,7 @@ export default function VacationsPage() {
                         periods.push({
                             id: currentInfo.absenceId!, startDate: currentStart, endDate: sortedDays[i-1],
                             absenceTypeId: currentInfo.typeId, absenceAbbreviation: currentInfo.typeAbbr, periodId: currentInfo.periodId,
-                            isRequest: currentInfo.isRequest, originalRequest: currentInfo.originalRequest
+                            isRequest: currentInfo.isRequest, originalRequest: currentInfo.originalRequest, isDefinitive: currentInfo.isDefinitive,
                         });
                         currentStart = sortedDays[i];
                         currentInfo = dayInfo;
@@ -374,7 +375,7 @@ export default function VacationsPage() {
                 periods.push({
                     id: currentInfo.absenceId!, startDate: currentStart, endDate: sortedDays[sortedDays.length - 1],
                     absenceTypeId: currentInfo.typeId, absenceAbbreviation: currentInfo.typeAbbr, periodId: currentInfo.periodId,
-                    isRequest: currentInfo.isRequest, originalRequest: currentInfo.originalRequest,
+                    isRequest: currentInfo.isRequest, originalRequest: currentInfo.originalRequest, isDefinitive: currentInfo.isDefinitive,
                 });
             }
             employeesWithAbsences[emp.id] = periods;
@@ -485,15 +486,7 @@ export default function VacationsPage() {
         }
     };
 
-    const handleDeleteAbsence = async () => {
-        if (!editingAbsence) return;
-    
-        if (editingAbsence.absence.id.startsWith('weekly-')) {
-            toast({ title: 'No editable', description: 'Las ausencias puntuales del horario no se pueden eliminar desde aquí.', variant: 'destructive' });
-            setEditingAbsence(null);
-            return;
-        }
-    
+    const handleDeleteAbsence = async (employeeId: string, periodId: string, absenceId: string) => {
         if (!deletePassword) {
             toast({ title: 'Contraseña requerida', description: 'Introduce tu contraseña para confirmar la eliminación.', variant: 'destructive' });
             return;
@@ -508,8 +501,8 @@ export default function VacationsPage() {
                 return;
             }
     
-            await hardDeleteScheduledAbsence(editingAbsence.employee.id, editingAbsence.absence.periodId!, editingAbsence.absence.id, editingAbsence.employee, weeklyRecords);
-            toast({ title: 'Ausencia Eliminada', description: `La ausencia de ${editingAbsence.employee.name} ha sido eliminada.`, variant: 'destructive' });
+            await deleteScheduledAbsence(employeeId, periodId, absenceId, weeklyRecords);
+            toast({ title: 'Ausencia Eliminada', description: `La ausencia ha sido eliminada.`, variant: 'destructive' });
             refreshData();
             setEditingAbsence(null);
         } catch (error) {
@@ -517,6 +510,7 @@ export default function VacationsPage() {
             toast({ title: 'Error al eliminar', description: error instanceof Error ? error.message : "No se pudo eliminar la ausencia.", variant: 'destructive' });
         } finally {
             setIsGenerating(false);
+            setDeletePassword('');
         }
     };
 
@@ -541,7 +535,7 @@ export default function VacationsPage() {
                 absenceTypeId: selectedAbsenceTypeId,
                 startDate: format(selectedDateRange.from, 'yyyy-MM-dd'),
                 endDate: format(selectedDateRange.to, 'yyyy-MM-dd'),
-            }, selectedEmployee);
+            }, selectedEmployee, undefined, true); // Mark as definitive
             
             toast({ title: 'Periodo de ausencia añadido', description: `Se ha guardado la ausencia para ${selectedEmployee?.name}.` });
             setSelectedDateRange(undefined);
@@ -560,7 +554,7 @@ export default function VacationsPage() {
     const employeeAbsencesForYear = useMemo(() => {
         if (!selectedEmployeeId || !selectedYear) return [];
         return (employeesWithAbsences[selectedEmployeeId] || [])
-            .filter(a => getYear(a.startDate) === Number(selectedYear))
+            .filter(a => getYear(a.startDate) === Number(selectedYear) && a.isDefinitive)
             .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
     }, [selectedEmployeeId, selectedYear, employeesWithAbsences]);
     
@@ -616,7 +610,7 @@ export default function VacationsPage() {
             toast({ title: 'Error', description: 'Por favor, selecciona una campaña válida.', variant: 'destructive' });
             return;
         }
-        generateRequestStatusReportPDF(campaign, allEmployeesForQuadrant, conversations, absenceTypes);
+        generateRequestStatusReportPDF(campaign, allEmployeesForQuadrant, employeesWithAbsences, absenceTypes);
     };
 
     const handleSelectSubstitute = async (weekKey: string, employeeId: string, substitute: {id: string, name: string} | null) => {
@@ -693,7 +687,7 @@ export default function VacationsPage() {
                     {weeksOfYear.map(week => {
                       const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
                         const absence = (employeesWithAbsences[emp.id] || []).find(a =>
-                          isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
+                          isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end) && a.isDefinitive
                         );
                         return absence ? { employee: emp, absence } : null;
                       }).filter((item): item is { employee: Employee & { isEventual: boolean, groupId: string | null }, absence: FormattedAbsence } => item !== null);
@@ -875,6 +869,7 @@ export default function VacationsPage() {
                                                 <TableHead className="px-1 h-8 text-xs">Tipo</TableHead>
                                                 <TableHead className="px-1 h-8 text-xs">Inicio</TableHead>
                                                 <TableHead className="px-1 h-8 text-xs">Fin</TableHead>
+                                                <TableHead className="px-1 h-8 text-xs text-right">Acción</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -883,6 +878,32 @@ export default function VacationsPage() {
                                                     <TableCell className="px-1 py-1 text-xs">{absence.absenceAbbreviation}</TableCell>
                                                     <TableCell className="px-1 py-1 text-xs">{format(absence.startDate, 'dd/MM/yy', { locale: es })}</TableCell>
                                                     <TableCell className="px-1 py-1 text-xs">{format(absence.endDate, 'dd/MM/yy', { locale: es })}</TableCell>
+                                                    <TableCell className="px-1 py-1 text-xs text-right">
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingAbsence({ employee: employees.find(e => e.id === selectedEmployeeId), absence })}>
+                                                            <Edit className="h-3 w-3" />
+                                                        </Button>
+                                                         <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive-foreground"><Trash2 className="h-3 w-3" /></Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>Se eliminará el periodo de ausencia seleccionado del planificador. Esta acción no se puede deshacer.</AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <div className="space-y-2 py-2">
+                                                                    <Label htmlFor="password-delete-period">Contraseña de Administrador</Label>
+                                                                    <Input id="password-delete-period" type="password" placeholder="Introduce tu contraseña" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
+                                                                </div>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel onClick={() => setDeletePassword('')}>Cancelar</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleDeleteAbsence(selectedEmployeeId, absence.periodId!, absence.id)} disabled={isGenerating || !deletePassword}>
+                                                                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sí, eliminar'}
+                                                                    </AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -921,33 +942,7 @@ export default function VacationsPage() {
                             onMonthChange={setEditCalendarMonth}
                         />
                     </div>
-                    <DialogFooter className="justify-between sm:justify-between w-full">
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive" disabled={isGenerating}>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Eliminar
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Se eliminará el periodo de ausencia seleccionado. Esta acción no se puede deshacer. Introduce tu contraseña para confirmar.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                 <div className="space-y-2 py-2">
-                                    <Label htmlFor="password-delete">Contraseña de Administrador</Label>
-                                    <Input id="password-delete" type="password" placeholder="Introduce tu contraseña" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
-                                </div>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDeleteAbsence} disabled={isGenerating || !deletePassword}>
-                                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sí, eliminar'}
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                    <DialogFooter className="justify-end sm:justify-end w-full">
                         <div className="flex gap-2">
                              <DialogClose asChild>
                                 <Button variant="outline">Cancelar</Button>
