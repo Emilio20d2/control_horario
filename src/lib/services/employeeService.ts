@@ -356,15 +356,20 @@ export const updateScheduledAbsence = async (
     const absenceIndex = period.scheduledAbsences.findIndex(a => a.id === absenceId);
     if (absenceIndex === -1) throw new Error("Ausencia no encontrada para actualizar");
 
-    // Invalidate the old record by making it a single day event.
+    // Invalidate the old record by setting end date to start date.
     period.scheduledAbsences[absenceIndex].endDate = period.scheduledAbsences[absenceIndex].startDate;
-    
-    // Add a new record. Crucially, do NOT pass the originalRequest, effectively unlinking it.
-    await addScheduledAbsence(employeeId, periodId, {
-        absenceTypeId: period.scheduledAbsences[absenceIndex].absenceTypeId,
-        startDate: newData.startDate,
-        endDate: newData.endDate,
-    }, currentEmployee);
+
+    // Create a new absence without the originalRequest link.
+    await addScheduledAbsence(
+        employeeId,
+        periodId,
+        {
+            absenceTypeId: period.scheduledAbsences[absenceIndex].absenceTypeId,
+            startDate: newData.startDate,
+            endDate: newData.endDate,
+        },
+        currentEmployee
+    );
 };
 
 
@@ -443,3 +448,4 @@ export const hardDeleteScheduledAbsence = async (
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
+

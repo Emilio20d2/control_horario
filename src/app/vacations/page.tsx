@@ -70,6 +70,7 @@ import {
   addScheduledAbsence,
   deleteScheduledAbsence,
   updateScheduledAbsence,
+  hardDeleteScheduledAbsence,
 } from '@/lib/services/employeeService';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -457,14 +458,18 @@ export default function VacationsPage() {
     
         setIsGenerating(true);
         try {
-            const { employee, absence } = editingAbsence;
-            
-            await updateScheduledAbsence(employee.id, absence.periodId!, absence.id, {
-                startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
-                endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
-            }, employee);
+            await updateScheduledAbsence(
+                editingAbsence.employee.id,
+                editingAbsence.absence.periodId!,
+                editingAbsence.absence.id,
+                {
+                    startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
+                    endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
+                },
+                editingAbsence.employee
+            );
     
-            toast({ title: 'Ausencia actualizada', description: `La ausencia de ${employee.name} ha sido modificada.` });
+            toast({ title: 'Ausencia actualizada', description: `La ausencia de ${editingAbsence.employee.name} ha sido modificada.` });
             refreshData();
             setEditingAbsence(null);
         } catch (error) {
@@ -486,9 +491,8 @@ export default function VacationsPage() {
 
         setIsGenerating(true);
         try {
-            const { employee, absence } = editingAbsence;
-            await deleteScheduledAbsence(employee.id, absence.periodId!, absence.id, employee, weeklyRecords);
-            toast({ title: 'Ausencia Eliminada', description: `La ausencia de ${employee.name} ha sido eliminada.`, variant: 'destructive' });
+            await hardDeleteScheduledAbsence(editingAbsence.employee.id, editingAbsence.absence.periodId!, editingAbsence.absence.id, editingAbsence.employee, weeklyRecords);
+            toast({ title: 'Ausencia Eliminada', description: `La ausencia de ${editingAbsence.employee.name} ha sido eliminada.`, variant: 'destructive' });
             refreshData();
             setEditingAbsence(null);
         } catch (error) {
@@ -1003,6 +1007,7 @@ export default function VacationsPage() {
     
 
     
+
 
 
 
