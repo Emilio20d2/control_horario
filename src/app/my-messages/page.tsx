@@ -46,7 +46,6 @@ export default function MyMessagesPage() {
     const [otherRequestStep, setOtherRequestStep] = useState(1);
     const [communicatedTo, setCommunicatedTo] = useState('');
     const [otherRequestAbsenceTypeId, setOtherRequestAbsenceTypeId] = useState('');
-    const [otherRequestSingleDate, setOtherRequestSingleDate] = useState<Date | undefined>(undefined);
     const [otherRequestMultipleDates, setOtherRequestMultipleDates] = useState<Date[]>([]);
     const [otherRequestNotes, setOtherRequestNotes] = useState('');
     const [isSubmittingOtherRequest, setIsSubmittingOtherRequest] = useState(false);
@@ -68,15 +67,17 @@ export default function MyMessagesPage() {
     }, [vacationCampaigns]);
 
     const otherRequestAbsenceTypes = useMemo(() => {
-        const allowedNames = [
+        const allowedNames = new Set([
             "Día de Asuntos Propios",
             "Boda/Comunión",
             "Devolución Horas",
             "Devolución Festivo",
             "Devolución Libranza",
-            "Reducción Jornada Senior"
-        ];
-        return absenceTypes.filter(at => allowedNames.includes(at.name));
+            "Reducción Jornada Senior",
+            "Recuperación Horas",
+            "Horas Sindicales"
+        ]);
+        return absenceTypes.filter(at => allowedNames.has(at.name));
     }, [absenceTypes]);
 
     const [messagesSnapshot, messagesLoading] = useCollectionData(
@@ -166,7 +167,6 @@ export default function MyMessagesPage() {
         setOtherRequestStep(1);
         setCommunicatedTo('');
         setOtherRequestAbsenceTypeId('');
-        setOtherRequestSingleDate(undefined);
         setOtherRequestMultipleDates([]);
         setOtherRequestNotes('');
         setSeniorHoursTotal(0);
@@ -240,19 +240,16 @@ export default function MyMessagesPage() {
         let finalNotes = otherRequestNotes;
         let datesForMessage = '';
 
+        if (otherRequestMultipleDates.length === 0) {
+            toast({ title: 'Datos incompletos', description: 'Selecciona al menos un día para el permiso.', variant: 'destructive' });
+            return;
+        }
+
+        datesForMessage = otherRequestMultipleDates.map(d => format(d, 'dd/MM/yyyy')).sort().join(', ');
+
         if (selectedAbsenceName === 'Reducción Jornada Senior') {
-            if (otherRequestMultipleDates.length === 0) {
-                toast({ title: 'Datos incompletos', description: 'Selecciona al menos un día para la reducción de jornada.', variant: 'destructive' });
-                return;
-            }
             finalNotes = `PETICION DE "${seniorHoursTotal.toFixed(2)}" HORAS REDUCCION JORNADA SENIOR`;
-            datesForMessage = otherRequestMultipleDates.map(d => format(d, 'dd/MM/yyyy')).join(', ');
         } else {
-            if (!otherRequestSingleDate) {
-                 toast({ title: 'Datos incompletos', description: 'Selecciona una fecha para el permiso.', variant: 'destructive' });
-                return;
-            }
-            datesForMessage = format(otherRequestSingleDate, 'dd/MM/yyyy');
             if (!finalNotes.trim()) {
                 toast({ title: 'Motivo Requerido', description: 'Por favor, explica el motivo de tu solicitud en las notas.', variant: 'destructive' });
                 return;
@@ -292,18 +289,22 @@ export default function MyMessagesPage() {
         if (isSubmittingOtherRequest || !otherRequestAbsenceTypeId || !communicatedTo) {
             return true;
         }
-        if (selectedAbsenceName === 'Reducción Jornada Senior') {
-            return otherRequestMultipleDates.length === 0;
-        } else {
-            return !otherRequestSingleDate || !otherRequestNotes.trim();
+        
+        if (otherRequestMultipleDates.length === 0) {
+            return true;
         }
+
+        if (selectedAbsenceName !== 'Reducción Jornada Senior') {
+            return !otherRequestNotes.trim();
+        }
+        
+        return false;
     }, [
         isSubmittingOtherRequest, 
         otherRequestAbsenceTypeId, 
         communicatedTo,
         absenceTypes,
         otherRequestMultipleDates,
-        otherRequestSingleDate,
         otherRequestNotes
     ]);
 
@@ -503,18 +504,17 @@ export default function MyMessagesPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-
-                            {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name === 'Reducción Jornada Senior' ? (
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-medium">Días del Permiso</Label>
-                                    <DayPicker
-                                        mode="multiple"
-                                        min={0}
-                                        selected={otherRequestMultipleDates}
-                                        onSelect={setOtherRequestMultipleDates}
-                                        locale={es}
-                                        disabled={isSubmittingOtherRequest}
-                                    />
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Días del Permiso</Label>
+                                <DayPicker
+                                    mode="multiple"
+                                    min={0}
+                                    selected={otherRequestMultipleDates}
+                                    onSelect={(days) => setOtherRequestMultipleDates(days || [])}
+                                    locale={es}
+                                    disabled={isSubmittingOtherRequest}
+                                />
+                                {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name === 'Reducción Jornada Senior' && (
                                     <Card className="mt-2">
                                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                             <CardTitle className="text-sm font-medium">Total de Horas Solicitadas</CardTitle>
@@ -524,34 +524,23 @@ export default function MyMessagesPage() {
                                             <div className="text-2xl font-bold">{seniorHoursTotal.toFixed(2)}h</div>
                                         </CardContent>
                                     </Card>
+                                )}
+                            </div>
+                            {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name !== 'Reducción Jornada Senior' && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="notes" className="text-sm font-medium">
+                                        Motivo <span className="text-destructive">*</span>
+                                    </Label>
+                                    <Textarea
+                                        id="notes"
+                                        placeholder="Añade aquí cualquier justificación o comentario necesario..."
+                                        value={otherRequestNotes}
+                                        onChange={(e) => setOtherRequestNotes(e.target.value)}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        <span className="text-destructive">*</span> Obligatorio para este tipo de permiso.
+                                    </p>
                                 </div>
-                            ) : (
-                                <>
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-medium">Fecha del Permiso</Label>
-                                        <DayPicker
-                                            mode="single"
-                                            selected={otherRequestSingleDate}
-                                            onSelect={setOtherRequestSingleDate}
-                                            locale={es}
-                                            disabled={isSubmittingOtherRequest}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="notes" className="text-sm font-medium">
-                                            Motivo <span className="text-destructive">*</span>
-                                        </Label>
-                                        <Textarea
-                                            id="notes"
-                                            placeholder="Añade aquí cualquier justificación o comentario necesario..."
-                                            value={otherRequestNotes}
-                                            onChange={(e) => setOtherRequestNotes(e.target.value)}
-                                        />
-                                        <p className="text-xs text-muted-foreground">
-                                            <span className="text-destructive">*</span> Obligatorio para este tipo de permiso.
-                                        </p>
-                                    </div>
-                                </>
                             )}
                              <DialogFooter>
                                 <Button type="button" variant="ghost" onClick={() => setOtherRequestStep(1)}>Atrás</Button>
@@ -567,6 +556,8 @@ export default function MyMessagesPage() {
         </>
     );
 }
+    
+
     
 
     
