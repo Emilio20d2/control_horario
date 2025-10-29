@@ -263,11 +263,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const dataPromises = [
         setupSubscription<Employee>('employees', setEmployees, (data) => data.map(emp => ({
             ...emp, 
-            employmentPeriods: emp.employmentPeriods.map(p => ({
+            employmentPeriods: emp.employmentPeriods.map((p: any) => ({
                 ...p, 
                 startDate: safeParseDate(p.startDate), 
                 endDate: safeParseDate(p.endDate), 
-                scheduledAbsences: (p.scheduledAbsences || []).map(a => ({
+                scheduledAbsences: (p.scheduledAbsences || []).map((a: any) => ({
                     ...a, 
                     startDate: safeParseDate(a.startDate), 
                     endDate: safeParseDate(a.endDate),
@@ -411,7 +411,7 @@ const pendingCorrectionRequestCount = useMemo(() => {
     const firstPeriod = emp.employmentPeriods?.[0];
     if (!firstPeriod) return defaultReturn;
     
-    const startDateYear = getYear(parseISO(firstPeriod.startDate as string));
+    const startDateYear = getYear(firstPeriod.startDate as Date);
     const isTransferInCurrentYear = firstPeriod.isTransfer && year === startDateYear;
     
     if (isTransferInCurrentYear) {
@@ -421,12 +421,12 @@ const pendingCorrectionRequestCount = useMemo(() => {
         const currentYearEnd = endOfYear(new Date(year, 11, 31));
         let contractDaysInCurrentYear = 0;
         emp.employmentPeriods?.filter(p => {
-            const pStart = parseISO(p.startDate as string);
-            const pEnd = p.endDate ? parseISO(p.endDate as string) : currentYearEnd;
+            const pStart = p.startDate as Date;
+            const pEnd = p.endDate ? (p.endDate as Date) : currentYearEnd;
             return getYear(pStart) <= year && getYear(pEnd) >= year;
         }).forEach(p => {
-            const pStart = parseISO(p.startDate as string);
-            const pEnd = p.endDate ? parseISO(p.endDate as string) : currentYearEnd;
+            const pStart = p.startDate as Date;
+            const pEnd = p.endDate ? (p.endDate as Date) : currentYearEnd;
             const effectiveStart = isAfter(pStart, currentYearStart) ? pStart : currentYearStart;
             const effectiveEnd = isBefore(pEnd, currentYearEnd) ? pEnd : currentYearEnd;
             if (isAfter(effectiveStart, effectiveEnd)) return;

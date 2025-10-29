@@ -178,7 +178,11 @@ export default function VacationsPage() {
     }, [holidayReports]);
 
     const activeEmployees = useMemo(() => {
-        return employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
+        return employees.filter(e => e.employmentPeriods.some(p => {
+            if (!p.endDate) return true;
+            const endDate = p.endDate instanceof Date ? p.endDate : parseISO(p.endDate);
+            return isAfter(endDate, new Date());
+        }));
     }, [employees]);
 
     const allCampaignsSorted = useMemo(() => {
@@ -195,61 +199,10 @@ export default function VacationsPage() {
     
     const groupColors = useMemo(() => generateGroupColors(employeeGroups.map(g => g.id)), [employeeGroups]);
 
-    useEffect(() => {
-        if (activeEmployees.length > 0 && !selectedEmployeeId) {
-            setSelectedEmployeeId(activeEmployees[0].id);
-        }
-    }, [activeEmployees, selectedEmployeeId]);
-    
-    useEffect(() => {
-        if (selectedYear) {
-            setCalendarMonth(new Date(Number(selectedYear), 0, 1));
-        }
-    }, [selectedYear]);
-
-    useEffect(() => {
-        if (editingAbsence) {
-            setEditedDateRange({ from: editingAbsence.absence.startDate, to: editingAbsence.absence.endDate || undefined });
-            setEditCalendarMonth(editingAbsence.absence.startDate);
-        } else {
-            setEditedDateRange(undefined);
-            setDeletePassword('');
-        }
-    }, [editingAbsence]);
-
-    const availableYears = useMemo(() => {
-        const years = new Set<number>();
-        employees.forEach(emp => {
-          (emp.employmentPeriods || []).forEach(p => {
-            if(p.scheduledAbsences) {
-              p.scheduledAbsences.forEach(a => {
-                if (a.startDate) years.add(getYear(a.startDate));
-                if(a.endDate) years.add(getYear(a.endDate));
-              })
-            }
-          })
-        });
-        const currentYear = new Date().getFullYear();
-        years.add(currentYear);
-        years.add(currentYear + 1);
-        return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
-    }, [employees]);
-    
-    useEffect(() => {
-        if (!loading && availableYears.length > 0) {
-            const latestYearWithData = availableYears[0];
-            setSelectedYear(String(latestYearWithData));
-        }
-    }, [loading, availableYears]);
-    
-    const schedulableAbsenceTypes = useMemo(() => {
-        return absenceTypes.filter(at => at.name === 'Vacaciones' || at.name === 'Excedencia' || at.name === 'Permiso no retribuido');
-    }, [absenceTypes]);
-    
     const { allEmployeesForQuadrant, substituteEmployees } = useMemo(() => {
         if (loading) return { allEmployeesForQuadrant: [], substituteEmployees: [] };
 
-        const activeEmployeesForQuadrant = employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date())));
+        const activeEmployeesForQuadrant = employees.filter(e => e.employmentPeriods.some(p => !p.endDate || isAfter(p.endDate as Date, new Date())));
 
         const mainEmployeesMap = new Map(activeEmployeesForQuadrant.map(e => [e.id, e]));
 
@@ -289,17 +242,58 @@ export default function VacationsPage() {
         };
     }, [employees, holidayEmployees, employeeGroups, loading]);
     
-    
-    // Recalculate vacation data when employee or year changes
-    useEffect(() => {
-        const emp = employees.find(e => e.id === selectedEmployeeId);
-        if (emp && selectedYear) {
-            const calculation = calculateEmployeeVacations(emp, Number(selectedYear), 'programmed');
-            setVacationCalculation(calculation);
-        }
-    }, [selectedEmployeeId, selectedYear, employees, calculateEmployeeVacations, weeklyRecords]);
 
-     useEffect(() => {
+    const availableYears = useMemo(() => {
+        const years = new Set<number>();
+        allEmployeesForQuadrant.forEach(emp => {
+          (emp.employmentPeriods || []).forEach(p => {
+            if(p.scheduledAbsences) {
+              p.scheduledAbsences.forEach(a => {
+                if (a.startDate) years.add(getYear(a.startDate));
+                if(a.endDate) years.add(getYear(a.endDate));
+              })
+            }
+          })
+        });
+        const currentYear = new Date().getFullYear();
+        years.add(currentYear);
+        years.add(currentYear + 1);
+        return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
+    }, [allEmployeesForQuadrant]);
+    
+    useEffect(() => {
+      if (!loading && availableYears.length > 0) {
+        const latestYearWithData = availableYears[0];
+        if (String(latestYearWithData) !== selectedYear) {
+            setSelectedYear(String(latestYearWithData));
+        }
+      }
+    }, [loading, availableYears, selectedYear]);
+
+    useEffect(() => {
+        if (activeEmployees.length > 0 && !selectedEmployeeId) {
+            setSelectedEmployeeId(activeEmployees[0].id);
+        }
+    }, [activeEmployees, selectedEmployeeId]);
+    
+    useEffect(() => {
+        if (selectedYear) {
+            setCalendarMonth(new Date(Number(selectedYear), 0, 1));
+        }
+    }, [selectedYear]);
+
+    useEffect(() => {
+        if (editingAbsence) {
+            setEditedDateRange({ from: editingAbsence.absence.startDate, to: editingAbsence.absence.endDate || undefined });
+            setEditCalendarMonth(editingAbsence.absence.startDate);
+        } else {
+            setEditedDateRange(undefined);
+            setDeletePassword('');
+        }
+    }, [editingAbsence]);
+
+    
+    useEffect(() => {
         if (schedulableAbsenceTypes.length > 0 && !selectedAbsenceTypeId) {
             const vacationType = schedulableAbsenceTypes.find(at => at.name === 'Vacaciones');
             if (vacationType) {
@@ -311,49 +305,21 @@ export default function VacationsPage() {
     const { employeesWithAbsences, weeklySummaries, employeesByWeek, allAbsences } = useMemo(() => {
         const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
-    
+
         allEmployeesForQuadrant.forEach(emp => {
-            const definitiveAbsences = new Map<string, ScheduledAbsence>();
-            const originalRequests = new Map<string, ScheduledAbsence>();
-    
+            const absences: FormattedAbsence[] = [];
             (emp.employmentPeriods || []).forEach((p: EmploymentPeriod) => {
                 (p.scheduledAbsences || []).forEach(a => {
-                    if (!schedulableIds.has(a.absenceTypeId)) return;
-    
-                    const requestIdentifier = a.originalRequest 
-                        ? `${a.originalRequest.startDate}-${a.originalRequest.endDate}` 
-                        : `${format(a.startDate, 'yyyy-MM-dd')}-${a.endDate ? format(a.endDate, 'yyyy-MM-dd') : ''}`;
-    
-                    if (a.isDefinitive) {
-                        definitiveAbsences.set(requestIdentifier, a);
-                    } else {
-                        originalRequests.set(requestIdentifier, a);
+                    if (a.isDefinitive && schedulableIds.has(a.absenceTypeId)) {
+                         absences.push({
+                            ...a,
+                            absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
+                            periodId: p.id,
+                        });
                     }
                 });
             });
-    
-            const finalAbsences: FormattedAbsence[] = [];
-            originalRequests.forEach((orig, key) => {
-                const definitive = definitiveAbsences.get(key);
-                // Use the definitive record if it exists, otherwise, create a "virtual" definitive record from the original.
-                const recordToShow = definitive || { ...orig, isDefinitive: true };
-                finalAbsences.push({
-                    ...recordToShow,
-                    absenceAbbreviation: absenceTypes.find(at => at.id === recordToShow.absenceTypeId)?.abbreviation || '??',
-                    periodId: emp.employmentPeriods.find(p => p.scheduledAbsences?.some(pa => pa.id === recordToShow.id))?.id || '',
-                });
-            });
-             // Add definitive absences that might not have an original request (e.g., manually added by admin)
-            definitiveAbsences.forEach((def, key) => {
-                if (!originalRequests.has(key)) {
-                    finalAbsences.push({
-                        ...def,
-                        absenceAbbreviation: absenceTypes.find(at => at.id === def.absenceTypeId)?.abbreviation || '??',
-                        periodId: emp.employmentPeriods.find(p => p.scheduledAbsences?.some(pa => pa.id === def.id))?.id || '',
-                    });
-                }
-            });
-            employeesWithAbsences[emp.id] = finalAbsences;
+            employeesWithAbsences[emp.id] = absences;
         });
         
         const allAbsences = Object.values(employeesWithAbsences).flat();
@@ -397,7 +363,7 @@ export default function VacationsPage() {
     
                 if (absenceThisWeek) {
                     weeklySummaries[week.key].employeeCount++;
-                    const activePeriod = emp.employmentPeriods.find((p: EmploymentPeriod) => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
+                    const activePeriod = emp.employmentPeriods.find((p: EmploymentPeriod) => !p.endDate || isAfter(p.endDate as Date, new Date()));
                     const weeklyHours = getEffectiveWeeklyHours(activePeriod || null, week.start);
                     weeklySummaries[week.key].hourImpact += weeklyHours;
                     employeesByWeek[week.key].push({ employeeId: emp.id, employeeName: emp.name, groupId: emp.groupId, absenceAbbreviation: absenceThisWeek.absenceAbbreviation });
@@ -409,6 +375,16 @@ export default function VacationsPage() {
     
     }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId]);
     
+    // Recalculate vacation data when employee or year changes
+    useEffect(() => {
+        const emp = employees.find(e => e.id === selectedEmployeeId);
+        if (emp && selectedYear) {
+            const calculation = calculateEmployeeVacations(emp, Number(selectedYear), 'programmed');
+            setVacationCalculation(calculation);
+        }
+    }, [selectedEmployeeId, selectedYear, employees, calculateEmployeeVacations, weeklyRecords, employeesWithAbsences]);
+
+
     const handleUpdateAbsence = async () => {
         if (!editingAbsence || !editedDateRange?.from) return;
         
@@ -475,7 +451,7 @@ export default function VacationsPage() {
             return;
         }
 
-        const activePeriod = selectedEmployee.employmentPeriods.find(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
+        const activePeriod = selectedEmployee.employmentPeriods.find(p => !p.endDate || isAfter(p.endDate as Date, new Date()));
         if (!activePeriod) {
              toast({ title: 'Error', description: 'El empleado seleccionado no tiene un periodo laboral activo.', variant: 'destructive' });
             return;
@@ -483,7 +459,6 @@ export default function VacationsPage() {
 
         setIsGenerating(true);
         try {
-            // This function now creates both the original and definitive records
             await addScheduledAbsence(
                 selectedEmployeeId, 
                 activePeriod.id, 
@@ -598,6 +573,13 @@ export default function VacationsPage() {
     };
 
     const specialAbsenceAbbreviations = new Set(['EXD', 'PNR']);
+    
+    const parseAndFormatDate = (date: Date | string | null | undefined, formatString: string): string => {
+        if (!date) return '';
+        const dateObj = date instanceof Date ? date : parseISO(date as string);
+        if (!isValid(dateObj)) return '';
+        return format(dateObj, formatString, { locale: es });
+    };
 
     const renderQuadrant = () => (
         <div className="overflow-auto h-full border rounded-lg">
@@ -609,7 +591,7 @@ export default function VacationsPage() {
                   const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
   
                   return (
-                    <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '300px' }}>
+                    <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date as Date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '300px' }}>
                       <div className='flex justify-between items-center h-full px-1'>
                         <div className="flex flex-col items-start">
                           <span className='text-xs'>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
@@ -723,13 +705,6 @@ export default function VacationsPage() {
             <span className={cn("font-mono", isNegative && "text-destructive")}>{value}</span>
         </div>
     );
-
-    const parseAndFormatDate = (date: Date | string | null | undefined, formatString: string): string => {
-        if (!date) return '';
-        const dateObj = typeof date === 'string' ? parseISO(date) : date;
-        if (!isValid(dateObj)) return '';
-        return format(dateObj, formatString, { locale: es });
-    };
 
     
     return (
@@ -987,4 +962,5 @@ export default function VacationsPage() {
         </div>
     );
 }
+
 
