@@ -1,4 +1,6 @@
 
+'use client';
+
 import type { Metadata } from 'next';
 import './globals.css';
 import 'react-day-picker/dist/style.css';
@@ -6,7 +8,10 @@ import { Toaster } from '@/components/ui/toaster';
 import { AppProviders } from '@/components/layout/app-providers';
 import { Inter, Space_Grotesk } from 'next/font/google';
 import { cn } from '@/lib/utils';
-import { AppLayout } from '@/components/layout/app-layout';
+import dynamic from 'next/dynamic';
+import { useAuth } from '@/hooks/useAuth';
+
+const AppLayout = dynamic(() => import('@/components/layout/app-layout').then(mod => mod.AppLayout), { ssr: false });
 
 const fontBody = Inter({
   subsets: ['latin'],
@@ -18,20 +23,18 @@ const fontHeadline = Space_Grotesk({
   variable: '--font-headline',
 });
 
-export const metadata: Metadata = {
-  title: 'Control Horario',
-  description: 'Gestión de Turnos de Empleados',
-  manifest: '/manifest.json',
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { user } = useAuth();
+  
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
+        <title>Control Horario</title>
+        <meta name="description" content="Gestión de Turnos de Empleados" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -45,9 +48,13 @@ export default function RootLayout({
       </head>
       <body className={cn('antialiased font-body', fontBody.variable, fontHeadline.variable)}>
         <AppProviders>
-            <AppLayout>
-              {children}
-            </AppLayout>
+            {user ? (
+              <AppLayout>
+                {children}
+              </AppLayout>
+            ) : (
+              children
+            )}
         </AppProviders>
         <Toaster />
       </body>
