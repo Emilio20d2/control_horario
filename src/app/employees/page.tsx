@@ -42,7 +42,7 @@ export default function EmployeesPage() {
         const active: Employee[] = [];
         const inactive: Employee[] = [];
         employees.forEach(e => {
-            if (e.employmentPeriods?.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), startOfDay(new Date())))) {
+            if (e.employmentPeriods?.some(p => !p.endDate || isAfter(p.endDate as Date, startOfDay(new Date())))) {
                 active.push(e);
             } else {
                 inactive.push(e);
@@ -109,7 +109,7 @@ export default function EmployeesPage() {
             ) : employees.map((employee) => {
             const employeeBalances = showBalances && !balancesLoading ? balances[employee.id] : undefined;
             const { vacationDaysTaken, vacationDaysAvailable } = showBalances ? calculateEmployeeVacations(employee, new Date().getFullYear(), 'confirmed') : { vacationDaysTaken: 0, vacationDaysAvailable: 31 };
-            const lastPeriod = [...(employee.employmentPeriods || [])].sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
+            const lastPeriod = [...(employee.employmentPeriods || [])].sort((a,b) => (b.startDate as Date).getTime() - (a.startDate as Date).getTime())[0];
             return (
             <TableRow key={employee.id}>
                 <TableCell className="font-medium">
@@ -153,7 +153,7 @@ export default function EmployeesPage() {
                 ) : (
                     <>
                         <TableCell>{lastPeriod?.contractType || 'N/A'}</TableCell>
-                        <TableCell>{lastPeriod?.endDate ? format(parseISO(lastPeriod.endDate as string), 'PPP', {locale: es}) : 'N/A'}</TableCell>
+                        <TableCell>{lastPeriod?.endDate ? format(lastPeriod.endDate as Date, 'PPP', {locale: es}) : 'N/A'}</TableCell>
                     </>
                 )}
 
@@ -189,7 +189,7 @@ export default function EmployeesPage() {
                     employees.map(employee => {
                         const employeeBalances = showBalances && !balancesLoading ? balances[employee.id] : undefined;
                         const vacationInfo = showBalances ? calculateEmployeeVacations(employee, new Date().getFullYear(), 'confirmed') : undefined;
-                        const lastPeriod = [...(employee.employmentPeriods || [])].sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
+                        const lastPeriod = [...(employee.employmentPeriods || [])].sort((a,b) => (b.startDate as Date).getTime() - (a.startDate as Date).getTime())[0];
                         return (
                             <EmployeeCard 
                                 key={employee.id}
@@ -248,3 +248,5 @@ export default function EmployeesPage() {
     </div>
   );
 }
+
+  

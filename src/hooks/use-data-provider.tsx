@@ -1,5 +1,4 @@
 
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -227,6 +226,37 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
   
+  const safeParseDate = useCallback((date: any): Date | null => {
+    if (!date) return null;
+    if (date instanceof Date) return date;
+    if (date.toDate && typeof date.toDate === 'function') return date.toDate();
+    if (typeof date === 'string') {
+        const parsed = parseISO(date);
+        if (isValid(parsed)) return parsed;
+    }
+    return null;
+  }, []);
+
+  const processScheduledAbsences = useCallback((absences: any[]): ScheduledAbsence[] => {
+    if (!absences) return [];
+    return absences.map(a => {
+        const processedAbsence: any = {
+            ...a,
+            startDate: safeParseDate(a.startDate),
+            endDate: safeParseDate(a.endDate),
+        };
+        if (a.originalRequest) {
+            processedAbsence.originalRequest = {
+                ...a.originalRequest,
+                startDate: safeParseDate(a.originalRequest.startDate),
+                endDate: safeParseDate(a.originalRequest.endDate),
+            };
+        }
+        return processedAbsence;
+    });
+  }, [safeParseDate]);
+
+
   useEffect(() => {
     if (authLoading) {
         return; // Wait for auth to finish
@@ -239,39 +269,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     
     const unsubs: (() => void)[] = [];
-
-    const safeParseDate = (date: any): Date | null => {
-      if (!date) return null;
-      if (date instanceof Date) return date;
-      if (date.toDate && typeof date.toDate === 'function') return date.toDate();
-      // Handle string conversion carefully.
-      if (typeof date === 'string') {
-        const parsed = parseISO(date);
-        if (isValid(parsed)) return parsed;
-      }
-      // If all else fails, return null
-      return null;
-    };
-
-
-    const processScheduledAbsences = (absences: any[]): ScheduledAbsence[] => {
-        if (!absences) return [];
-        return absences.map(a => {
-            const processedAbsence: any = {
-                ...a,
-                startDate: safeParseDate(a.startDate),
-                endDate: safeParseDate(a.endDate),
-            };
-            if (a.originalRequest) {
-                processedAbsence.originalRequest = {
-                    ...a.originalRequest,
-                    startDate: safeParseDate(a.originalRequest.startDate),
-                    endDate: safeParseDate(a.originalRequest.endDate),
-                };
-            }
-            return processedAbsence;
-        });
-    };
 
     const setupSubscription = <T extends { id: string }>(collectionName: string, setter: React.Dispatch<React.SetStateAction<T[]>>, processor?: (data: any[]) => T[]) => {
         const { unsubscribe, ready } = onCollectionUpdate<T>(collectionName, (data) => {
@@ -301,7 +298,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             }))
         })).sort((a,b) => a.name.localeCompare(b.name))),
         setupSubscription<AbsenceType>('absenceTypes', setAbsenceTypes, data => data.sort((a,b) => a.name.localeCompare(b.name))),
-        setupSubscription<Holiday>('holidays', setHolidays, data => data.map(h => ({ ...h, date: safeParseDate(h.date) })).sort((a,b) => (a.date as Date).getTime() - (b.date as Date).getTime())),
+        setupSubscription<Holiday>('holidays', setHolidays, data => data.map(h => ({ ...h, date: safeParseDate(h.date) as Date })).sort((a,b) => (a.date as Date).getTime() - (b.date as Date).getTime())),
         setupSubscription<ContractType>('contractTypes', setContractTypes),
         setupSubscription<AnnualConfiguration>('annualConfigurations', setAnnualConfigs, data => data.sort((a,b) => a.year - b.year)),
         setupSubscription<WeeklyRecord>('weeklyRecords', (data) => setWeeklyRecords(data.reduce((acc, record) => ({ ...acc, [record.id]: record }), {}))),
@@ -309,7 +306,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setupSubscription<HolidayEmployee>('holidayEmployees', setHolidayEmployees, data => data.sort((a,b) => a.name.localeCompare(b.name))),
         setupSubscription<HolidayReport>('holidayReports', setHolidayReports),
         setupSubscription<EmployeeGroup>('employeeGroups', setEmployeeGroups, data => data.sort((a,b) => a.order - b.order)),
-        setupSubscription<Conversation>('conversations', setConversations, data => data.sort((a, b) => b.lastMessageTimestamp.toDate().getTime() - a.lastMessageTimestamp.toDate().getTime())),
+        setupSubscription<Conversation>('conversations', setConversations, data => data.sort((a, b) => (b.lastMessageTimestamp as any).toDate().getTime() - (a.lastMessageTimestamp as any).toDate().getTime())),
         setupSubscription<VacationCampaign>('vacationCampaigns', setVacationCampaigns, data => data.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime())),
         setupSubscription<CorrectionRequest>('correctionRequests', setCorrectionRequests)
     ];
@@ -319,7 +316,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubs.forEach(unsub => unsub());
-  }, [authLoading, user, appUser]);
+  }, [authLoading, user, appUser, safeParseDate, processScheduledAbsences]);
   
   useEffect(() => {
     if (appUser && employees.length > 0) {
@@ -1061,10 +1058,10 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         weekDaysWithTheoreticalHours.forEach(d => {
             const dayDate = parseISO(d.dateKey);
             const dayOfWeek = getISODay(dayDate);
-            const holidayDetails = holidays.find(h => isSameDay(h.date as Date, dayDate));
+            const holidayDetails = holidays.find(h => isSameDay(h.date, dayDate));
     
             const definitiveAbsence = activePeriod.scheduledAbsences?.find(a =>
-                a.isDefinitive && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: a.endDate ? startOfDay(a.endDate) : new Date('9999-12-31') })
+                a.isDefinitive && a.endDate && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
             );
             const absenceType = definitiveAbsence ? absenceTypes.find(at => at.id === definitiveAbsence.absenceTypeId) : undefined;
     
@@ -1243,3 +1240,5 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 };
 
 export const useDataProvider = () => useContext(DataContext);
+
+  

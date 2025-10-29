@@ -82,11 +82,7 @@ export default function DashboardPage() {
     
     const allEmployeesForReport = useMemo(() => {
         return employees
-            .filter(e => e.employmentPeriods?.some(p => {
-                if (!p.endDate) return true;
-                const endDate = p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string);
-                return isAfter(endDate, new Date());
-            }))
+            .filter(e => e.employmentPeriods?.some(p => !p.endDate || isAfter(p.endDate as Date, new Date())))
             .sort((a, b) => a.name.localeCompare(b.name));
     }, [employees]);
 
@@ -283,8 +279,8 @@ export default function DashboardPage() {
         const nextWeekId = getWeekId(nextWeekDate);
 
         const activeEmps = employees.filter(emp => emp.employmentPeriods?.some(p => {
-            const startDate = p.startDate instanceof Date ? p.startDate : parseISO(p.startDate as string);
-            const endDate = p.endDate ? (p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string)) : new Date('9999-12-31');
+            const startDate = p.startDate as Date;
+            const endDate = p.endDate ? (p.endDate as Date) : new Date('9999-12-31');
             return isWithinInterval(weekDate, { start: startDate, end: endDate });
         }));
     
@@ -547,3 +543,5 @@ export default function DashboardPage() {
     
 
     
+
+  

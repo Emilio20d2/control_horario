@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -180,9 +179,7 @@ export default function VacationsPage() {
     const activeEmployees = useMemo(() => {
         return employees.filter(e => e.employmentPeriods.some(p => {
             if (!p.endDate) return true;
-            // Use instanceof Date check to satisfy TypeScript
-            const endDate = p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string);
-            return isAfter(endDate, new Date());
+            return isAfter(p.endDate as Date, new Date());
         }));
     }, [employees]);
 
@@ -250,12 +247,11 @@ export default function VacationsPage() {
           (emp.employmentPeriods || []).forEach(p => {
             if(p.scheduledAbsences) {
               p.scheduledAbsences.forEach(a => {
-                if (a.startDate) {
-                    const startDate = a.startDate instanceof Date ? a.startDate : parseISO(a.startDate as string);
-                    const endDate = a.endDate ? (a.endDate instanceof Date ? a.endDate : parseISO(a.endDate as string)) : null;
-                    if (isValid(startDate)) years.add(getYear(startDate));
-                    if (endDate && isValid(endDate)) years.add(getYear(endDate));
-                }
+                if (!a.startDate) return; // Safety check
+                const startDate = a.startDate as Date;
+                const endDate = a.endDate as Date | null;
+                if (isValid(startDate)) years.add(getYear(startDate));
+                if (endDate && isValid(endDate)) years.add(getYear(endDate));
               })
             }
           })
@@ -267,9 +263,11 @@ export default function VacationsPage() {
     }, [allEmployeesForQuadrant]);
     
     useEffect(() => {
-        if (!loading && availableYears.length > 0 && !availableYears.includes(Number(selectedYear))) {
-            const latestYearWithData = availableYears[0];
-            setSelectedYear(String(latestYearWithData));
+        if (!loading && availableYears.length > 0) {
+            const latestYear = String(availableYears[0]);
+            if(selectedYear !== latestYear) {
+                setSelectedYear(latestYear);
+            }
         }
     }, [loading, availableYears, selectedYear]);
 
@@ -295,7 +293,7 @@ export default function VacationsPage() {
         }
     }, [editingAbsence]);
 
-    const absenceTypesFiltered = absenceTypes.filter(at => ['Vacaciones', 'Excedencia', 'Permiso no retribuido'].includes(at.name));
+    const absenceTypesFiltered = useMemo(() => absenceTypes.filter(at => ['Vacaciones', 'Excedencia', 'Permiso no retribuido'].includes(at.name)), [absenceTypes]);
 
     useEffect(() => {
         if (absenceTypesFiltered.length > 0 && !selectedAbsenceTypeId) {
@@ -318,7 +316,8 @@ export default function VacationsPage() {
 
                 (p.scheduledAbsences || []).forEach(a => {
                     if (a.isDefinitive) {
-                        const key = a.originalRequest?.startDate ? format(a.originalRequest.startDate as Date, 'yyyy-MM-dd') : a.id;
+                        if (!a.originalRequest?.startDate) return;
+                        const key = format(a.originalRequest.startDate as Date, 'yyyy-MM-dd');
                         definitiveAbsences.set(key, a);
                     } else {
                         originalRequests.push(a);
@@ -327,7 +326,7 @@ export default function VacationsPage() {
 
                 originalRequests.forEach(orig => {
                     if (!orig.startDate) return;
-                    const key = format(orig.startDate, 'yyyy-MM-dd');
+                    const key = format(orig.startDate as Date, 'yyyy-MM-dd');
                     if (!definitiveAbsences.has(key)) {
                         definitiveAbsences.set(key, { ...orig, isDefinitive: true });
                     }
@@ -519,10 +518,10 @@ export default function VacationsPage() {
     const employeeAbsenceDays = useMemo(() => {
         if (!selectedEmployeeId) return [];
         return (employeesWithAbsences[selectedEmployeeId] || []).flatMap(p => {
-            if (!p.startDate) return [];
-            const startDate = p.startDate;
-            if (!p.endDate) return [startDate];
-            const endDate = p.endDate;
+            if (!p.startDate || !isValid(p.startDate)) return [];
+            const startDate = p.startDate as Date;
+            if (!p.endDate || !isValid(p.endDate as Date)) return [startDate];
+            const endDate = p.endDate as Date;
             return eachDayOfInterval({ start: startDate, end: endDate });
         });
     }, [selectedEmployeeId, employeesWithAbsences]);
@@ -894,7 +893,7 @@ export default function VacationsPage() {
                         {editingAbsence && (
                             <DialogDescription>
                                 Modificando la ausencia de <strong>{editingAbsence.employee.name}</strong> del tipo <strong>{absenceTypes.find(at => at.id === editingAbsence.absence.absenceTypeId)?.name}</strong>.
-                                {editingAbsence.absence.originalRequest && <p className="text-xs text-muted-foreground pt-2">Solicitud Original: del {parseAndFormatDate(editingAbsence.absence.originalRequest.startDate, 'dd/MM/yy')} al {editingAbsence.absence.originalRequest.endDate ? parseAndFormatDate(editingAbsence.absence.originalRequest.endDate, 'dd/MM/yy') : ''}</p>}
+                                {editingAbsence.absence.originalRequest?.startDate && <p className="text-xs text-muted-foreground pt-2">Solicitud Original: del {parseAndFormatDate(editingAbsence.absence.originalRequest.startDate, 'dd/MM/yy')} al {parseAndFormatDate(editingAbsence.absence.originalRequest.endDate, 'dd/MM/yy')}</p>}
                             </DialogDescription>
                         )}
                     </DialogHeader>
@@ -1011,3 +1010,5 @@ export default function VacationsPage() {
         </div>
     );
 }
+
+  
