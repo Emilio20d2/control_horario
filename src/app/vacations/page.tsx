@@ -336,7 +336,7 @@ export default function VacationsPage() {
                     if (a.isDefinitive) {
                         if (!a.originalRequest?.startDate) return;
                         const originalStartDate = safeParseDate(a.originalRequest.startDate);
-                        if (!originalStartDate) return;
+                        if (!originalStartDate || !isValid(originalStartDate)) return;
                         const key = format(originalStartDate, 'yyyy-MM-dd');
                         definitiveAbsences.set(key, a);
                     } else {
@@ -553,7 +553,9 @@ export default function VacationsPage() {
     const editingAbsenceDays = useMemo(() => {
         if (!editingAbsence?.absence?.startDate) return [];
         const { startDate, endDate } = editingAbsence.absence;
-        return eachDayOfInterval({ start: startDate, end: endDate || startDate });
+        if (!startDate || !isValid(startDate)) return [];
+        const validEndDate = endDate && isValid(endDate) ? endDate : startDate;
+        return eachDayOfInterval({ start: startDate, end: validEndDate });
     }, [editingAbsence]);
 
     const plannerModifiers = { opening: openingHolidays, other: otherHolidays, employeeAbsence: employeeAbsenceDays, editing: editingAbsenceDays };
@@ -880,7 +882,7 @@ export default function VacationsPage() {
                                                     <TableCell className="px-1 py-1 text-xs">{format(absence.startDate, 'dd/MM/yy', { locale: es })}</TableCell>
                                                     <TableCell className="px-1 py-1 text-xs">{absence.endDate ? format(absence.endDate, 'dd/MM/yy', { locale: es }) : 'N/A'}</TableCell>
                                                     <TableCell className="text-right p-0">
-                                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingAbsence({employee: activeEmployees.find(e => e.id === selectedEmployeeId), absence: absence})}>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingAbsence({employee: activeEmployees.find(e => e.id === selectedEmployeeId), absence: absence})}>
                                                             <Edit className="h-3 w-3" />
                                                         </Button>
                                                         <AlertDialog>
