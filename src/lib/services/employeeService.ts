@@ -343,40 +343,6 @@ export const addScheduledAbsence = async (
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
 
-/**
- * Updates an existing scheduled absence.
- */
-export const updateScheduledAbsence = async (
-    employeeId: string,
-    periodId: string,
-    absenceId: string,
-    updatedAbsence: {
-        absenceTypeId: string;
-        startDate: string; // YYYY-MM-DD
-        endDate: string | null;
-    },
-    currentEmployee: Employee
-): Promise<void> => {
-    const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
-    if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
-
-    const absenceIndex = period.scheduledAbsences.findIndex(a => a.id === absenceId);
-    if (absenceIndex === -1) throw new Error("Ausencia no encontrada para actualizar");
-
-    // Preserve originalRequest if it exists
-    const originalRequest = period.scheduledAbsences[absenceIndex].originalRequest;
-
-    // Update the absence in the array
-    period.scheduledAbsences[absenceIndex] = {
-        ...period.scheduledAbsences[absenceIndex],
-        absenceTypeId: updatedAbsence.absenceTypeId,
-        startDate: parseISO(updatedAbsence.startDate),
-        endDate: updatedAbsence.endDate ? parseISO(updatedAbsence.endDate) : null,
-        originalRequest: originalRequest, // Persist the original request data
-    };
-
-    await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
-};
 
 /**
  * Performs a "soft delete" by invalidating the absence period.
@@ -413,44 +379,6 @@ export const deleteScheduledAbsence = async (
     }
     
     period.scheduledAbsences[absenceIndex].endDate = period.scheduledAbsences[absenceIndex].startDate;
-    
-    await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
-};
-
-
-/**
- * Performs a hard delete of the scheduled absence record.
- * This should only be callable by an admin.
- */
-export const hardDeleteScheduledAbsence = async (
-    employeeId: string, 
-    periodId: string, 
-    absenceId: string, 
-    currentEmployee: Employee,
-    weeklyRecords?: Record<string, WeeklyRecord>
-): Promise<void> => {
-    const period = currentEmployee.employmentPeriods.find(p => p.id === periodId);
-    if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
-
-    const absenceToDelete = period.scheduledAbsences.find(a => a.id === absenceId);
-    if (!absenceToDelete) throw new Error("Ausencia no encontrada para eliminar");
-    
-    if (weeklyRecords) {
-        const daysInAbsence = eachDayOfInterval({
-            start: startOfDay(absenceToDelete.startDate),
-            end: startOfDay(absenceToDelete.endDate || absenceToDelete.startDate)
-        });
-
-        for(const day of daysInAbsence) {
-            const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-            const weekRecord = weeklyRecords[weekId]?.weekData?.[employeeId];
-            if (weekRecord?.confirmed) {
-                throw new Error(`No se puede eliminar la ausencia. La semana del ${weekId} ya está confirmada y afecta a este periodo.`);
-            }
-        }
-    }
-
-    period.scheduledAbsences = period.scheduledAbsences.filter(a => a.id !== absenceId);
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };

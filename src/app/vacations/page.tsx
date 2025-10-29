@@ -69,8 +69,6 @@ import { DateRange } from 'react-day-picker';
 import {
   addScheduledAbsence,
   deleteScheduledAbsence,
-  hardDeleteScheduledAbsence,
-  updateScheduledAbsence,
 } from '@/lib/services/employeeService';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -460,13 +458,15 @@ export default function VacationsPage() {
         try {
             const { employee, absence } = editingAbsence;
             
-            const newAbsenceData = {
+            // Invalidate the old absence first
+            await deleteScheduledAbsence(employee.id, absence.periodId!, absence.id, employee);
+    
+            // Add the new one
+            await addScheduledAbsence(employee.id, absence.periodId!, {
                 absenceTypeId: absence.absenceTypeId,
                 startDate: format(editedDateRange.from, 'yyyy-MM-dd'),
                 endDate: editedDateRange.to ? format(editedDateRange.to, 'yyyy-MM-dd') : format(editedDateRange.from, 'yyyy-MM-dd'),
-            };
-    
-            await updateScheduledAbsence(employee.id, absence.periodId!, absence.id, newAbsenceData, employee);
+            }, employee, absence.originalRequest);
     
             toast({ title: 'Ausencia actualizada', description: `La ausencia de ${employee.name} ha sido modificada.` });
             refreshData();
@@ -478,6 +478,24 @@ export default function VacationsPage() {
             setIsGenerating(false);
         }
     };
+
+    const handleDeleteAbsence = async () => {
+        if (!editingAbsence) return;
+        setIsGenerating(true);
+        try {
+            const { employee, absence } = editingAbsence;
+            await deleteScheduledAbsence(employee.id, absence.periodId!, absence.id, employee);
+            toast({ title: 'Ausencia Eliminada', description: `La ausencia de ${employee.name} ha sido eliminada.`, variant: 'destructive' });
+            refreshData();
+            setEditingAbsence(null);
+        } catch (error) {
+            console.error("Error deleting absence:", error);
+            toast({ title: 'Error al eliminar', description: error instanceof Error ? error.message : "No se pudo eliminar la ausencia.", variant: 'destructive' });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
 
      const handleAddPeriod = async () => {
         const selectedEmployee = activeEmployees.find(e => e.id === selectedEmployeeId);
@@ -883,14 +901,38 @@ export default function VacationsPage() {
                             onMonthChange={setEditCalendarMonth}
                         />
                     </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="outline">Cancelar</Button>
-                        </DialogClose>
-                        <Button onClick={handleUpdateAbsence} disabled={isGenerating || !editedDateRange?.from}>
-                            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Guardar Cambios
-                        </Button>
+                    <DialogFooter className="justify-between sm:justify-between w-full">
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" disabled={isGenerating}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Eliminar
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Se eliminará el periodo de ausencia seleccionado. Esta acción no se puede deshacer.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteAbsence} disabled={isGenerating}>
+                                        {isGenerating ? 'Eliminando...' : 'Sí, eliminar'}
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                        <div className="flex gap-2">
+                             <DialogClose asChild>
+                                <Button variant="outline">Cancelar</Button>
+                            </DialogClose>
+                            <Button onClick={handleUpdateAbsence} disabled={isGenerating || !editedDateRange?.from}>
+                                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Guardar Cambios
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -962,4 +1004,5 @@ export default function VacationsPage() {
     
 
     
+
 
