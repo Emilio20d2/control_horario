@@ -4,7 +4,6 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardContent, CardFooter, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SendHorizonal, Loader2, PlaneTakeoff, Info, CalendarClock, Hourglass, Calendar as CalendarIcon } from 'lucide-react';
@@ -32,6 +31,7 @@ export default function MyMessagesPage() {
     const [newMessage, setNewMessage] = useState('');
     const conversationId = employeeRecord?.id;
     const viewportRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const { toast } = useToast();
 
     // State for vacation request dialog
@@ -154,6 +154,13 @@ export default function MyMessagesPage() {
             viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
         }
     }, [formattedMessages, messagesLoading]);
+
+     useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+    }, [newMessage]);
 
 
     const handleSendMessage = async (e: React.FormEvent) => {
@@ -353,6 +360,13 @@ Gracias.`;
         }
     };
     
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage(e as unknown as React.FormEvent);
+        }
+    }
+    
     const isSubmitOtherRequestDisabled = useMemo(() => {
         const selectedAbsenceType = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId);
 
@@ -471,14 +485,17 @@ Gracias.`;
                         )}
                     </ScrollArea>
                     <CardFooter className="p-4 border-t bg-background space-y-4">
-                        <form onSubmit={handleSendMessage} className="relative">
-                            <Input 
-                                placeholder="Escribe tu mensaje para cualquier otra consulta..." 
-                                className="pr-12 h-10" 
+                        <form onSubmit={handleSendMessage} className="relative flex items-end gap-2">
+                             <Textarea
+                                ref={textareaRef}
+                                placeholder="Escribe tu mensaje para cualquier otra consulta..."
+                                className="pr-12 resize-none max-h-32 min-h-[40px] h-10"
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                rows={1}
                             />
-                            <Button type="submit" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-8 w-8">
+                            <Button type="submit" size="icon" className="h-10 w-10 shrink-0">
                                 <SendHorizonal className="h-4 w-4" />
                             </Button>
                         </form>
@@ -577,7 +594,7 @@ Gracias.`;
                                     <Label htmlFor="appointment-time" className="text-sm font-medium">
                                         Hora de la Consulta <span className="text-destructive">*</span>
                                     </Label>
-                                    <Input id="appointment-time" type="time" value={medicalAppointmentTime} onChange={(e) => setMedicalAppointmentTime(e.target.value)} />
+                                    <Textarea id="appointment-time" value={medicalAppointmentTime} onChange={(e) => setMedicalAppointmentTime(e.target.value)} />
                                 </div>
                             )}
                             <div className="space-y-2">
@@ -651,6 +668,3 @@ Gracias.`;
         </>
     );
 }
-
-
-

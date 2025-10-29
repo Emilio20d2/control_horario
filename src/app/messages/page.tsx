@@ -1,11 +1,11 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SendHorizonal, ArrowLeft, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,7 +15,7 @@ import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, on
 import { db } from '@/lib/firebase';
 import type { Conversation, Message } from '@/lib/types';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { Textarea } from '@/components/ui/textarea';
 
 export default function MessagesPage() {
     const { employees, conversations, loading: dataLoading, refreshData } = useDataProvider();
@@ -23,6 +23,7 @@ export default function MessagesPage() {
     const [newMessage, setNewMessage] = useState('');
     const isMobile = useIsMobile();
     const viewportRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [messagesLoading, setMessagesLoading] = useState(true);
 
@@ -72,6 +73,14 @@ export default function MessagesPage() {
         }
     }, [selectedConversationId, selectedConversation, refreshData]);
 
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+    }, [newMessage]);
+
+
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newMessage.trim() || !selectedConversationId) return;
@@ -94,6 +103,13 @@ export default function MessagesPage() {
             unreadByAdmin: false, 
         });
     };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage(e as unknown as React.FormEvent);
+        }
+    }
 
     const ConversationList = () => (
         <Card className="flex flex-col h-[calc(100vh-8rem)]">
@@ -165,7 +181,7 @@ export default function MessagesPage() {
                                         'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg',
                                         message.senderId === 'admin' ? 'bg-primary text-primary-foreground' : 'bg-muted'
                                     )}>
-                                        <p>{message.text}</p>
+                                        <p className="whitespace-pre-wrap break-words">{message.text}</p>
                                         {message.timestamp && (
                                             <p className="text-xs opacity-70 mt-1 text-right">
                                                 {format(message.timestamp, 'HH:mm')}
@@ -177,14 +193,17 @@ export default function MessagesPage() {
                         )}
                     </ScrollArea>
                     <div className="p-4 border-t">
-                        <form onSubmit={handleSendMessage} className="relative">
-                            <Input
+                        <form onSubmit={handleSendMessage} className="relative flex items-end gap-2">
+                           <Textarea
+                                ref={textareaRef}
                                 placeholder="Escribe tu mensaje..."
-                                className="pr-12 h-10"
+                                className="pr-12 resize-none max-h-32 min-h-[40px] h-10"
                                 value={newMessage}
                                 onChange={e => setNewMessage(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                rows={1}
                             />
-                            <Button type="submit" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-8 w-8">
+                            <Button type="submit" size="icon" className="h-10 w-10 shrink-0">
                                 <SendHorizonal className="h-4 w-4" />
                             </Button>
                         </form>
