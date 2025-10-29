@@ -27,6 +27,7 @@ const formSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(2, { message: 'El nombre debe tener al menos 2 caracteres.' }),
   abbreviation: z.string().min(1, { message: 'La abreviatura es obligatoria.' }).max(5, { message: 'Máximo 5 caracteres.' }),
+  color: z.string().optional(),
   
   // Columna 1
   computesToWeeklyHours: z.boolean().default(false),
@@ -54,6 +55,7 @@ export function AbsenceTypeForm({ absenceType }: AbsenceTypeFormProps) {
   const defaultValues = absenceType || {
     name: 'Recuperación de Horas',
     abbreviation: 'RHA',
+    color: '#E0E0E0',
     computesToWeeklyHours: false,
     computesToAnnualHours: true,
     suspendsContract: false,
@@ -71,7 +73,7 @@ export function AbsenceTypeForm({ absenceType }: AbsenceTypeFormProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      const dataToSave = { ...values, annualHourLimit: values.annualHourLimit ?? null };
+      const dataToSave = { ...values, annualHourLimit: values.annualHourLimit ?? null, color: values.color || '#E0E0E0' };
       if (absenceType?.id) {
         await updateAbsenceType(absenceType.id, dataToSave);
         toast({ title: 'Tipo de Ausencia Actualizado', description: `Se ha guardado "${values.name}".` });
@@ -113,20 +115,36 @@ export function AbsenceTypeForm({ absenceType }: AbsenceTypeFormProps) {
                   </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="abbreviation"
-              render={({ field }) => (
-                  <FormItem>
-                  <FormLabel>Abreviatura</FormLabel>
-                  <FormControl>
-                      <Input placeholder="Ej: B" {...field} />
-                  </FormControl>
-                   <FormDescription>Código corto para importaciones y vistas rápidas.</FormDescription>
-                  <FormMessage />
-                  </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+               <FormField
+                control={form.control}
+                name="abbreviation"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Abreviatura</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Ej: B" {...field} />
+                    </FormControl>
+                    <FormDescription>Código corto (máx 5 letras).</FormDescription>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Color de la Ausencia</FormLabel>
+                    <FormControl>
+                        <Input type="color" {...field} className="h-10 p-1" />
+                    </FormControl>
+                     <FormDescription>Color para el calendario.</FormDescription>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
              <FormField
                 control={form.control}
                 name="computesToWeeklyHours"

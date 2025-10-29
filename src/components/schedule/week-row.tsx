@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -459,9 +460,13 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     dayData.theoreticalHours === 0 &&
                     (contractType?.computesOffDayBag ?? false) &&
                     dayData.absence === 'ninguna';
+                
+                const cellStyle = {
+                    backgroundColor: absenceType?.color ? `${absenceType.color}40` : (isHoliday ? '#e6f7ff' : 'transparent'),
+                };
 
                 return (
-                    <TableCell key={day.toISOString()} className={cn("p-1 align-top text-xs", isHoliday && "bg-blue-100")}>
+                    <TableCell key={day.toISOString()} className="p-1 align-top text-xs" style={cellStyle}>
                         <div className="flex flex-col gap-1 h-full">
                             <div className='w-full space-y-1 flex-grow'>
                                 <p className="text-muted-foreground text-xs h-4">

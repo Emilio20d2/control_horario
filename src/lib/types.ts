@@ -1,5 +1,4 @@
 
-
 import type { Timestamp } from 'firebase/firestore';
 
 export interface WorkHoursRecord {
@@ -100,6 +99,7 @@ export interface AbsenceType {
     id: string;
     name: string;
     abbreviation: string;
+    color?: string;
     
     // Columna 1: Cómputo Principal
     computesToWeeklyHours: boolean;
