@@ -427,7 +427,7 @@ export default function VacationsPage() {
             allEmployeesForQuadrant.forEach(emp => {
                 const empAbsences = employeesWithAbsences[emp.id];
                 const absenceThisWeek = empAbsences?.find(a => 
-                    isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end) && getYear(a.startDate) === year
+                    isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end) && a.isDefinitive
                 );
 
                 if (absenceThisWeek) {
@@ -443,31 +443,29 @@ export default function VacationsPage() {
 
     }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, weeklyRecords]);
     
+    // This effect runs once on initial load to set the default year.
     const isInitialLoad = useRef(true);
     useEffect(() => {
-    if (!loading && isInitialLoad.current) {
-        const latestYearWithAbsence = allAbsences.reduce((latest, absence) => {
-            const year = getYear(absence.startDate);
-            return year > latest ? year : latest;
-        }, 0);
-        
-        const currentYear = new Date().getFullYear();
-        // If there are no absences, default to a future year or current year if it's the highest available
-        const yearToSet = latestYearWithAbsence > 0 
-            ? latestYearWithAbsence 
-            : Math.max(...availableYears, currentYear);
+        if (!loading && isInitialLoad.current && availableYears.length > 0) {
+            let yearToSet = new Date().getFullYear(); // Default to current year
 
-        if (availableYears.includes(yearToSet)) {
+            // Find the highest year with any absence data
+            const latestYearWithAbsence = allAbsences.reduce((latest, absence) => {
+                const year = getYear(absence.startDate);
+                return year > latest ? year : latest;
+            }, 0);
+
+            if (latestYearWithAbsence > 0) {
+                yearToSet = latestYearWithAbsence;
+            } else {
+                // If no absences, find the highest available year in the dropdown
+                yearToSet = Math.max(...availableYears);
+            }
+            
             setSelectedYear(String(yearToSet));
-        } else if (availableYears.length > 0) {
-            setSelectedYear(String(availableYears[0]));
-        } else {
-            setSelectedYear(String(currentYear));
+            isInitialLoad.current = false;
         }
-        
-        isInitialLoad.current = false;
-    }
-}, [loading, allAbsences, availableYears]);
+    }, [loading, allAbsences, availableYears]);
 
 
     const handleUpdateAbsence = async () => {
@@ -624,7 +622,7 @@ export default function VacationsPage() {
             toast({ title: 'Error', description: 'Por favor, selecciona una campaña válida.', variant: 'destructive' });
             return;
         }
-        generateRequestStatusReportPDF(campaign, allEmployeesForQuadrant, employees, absenceTypes);
+        generateRequestStatusReportPDF(campaign, allEmployeesForQuadrant, employeesWithAbsences, absenceTypes);
     };
 
     const handleSelectSubstitute = async (weekKey: string, employeeId: string, substitute: {id: string, name: string} | null) => {
