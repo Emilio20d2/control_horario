@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardContent, CardFooter, CardTitle } from '@/components/ui/card';
@@ -51,7 +51,7 @@ export default function MyMessagesPage() {
     const [isSubmittingOtherRequest, setIsSubmittingOtherRequest] = useState(false);
     const [seniorHoursTotal, setSeniorHoursTotal] = useState(0);
 
-    const safeParseDate = useCallback((date: any): Date | null => {
+    const safeParseDate = (date: any): Date | null => {
         if (!date) return null;
         if (date instanceof Date) return date;
         if (date instanceof Timestamp) return date.toDate();
@@ -60,17 +60,16 @@ export default function MyMessagesPage() {
             return isValid(parsed) ? parsed : null;
         }
         return null;
-    }, []);
+    };
 
     const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
     const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
     
-    const dayPickerModifiers = useMemo(() => ({
+    const dayPickerModifiers = {
         opening: openingHolidays,
         other: otherHolidays,
         selected: otherRequestMultipleDates,
-    }), [openingHolidays, otherHolidays, otherRequestMultipleDates]);
-
+    };
     const dayPickerModifiersStyles = { 
         opening: { backgroundColor: '#a7f3d0' }, 
         other: { backgroundColor: '#fecaca' },
@@ -563,15 +562,15 @@ export default function MyMessagesPage() {
                                 </Button>
                             </div>
                             {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name === 'Reducción Jornada Senior' && (
-                                <Card className="mt-2">
-                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                        <CardTitle className="text-sm font-medium">Total de Horas Solicitadas</CardTitle>
+                                <div className="mt-2 border rounded-md p-3 bg-muted/20">
+                                    <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                        <p className="text-sm font-medium">Total de Horas Solicitadas</p>
                                         <Hourglass className="h-4 w-4 text-muted-foreground" />
-                                    </CardHeader>
-                                    <CardContent>
+                                    </div>
+                                    <div>
                                         <div className="text-2xl font-bold">{seniorHoursTotal.toFixed(2)}h</div>
-                                    </CardContent>
-                                </Card>
+                                    </div>
+                                </div>
                             )}
                             {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name !== 'Reducción Jornada Senior' && (
                                 <div className="space-y-2">
