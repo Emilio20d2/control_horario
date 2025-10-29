@@ -344,7 +344,7 @@ export const addScheduledAbsence = async (
 };
 
 /**
- * Performs a "soft delete" by completely removing the absence record.
+ * Performs a "soft delete" by invalidating the absence period.
  * This is safe because the 'addScheduledAbsence' function, called immediately after,
  * preserves the original request data in the new, modified record.
  */
@@ -378,8 +378,9 @@ export const deleteScheduledAbsence = async (
         }
     }
     
-    // Remove the old record entirely. The 'originalRequest' data is passed to the new record.
-    period.scheduledAbsences.splice(absenceIndex, 1);
+    // "Soft delete" by setting the end date to the start date.
+    // This effectively makes it a zero-duration event for calculations, but keeps the record for history.
+    period.scheduledAbsences[absenceIndex].endDate = period.scheduledAbsences[absenceIndex].startDate;
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
@@ -421,5 +422,3 @@ export const hardDeleteScheduledAbsence = async (
     
     await updateDocument('employees', employeeId, { employmentPeriods: currentEmployee.employmentPeriods });
 };
-
-    
