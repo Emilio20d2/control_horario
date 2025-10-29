@@ -1040,10 +1040,10 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const dayOfWeek = getISODay(dayDate);
             const holidayDetails = holidays.find(h => isSameDay(h.date, dayDate));
     
-            const scheduledAbsence = activePeriod.scheduledAbsences?.find(a =>
-                isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: a.endDate ? startOfDay(a.endDate) : new Date('9999-12-31') })
+            const definitiveAbsence = activePeriod.scheduledAbsences?.find(a =>
+                a.isDefinitive && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: a.endDate ? startOfDay(a.endDate) : new Date('9999-12-31') })
             );
-            const absenceType = scheduledAbsence ? absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId) : undefined;
+            const absenceType = definitiveAbsence ? absenceTypes.find(at => at.id === definitiveAbsence.absenceTypeId) : undefined;
     
             let absenceAbbreviation = 'ninguna';
             let absenceHours = 0;
