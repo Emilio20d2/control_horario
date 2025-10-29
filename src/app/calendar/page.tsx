@@ -155,7 +155,7 @@ export default function CalendarPage() {
                                 {weekDays.map(day => {
                                     const holiday = holidays.find(h => isSameDay(h.date, day));
                                     return (
-                                        <TableHead key={day.toISOString()} className={cn("text-center min-w-[150px]", holiday && 'bg-blue-50')}>
+                                        <TableHead key={day.toISOString()} className={cn("text-center", holiday && 'bg-blue-50')}>
                                             <div className="flex flex-col items-center">
                                                 <span>{format(day, 'E', { locale: es })}</span>
                                                 <span className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</span>
