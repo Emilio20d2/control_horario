@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardContent, CardFooter, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizonal, Loader2, PlaneTakeoff, Info, CalendarClock, Hourglass } from 'lucide-react';
+import { SendHorizonal, Loader2, PlaneTakeoff, Info, CalendarClock, Hourglass, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useDataProvider } from '@/hooks/use-data-provider';
@@ -41,6 +41,7 @@ export default function MyMessagesPage() {
     
     // State for other requests
     const [isOtherRequestDialogOpen, setIsOtherRequestDialogOpen] = useState(false);
+    const [isCalendarDialogOpen, setIsCalendarDialogOpen] = useState(false);
     const [otherRequestStep, setOtherRequestStep] = useState(1);
     const [communicatedTo, setCommunicatedTo] = useState('');
     const [otherRequestAbsenceTypeId, setOtherRequestAbsenceTypeId] = useState('');
@@ -64,15 +65,16 @@ export default function MyMessagesPage() {
     const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
     const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
     
-    const dayPickerModifiers = {
+    const dayPickerModifiers = useMemo(() => ({
         opening: openingHolidays,
         other: otherHolidays,
         selected: otherRequestMultipleDates,
-    };
+    }), [openingHolidays, otherHolidays, otherRequestMultipleDates]);
+
     const dayPickerModifiersStyles = { 
         opening: { backgroundColor: '#a7f3d0' }, 
         other: { backgroundColor: '#fecaca' },
-        selected: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }
+        selected: { backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }
     };
 
     const conversation = useMemo(() => {
@@ -555,15 +557,10 @@ export default function MyMessagesPage() {
                             )}
                             <div className="space-y-2">
                                 <Label className="text-sm font-medium">Días del Permiso</Label>
-                                <DayPicker
-                                    mode="multiple"
-                                    min={0}
-                                    selected={otherRequestMultipleDates}
-                                    onSelect={(days) => setOtherRequestMultipleDates(days || [])}
-                                    modifiers={dayPickerModifiers}
-                                    modifiersStyles={dayPickerModifiersStyles}
-                                    locale={es}
-                                />
+                                <Button variant="outline" className="w-full justify-start text-left font-normal" onClick={() => setIsCalendarDialogOpen(true)}>
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {otherRequestMultipleDates.length > 0 ? `${otherRequestMultipleDates.length} día(s) seleccionado(s)` : "Seleccionar días..."}
+                                </Button>
                             </div>
                             {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name === 'Reducción Jornada Senior' && (
                                 <Card className="mt-2">
@@ -601,6 +598,29 @@ export default function MyMessagesPage() {
                             </DialogFooter>
                         </div>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isCalendarDialogOpen} onOpenChange={setIsCalendarDialogOpen}>
+                <DialogContent className="sm:max-w-fit">
+                    <DialogHeader>
+                        <DialogTitle>Seleccionar Días</DialogTitle>
+                        <DialogDescription>Elige uno o varios días para tu solicitud.</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 flex justify-center">
+                        <DayPicker
+                            mode="multiple"
+                            min={0}
+                            selected={otherRequestMultipleDates}
+                            onSelect={(days) => setOtherRequestMultipleDates(days || [])}
+                            locale={es}
+                            modifiers={dayPickerModifiers}
+                            modifiersStyles={dayPickerModifiersStyles}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => setIsCalendarDialogOpen(false)}>Aceptar</Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>
