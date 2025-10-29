@@ -290,10 +290,15 @@ export default function CalendarPage() {
 
       await hardDeleteScheduledAbsence(employee.id, periodId, absence.id, absence.originalRequest);
 
-      const rejectionMessage = `Tu solicitud de ${selectedCell.absenceType.name} del ${format(absence.startDate, 'dd/MM/yyyy')} al ${format(absence.endDate!, 'dd/MM/yyyy')} ha sido rechazada y eliminada del planificador.`;
-      await sendMessage(employee, rejectionMessage);
+      // Only notify if it was an original request from the employee
+      if (absence.originalRequest) {
+        const rejectionMessage = `Tu solicitud de ${selectedCell.absenceType.name} del ${format(safeParseDate(absence.startDate)!, 'dd/MM/yyyy')} al ${format(safeParseDate(absence.endDate)!, 'dd/MM/yyyy')} ha sido rechazada y eliminada del planificador.`;
+        await sendMessage(employee, rejectionMessage);
+        toast({ title: 'Ausencia Rechazada', description: `La solicitud de ${employee.name} ha sido eliminada y se le ha notificado.`, variant: 'destructive' });
+      } else {
+        toast({ title: 'Ausencia Eliminada', description: `La ausencia de ${employee.name} ha sido eliminada del planificador.` });
+      }
 
-      toast({ title: 'Ausencia Rechazada', description: `La solicitud de ${employee.name} ha sido eliminada y se le ha notificado.`, variant: 'destructive' });
       refreshData();
       setIsDetailDialogOpen(false);
       setSelectedCell(null);
@@ -494,14 +499,18 @@ export default function CalendarPage() {
                  <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="destructive" disabled={isDeleting}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Rechazar y Notificar
+                            <Trash2 className="mr-2 h-4 w-4" /> 
+                            {selectedCell?.absence.originalRequest ? 'Rechazar y Notificar' : 'Eliminar Ausencia'}
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle>¿Confirmas el rechazo?</AlertDialogTitle>
+                            <AlertDialogTitle>¿Confirmas la acción?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                Esta acción eliminará la ausencia del planificador y enviará un mensaje al empleado informándole del rechazo.
+                                {selectedCell?.absence.originalRequest
+                                    ? "Esta acción eliminará la ausencia del planificador y enviará un mensaje al empleado informándole del rechazo."
+                                    : "Esta acción eliminará la ausencia del planificador de forma permanente."
+                                }
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                          <div className="space-y-2 py-2">
@@ -511,7 +520,7 @@ export default function CalendarPage() {
                         <AlertDialogFooter>
                             <AlertDialogCancel onClick={() => setDeletePassword('')}>Cancelar</AlertDialogCancel>
                             <AlertDialogAction onClick={handleRejectAbsence} disabled={isDeleting}>
-                                {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Sí, Rechazar'}
+                                {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Sí, continuar'}
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
