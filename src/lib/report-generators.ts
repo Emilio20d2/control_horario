@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -625,7 +626,7 @@ export const generateRequestStatusReportPDF = (
 
         const absencesFromRequest = (emp.employmentPeriods || [])
             .flatMap(p => p.scheduledAbsences || [])
-            .filter(a => a.originalRequest?.startDate);
+            .filter(a => a.originalRequest?.startDate && !a.isDefinitive); // Filter for original requests only
             
         let originalRequestText = 'PENDIENTE DE SOLICITUD';
         let modifiedRequestText = '';
@@ -644,12 +645,18 @@ export const generateRequestStatusReportPDF = (
 
                 const originalStartDate = toDate(absence.originalRequest.startDate);
                 const originalEndDate = absence.originalRequest.endDate ? toDate(absence.originalRequest.endDate) : null;
-                const definitiveStartDate = absence.startDate;
-                const definitiveEndDate = absence.endDate;
+                
+                // Find the corresponding definitive record
+                const definitiveAbsence = (emp.employmentPeriods || [])
+                    .flatMap(p => p.scheduledAbsences || [])
+                    .find(def => def.isDefinitive && def.originalRequest?.startDate === absence.originalRequest?.startDate);
+                
+                const definitiveStartDate = definitiveAbsence ? definitiveAbsence.startDate : originalStartDate;
+                const definitiveEndDate = definitiveAbsence ? definitiveAbsence.endDate : originalEndDate;
 
                 originalRequests.push(`${typeAbbr}: ${format(originalStartDate, 'dd/MM/yy')} - ${originalEndDate ? format(originalEndDate, 'dd/MM/yy') : ''}`);
                 
-                const isModified = !isEqual(definitiveStartDate, originalStartDate) || (originalEndDate && definitiveEndDate && !isEqual(definitiveEndDate, originalEndDate));
+                const isModified = definitiveAbsence && (!isEqual(definitiveStartDate, originalStartDate) || (originalEndDate && definitiveEndDate && !isEqual(definitiveEndDate, originalEndDate)));
 
                 if (isModified) {
                     modifiedRequests.push(`${typeAbbr}: ${format(definitiveStartDate, 'dd/MM/yy')} - ${definitiveEndDate ? format(definitiveEndDate, 'dd/MM/yy') : ''}`);
