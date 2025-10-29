@@ -190,8 +190,8 @@ export default function VacationsPage() {
 
     const activeEmployees = useMemo(() => {
         return employees.filter(e => e.employmentPeriods.some(p => {
-            const endDate = p.endDate ? safeParseDate(p.endDate as string) : null;
-            return !endDate || isAfter(endDate, new Date());
+             const endDate = p.endDate ? safeParseDate(p.endDate) : null;
+             return !endDate || isAfter(endDate, new Date());
         }));
     }, [employees]);
 
@@ -213,7 +213,7 @@ export default function VacationsPage() {
         if (loading) return { allEmployeesForQuadrant: [], substituteEmployees: [] };
 
         const activeEmployeesForQuadrant = employees.filter(e => e.employmentPeriods.some(p => {
-             const endDate = p.endDate ? safeParseDate(p.endDate as string) : null;
+             const endDate = p.endDate ? safeParseDate(p.endDate) : null;
              return !endDate || isAfter(endDate, new Date());
         }));
 
@@ -262,9 +262,9 @@ export default function VacationsPage() {
           (emp.employmentPeriods || []).forEach(p => {
             if(p.scheduledAbsences) {
               p.scheduledAbsences.forEach(a => {
-                if (!a.startDate) return; // Safety check
+                if (!a.startDate) return;
                 const startDate = a.startDate instanceof Date ? a.startDate : parseISO(a.startDate);
-                const endDate = a.endDate ? (a.endDate instanceof Date ? a.endDate : parseISO(a.endDate)) : null;
+                const endDate = a.endDate ? (a.endDate instanceof Date ? a.endDate : parseISO(a.endDate as string)) : null;
                 if (isValid(startDate)) years.add(getYear(startDate));
                 if (endDate && isValid(endDate)) years.add(getYear(endDate));
               })
@@ -332,9 +332,9 @@ export default function VacationsPage() {
                 (p.scheduledAbsences || []).forEach(a => {
                     if (a.isDefinitive) {
                         if (!a.originalRequest?.startDate) return;
-                        const startDate = a.originalRequest.startDate;
+                        const startDate = safeParseDate(a.originalRequest.startDate);
                         if (!startDate) return;
-                        const key = format(startDate as Date, 'yyyy-MM-dd');
+                        const key = format(startDate, 'yyyy-MM-dd');
                         definitiveAbsences.set(key, a);
                     } else {
                         originalRequests.push(a);
@@ -342,8 +342,9 @@ export default function VacationsPage() {
                 });
 
                 originalRequests.forEach(orig => {
-                    if (!orig.startDate) return;
-                    const key = format(orig.startDate, 'yyyy-MM-dd');
+                    const startDate = safeParseDate(orig.startDate);
+                    if (!startDate) return;
+                    const key = format(startDate, 'yyyy-MM-dd');
                     if (!definitiveAbsences.has(key)) {
                         definitiveAbsences.set(key, { ...orig, isDefinitive: true });
                     }
@@ -403,7 +404,7 @@ export default function VacationsPage() {
     
                 if (absenceThisWeek) {
                     weeklySummaries[week.key].employeeCount++;
-                    const activePeriod = emp.employmentPeriods.find((p: EmploymentPeriod) => !p.endDate || isAfter(p.endDate as Date, new Date()));
+                    const activePeriod = emp.employmentPeriods.find((p: EmploymentPeriod) => !p.endDate || isAfter(p.endDate, new Date()));
                     const weeklyHours = getEffectiveWeeklyHours(activePeriod || null, week.start);
                     weeklySummaries[week.key].hourImpact += weeklyHours;
                     employeesByWeek[week.key].push({ employeeId: emp.id, employeeName: emp.name, groupId: emp.groupId, absenceAbbreviation: absenceThisWeek.absenceAbbreviation });
@@ -492,7 +493,7 @@ export default function VacationsPage() {
         }
 
         const activePeriod = selectedEmployee.employmentPeriods.find(p => {
-            const endDate = p.endDate ? safeParseDate(p.endDate as string) : null;
+            const endDate = p.endDate ? safeParseDate(p.endDate) : null;
             return !endDate || isAfter(endDate, new Date());
         });
         if (!activePeriod) {
@@ -885,6 +886,9 @@ export default function VacationsPage() {
                                                     <TableCell className="px-1 py-1 text-xs">{format(absence.startDate, 'dd/MM/yy', { locale: es })}</TableCell>
                                                     <TableCell className="px-1 py-1 text-xs">{absence.endDate ? format(absence.endDate, 'dd/MM/yy', { locale: es }) : 'N/A'}</TableCell>
                                                     <TableCell className="text-right p-0">
+                                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingAbsence({employee: activeEmployees.find(e => e.id === selectedEmployeeId), absence: absence})}>
+                                                            <Edit className="h-3 w-3" />
+                                                        </Button>
                                                         <AlertDialog>
                                                             <AlertDialogTrigger asChild>
                                                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive-foreground">
@@ -1047,3 +1051,6 @@ export default function VacationsPage() {
     );
 }
   
+
+
+    
