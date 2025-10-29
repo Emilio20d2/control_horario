@@ -305,20 +305,27 @@ export default function VacationsPage() {
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
     
         allEmployeesForQuadrant.forEach(emp => {
-            const allScheduled = (emp.employmentPeriods || [])
-                .flatMap((p: EmploymentPeriod) =>
-                    (p.scheduledAbsences || []).map(a => ({ ...a, periodId: p.id }))
-                )
-                .filter((a: ScheduledAbsence) => schedulableIds.has(a.absenceTypeId));
-    
-            const definitiveAbsences = allScheduled
-                .filter(a => a.isDefinitive)
-                .map(a => ({
-                    ...a,
-                    absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
-                }));
-    
-            employeesWithAbsences[emp.id] = definitiveAbsences;
+            const absences: FormattedAbsence[] = (emp.employmentPeriods || [])
+                .flatMap((p: EmploymentPeriod) => {
+                    const definitiveAbsences = new Map<string, ScheduledAbsence>();
+                    (p.scheduledAbsences || []).forEach(a => {
+                        if (!schedulableIds.has(a.absenceTypeId)) return;
+                        const originalId = a.originalRequest ? JSON.stringify(a.originalRequest) : a.id;
+                        
+                        if (a.isDefinitive) {
+                            definitiveAbsences.set(originalId, a);
+                        } else if (!definitiveAbsences.has(originalId)) {
+                             definitiveAbsences.set(originalId, { ...a, isDefinitive: true });
+                        }
+                    });
+
+                    return Array.from(definitiveAbsences.values()).map(a => ({
+                        ...a,
+                        absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
+                        periodId: p.id,
+                    }));
+                });
+            employeesWithAbsences[emp.id] = absences;
         });
         
         const allAbsences = Object.values(employeesWithAbsences).flat();
@@ -389,13 +396,16 @@ export default function VacationsPage() {
                  if (latestYearWithAbsence > yearToSet) {
                     yearToSet = latestYearWithAbsence;
                 }
-            } else if (availableYears.length > 0) {
-                 yearToSet = Math.max(...availableYears.filter(y => isFinite(y)));
+            } else {
+                 const yearsFromEmployees = employees.flatMap(e => e.employmentPeriods || []).map(p => getYear(parseISO(p.startDate as string)));
+                 if(yearsFromEmployees.length > 0) {
+                    yearToSet = Math.max(...yearsFromEmployees);
+                 }
             }
             
             setSelectedYear(String(yearToSet));
         }
-    }, [loading, employees, availableYears]);
+    }, [loading, employees]);
 
 
     const handleUpdateAbsence = async () => {
@@ -969,9 +979,4 @@ export default function VacationsPage() {
     );
 }
 
-
-
-
-
-
-
+    
