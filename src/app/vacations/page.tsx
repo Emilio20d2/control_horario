@@ -1013,7 +1013,7 @@ export default function VacationsPage() {
                             <Button onClick={() => generateQuadrantReportPDF(Number(selectedYear), weeksOfYear, holidays, employeeGroups, allEmployeesForQuadrant, employeesByWeek, weeklySummaries, substitutes, getTheoreticalHoursAndTurn, specialAbsenceAbbreviations)} disabled={isGenerating} size="sm" variant="ghost" className="h-9 md:h-8">
                                 <FileDown className="mr-2 h-4 w-4" /> Cuadrante
                             </Button>
-                            <Button onClick={() => generateSignatureReportPDF(Number(selectedYear), allEmployeesForQuadrant, employees, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost" className="h-9 md:h-8">
+                            <Button onClick={() => generateSignatureReportPDF(Number(selectedYear), allEmployeesForQuadrant, employeesWithAbsences, absenceTypes)} disabled={isGenerating} size="sm" variant="ghost" className="h-9 md:h-8">
                                 <FileSignature className="mr-2 h-4 w-4" /> Firmas
                             </Button>
                             {allCampaignsSorted.length > 0 && (
@@ -1050,3 +1050,4 @@ export default function VacationsPage() {
 
 
     
+

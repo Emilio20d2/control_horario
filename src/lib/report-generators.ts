@@ -536,8 +536,8 @@ const safeParseDate = (date: any): Date | null => {
 
 export const generateSignatureReportPDF = (
     year: number,
-    allEmployeesForQuadrant: any[],
-    employees: Employee[],
+    allEmployeesForQuadrant: (Employee & { isEventual: boolean; groupId: string | null; })[],
+    employeesWithAbsences: Record<string, (ScheduledAbsence & { absenceAbbreviation: string; periodId: string; })[]>,
     absenceTypes: AbsenceType[],
 ) => {
     const doc = new jsPDF();
@@ -553,57 +553,18 @@ export const generateSignatureReportPDF = (
     let finalY = 25;
 
     const employeesForReport = allEmployeesForQuadrant
-        .filter(emp => {
-            const fullEmployee = employees.find(e => e.id === emp.id);
-            if (!fullEmployee || emp.isEventual) return false;
-            
-            return fullEmployee.employmentPeriods?.some(p => {
-                const endDateValue = p.endDate;
-                if (!endDateValue) return true;
-                const endDate = endDateValue instanceof Date ? endDateValue : parseISO(endDateValue as string);
-                return isAfter(endDate, new Date());
-            });
-        })
+        .filter(emp => !emp.isEventual)
         .sort((a, b) => a.name.localeCompare(b.name));
 
     employeesForReport.forEach((employee) => {
-        const fullEmployeeData = employees.find(e => e.id === employee.id);
-        if (!fullEmployeeData) return;
-        
-        const definitiveAbsences = new Map<string, ScheduledAbsence>();
-
-        (fullEmployeeData.employmentPeriods || []).forEach((p: EmploymentPeriod) => {
-            (p.scheduledAbsences || []).forEach(a => {
-                if (a.isDefinitive) {
-                    const originalStartDate = safeParseDate(a.originalRequest?.startDate ?? a.startDate);
-                    if (originalStartDate && isValid(originalStartDate)) {
-                        const key = format(originalStartDate, 'yyyy-MM-dd');
-                         if (!definitiveAbsences.has(key)) {
-                            definitiveAbsences.set(key, a);
-                        }
-                    }
-                }
-            });
-        });
-        
-        const vacationAbsences = Array.from(definitiveAbsences.values())
-            .filter(a => {
-                const startDate = safeParseDate(a.startDate);
-                if (!startDate) return false;
-                return a.absenceTypeId === vacationType.id && getYear(startDate) === year
-            })
-            .sort((a, b) => {
-                const dateA = safeParseDate(a.startDate);
-                const dateB = safeParseDate(b.startDate);
-                if (!dateA || !dateB) return 0;
-                return dateA.getTime() - dateB.getTime();
-            });
+        const vacationAbsences = (employeesWithAbsences[employee.id] || [])
+            .filter(a => a.absenceTypeId === vacationType.id && getYear(a.startDate) === year)
+            .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
 
         const vacationPeriodsText = vacationAbsences.length > 0
             ? vacationAbsences.map(v => {
-                const startDate = safeParseDate(v.startDate);
-                const endDate = v.endDate ? safeParseDate(v.endDate) : startDate;
-                if (!startDate || !endDate) return '';
+                const startDate = v.startDate;
+                const endDate = v.endDate ? v.endDate : startDate;
                 return `del ${format(startDate, 'dd/MM/yyyy', { locale: es })} al ${format(endDate, 'dd/MM/yyyy', { locale: es })}`
             }).join('\n')
             : 'No tiene vacaciones programadas.';
@@ -749,6 +710,7 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
 
