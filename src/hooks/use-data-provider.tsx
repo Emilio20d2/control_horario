@@ -484,8 +484,7 @@ const pendingCorrectionRequestCount = useMemo(() => {
             const periodEnd = p.endDate ? endOfDay(p.endDate as Date) : new Date('9999-12-31');
             
             // Check if the period overlaps with any day of the week
-            const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
-            return weekDays.some(day => isWithinInterval(day, { start: periodStart, end: periodEnd }));
+            return isAfter(periodEnd, weekStart) && isBefore(periodStart, weekEnd);
         })
     );
 }, [employees]);
@@ -560,8 +559,17 @@ const getEffectiveWeeklyHours = (period: EmploymentPeriod | null, date: Date): n
       return 0;
     }
     const targetDate = startOfDay(date);
-    const history = [...period.workHoursHistory].sort((a,b) => ((b.effectiveDate as Date).getTime() - (a.effectiveDate as Date).getTime()));
-    const effectiveRecord = history.find(record => !isAfter(startOfDay(record.effectiveDate as Date), targetDate));
+    const history = [...period.workHoursHistory].sort((a,b) => {
+        const dateA = a.effectiveDate instanceof Date ? a.effectiveDate : parseISO(a.effectiveDate as string);
+        const dateB = b.effectiveDate instanceof Date ? b.effectiveDate : parseISO(b.effectiveDate as string);
+        return dateB.getTime() - dateA.getTime();
+    });
+    
+    const effectiveRecord = history.find(record => {
+        const recordDate = record.effectiveDate instanceof Date ? record.effectiveDate : parseISO(record.effectiveDate as string);
+        return !isAfter(startOfDay(recordDate), targetDate);
+    });
+    
     return effectiveRecord?.weeklyHours || 0;
 };
 

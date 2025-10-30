@@ -149,11 +149,11 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
         }
 
         const recordExists = targetPeriod.workHoursHistory.some(
-            record => record.effectiveDate === newRecord.effectiveDate
+            record => format(parseISO(record.effectiveDate), 'yyyy-MM-dd') === newRecord.effectiveDate
         );
 
         if (recordExists) {
-             targetPeriod.workHoursHistory = targetPeriod.workHoursHistory.map(r => r.effectiveDate === newRecord.effectiveDate ? newRecord : r);
+             targetPeriod.workHoursHistory = targetPeriod.workHoursHistory.map(r => format(parseISO(r.effectiveDate), 'yyyy-MM-dd') === newRecord.effectiveDate ? newRecord : r);
         } else {
             targetPeriod.workHoursHistory.push(newRecord);
         }
