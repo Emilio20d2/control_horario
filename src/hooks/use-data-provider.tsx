@@ -1058,57 +1058,66 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     const prefilledRecords: Record<string, PrefilledWeeklyRecord> = prefilledData as any;
 
     const processEmployeeWeekData = useCallback((emp: Employee, weekDays: Date[], weekId: string): DailyEmployeeData | null => {
+        // Step 1: Prioritize existing Firestore data.
         const dbRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
-        
-        // If a record (confirmed or not) already exists in Firestore, return it directly.
         if (dbRecord) {
             return dbRecord;
         }
 
+        // Step 2: Ensure the employee has an active contract for this week.
         const activePeriod = getActivePeriod(emp.id, weekDays[0]);
-        if (!activePeriod) return null;
+        if (!activePeriod) {
+            return null;
+        }
 
+        // Step 3: Get theoretical hours for the week based on the employee's calendar.
         const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(emp.id, weekDays[0]);
         const weeklyWorkHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
         const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
-        
-        const newDays: Record<string, DailyData> = {};
-        
-        weekDaysWithTheoreticalHours.forEach(d => {
-            const dayDate = parseISO(d.dateKey);
-            const dayOfWeek = getISODay(dayDate);
-            const holidayDetails = holidays.find(h => isSameDay(h.date, dayDate));
-            
-            // Find any scheduled absence for the day.
-            const absence = (activePeriod.scheduledAbsences || []).find(a => 
-                a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
-            );
 
+        // Step 4: Build the daily data from scratch.
+        const newDays: Record<string, DailyData> = {};
+        for (const day of weekDays) {
+            const dayKey = format(day, 'yyyy-MM-dd');
+            const dayOfWeek = getISODay(day);
+            const holidayDetails = holidays.find(h => isSameDay(h.date, day));
+            const theoreticalDay = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
+            const theoreticalHours = theoreticalDay?.theoreticalHours ?? 0;
+
+            // Find any scheduled absence for this day.
+            const absence = (activePeriod.scheduledAbsences || []).find(a => 
+                a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(day, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
+            );
             const absenceType = absence ? absenceTypes.find(at => at.id === absence.absenceTypeId) : undefined;
-    
+            
+            // Initialize default values for the day.
+            let workedHours = theoreticalHours;
             let absenceAbbreviation = 'ninguna';
             let absenceHours = 0;
-            let workedHours = d.theoreticalHours;
             let leaveHours = 0;
-            
-            if (holidayDetails?.type === 'Apertura' && dayOfWeek !== 7) {
-                workedHours = 0;
-            }
-            
+
+            // Apply absence logic.
             if (absenceType) {
                 absenceAbbreviation = absenceType.abbreviation;
                 if (absenceType.computesFullDay) {
-                    absenceHours = d.theoreticalHours;
+                    absenceHours = theoreticalHours;
                     workedHours = 0;
                 }
             }
-    
-            if (holidayDetails && dayOfWeek !== 7 && d.theoreticalHours === 0 && contractType?.computesOffDayBag && absenceAbbreviation === 'ninguna') {
-                leaveHours = roundToNearestQuarter(weeklyWorkHours / 5);
+
+            // Apply holiday logic.
+            if (holidayDetails && dayOfWeek !== 7) {
+                if (holidayDetails.type === 'Apertura') {
+                    // For "Apertura", default worked hours are 0, user must fill them.
+                    workedHours = 0;
+                } else if (absenceAbbreviation === 'ninguna' && theoreticalHours === 0 && contractType?.computesOffDayBag) {
+                    // For regular holidays on a scheduled day off, calculate leave hours.
+                    leaveHours = roundToNearestQuarter(weeklyWorkHours / 5);
+                }
             }
-    
-            newDays[d.dateKey] = {
-                theoreticalHours: d.theoreticalHours,
+
+            newDays[dayKey] = {
+                theoreticalHours: theoreticalHours,
                 workedHours,
                 absence: absenceAbbreviation,
                 absenceHours,
@@ -1117,27 +1126,24 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                 isHoliday: !!holidayDetails,
                 holidayType: holidayDetails?.type ?? null,
             };
-        });
+        }
         
-        // This is a new record, so generate from scratch
-        let finalData: DailyEmployeeData = {
+        // Step 5: Check for prefilled data from Excel import for auditing purposes.
+        const prefilledWeek = prefilledRecords[weekId];
+        const prefilledEmployeeData = prefilledWeek?.weekData?.[emp.name];
+        
+        const finalData: DailyEmployeeData = {
             days: newDays,
             confirmed: false,
             totalComplementaryHours: null,
             generalComment: null,
             weeklyHoursOverride: null,
             isDifference: false,
-            hasPreregistration: false,
+            hasPreregistration: !!prefilledEmployeeData,
+            expectedOrdinaryImpact: prefilledEmployeeData?.expectedOrdinaryImpact,
+            expectedHolidayImpact: prefilledEmployeeData?.expectedHolidayImpact,
+            expectedLeaveImpact: prefilledEmployeeData?.expectedLeaveImpact,
         };
-
-        const prefilledWeek = prefilledRecords[weekId];
-        const prefilledEmployeeData = prefilledWeek?.weekData?.[emp.name];
-        if (prefilledEmployeeData) {
-            finalData.hasPreregistration = true;
-            finalData.expectedOrdinaryImpact = prefilledEmployeeData.expectedOrdinaryImpact;
-            finalData.expectedHolidayImpact = prefilledEmployeeData.expectedHolidayImpact;
-            finalData.expectedLeaveImpact = prefilledEmployeeData.expectedLeaveImpact;
-        }
         
         return finalData;
 
@@ -1254,6 +1260,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
