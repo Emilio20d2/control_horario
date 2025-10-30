@@ -482,7 +482,10 @@ const pendingCorrectionRequestCount = useMemo(() => {
         emp.employmentPeriods.some(p => {
             const periodStart = startOfDay(p.startDate as Date);
             const periodEnd = p.endDate ? endOfDay(p.endDate as Date) : new Date('9999-12-31');
-            return periodStart <= weekEnd && periodEnd >= weekStart;
+            
+            // Check if the period overlaps with any day of the week
+            const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+            return weekDays.some(day => isWithinInterval(day, { start: periodStart, end: periodEnd }));
         })
     );
 }, [employees]);
@@ -1242,3 +1245,5 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 export const useDataProvider = () => useContext(DataContext);
 
   
+
+    
