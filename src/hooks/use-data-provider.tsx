@@ -108,7 +108,7 @@ interface DataContextType {
   createContractType: (data: Omit<ContractType, 'id'>) => Promise<string>;
   updateContractType: (id: string, data: Partial<Omit<ContractType, 'id'>>) => Promise<void>;
 deleteContractType: (id: string) => Promise<void>;
-  updateEmployeeWorkHours: (employeeId: string, weeklyHours: number, effectiveDate: string) => Promise<void>;
+  updateEmployeeWorkHours: (employeeId: string, employee: Employee, weeklyHours: number, effectiveDate: string) => Promise<void>;
   getWeekId: (d: Date) => string;
   processEmployeeWeekData: (emp: Employee, weekDays: Date[], weekId: string) => DailyEmployeeData | null;
   calculateEmployeeVacations: (emp: Employee, year?: number, mode?: 'confirmed' | 'programmed') => {
@@ -1050,8 +1050,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
   };
 
 
-  const updateEmployeeWorkHours = async (employeeId: string, weeklyHours: number, effectiveDate: string) => {
-    const employee = getEmployeeById(employeeId);
+  const updateEmployeeWorkHours = async (employeeId: string, employee: Employee, weeklyHours: number, effectiveDate: string) => {
     if (!employee) throw new Error("Empleado no encontrado");
     await updateEmployeeWorkHoursService(employeeId, employee, weeklyHours, effectiveDate);
   };
@@ -1078,22 +1077,10 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const dayOfWeek = getISODay(dayDate);
             const holidayDetails = holidays.find(h => isSameDay(h.date, dayDate));
     
-            // Find any scheduled absence for the day.
-            let absence: ScheduledAbsence | undefined;
-            
-            // Prioritize definitive absences if they exist
-            const definitiveAbsence = (activePeriod.scheduledAbsences || []).find(a => 
-                a.isDefinitive && a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
+            // Find any scheduled absence for the day. This logic is critical.
+            const absence = (activePeriod.scheduledAbsences || []).find(a =>
+                a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
             );
-
-            if (definitiveAbsence) {
-                absence = definitiveAbsence;
-            } else {
-                // Fallback to any other scheduled absence
-                absence = (activePeriod.scheduledAbsences || []).find(a =>
-                    a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
-                );
-            }
 
             const absenceType = absence ? absenceTypes.find(at => at.id === absence.absenceTypeId) : undefined;
 
@@ -1280,5 +1267,6 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
