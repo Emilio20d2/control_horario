@@ -7,6 +7,8 @@ import {
   Card,
   CardContent,
   CardHeader,
+  CardTitle,
+  CardDescription
 } from '@/components/ui/card';
 import {
   Table,
@@ -58,6 +60,7 @@ import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc, updateDoc } f
 import { db } from '@/lib/firebase';
 import { Input } from '@/components/ui/input';
 import { DayPicker } from 'react-day-picker';
+import { useIsMobile } from '@/hooks/use-is-mobile';
 
 interface CellAbsenceInfo {
     employee: Employee;
@@ -71,6 +74,7 @@ export default function CalendarPage() {
   const { employees, holidayReports, absenceTypes, loading, getActiveEmployeesForDate, holidays, refreshData, getEmployeeBalancesForWeek, getTheoreticalHoursAndTurn } = useDataProvider();
   const { reauthenticateWithPassword } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   const [currentDate, setCurrentDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   
@@ -389,142 +393,198 @@ export default function CalendarPage() {
     );
   }
 
-  return (
-    <>
-    <div className="p-4 md:p-6 space-y-6">
+  const renderMobileView = () => (
+    <div className="space-y-4">
+      {weeklyAbsenceData.map(empData => (
+        <Card key={empData.employee.id}>
+          <CardHeader>
+            <CardTitle>{empData.employee.name}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-4 gap-2">
+              {weekDays.map(day => {
+                const dayKey = format(day, 'yyyy-MM-dd');
+                const cellInfo = empData.dayAbsences[dayKey];
+                const holiday = holidays.find(h => isSameDay(h.date, day));
+
+                return (
+                  <div 
+                    key={dayKey}
+                    onClick={() => cellInfo && handleOpenDetails(cellInfo)}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-2 rounded-md h-20",
+                      cellInfo && "cursor-pointer hover:bg-muted",
+                      holiday && !cellInfo && 'bg-blue-50/50'
+                    )}
+                    style={{ backgroundColor: cellInfo ? `${cellInfo.absenceType.color}40` : undefined }}
+                  >
+                    <span className="text-xs font-semibold">{format(day, 'E', { locale: es })}</span>
+                    <span className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</span>
+                    {cellInfo ? (
+                      <div className="flex flex-col items-center justify-center gap-1 mt-1">
+                          <span className="font-bold text-sm">{cellInfo.absenceType.abbreviation}</span>
+                          {cellInfo.substituteName && (
+                            <span className="text-xs text-muted-foreground font-semibold truncate">{cellInfo.substituteName}</span>
+                          )}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+      {!loading && weeklyAbsenceData.length === 0 && (
         <Card>
-            <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
-                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button>
-                            <CalendarPlus className="mr-2 h-4 w-4" />
-                            Agendar Ausencia
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-fit">
-                        <DialogHeader>
-                            <DialogTitle>Programar Nueva Ausencia</DialogTitle>
-                            <DialogDescription>
-                                Selecciona el empleado, tipo de ausencia y los días.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleAddAbsenceSubmit} className="space-y-6 py-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                                <div className="space-y-2">
-                                    <Label htmlFor="employee-select-dialog">Empleado</Label>
-                                    <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-                                        <SelectTrigger id="employee-select-dialog"><SelectValue placeholder="Seleccionar empleado..." /></SelectTrigger>
-                                        <SelectContent>
-                                            {activeEmployees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="absence-select-dialog">Tipo de Ausencia</Label>
-                                    <Select value={selectedAbsenceTypeId} onValueChange={setSelectedAbsenceTypeId}>
-                                        <SelectTrigger id="absence-select-dialog"><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
-                                        <SelectContent>
-                                            {absenceTypes.sort((a,b) => a.name.localeCompare(b.name)).map(at => <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            No hay empleados con ausencias programadas para esta semana.
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
+  const renderDesktopView = () => (
+    <Card>
+        <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button>
+                        <CalendarPlus className="mr-2 h-4 w-4" />
+                        Agendar Ausencia
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-fit">
+                    <DialogHeader>
+                        <DialogTitle>Programar Nueva Ausencia</DialogTitle>
+                        <DialogDescription>
+                            Selecciona el empleado, tipo de ausencia y los días.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleAddAbsenceSubmit} className="space-y-6 py-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                            <div className="space-y-2">
+                                <Label htmlFor="employee-select-dialog">Empleado</Label>
+                                <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                                    <SelectTrigger id="employee-select-dialog"><SelectValue placeholder="Seleccionar empleado..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {activeEmployees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Días de la Ausencia</Label>
-                                <div className="rounded-md border flex justify-center">
-                                    <DayPicker
-                                        mode="multiple"
-                                        min={0}
-                                        selected={selectedDays}
-                                        onSelect={(days) => setSelectedDays(days || [])}
-                                        locale={es}
-                                        modifiers={dayPickerModifiers}
-                                        modifiersStyles={dayPickerModifiersStyles}
-                                    />
-                                </div>
+                                <Label htmlFor="absence-select-dialog">Tipo de Ausencia</Label>
+                                <Select value={selectedAbsenceTypeId} onValueChange={setSelectedAbsenceTypeId}>
+                                    <SelectTrigger id="absence-select-dialog"><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {absenceTypes.sort((a,b) => a.name.localeCompare(b.name)).map(at => <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
                             </div>
-                            
-                            <DialogFooter>
-                                <DialogClose asChild>
-                                    <Button type="button" variant="secondary">Cancelar</Button>
-                                </DialogClose>
-                                <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarPlus className="mr-2 h-4 w-4" />}
-                                    Guardar Ausencia
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
-                <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
-            </CardHeader>
-            <CardContent>
-                <div className="border rounded-lg overflow-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="sticky left-0 bg-card z-10 w-[200px] min-w-[200px]">Empleado</TableHead>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Días de la Ausencia</Label>
+                            <div className="rounded-md border flex justify-center">
+                                <DayPicker
+                                    mode="multiple"
+                                    min={0}
+                                    selected={selectedDays}
+                                    onSelect={(days) => setSelectedDays(days || [])}
+                                    locale={es}
+                                    modifiers={dayPickerModifiers}
+                                    modifiersStyles={dayPickerModifiersStyles}
+                                />
+                            </div>
+                        </div>
+                        
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button" variant="secondary">Cancelar</Button>
+                            </DialogClose>
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarPlus className="mr-2 h-4 w-4" />}
+                                Guardar Ausencia
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+            <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
+        </CardHeader>
+        <CardContent>
+            <div className="border rounded-lg overflow-auto">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="sticky left-0 bg-card z-10 w-[200px] min-w-[200px]">Empleado</TableHead>
+                            {weekDays.map(day => {
+                                const holiday = holidays.find(h => isSameDay(h.date, day));
+                                return (
+                                    <TableHead key={day.toISOString()} className={cn("text-center", holiday && 'bg-blue-50/70')}>
+                                        <div className="flex flex-col items-center">
+                                            <span>{format(day, 'E', { locale: es })}</span>
+                                            <span className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</span>
+                                        </div>
+                                    </TableHead>
+                                );
+                            })}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {weeklyAbsenceData.map(empData => (
+                            <TableRow key={empData.employee.id}>
+                                <TableCell className="sticky left-0 bg-card z-10 font-medium">{empData.employee.name}</TableCell>
                                 {weekDays.map(day => {
+                                    const dayKey = format(day, 'yyyy-MM-dd');
+                                    const cellInfo = empData.dayAbsences[dayKey];
                                     const holiday = holidays.find(h => isSameDay(h.date, day));
+                                    
                                     return (
-                                        <TableHead key={day.toISOString()} className={cn("text-center", holiday && 'bg-blue-50/70')}>
-                                            <div className="flex flex-col items-center">
-                                                <span>{format(day, 'E', { locale: es })}</span>
-                                                <span className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</span>
-                                            </div>
-                                        </TableHead>
+                                        <TableCell 
+                                            key={dayKey} 
+                                            onClick={() => cellInfo && handleOpenDetails(cellInfo)}
+                                            className={cn(
+                                                "text-center p-2 align-middle", 
+                                                cellInfo && "cursor-pointer hover:bg-muted",
+                                                holiday && !cellInfo && 'bg-blue-50/50'
+                                            )}
+                                            style={{ backgroundColor: cellInfo ? `${cellInfo.absenceType.color}40` : undefined }}
+                                        >
+                                            {cellInfo ? (
+                                                <div className="flex flex-col items-center justify-center gap-1">
+                                                    <div className="flex items-center gap-1">
+                                                        <User className="h-4 w-4" />
+                                                        <span className="font-bold text-sm">{cellInfo.absenceType.abbreviation}</span>
+                                                    </div>
+                                                    {cellInfo.substituteName && (
+                                                        <span className="text-xs text-muted-foreground font-semibold truncate">{cellInfo.substituteName}</span>
+                                                    )}
+                                                </div>
+                                            ) : null}
+                                        </TableCell>
                                     );
                                 })}
                             </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {weeklyAbsenceData.map(empData => (
-                                <TableRow key={empData.employee.id}>
-                                    <TableCell className="sticky left-0 bg-card z-10 font-medium">{empData.employee.name}</TableCell>
-                                    {weekDays.map(day => {
-                                        const dayKey = format(day, 'yyyy-MM-dd');
-                                        const cellInfo = empData.dayAbsences[dayKey];
-                                        const holiday = holidays.find(h => isSameDay(h.date, day));
-                                        
-                                        return (
-                                            <TableCell 
-                                                key={dayKey} 
-                                                onClick={() => cellInfo && handleOpenDetails(cellInfo)}
-                                                className={cn(
-                                                    "text-center p-2 align-middle", 
-                                                    cellInfo && "cursor-pointer hover:bg-muted",
-                                                    holiday && !cellInfo && 'bg-blue-50/50'
-                                                )}
-                                                style={{ backgroundColor: cellInfo ? `${cellInfo.absenceType.color}40` : undefined }}
-                                            >
-                                                {cellInfo ? (
-                                                    <div className="flex flex-col items-center justify-center gap-1">
-                                                        <div className="flex items-center gap-1">
-                                                            <User className="h-4 w-4" />
-                                                            <span className="font-bold text-sm">{cellInfo.absenceType.abbreviation}</span>
-                                                        </div>
-                                                        {cellInfo.substituteName && (
-                                                            <span className="text-xs text-muted-foreground font-semibold truncate">{cellInfo.substituteName}</span>
-                                                        )}
-                                                    </div>
-                                                ) : null}
-                                            </TableCell>
-                                        );
-                                    })}
-                                </TableRow>
-                            ))}
-                             {!loading && weeklyAbsenceData.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={8} className="text-center h-24 text-muted-foreground">
-                                        No hay empleados con ausencias programadas para esta semana.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
-            </CardContent>
-        </Card>
+                        ))}
+                         {!loading && weeklyAbsenceData.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={8} className="text-center h-24 text-muted-foreground">
+                                    No hay empleados con ausencias programadas para esta semana.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+        </CardContent>
+    </Card>
+  )
+
+  return (
+    <>
+    <div className="p-4 md:p-6 space-y-6">
+        {isMobile ? renderMobileView() : renderDesktopView()}
     </div>
     
     <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
@@ -604,4 +664,5 @@ export default function CalendarPage() {
 
 
     
+
 
