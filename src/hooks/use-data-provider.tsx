@@ -1,4 +1,5 @@
 
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -559,14 +560,17 @@ const getEffectiveWeeklyHours = (period: EmploymentPeriod | null, date: Date): n
       return 0;
     }
     const targetDate = startOfDay(date);
+
     const history = [...period.workHoursHistory].sort((a,b) => {
         const dateA = a.effectiveDate instanceof Date ? a.effectiveDate : parseISO(a.effectiveDate as string);
         const dateB = b.effectiveDate instanceof Date ? b.effectiveDate : parseISO(b.effectiveDate as string);
+        if (!isValid(dateA) || !isValid(dateB)) return 0;
         return dateB.getTime() - dateA.getTime();
     });
-    
+
     const effectiveRecord = history.find(record => {
         const recordDate = record.effectiveDate instanceof Date ? record.effectiveDate : parseISO(record.effectiveDate as string);
+        if (!isValid(recordDate)) return false;
         return !isAfter(startOfDay(recordDate), targetDate);
     });
     

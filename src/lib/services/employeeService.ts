@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { addDocument, updateDocument, deleteDocument, setDocument } from './firestoreService';
@@ -148,17 +149,24 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
             targetPeriod.workHoursHistory = [];
         }
 
-        const recordExists = targetPeriod.workHoursHistory.some(
-            record => format(parseISO(record.effectiveDate), 'yyyy-MM-dd') === newRecord.effectiveDate
+        const recordIndex = targetPeriod.workHoursHistory.findIndex(
+            record => {
+                const recordDate = record.effectiveDate instanceof Date ? record.effectiveDate : parseISO(record.effectiveDate as string);
+                return isValid(recordDate) && format(recordDate, 'yyyy-MM-dd') === newRecord.effectiveDate;
+            }
         );
 
-        if (recordExists) {
-             targetPeriod.workHoursHistory = targetPeriod.workHoursHistory.map(r => format(parseISO(r.effectiveDate), 'yyyy-MM-dd') === newRecord.effectiveDate ? newRecord : r);
+        if (recordIndex > -1) {
+             targetPeriod.workHoursHistory[recordIndex] = newRecord;
         } else {
             targetPeriod.workHoursHistory.push(newRecord);
         }
         
-        targetPeriod.workHoursHistory.sort((a, b) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
+        targetPeriod.workHoursHistory.sort((a, b) => {
+            const dateA = a.effectiveDate instanceof Date ? a.effectiveDate : parseISO(a.effectiveDate as string);
+            const dateB = b.effectiveDate instanceof Date ? b.effectiveDate : parseISO(b.effectiveDate as string);
+            return dateA.getTime() - dateB.getTime();
+        });
     }
 
     // This handles both updating the current schedule and adding a new one.
@@ -277,7 +285,7 @@ export const updateEmployeeWorkHours = async (
     }
 
     const recordIndex = currentPeriod.workHoursHistory.findIndex(
-        record => record.effectiveDate === newRecord.effectiveDate
+        record => (record.effectiveDate instanceof Date ? format(record.effectiveDate, 'yyyy-MM-dd') : record.effectiveDate) === newRecord.effectiveDate
     );
 
     if (recordIndex !== -1) {
