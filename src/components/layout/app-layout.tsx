@@ -308,8 +308,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </SheetTrigger>
                 <SheetContent side="right" className="flex flex-col">
                     <Link href="/dashboard" className="flex items-center gap-2 font-semibold mb-4">
-                        <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
-                        <span>Control Horario</span>
+                        <Image src="/logo.png" alt="Logo" width={60} height={60} className="h-14 w-14" />
+                        <span className="text-xl">Control Horario</span>
                     </Link>
                     <MainNav isMobileNav={true} />
                 </SheetContent>
