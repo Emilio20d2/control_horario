@@ -228,7 +228,7 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
                     </div>
                 )}
                 
-                {workHoursHistoryToShow.length > 0 && (
+                {workHoursHistoryToShow.length > 0 && !isEmployeeView && (
                      <div className="space-y-2">
                         <h4 className="font-medium text-muted-foreground">Historial de Cambio de Jornada</h4>
                         <div className="border rounded-md">
