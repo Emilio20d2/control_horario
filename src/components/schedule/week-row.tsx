@@ -401,8 +401,8 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     <p className="text-muted-foreground">{contractType?.name ?? 'N/A'}</p>
                     
                     <div className="space-y-1 sm:space-y-2 mt-2">
-                         <InputStepper label="Jornada Semanal" value={weeklyHours} onChange={(v) => handleWeekLevelDataChange('weeklyHoursOverride', v)} className="text-xs" disabled={isConfirmed} />
-                         <InputStepper label="H. Complementarias" value={localWeekData.totalComplementaryHours ?? 0} onChange={(v) => handleWeekLevelDataChange('totalComplementaryHours', v)} disabled={isConfirmed} />
+                         <InputStepper label="Jornada Semanal" value={localWeekData.weeklyHoursOverride ?? undefined} onChange={(v) => handleWeekLevelDataChange('weeklyHoursOverride', v)} className="text-xs" disabled={isConfirmed} />
+                         <InputStepper label="H. Complementarias" value={localWeekData.totalComplementaryHours ?? undefined} onChange={(v) => handleWeekLevelDataChange('totalComplementaryHours', v)} disabled={isConfirmed} />
                          {showDifferenceCheckbox && (
                             <div className="flex items-center space-x-2 pt-1">
                                 <Checkbox 

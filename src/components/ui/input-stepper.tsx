@@ -12,7 +12,7 @@ interface InputStepperProps {
   id?: string;
   label?: string;
   value?: number;
-  onChange: (value: number) => void;
+  onChange: (value: number | undefined) => void;
   step?: number;
   min?: number;
   max?: number;
@@ -33,10 +33,10 @@ export function InputStepper({
   className,
   inputClassName,
 }: InputStepperProps) {
-  const [inputValue, setInputValue] = React.useState(value === undefined ? '' : String(value));
+  const [inputValue, setInputValue] = React.useState(value === undefined || value === null ? '' : String(value));
 
   React.useEffect(() => {
-    setInputValue(value === undefined ? '' : String(value));
+    setInputValue(value === undefined || value === null ? '' : String(value));
   }, [value]);
 
   const roundToNearestQuarter = (num: number) => {
@@ -51,7 +51,7 @@ export function InputStepper({
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
     if (rawValue === '' || rawValue === '-') {
-        onChange(0);
+        onChange(undefined);
         return;
     }
     const newValue = parseFloat(rawValue);
@@ -59,7 +59,7 @@ export function InputStepper({
         const roundedValue = roundToNearestQuarter(newValue);
         onChange(Math.max(min, Math.min(max, roundedValue)));
     } else {
-        setInputValue(value === undefined ? '' : String(value));
+        setInputValue(value === undefined || value === null ? '' : String(value));
     }
   }
 
@@ -109,5 +109,3 @@ export function InputStepper({
     </div>
   );
 }
-
-    
