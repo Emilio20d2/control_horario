@@ -184,32 +184,36 @@ export function AppLayout({ children }: { children: ReactNode }) {
              {viewMode === 'admin' && !isMobile && (
               <TooltipProvider>
                 <div className="flex items-center gap-1">
-                   <Tooltip>
-                    <TooltipTrigger asChild>
-                       <Link href="/calendar">
-                         <Button variant={pathname.startsWith('/calendar') ? 'secondary' : 'ghost'} size="icon">
-                            <CalendarClock className="h-5 w-5" />
-                         </Button>
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent>Calendario de Ausencias</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                       <Link href="/messages">
-                         <Button variant={pathname.startsWith('/messages') ? 'secondary' : 'ghost'} size="icon" className="relative">
-                            <Mail className="h-5 w-5" />
-                             {unreadMessageCount > 0 && (
-                                <span className="absolute top-1.5 right-1.5 flex h-3 w-3">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
-                                </span>
-                            )}
-                         </Button>
-                       </Link>
-                    </TooltipTrigger>
-                    <TooltipContent>Mensajes</TooltipContent>
-                  </Tooltip>
+                   <Link
+                        href="/calendar"
+                        className={cn(
+                            'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative flex-col text-center h-16 w-16 sm:h-auto sm:w-auto',
+                            pathname.startsWith('/calendar')
+                                ? 'bg-primary text-white font-semibold'
+                                : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+                        )}
+                    >
+                        <CalendarClock className="h-5 w-5" />
+                        <span className="text-xs font-medium">Calendario</span>
+                    </Link>
+                  <Link
+                        href="/messages"
+                        className={cn(
+                            'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative flex-col text-center h-16 w-16 sm:h-auto sm:w-auto',
+                            pathname.startsWith('/messages')
+                                ? 'bg-primary text-white font-semibold'
+                                : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+                        )}
+                    >
+                        <Mail className="h-5 w-5" />
+                        <span className="text-xs font-medium">Mensajes</span>
+                        {unreadMessageCount > 0 && (
+                            <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+                            </span>
+                        )}
+                    </Link>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <DropdownMenu>
