@@ -179,7 +179,7 @@ export default function MessagesPage() {
                                 <div key={index} className={cn('flex items-end gap-2', message.senderId === 'admin' ? 'justify-end' : 'justify-start')}>
                                     <div className={cn(
                                         'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg',
-                                        message.senderId === 'admin' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                                        message.senderId === 'admin' ? 'bg-primary/50 text-black' : 'bg-muted/50 text-black'
                                     )}>
                                         <p className="whitespace-pre-wrap break-words">{message.text}</p>
                                         {message.timestamp && (

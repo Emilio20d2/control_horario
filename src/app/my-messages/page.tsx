@@ -476,7 +476,7 @@ Gracias.`;
                                     {message.senderId !== employeeRecord.id && <Avatar className="h-8 w-8 border-2 border-foreground"><AvatarFallback>D</AvatarFallback></Avatar>}
                                     <div className={cn(
                                         'max-w-[90%] p-3 rounded-lg',
-                                        message.senderId === employeeRecord.id ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                                        message.senderId === employeeRecord.id ? 'bg-primary/50 text-black' : 'bg-muted'
                                     )}>
                                         <p className="whitespace-pre-wrap break-words">{message.text}</p>
                                         {message.timestamp && (
