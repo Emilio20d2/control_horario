@@ -68,7 +68,7 @@ interface CellAbsenceInfo {
 }
 
 export default function CalendarPage() {
-  const { employees, holidayReports, absenceTypes, loading, getActiveEmployeesForDate, holidays, refreshData } = useDataProvider();
+  const { employees, holidayReports, absenceTypes, loading, getActiveEmployeesForDate, holidays, refreshData, getEmployeeBalancesForWeek, getTheoreticalHoursAndTurn } = useDataProvider();
   const { reauthenticateWithPassword } = useAuth();
   const { toast } = useToast();
   
@@ -111,6 +111,8 @@ export default function CalendarPage() {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekId = format(weekStart, 'yyyy-MM-dd');
     const activeEmployeesForWeek = getActiveEmployeesForDate(currentDate);
+    const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
+    const recoveryType = absenceTypes.find(at => at.name === 'Recuperación de Horas');
 
     const substitutesMap: Record<string, string> = {};
     holidayReports.forEach((report: HolidayReport) => {
@@ -126,7 +128,10 @@ export default function CalendarPage() {
         };
         
         let hasAbsenceInWeek = false;
+        let isPartialVacationWeek = false;
+        let workDaysInVacationWeek = 0;
 
+        // First pass: find real absences
         weekDays.forEach(day => {
             const dayKey = format(day, 'yyyy-MM-dd');
             let foundAbsence: ScheduledAbsence | null = null;
@@ -148,6 +153,9 @@ export default function CalendarPage() {
 
             if (foundAbsence && foundPeriodId) {
                 hasAbsenceInWeek = true;
+                if (vacationType && foundAbsence.absenceTypeId === vacationType.id) {
+                    isPartialVacationWeek = true;
+                }
                 const absenceType = absenceTypes.find(at => at.id === foundAbsence!.absenceTypeId);
                 if (absenceType) {
                     info.dayAbsences[dayKey] = {
@@ -162,8 +170,67 @@ export default function CalendarPage() {
                 }
             } else {
                 info.dayAbsences[dayKey] = null;
+                const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(employee.id, day);
+                const dayTheoretical = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
+                if (dayTheoretical && dayTheoretical.theoreticalHours > 0) {
+                    workDaysInVacationWeek++;
+                }
             }
         });
+        
+        // Second pass: auto-fill with recovery hours if applicable
+        if (isPartialVacationWeek && workDaysInVacationWeek > 0 && recoveryType) {
+            const balances = getEmployeeBalancesForWeek(employee.id, weekId);
+            const totalBalance = balances.total;
+            
+            if (totalBalance > 0) {
+                let availableHolidayHours = balances.holiday;
+                let availableLeaveHours = balances.leave;
+
+                weekDays.forEach(day => {
+                    const dayKey = format(day, 'yyyy-MM-dd');
+                    const dayIsHoliday = holidays.some(h => isSameDay(h.date, day));
+
+                    if (!info.dayAbsences[dayKey] && !dayIsHoliday) {
+                        const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(employee.id, day);
+                        const dayTheoretical = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
+                        
+                        if (dayTheoretical && dayTheoretical.theoreticalHours > 0) {
+                            const neededHours = dayTheoretical.theoreticalHours;
+                            let usedHours = 0;
+
+                             if (availableHolidayHours > 0) {
+                                const hoursToUse = Math.min(neededHours - usedHours, availableHolidayHours);
+                                if (hoursToUse > 0) {
+                                    usedHours += hoursToUse;
+                                    availableHolidayHours -= hoursToUse;
+                                }
+                            }
+
+                            if (usedHours < neededHours && availableLeaveHours > 0) {
+                                const hoursToUse = Math.min(neededHours - usedHours, availableLeaveHours);
+                                if (hoursToUse > 0) {
+                                    usedHours += hoursToUse;
+                                    availableLeaveHours -= hoursToUse;
+                                }
+                            }
+                            
+                            if (usedHours > 0) {
+                                const mockAbsence: ScheduledAbsence = { id: `auto_${dayKey}`, absenceTypeId: recoveryType.id, startDate: day, endDate: day, isDefinitive: true };
+                                info.dayAbsences[dayKey] = {
+                                    employee,
+                                    absence: mockAbsence,
+                                    absenceType: recoveryType,
+                                    periodId: employee.employmentPeriods[0]?.id || ''
+                                };
+                                hasAbsenceInWeek = true;
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
 
         return hasAbsenceInWeek ? info : null;
     }).filter((item): item is { employee: Employee; dayAbsences: Record<string, CellAbsenceInfo | null> } => item !== null)
@@ -171,7 +238,7 @@ export default function CalendarPage() {
 
     return employeesWithAbsences;
 
-  }, [loading, currentDate, getActiveEmployeesForDate, holidayReports, absenceTypes, weekDays, safeParseDate]);
+  }, [loading, currentDate, getActiveEmployeesForDate, holidayReports, absenceTypes, weekDays, safeParseDate, getEmployeeBalancesForWeek, getTheoreticalHoursAndTurn, holidays]);
   
   const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
   const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
@@ -425,13 +492,14 @@ export default function CalendarPage() {
                                                 onClick={() => cellInfo && handleOpenDetails(cellInfo)}
                                                 className={cn(
                                                     "text-center p-2 align-middle", 
-                                                    cellInfo && "bg-destructive/10 cursor-pointer hover:bg-destructive/20", 
+                                                    cellInfo && "cursor-pointer hover:bg-muted",
                                                     holiday && !cellInfo && 'bg-blue-50/50'
                                                 )}
+                                                style={{ backgroundColor: cellInfo ? `${cellInfo.absenceType.color}40` : undefined }}
                                             >
                                                 {cellInfo ? (
                                                     <div className="flex flex-col items-center justify-center gap-1">
-                                                        <div className="flex items-center gap-1 text-destructive">
+                                                        <div className="flex items-center gap-1">
                                                             <User className="h-4 w-4" />
                                                             <span className="font-bold text-sm">{cellInfo.absenceType.abbreviation}</span>
                                                         </div>
