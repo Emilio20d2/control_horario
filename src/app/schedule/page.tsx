@@ -37,6 +37,17 @@ export default function SchedulePage() {
     const [processedAnnualViewData, setProcessedAnnualViewData] = useState<Record<string, DailyEmployeeData | null>>({});
     const [completionInfo, setCompletionInfo] = useState<{ weekId: string; nextWeekId: string | null } | null>(null);
 
+    const availableYears = useMemo(() => {
+        if (!weeklyRecords) return [new Date().getFullYear()];
+        const years = new Set(Object.keys(weeklyRecords).map(id => getISOWeekYear(parseISO(id))));
+        const currentYear = new Date().getFullYear();
+        if (!years.has(currentYear)) {
+            years.add(currentYear);
+        }
+        // Add next year for future reports
+        years.add(currentYear + 1);
+        return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
+    }, [weeklyRecords]);
     
     const isEmployeeActiveForWeek = useCallback((employee: Employee, weekStartDate: Date): boolean => {
         const weekStart = startOfDay(weekStartDate);
@@ -341,7 +352,14 @@ export default function SchedulePage() {
                         {activeEmployeesForDropdown.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
-                {selectedEmployeeId !== 'all' && <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}><SelectTrigger className="w-full sm:w-[120px] h-9"><SelectValue /></SelectTrigger><SelectContent>{Array.from({length:5},(_,i)=>getYear(new Date())-2+i).filter(y => y >= 2025).map(y=><SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent></Select>}
+                {selectedEmployeeId !== 'all' && (
+                  <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+                      <SelectTrigger className="w-full sm:w-[120px] h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                          {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                      </SelectContent>
+                  </Select>
+                )}
             </div>
         </div>
         {selectedEmployeeId === 'all' ? renderWeeklyView() : renderAnnualView()}
@@ -349,5 +367,7 @@ export default function SchedulePage() {
     </>
   );
 }
+
+    
 
     
