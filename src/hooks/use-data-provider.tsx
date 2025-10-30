@@ -532,7 +532,7 @@ useEffect(() => {
         }
     }
     
-    details.sort((a, b) => a.weekId.localeCompare(b.id));
+    details.sort((a, b) => a.weekId.localeCompare(b.weekId));
     setUnconfirmedWeeksDetails(details);
 
 }, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
@@ -1124,31 +1124,37 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 
         if (weekHasVacations) {
             const balances = getEmployeeBalancesForWeek(emp.id, weekId);
+            const totalBalance = balances.ordinary + balances.holiday + balances.leave;
             let availableHolidayHours = balances.holiday;
             let availableLeaveHours = balances.leave;
-            const hourRecoveryType = absenceTypes.find(at => at.name === 'Recuperación de Horas');
-            if (hourRecoveryType) {
-                 for (const day of weekDays) {
-                    const dayKey = format(day, 'yyyy-MM-dd');
-                    const dayData = newDays[dayKey];
-                    if (dayData.absence === 'ninguna' && dayData.theoreticalHours > 0 && !dayData.isHoliday) {
-                        const neededHours = dayData.theoreticalHours;
-                        let usedHours = 0;
 
-                        if (availableHolidayHours > 0) {
-                            const hoursToUse = Math.min(neededHours, availableHolidayHours);
-                            dayData.absence = hourRecoveryType.abbreviation;
-                            dayData.absenceHours += hoursToUse;
-                            availableHolidayHours -= hoursToUse;
-                            usedHours += hoursToUse;
+            if (totalBalance > 0) {
+                const hourRecoveryType = absenceTypes.find(at => at.name === 'Recuperación de Horas');
+                if (hourRecoveryType) {
+                    for (const day of weekDays) {
+                        const dayKey = format(day, 'yyyy-MM-dd');
+                        const dayData = newDays[dayKey];
+                        if (dayData.absence === 'ninguna' && dayData.theoreticalHours > 0 && !dayData.isHoliday) {
+                            const neededHours = dayData.theoreticalHours;
+                            if (neededHours > 0 && totalBalance > neededHours) {
+                                let usedHours = 0;
+
+                                if (availableHolidayHours > 0) {
+                                    const hoursToUse = Math.min(neededHours, availableHolidayHours);
+                                    dayData.absence = hourRecoveryType.abbreviation;
+                                    dayData.absenceHours += hoursToUse;
+                                    availableHolidayHours -= hoursToUse;
+                                    usedHours += hoursToUse;
+                                }
+                                if (usedHours < neededHours && availableLeaveHours > 0) {
+                                    const hoursToUse = Math.min(neededHours - usedHours, availableLeaveHours);
+                                    dayData.absence = hourRecoveryType.abbreviation;
+                                    dayData.absenceHours += hoursToUse;
+                                    availableLeaveHours -= hoursToUse;
+                                }
+                                dayData.workedHours = dayData.theoreticalHours - dayData.absenceHours;
+                            }
                         }
-                        if (usedHours < neededHours && availableLeaveHours > 0) {
-                             const hoursToUse = Math.min(neededHours - usedHours, availableLeaveHours);
-                             dayData.absence = hourRecoveryType.abbreviation;
-                             dayData.absenceHours += hoursToUse;
-                             availableLeaveHours -= hoursToUse;
-                        }
-                        dayData.workedHours = dayData.theoreticalHours - dayData.absenceHours;
                     }
                 }
             }
@@ -1294,6 +1300,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
