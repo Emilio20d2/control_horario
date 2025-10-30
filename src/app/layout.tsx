@@ -1,4 +1,3 @@
-
 'use client';
 
 import './globals.css';
@@ -7,8 +6,6 @@ import { Toaster } from '@/components/ui/toaster';
 import { AppProviders } from '@/components/layout/app-providers';
 import { Inter, Space_Grotesk } from 'next/font/google';
 import { cn } from '@/lib/utils';
-import { AppLayout } from '@/components/layout/app-layout';
-import { useAuth } from '@/hooks/useAuth';
 
 const fontBody = Inter({
   subsets: ['latin'],
@@ -20,20 +17,6 @@ const fontHeadline = Space_Grotesk({
   variable: '--font-headline',
 });
 
-function LayoutWrapper({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    // AppStateController in AppProviders will show the main loading screen
-    return null; 
-  }
-
-  if (!user) {
-    return <>{children}</>;
-  }
-
-  return <AppLayout>{children}</AppLayout>;
-}
 
 export default function RootLayout({
   children,
@@ -59,9 +42,7 @@ export default function RootLayout({
       </head>
       <body className={cn('antialiased font-body', fontBody.variable, fontHeadline.variable)}>
         <AppProviders>
-            <LayoutWrapper>
-              {children}
-            </LayoutWrapper>
+            {children}
         </AppProviders>
         <Toaster />
       </body>

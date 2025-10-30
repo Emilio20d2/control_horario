@@ -4,9 +4,10 @@
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { DataProvider, useDataProvider } from "@/hooks/use-data-provider";
 import { ReactNode } from "react";
+import { AppLayout } from "./app-layout";
 
 function AppStateController({ children }: { children: ReactNode }) {
-    const { user, loading: authLoading, appUser } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const { loading: dataLoading } = useDataProvider();
 
     // While auth is resolving (user and appUser), show a spinner. This is the very first check.
@@ -24,7 +25,7 @@ function AppStateController({ children }: { children: ReactNode }) {
     }
     
     // If there's no user after auth check, it's a public page like /login.
-    // Let it render immediately.
+    // Render the content directly without the main layout.
     if (!user) {
         return <>{children}</>;
     }
@@ -44,7 +45,7 @@ function AppStateController({ children }: { children: ReactNode }) {
     }
     
     // Once everything is loaded, render the full app layout and content.
-    return <>{children}</>;
+    return <AppLayout>{children}</AppLayout>;
 }
 
 
