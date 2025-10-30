@@ -559,7 +559,7 @@ Gracias.`;
                     {otherRequestStep === 1 ? (
                         <div className="py-4 space-y-6">
                             <div className="space-y-4">
-                                <Label className="font-semibold">Antes de hacer una petición, ¿has tenido que comunicarlo a la dirección de la tienda?</Label>
+                                <Label className="font-semibold">Antes de hacer una petición, has tenido que comunicarlo a la dirección de la tienda. Indica a quien se lo has comunicado sino lo has hecho antes no puedes comunicarlo por este medio.</Label>
                                 <RadioGroup onValueChange={setCommunicatedTo} value={communicatedTo}>
                                     <div className="flex items-center space-x-2">
                                         <RadioGroupItem value="Arantxa Villacampa" id="r1" />
