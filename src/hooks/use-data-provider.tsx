@@ -306,7 +306,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setupSubscription<Holiday>('holidays', setHolidays, data => data.map(h => ({ ...h, date: safeParseDate(h.date) as Date })).sort((a,b) => (a.date as Date).getTime() - (b.date as Date).getTime())),
         setupSubscription<ContractType>('contractTypes', setContractTypes),
         setupSubscription<AnnualConfiguration>('annualConfigurations', setAnnualConfigs, data => data.sort((a,b) => a.year - b.year)),
-        setupSubscription<WeeklyRecord>('weeklyRecords', (data) => setWeeklyRecords(data.reduce((acc, record) => ({ ...acc, [record.id]: record }), {})),
+        setupSubscription<WeeklyRecord>('weeklyRecords', (data) => setWeeklyRecords(data.reduce((acc, record) => ({ ...acc, [record.id]: record }), {}))),
         setupSubscription<AppUser>('users', setUsers),
         setupSubscription<HolidayEmployee>('holidayEmployees', setHolidayEmployees, data => data.sort((a,b) => a.name.localeCompare(b.name))),
         setupSubscription<HolidayReport>('holidayReports', setHolidayReports),
@@ -1078,15 +1078,11 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const dayOfWeek = getISODay(dayDate);
             const holidayDetails = holidays.find(h => isSameDay(h.date, dayDate));
     
-            // Look for a definitive absence first, then any other scheduled absence.
-            let absence = (activePeriod.scheduledAbsences || []).find(a =>
-                a.isDefinitive && a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
+            // Find any scheduled absence for the day.
+            const absence = (activePeriod.scheduledAbsences || []).find(a =>
+                a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
             );
-            if (!absence) {
-                absence = (activePeriod.scheduledAbsences || []).find(a =>
-                    a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
-                );
-            }
+
             const absenceType = absence ? absenceTypes.find(at => at.id === absence.absenceTypeId) : undefined;
 
             let absenceAbbreviation = 'ninguna';
@@ -1272,3 +1268,4 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
