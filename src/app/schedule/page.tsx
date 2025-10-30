@@ -66,7 +66,6 @@ export default function SchedulePage() {
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
     const [selectedYear, setSelectedYear] = useState(2025);
     const [processedWeeklyViewData, setProcessedWeeklyViewData] = useState<Record<string, DailyEmployeeData | null>>({});
-    const [processedAnnualViewData, setProcessedAnnualViewData] = useState<Record<string, DailyEmployeeData | null>>({});
     const [completionInfo, setCompletionInfo] = useState<{ weekId: string; nextWeekId: string | null } | null>(null);
 
     
@@ -124,53 +123,6 @@ export default function SchedulePage() {
 
     }, [loading, weekId, selectedEmployeeId, processEmployeeWeekData, weekDays, activeEmployeesForSchedule, employees]);
     
-    // Data processor for ANNUAL view (single employee)
-    useEffect(() => {
-        if (loading || selectedEmployeeId === 'all') return;
-        
-        const employee = employees.find(e => e.id === selectedEmployeeId);
-        if (!employee) return;
-        
-        let weeksOfYear = [];
-        if (selectedYear === 2025) {
-            // Hardcoded start for 2025
-            const start2025 = new Date('2024-12-30');
-            const end2025 = endOfWeek(new Date('2025-12-28'));
-            let current = start2025;
-            while (current <= end2025) {
-                weeksOfYear.push(current);
-                current = addWeeks(current, 1);
-            }
-        } else {
-            let firstMondayOfYear = startOfWeek(new Date(selectedYear, 0, 4), { weekStartsOn: 1 });
-            if (getISOWeek(firstMondayOfYear) > 1) {
-                firstMondayOfYear = subWeeks(firstMondayOfYear, 1);
-            }
-            weeksOfYear = Array.from({ length: 53 }).map((_, i) => addWeeks(firstMondayOfYear, i))
-                .filter(d => {
-                    const yearOfWeek = getISOWeekYear(d);
-                    return yearOfWeek === selectedYear;
-                });
-        }
-
-
-        const newProcessedData: Record<string, DailyEmployeeData | null> = {};
-        
-        for (const weekStartDate of weeksOfYear) {
-            const currentWeekId = getWeekId(weekStartDate);
-            
-             if (isEmployeeActiveForWeek(employee, weekStartDate)) {
-                const currentWeekDays = eachDayOfInterval({ start: weekStartDate, end: endOfWeek(weekStartDate, { weekStartsOn: 1 }) });
-                const empData = processEmployeeWeekData(employee, currentWeekDays, currentWeekId);
-                if (empData) {
-                    newProcessedData[currentWeekId] = empData;
-                }
-             }
-        }
-        setProcessedAnnualViewData(newProcessedData);
-        
-    }, [loading, selectedEmployeeId, selectedYear, employees, processEmployeeWeekData, getWeekId, isEmployeeActiveForWeek]);
-
     const pendingRequestsForWeek = useMemo(() => {
         return correctionRequests.filter(r => r.weekId === weekId && r.status === 'pending');
     }, [correctionRequests, weekId]);
@@ -214,7 +166,7 @@ export default function SchedulePage() {
         const employee = employees.find(e => e.id === selectedEmployeeId);
         if (!employee) return <div className="text-center p-8">Empleado no encontrado.</div>;
     
-        let weeksOfYear = [];
+        let weeksOfYear: Date[] = [];
         if (selectedYear === 2025) {
             // Hardcoded start for 2025
             const start2025 = new Date('2024-12-30');
@@ -250,7 +202,7 @@ export default function SchedulePage() {
                                 if (!isEmployeeActiveForWeek(employee, weekStartDate)) return null;
                                 
                                 const currentWeekDays = eachDayOfInterval({ start: weekStartDate, end: endOfWeek(weekStartDate, { weekStartsOn: 1 }) });
-                                const initialWeekData = processedAnnualViewData[currentWeekId];
+                                const initialWeekData = processEmployeeWeekData(employee, currentWeekDays, currentWeekId);
                                 
                                 if (!initialWeekData) {
                                     return <TableRow key={currentWeekId}><TableCell colSpan={8} className="p-0"><Skeleton className="h-48 w-full rounded-none" /></TableCell></TableRow>;
