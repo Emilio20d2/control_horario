@@ -8,7 +8,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { User, Wallet, Gift, Briefcase, Scale, HelpCircle, FileQuestion, PlaneTakeoff, MessageSquareWarning, Smartphone, Info } from 'lucide-react';
+import { User, Wallet, Gift, Briefcase, Scale, HelpCircle, FileQuestion, PlaneTakeoff, MessageSquareWarning, Smartphone, Info, CalendarClock } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
@@ -105,7 +105,7 @@ export default function HelpPage() {
               <div className="flex items-start gap-3">
                 <PlaneTakeoff className="h-5 w-5 mt-1 text-muted-foreground" />
                 <div>
-                  <h4 className="font-semibold">¿Cómo solicito mis vacaciones?</h4>
+                  <h4 className="font-semibold">¿Cómo solicito mis vacaciones o ausencias largas?</h4>
                    <p className="text-sm text-muted-foreground mb-2">
                     Las vacaciones y otros permisos largos se solicitan durante "campañas" o periodos específicos que abre la empresa.
                   </p>
@@ -114,6 +114,24 @@ export default function HelpPage() {
                     <li>Pulsa el botón <Badge variant="secondary">Hacer Solicitud</Badge> que aparecerá en esa pantalla.</li>
                     <li>Sigue los pasos: elige el tipo de ausencia (Vacaciones, Excedencia, etc.) y selecciona los rangos de fechas que deseas.</li>
                      <li>Confirma tu solicitud. Quedará guardada y enviada para su revisión.</li>
+                  </ol>
+                </div>
+              </div>
+               <div className="flex items-start gap-3">
+                <CalendarClock className="h-5 w-5 mt-1 text-muted-foreground" />
+                <div>
+                  <h4 className="font-semibold">¿Cómo pido permisos cortos (Asuntos Propios, Horas Médicas, etc.)?</h4>
+                   <p className="text-sm text-muted-foreground mb-2">
+                    Para permisos de corta duración que ya has comunicado verbalmente, utiliza la función de "Otras Solicitudes".
+                  </p>
+                  <ol className="list-decimal list-inside space-y-2 text-sm">
+                    <li>Ve a la página <Badge variant="outline">Mis Mensajes</Badge>.</li>
+                    <li>Pulsa el botón <Badge variant="secondary">Otras Solicitudes</Badge> en la esquina superior derecha.</li>
+                    <li>Primero, confirma a quién de la dirección se lo has comunicado.</li>
+                    <li>Selecciona el tipo de permiso (Asuntos Propios, Horas Médicas, etc.).</li>
+                    <li>Elige el/los día(s) en el calendario.</li>
+                    <li>Añade el motivo o justificación (y la hora si es una consulta médica).</li>
+                    <li>Envía la solicitud para que quede registrada.</li>
                   </ol>
                 </div>
               </div>
