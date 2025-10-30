@@ -153,10 +153,7 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
         }
 
         const recordIndex = targetPeriod.workHoursHistory.findIndex(
-            record => {
-                const recordDateStr = typeof record.effectiveDate === 'string' ? record.effectiveDate : format(record.effectiveDate, 'yyyy-MM-dd');
-                return recordDateStr === newRecord.effectiveDate;
-            }
+            record => record.effectiveDate === newRecord.effectiveDate
         );
 
         if (recordIndex > -1) {
@@ -165,11 +162,7 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
             targetPeriod.workHoursHistory.push(newRecord);
         }
         
-        targetPeriod.workHoursHistory.sort((a, b) => {
-            const dateA = a.effectiveDate instanceof Date ? a.effectiveDate : parseISO(a.effectiveDate as string);
-            const dateB = b.effectiveDate instanceof Date ? b.effectiveDate : parseISO(b.effectiveDate as string);
-            return dateA.getTime() - dateB.getTime();
-        });
+        targetPeriod.workHoursHistory.sort((a, b) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
     }
 
     // This handles both updating the current schedule and adding a new one.
@@ -280,19 +273,24 @@ export const updateEmployeeWorkHours = async (
     weeklyHours: number,
     effectiveDate: string
 ): Promise<void> => {
-    const currentPeriod = currentEmployee.employmentPeriods.find(p => !p.endDate);
+    const employeeDataCopy = JSON.parse(JSON.stringify(currentEmployee));
+    const currentPeriod = employeeDataCopy.employmentPeriods.find((p: EmploymentPeriod) => !p.endDate);
+    
     if (!currentPeriod) {
         throw new Error("No se encontró un periodo laboral activo para el empleado.");
     }
 
-    const newRecord: WorkHoursRecord = { effectiveDate, weeklyHours };
+    const newRecord: WorkHoursRecord = { 
+        effectiveDate: format(parseISO(effectiveDate), 'yyyy-MM-dd'),
+        weeklyHours
+    };
 
     if (!currentPeriod.workHoursHistory) {
         currentPeriod.workHoursHistory = [];
     }
 
     const recordIndex = currentPeriod.workHoursHistory.findIndex(
-        record => (record.effectiveDate instanceof Date ? format(record.effectiveDate, 'yyyy-MM-dd') : record.effectiveDate) === newRecord.effectiveDate
+        (record: WorkHoursRecord) => record.effectiveDate === newRecord.effectiveDate
     );
 
     if (recordIndex !== -1) {
@@ -301,10 +299,10 @@ export const updateEmployeeWorkHours = async (
         currentPeriod.workHoursHistory.push(newRecord);
     }
     
-    currentPeriod.workHoursHistory.sort((a, b) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
+    currentPeriod.workHoursHistory.sort((a: WorkHoursRecord, b: WorkHoursRecord) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
 
     const updatedEmployeeData = {
-        employmentPeriods: currentEmployee.employmentPeriods,
+        employmentPeriods: employeeDataCopy.employmentPeriods,
     };
     
     await updateDocument('employees', employeeId, updatedEmployeeData);

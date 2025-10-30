@@ -146,13 +146,13 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         });
     }, []);
 
-    const syncVacationsWithScheduledAbsences = async () => {
-        if (!initialWeekData || !localWeekData || !employee) return;
+    const syncVacationsWithScheduledAbsences = async (): Promise<Employee> => {
+        if (!initialWeekData || !localWeekData || !employee) return employee;
     
         const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
-        if (!vacationType) return;
+        if (!vacationType) return employee;
     
-        const updatedPeriods: EmploymentPeriod[] = JSON.parse(JSON.stringify(employee.employmentPeriods));
+        const employeeCopy = JSON.parse(JSON.stringify(employee));
         let hasChanges = false;
     
         for (const day of weekDays) {
@@ -165,7 +165,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
     
             if (wasVacation === isNowVacation) continue;
     
-            const activePeriod = updatedPeriods.find(p => {
+            const activePeriod = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => {
                 const pStart = startOfDay(parseISO(p.startDate as string));
                 const pEnd = p.endDate ? startOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
                 return !isAfter(pStart, day) && isAfter(pEnd, day);
@@ -174,35 +174,31 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
     
             hasChanges = true;
     
-            if (isNowVacation) { // Added vacation
-                 if (!activePeriod.scheduledAbsences) activePeriod.scheduledAbsences = [];
-                 const newAbsence = {
+            if (isNowVacation) {
+                if (!activePeriod.scheduledAbsences) activePeriod.scheduledAbsences = [];
+                const newAbsence = {
                     id: `abs_${Date.now()}_${Math.random()}`,
                     absenceTypeId: vacationType.id,
                     startDate: format(day, 'yyyy-MM-dd'),
                     endDate: format(day, 'yyyy-MM-dd'),
                     isDefinitive: true,
                 };
-                activePeriod.scheduledAbsences.push(newAbsence as any);
-
-            } else { // Removed vacation
-                const absenceIndex = activePeriod.scheduledAbsences?.findIndex(a =>
+                activePeriod.scheduledAbsences.push(newAbsence);
+            } else {
+                const absenceIndex = activePeriod.scheduledAbsences.findIndex((a: ScheduledAbsence) =>
                     a.absenceTypeId === vacationType.id &&
                     !isAfter(startOfDay(parseISO(a.startDate as string)), startOfDay(day)) &&
                     a.endDate && !isBefore(startOfDay(parseISO(a.endDate as string)), startOfDay(day))
                 );
     
-                if (absenceIndex !== undefined && absenceIndex > -1 && activePeriod.scheduledAbsences) {
+                if (absenceIndex > -1) {
                     const absenceToRemove = activePeriod.scheduledAbsences[absenceIndex];
-    
                     const originalStartDate = startOfDay(parseISO(absenceToRemove.startDate as string));
                     const originalEndDate = startOfDay(parseISO(absenceToRemove.endDate as string));
                     const dayToRemove = startOfDay(day);
     
-                    // Remove the old absence from the local copy
                     activePeriod.scheduledAbsences.splice(absenceIndex, 1);
     
-                    // Re-add the parts of the absence that were not removed
                     if (isAfter(dayToRemove, originalStartDate)) {
                         activePeriod.scheduledAbsences.push({ ...absenceToRemove, endDate: format(subDays(dayToRemove, 1), 'yyyy-MM-dd') });
                     }
@@ -214,21 +210,19 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         }
     
         if (hasChanges) {
-             // Merge overlapping/adjacent intervals in the local copy
-             updatedPeriods.forEach(p => {
+            employeeCopy.employmentPeriods.forEach((p: EmploymentPeriod) => {
                 if (p.scheduledAbsences) {
-                    p.scheduledAbsences.sort((a,b) => parseISO(a.startDate as string).getTime() - parseISO(b.startDate as string).getTime());
+                    p.scheduledAbsences.sort((a: ScheduledAbsence, b: ScheduledAbsence) => parseISO(a.startDate as string).getTime() - parseISO(b.startDate as string).getTime());
                     const merged: ScheduledAbsence[] = [];
-                    for(const abs of p.scheduledAbsences) {
+                    for (const abs of p.scheduledAbsences) {
                         const absStartDate = parseISO(abs.startDate as string);
                         const absEndDate = abs.endDate ? parseISO(abs.endDate as string) : null;
-                        if (merged.length > 0 && 
-                            merged[merged.length - 1].absenceTypeId === abs.absenceTypeId && 
-                            absEndDate && merged[merged.length-1].endDate &&
-                            isValid(parseISO(merged[merged.length-1].endDate as string)) &&
-                            isSameDay(addDays(parseISO(merged[merged.length-1].endDate as string), 1), absStartDate)) {
-                            
-                            merged[merged.length-1].endDate = abs.endDate;
+                        if (merged.length > 0 &&
+                            merged[merged.length - 1].absenceTypeId === abs.absenceTypeId &&
+                            absEndDate && merged[merged.length - 1].endDate &&
+                            isValid(parseISO(merged[merged.length - 1].endDate as string)) &&
+                            isSameDay(addDays(parseISO(merged[merged.length - 1].endDate as string), 1), absStartDate)) {
+                            merged[merged.length - 1].endDate = abs.endDate;
                         } else {
                             merged.push(abs);
                         }
@@ -236,37 +230,36 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     p.scheduledAbsences = merged;
                 }
             });
-            // Update the employee document in Firestore with the modified periods
-            await updateDocument('employees', employee.id, { employmentPeriods: updatedPeriods });
         }
+        return employeeCopy;
     };
+
 
     const handleConfirm = async () => {
         if (!localWeekData || !employee || !preview || !initialBalances) return;
         setIsSaving(true);
-    
+
         try {
-            await syncVacationsWithScheduledAbsences();
+            const updatedEmployeeData = await syncVacationsWithScheduledAbsences();
 
             const activePeriod = getActivePeriod(employee.id, weekDays[0]);
             if (!activePeriod) throw new Error("No active period found");
-    
-            const currentDbHours = [...(activePeriod.workHoursHistory || [])].sort((a, b) => (parseISO(b.effectiveDate as string)).getTime() - (parseISO(a.effectiveDate as string)).getTime())[0]?.weeklyHours;
+            
+            const currentDbHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
             const formHours = localWeekData.weeklyHoursOverride ?? currentDbHours ?? 0;
-    
+            
             if (formHours !== currentDbHours && localWeekData.weeklyHoursOverride !== null) {
-                await updateEmployeeWorkHours(employee.id, formHours, format(weekDays[0], 'yyyy-MM-dd'));
+                await updateEmployeeWorkHours(employee.id, updatedEmployeeData, formHours, format(weekDays[0], 'yyyy-MM-dd'));
                 toast({ title: `Jornada Actualizada para ${employee.name}`, description: `Nueva jornada: ${formHours}h/semana.` });
             }
-            
+
             const currentComment = String(localWeekData.generalComment || '');
             const auditEndDate = new Date('2025-09-08');
-
             let finalComment = currentComment;
 
             if (isAfter(weekDays[0], auditEndDate) && preview.isDifference) {
                 const diffs: string[] = [];
-                 const expected = {
+                const expected = {
                     ordinary: localWeekData.expectedOrdinaryImpact ?? 0,
                     holiday: localWeekData.expectedHolidayImpact ?? 0,
                     leave: localWeekData.expectedLeaveImpact ?? 0,
@@ -291,34 +284,29 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 isDifference: localWeekData.isDifference ?? false,
             };
 
-            const sanitizedDays: Record<string, DailyData> = {};
-            Object.keys(dataToSave.days).forEach(dayKey => {
+            const sanitizedDays: { [key: string]: DailyData } = {};
+            for (const dayKey in dataToSave.days) {
                 const dayData = dataToSave.days[dayKey];
                 sanitizedDays[dayKey] = {
                     ...dayData,
-                    holidayType: dayData.holidayType ?? null,
-                    doublePay: dayData.doublePay ?? false,
+                    holidayType: dayData.holidayType === undefined ? null : dayData.holidayType,
+                    doublePay: dayData.doublePay === undefined ? false : dayData.doublePay,
                 };
-            });
+            }
             dataToSave.days = sanitizedDays;
-
 
             await setDoc(doc(db, 'weeklyRecords', weekId), { weekData: { [employee.id]: dataToSave } }, { merge: true });
             toast({ title: `Semana Confirmada para ${employee.name}` });
 
-            // Check if all employees for this week are now confirmed
             const activeEmployeesForWeek = getActiveEmployeesForDate(weekDays[0]);
             const updatedWeekRecord = await getDoc(doc(db, 'weeklyRecords', weekId));
             const updatedWeekData = updatedWeekRecord.data()?.weekData;
 
-            const allConfirmed = activeEmployeesForWeek.every(emp => 
-                updatedWeekData?.[emp.id]?.confirmed
-            );
+            const allConfirmed = activeEmployeesForWeek.every(emp => updatedWeekData?.[emp.id]?.confirmed);
 
             if (allConfirmed) {
                 onWeekCompleted(weekId);
             }
-    
         } catch (error) {
             console.error(error);
             toast({ title: 'Error al confirmar', description: error instanceof Error ? error.message : "Error desconocido.", variant: 'destructive' });
