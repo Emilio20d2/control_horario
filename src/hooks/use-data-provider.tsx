@@ -1,5 +1,4 @@
 
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -135,6 +134,7 @@ deleteContractType: (id: string) => Promise<void>;
   updateVacationCampaign: (id: string, data: Partial<Omit<VacationCampaign, 'id'>>) => Promise<void>;
   deleteVacationCampaign: (id: string) => Promise<void>;
   findNextUnconfirmedWeek: (startDate: Date) => string | null;
+  availableYears: number[];
 }
 
 const DataContext = createContext<DataContextType>({
@@ -201,6 +201,7 @@ deleteContractType: async () => {},
   updateVacationCampaign: async (id: string, data: Partial<Omit<VacationCampaign, 'id'>>) => {},
   deleteVacationCampaign: async (id: string) => {},
   findNextUnconfirmedWeek: () => null,
+  availableYears: [],
 });
 
 const roundToNearestQuarter = (num: number) => {
@@ -531,7 +532,7 @@ useEffect(() => {
         }
     }
     
-    details.sort((a, b) => a.weekId.localeCompare(b.weekId));
+    details.sort((a, b) => a.weekId.localeCompare(b.id));
     setUnconfirmedWeeksDetails(details);
 
 }, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
@@ -1177,6 +1178,16 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     
         return null;
     };
+  
+    const availableYears = useMemo(() => {
+        if (!weeklyRecords) return [new Date().getFullYear()];
+        const years = new Set(Object.keys(weeklyRecords).map(id => getISOWeekYear(parseISO(id))));
+        const currentYear = new Date().getFullYear();
+        years.add(currentYear);
+        years.add(currentYear + 1);
+        years.add(currentYear + 2);
+        return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
+    }, [weeklyRecords]);
 
   const value: DataContextType = {
     employees,
@@ -1242,6 +1253,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     updateVacationCampaign,
     deleteVacationCampaign,
     findNextUnconfirmedWeek,
+    availableYears,
   };
 
   return (
@@ -1260,6 +1272,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 

@@ -28,6 +28,7 @@ export default function SchedulePage() {
         getActiveEmployeesForDate,
         findNextUnconfirmedWeek,
         correctionRequests,
+        availableYears,
     } = useDataProvider();
     
     const getInitialDate = useCallback(() => {
@@ -68,17 +69,6 @@ export default function SchedulePage() {
     const [processedAnnualViewData, setProcessedAnnualViewData] = useState<Record<string, DailyEmployeeData | null>>({});
     const [completionInfo, setCompletionInfo] = useState<{ weekId: string; nextWeekId: string | null } | null>(null);
 
-    const availableYears = useMemo(() => {
-        if (!weeklyRecords) return [new Date().getFullYear()];
-        const years = new Set(Object.keys(weeklyRecords).map(id => getISOWeekYear(parseISO(id))));
-        const currentYear = new Date().getFullYear();
-        if (!years.has(currentYear)) {
-            years.add(currentYear);
-        }
-        // Add next year for future reports
-        years.add(currentYear + 1);
-        return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
-    }, [weeklyRecords]);
     
     const isEmployeeActiveForWeek = useCallback((employee: Employee, weekStartDate: Date): boolean => {
         const weekStart = startOfDay(weekStartDate);
@@ -132,7 +122,7 @@ export default function SchedulePage() {
         }
         setProcessedWeeklyViewData(newProcessedData);
 
-    }, [loading, weekId, selectedEmployeeId, processEmployeeWeekData, weekDays, activeEmployeesForSchedule]);
+    }, [loading, weekId, selectedEmployeeId, processEmployeeWeekData, weekDays, activeEmployeesForSchedule, employees]);
     
     // Data processor for ANNUAL view (single employee)
     useEffect(() => {
@@ -366,4 +356,3 @@ export default function SchedulePage() {
     </>
   );
 }
-
