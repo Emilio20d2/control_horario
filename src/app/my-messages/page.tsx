@@ -49,7 +49,8 @@ export default function MyMessagesPage() {
     const [otherRequestAbsenceTypeId, setOtherRequestAbsenceTypeId] = useState('');
     const [otherRequestMultipleDates, setOtherRequestMultipleDates] = useState<Date[]>([]);
     const [otherRequestNotes, setOtherRequestNotes] = useState('');
-    const [medicalAppointmentTime, setMedicalAppointmentTime] = useState('');
+    const [appointmentHour, setAppointmentHour] = useState<string | null>(null);
+    const [appointmentMinute, setAppointmentMinute] = useState<string | null>(null);
     const [isSubmittingOtherRequest, setIsSubmittingOtherRequest] = useState(false);
     const [seniorHoursTotal, setSeniorHoursTotal] = useState(0);
 
@@ -222,7 +223,8 @@ export default function MyMessagesPage() {
         setOtherRequestMultipleDates([]);
         setOtherRequestNotes('');
         setSeniorHoursTotal(0);
-        setMedicalAppointmentTime('');
+        setAppointmentHour(null);
+        setAppointmentMinute(null);
         setIsOtherRequestDialogOpen(true);
     }
     
@@ -292,6 +294,7 @@ Gracias.`;
             return;
         }
 
+        const medicalAppointmentTime = appointmentHour && appointmentMinute ? `${appointmentHour}:${appointmentMinute}` : '';
         if (selectedAbsenceType?.abbreviation === 'HM' && !medicalAppointmentTime) {
             toast({ title: 'Hora requerida', description: 'Por favor, especifica la hora de la consulta médica.', variant: 'destructive' });
             return;
@@ -369,6 +372,7 @@ Gracias.`;
     
     const isSubmitOtherRequestDisabled = useMemo(() => {
         const selectedAbsenceType = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId);
+        const medicalAppointmentTime = appointmentHour && appointmentMinute ? `${appointmentHour}:${appointmentMinute}` : '';
 
         if (isSubmittingOtherRequest || !otherRequestAbsenceTypeId || !communicatedTo || otherRequestMultipleDates.length === 0) {
             return true;
@@ -391,7 +395,8 @@ Gracias.`;
         communicatedTo,
         otherRequestMultipleDates,
         otherRequestNotes,
-        medicalAppointmentTime,
+        appointmentHour,
+        appointmentMinute,
         absenceTypes
     ]);
 
@@ -594,7 +599,24 @@ Gracias.`;
                                     <Label htmlFor="appointment-time" className="text-sm font-medium">
                                         Hora de la Consulta <span className="text-destructive">*</span>
                                     </Label>
-                                    <Textarea id="appointment-time" value={medicalAppointmentTime} onChange={(e) => setMedicalAppointmentTime(e.target.value)} />
+                                    <div className="flex gap-2">
+                                        <Select value={appointmentHour || undefined} onValueChange={setAppointmentHour}>
+                                            <SelectTrigger><SelectValue placeholder="Hora" /></SelectTrigger>
+                                            <SelectContent>
+                                                {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(hour => (
+                                                    <SelectItem key={hour} value={hour}>{hour}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Select value={appointmentMinute || undefined} onValueChange={setAppointmentMinute}>
+                                            <SelectTrigger><SelectValue placeholder="Min" /></SelectTrigger>
+                                            <SelectContent>
+                                                {['00', '15', '30', '45'].map(minute => (
+                                                    <SelectItem key={minute} value={minute}>{minute}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                             )}
                             <div className="space-y-2">
