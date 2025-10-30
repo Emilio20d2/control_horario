@@ -1,17 +1,14 @@
 
 'use client';
 
-import type { Metadata } from 'next';
 import './globals.css';
 import 'react-day-picker/dist/style.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AppProviders } from '@/components/layout/app-providers';
 import { Inter, Space_Grotesk } from 'next/font/google';
 import { cn } from '@/lib/utils';
-import dynamic from 'next/dynamic';
+import { AppLayout } from '@/components/layout/app-layout';
 import { useAuth } from '@/hooks/useAuth';
-
-const AppLayout = dynamic(() => import('@/components/layout/app-layout').then(mod => mod.AppLayout), { ssr: false });
 
 const fontBody = Inter({
   subsets: ['latin'],
@@ -23,12 +20,26 @@ const fontHeadline = Space_Grotesk({
   variable: '--font-headline',
 });
 
+function LayoutWrapper({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    // AppStateController in AppProviders will show the main loading screen
+    return null; 
+  }
+
+  if (!user) {
+    return <>{children}</>;
+  }
+
+  return <AppLayout>{children}</AppLayout>;
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { user } = useAuth();
   
   return (
     <html lang="es" suppressHydrationWarning>
@@ -48,13 +59,9 @@ export default function RootLayout({
       </head>
       <body className={cn('antialiased font-body', fontBody.variable, fontHeadline.variable)}>
         <AppProviders>
-            {user ? (
-              <AppLayout>
-                {children}
-              </AppLayout>
-            ) : (
-              children
-            )}
+            <LayoutWrapper>
+              {children}
+            </LayoutWrapper>
         </AppProviders>
         <Toaster />
       </body>
