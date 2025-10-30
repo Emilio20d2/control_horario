@@ -22,8 +22,8 @@ import type {
   EmployeeGroup,
   Conversation,
   VacationCampaign,
-  ScheduledAbsence,
   CorrectionRequest,
+  ScheduledAbsence,
 } from '../types';
 import { onCollectionUpdate, getDocumentById } from '@/lib/services/firestoreService';
 import { 
@@ -292,11 +292,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
                 startDate: safeParseDate(p.startDate), 
                 endDate: safeParseDate(p.endDate), 
                 scheduledAbsences: processScheduledAbsences(p.scheduledAbsences),
-                workHoursHistory: (p.workHoursHistory || []).map(wh => ({
+                workHoursHistory: (p.workHoursHistory || []).map((wh: any) => ({
                     ...wh,
                     effectiveDate: safeParseDate(wh.effectiveDate)
                 })),
-                weeklySchedulesHistory: (p.weeklySchedulesHistory || []).map(ws => ({
+                weeklySchedulesHistory: (p.weeklySchedulesHistory || []).map((ws: any) => ({
                     ...ws,
                     effectiveDate: safeParseDate(ws.effectiveDate)
                 }))
@@ -1079,9 +1079,21 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const holidayDetails = holidays.find(h => isSameDay(h.date, dayDate));
     
             // Find any scheduled absence for the day.
-            const absence = (activePeriod.scheduledAbsences || []).find(a =>
-                a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
+            let absence: ScheduledAbsence | undefined;
+            
+            // Prioritize definitive absences if they exist
+            const definitiveAbsence = (activePeriod.scheduledAbsences || []).find(a => 
+                a.isDefinitive && a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
             );
+
+            if (definitiveAbsence) {
+                absence = definitiveAbsence;
+            } else {
+                // Fallback to any other scheduled absence
+                absence = (activePeriod.scheduledAbsences || []).find(a =>
+                    a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
+                );
+            }
 
             const absenceType = absence ? absenceTypes.find(at => at.id === absence.absenceTypeId) : undefined;
 
@@ -1155,7 +1167,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         
         return finalData;
 
-    }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, getEffectiveWeeklyHours, holidays, absenceTypes, contractTypes, prefilledRecords]);
+    }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, getEffectiveWeeklyHours, holidays, absenceTypes, contractTypes, prefilledRecords, employees]);
 
     const findNextUnconfirmedWeek = (startDate: Date): string | null => {
         const auditStartDate = startOfDay(new Date('2025-01-27'));
@@ -1268,4 +1280,5 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
