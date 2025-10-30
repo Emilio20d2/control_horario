@@ -306,14 +306,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setupSubscription<Holiday>('holidays', setHolidays, data => data.map(h => ({ ...h, date: safeParseDate(h.date) as Date })).sort((a,b) => (a.date as Date).getTime() - (b.date as Date).getTime())),
         setupSubscription<ContractType>('contractTypes', setContractTypes),
         setupSubscription<AnnualConfiguration>('annualConfigurations', setAnnualConfigs, data => data.sort((a,b) => a.year - b.year)),
-        setupSubscription<WeeklyRecord>('weeklyRecords', (data) => setWeeklyRecords(data.reduce((acc, record) => ({ ...acc, [record.id]: record }), {}))),
+        setupSubscription<WeeklyRecord>('weeklyRecords', (data) => setWeeklyRecords(data.reduce((acc, record) => ({ ...acc, [record.id]: record }), {})),
         setupSubscription<AppUser>('users', setUsers),
         setupSubscription<HolidayEmployee>('holidayEmployees', setHolidayEmployees, data => data.sort((a,b) => a.name.localeCompare(b.name))),
         setupSubscription<HolidayReport>('holidayReports', setHolidayReports),
         setupSubscription<EmployeeGroup>('employeeGroups', setEmployeeGroups, data => data.sort((a,b) => a.order - b.order)),
         setupSubscription<Conversation>('conversations', setConversations, data => data.sort((a, b) => (b.lastMessageTimestamp as any).toDate().getTime() - (a.lastMessageTimestamp as any).toDate().getTime())),
         setupSubscription<VacationCampaign>('vacationCampaigns', setVacationCampaigns, data => data.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime())),
-        setupSubscription<CorrectionRequest>('correctionRequests', setCorrectionRequests)
+        setupSubscription<CorrectionRequest>('correctionRequests', setCorrectionRequests),
     ];
 
     Promise.all(dataPromises).then(() => {
@@ -488,7 +488,6 @@ const pendingCorrectionRequestCount = useMemo(() => {
             const periodStart = startOfDay(p.startDate as Date);
             const periodEnd = p.endDate ? endOfDay(p.endDate as Date) : new Date('9999-12-31');
             
-            // Check if the period overlaps with any day of the week
             return isAfter(periodEnd, weekStart) && isBefore(periodStart, weekEnd);
         })
     );
@@ -1079,11 +1078,17 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const dayOfWeek = getISODay(dayDate);
             const holidayDetails = holidays.find(h => isSameDay(h.date, dayDate));
     
-            const definitiveAbsence = activePeriod.scheduledAbsences?.find(a =>
-                a.isDefinitive && a.endDate && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
+            // Look for a definitive absence first, then any other scheduled absence.
+            let absence = (activePeriod.scheduledAbsences || []).find(a =>
+                a.isDefinitive && a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
             );
-            const absenceType = definitiveAbsence ? absenceTypes.find(at => at.id === definitiveAbsence.absenceTypeId) : undefined;
-    
+            if (!absence) {
+                absence = (activePeriod.scheduledAbsences || []).find(a =>
+                    a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
+                );
+            }
+            const absenceType = absence ? absenceTypes.find(at => at.id === absence.absenceTypeId) : undefined;
+
             let absenceAbbreviation = 'ninguna';
             let absenceHours = 0;
             let workedHours = d.theoreticalHours;
@@ -1261,5 +1266,9 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 export const useDataProvider = () => useContext(DataContext);
 
   
+
+    
+
+    
 
     
