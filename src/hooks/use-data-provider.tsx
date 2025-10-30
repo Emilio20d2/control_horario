@@ -1063,18 +1063,18 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         if (dbRecord) {
             return dbRecord;
         }
-
+    
         // Step 2: Ensure the employee has an active contract for this week.
         const activePeriod = getActivePeriod(emp.id, weekDays[0]);
         if (!activePeriod) {
             return null;
         }
-
+    
         // Step 3: Get theoretical hours for the week based on the employee's calendar.
         const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(emp.id, weekDays[0]);
         const weeklyWorkHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
         const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
-
+    
         // Step 4: Build the daily data from scratch.
         const newDays: Record<string, DailyData> = {};
         for (const day of weekDays) {
@@ -1083,7 +1083,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const holidayDetails = holidays.find(h => isSameDay(h.date, day));
             const theoreticalDay = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
             const theoreticalHours = theoreticalDay?.theoreticalHours ?? 0;
-
+    
             // Find any scheduled absence for this day.
             const absence = (activePeriod.scheduledAbsences || []).find(a => 
                 a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(day, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
@@ -1095,7 +1095,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             let absenceAbbreviation = 'ninguna';
             let absenceHours = 0;
             let leaveHours = 0;
-
+    
             // Apply absence logic.
             if (absenceType) {
                 absenceAbbreviation = absenceType.abbreviation;
@@ -1104,7 +1104,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                     workedHours = 0;
                 }
             }
-
+    
             // Apply holiday logic.
             if (holidayDetails && dayOfWeek !== 7) {
                 if (holidayDetails.type === 'Apertura') {
@@ -1115,7 +1115,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                     leaveHours = roundToNearestQuarter(weeklyWorkHours / 5);
                 }
             }
-
+    
             newDays[dayKey] = {
                 theoreticalHours: theoreticalHours,
                 workedHours,
@@ -1260,6 +1260,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
