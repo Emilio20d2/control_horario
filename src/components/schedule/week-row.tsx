@@ -70,25 +70,14 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
     useEffect(() => {
         const updatePreview = async () => {
             if (localWeekData && employee && initialBalances) {
-                const auditData = localWeekData.hasPreregistration ? {
-                    expectedOrdinary: localWeekData.expectedOrdinaryImpact ?? 0,
-                    expectedHoliday: localWeekData.expectedHolidayImpact ?? 0,
-                    expectedLeave: localWeekData.expectedLeaveImpact ?? 0,
-                } : undefined;
-
                 const previewResult = await calculateBalancePreview(
                     employee.id,
                     localWeekData.days || {},
                     initialBalances,
                     localWeekData.weeklyHoursOverride,
-                    localWeekData.totalComplementaryHours,
-                    auditData,
+                    localWeekData.totalComplementaryHours
                 );
                 setPreview(previewResult);
-
-                if (previewResult?.isDifference && !localWeekData.isDifference) {
-                    handleWeekLevelDataChange('isDifference', true);
-                }
             }
         };
         updatePreview();
@@ -176,14 +165,13 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
     
             if (isNowVacation) {
                 if (!activePeriod.scheduledAbsences) activePeriod.scheduledAbsences = [];
-                const newAbsence = {
-                    id: `abs_${Date.now()}_${Math.random()}`,
+                const newAbsence: Omit<ScheduledAbsence, 'id'> = {
                     absenceTypeId: vacationType.id,
                     startDate: day,
                     endDate: day,
                     isDefinitive: true,
                 };
-                activePeriod.scheduledAbsences.push(newAbsence);
+                addScheduledAbsence(employee.id, activePeriod.id, newAbsence, employee, true);
             } else {
                 const absenceIndex = activePeriod.scheduledAbsences.findIndex((a: ScheduledAbsence) =>
                     a.absenceTypeId === vacationType.id &&
