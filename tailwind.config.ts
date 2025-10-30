@@ -10,8 +10,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['var(--font-body)', 'sans-serif'],
-        headline: ['var(--font-headline)', 'sans-serif'],
+        body: ['"Aptos Light"', 'sans-serif'],
+        headline: ['"Aptos Light"', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
