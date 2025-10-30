@@ -56,7 +56,10 @@ export const createEmployee = async (formData: EmployeeFormData & { authId: stri
                         weeklyHours: initialWeeklyWorkHours
                     }
                 ],
-                weeklySchedulesHistory: weeklySchedules,
+                weeklySchedulesHistory: (weeklySchedules || []).map(ws => ({
+                    ...ws,
+                    effectiveDate: format(parseISO(ws.effectiveDate), 'yyyy-MM-dd'),
+                })),
                 scheduledAbsences: [],
             }
         ]
@@ -151,8 +154,8 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
 
         const recordIndex = targetPeriod.workHoursHistory.findIndex(
             record => {
-                const recordDate = record.effectiveDate instanceof Date ? record.effectiveDate : parseISO(record.effectiveDate as string);
-                return isValid(recordDate) && format(recordDate, 'yyyy-MM-dd') === newRecord.effectiveDate;
+                const recordDateStr = typeof record.effectiveDate === 'string' ? record.effectiveDate : format(record.effectiveDate, 'yyyy-MM-dd');
+                return recordDateStr === newRecord.effectiveDate;
             }
         );
 
