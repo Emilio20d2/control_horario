@@ -114,8 +114,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
   // The mobile nav will contain all items
   const mobileAdminNavItems = [
     ...adminNavItems,
-    { href: '/calendar', label: 'Calendario', icon: CalendarClock },
-    { href: '/messages', label: 'Mensajes', icon: Mail, notification: unreadMessageCount > 0 },
   ];
 
   const menuItems = viewMode === 'admin' ? (isMobile ? mobileAdminNavItems : adminNavItems) : employeeMenuItems;
@@ -189,7 +187,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
         
         <div className="flex items-center gap-2 ml-auto">
-             {viewMode === 'admin' && !isMobile && (
+             {viewMode === 'admin' && (
               <TooltipProvider>
                 <div className="flex items-center gap-1">
                    <Link
