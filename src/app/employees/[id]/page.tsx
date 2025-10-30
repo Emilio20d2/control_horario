@@ -18,6 +18,7 @@ import { EmployeeReportGenerator } from '@/components/employees/employee-report-
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-is-mobile';
 
 const BalanceDisplay = ({ title, value, icon: Icon, isLoading }: { title: string; value: number | undefined; icon: React.ElementType; isLoading: boolean }) => (
     <div className="flex flex-col items-center justify-center p-4">
@@ -33,6 +34,36 @@ const BalanceDisplay = ({ title, value, icon: Icon, isLoading }: { title: string
     </div>
 );
 
+const VacationPopoverContent = ({ vacationInfo, currentYear }: { vacationInfo: NonNullable<ReturnType<typeof useDataProvider>['calculateEmployeeVacations']>, currentYear: number }) => (
+    <div className="grid gap-4">
+        <div className="space-y-2">
+            <h4 className="font-medium leading-none">Cálculo de Días Disponibles ({currentYear})</h4>
+            <p className="text-sm text-muted-foreground">
+                Desglose de cómo se calcula el total de vacaciones del empleado.
+            </p>
+        </div>
+        <div className="space-y-2 text-sm">
+            <div className="flex justify-between"><span>Días prorrateados del año:</span> <span className="font-mono font-medium">{vacationInfo.proratedDays.toFixed(2)}</span></div>
+            <div className="flex justify-between">
+                <span>Arrastrados del año anterior:</span>
+                <span className={cn("font-mono font-medium", vacationInfo.carryOverDays < 0 && "text-destructive")}>
+                    {vacationInfo.carryOverDays.toFixed(2)}
+                </span>
+            </div>
+            {vacationInfo.suspensionDeduction > 0 && (
+                <div className="flex justify-between">
+                    <span>Descuento por suspensión:</span>
+                    <span className="font-mono font-medium text-destructive">
+                        - {vacationInfo.suspensionDeduction.toFixed(2)}
+                    </span>
+                </div>
+            )}
+            <Separator />
+            <div className="flex justify-between font-bold"><span>Total Días Disponibles:</span> <span className="font-mono">{vacationInfo.vacationDaysAvailable}</span></div>
+        </div>
+    </div>
+);
+
 
 export default function EmployeeDetailPage() {
     const params = useParams();
@@ -41,6 +72,7 @@ export default function EmployeeDetailPage() {
     const [displayBalances, setDisplayBalances] = useState<{ ordinary: number; holiday: number; leave: number; total: number; } | null>(null);
     const [vacationInfo, setVacationInfo] = useState<ReturnType<typeof calculateEmployeeVacations> | null>(null);
     const currentYear = getYear(new Date());
+    const isMobile = useIsMobile();
 
     const employee = getEmployeeById(id);
 
@@ -165,59 +197,43 @@ export default function EmployeeDetailPage() {
                         </div>
                     </CardFooter>
                 </Card>
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Card className="cursor-pointer">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Vacaciones</CardTitle>
-                                <Plane className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                {!vacationInfo ? <Skeleton className="h-8 w-32" /> : (
-                                    <div className={cn(
-                                        "text-2xl font-bold",
-                                        vacationInfo.vacationDaysTaken > vacationInfo.vacationDaysAvailable ? "text-destructive" : "",
-                                        vacationInfo.vacationDaysTaken === vacationInfo.vacationDaysAvailable && "text-green-600"
-                                    )}>
-                                        {vacationInfo.vacationDaysTaken} / {vacationInfo.vacationDaysAvailable}
-                                        <span className="text-sm text-muted-foreground ml-1">días</span>
-                                    </div>
+                
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Vacaciones</CardTitle>
+                         {isMobile && <Plane className="h-4 w-4 text-muted-foreground" />}
+                         {!isMobile && (
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="text-xs">Ver detalle</Button>
+                                </PopoverTrigger>
+                                {vacationInfo && (
+                                    <PopoverContent className="w-80">
+                                        <VacationPopoverContent vacationInfo={vacationInfo} currentYear={currentYear} />
+                                    </PopoverContent>
                                 )}
-                            </CardContent>
-                        </Card>
-                    </PopoverTrigger>
-                    {vacationInfo && (
-                        <PopoverContent className="w-80">
-                            <div className="grid gap-4">
-                                <div className="space-y-2">
-                                    <h4 className="font-medium leading-none">Cálculo de Días Disponibles ({currentYear})</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                        Desglose de cómo se calcula el total de vacaciones del empleado.
-                                    </p>
-                                </div>
-                                <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between"><span>Días prorrateados del año:</span> <span className="font-mono font-medium">{vacationInfo.proratedDays.toFixed(2)}</span></div>
-                                    <div className="flex justify-between">
-                                        <span>Arrastrados del año anterior:</span>
-                                        <span className={cn("font-mono font-medium", vacationInfo.carryOverDays < 0 && "text-destructive")}>
-                                            {vacationInfo.carryOverDays.toFixed(2)}
-                                        </span>
-                                    </div>
-                                    {vacationInfo.suspensionDeduction > 0 && (
-                                        <div className="flex justify-between">
-                                            <span>Descuento por suspensión:</span>
-                                            <span className="font-mono font-medium text-destructive">
-                                                - {vacationInfo.suspensionDeduction.toFixed(2)}
-                                            </span>
-                                        </div>
-                                    )}
-                                    <Separator />
-                                    <div className="flex justify-between font-bold"><span>Total Días Disponibles:</span> <span className="font-mono">{vacationInfo.vacationDaysAvailable}</span></div>
-                                </div>
+                            </Popover>
+                         )}
+                    </CardHeader>
+                    <CardContent>
+                        {!vacationInfo ? <Skeleton className="h-8 w-32" /> : (
+                            <div className={cn(
+                                "text-2xl font-bold",
+                                vacationInfo.vacationDaysTaken > vacationInfo.vacationDaysAvailable ? "text-destructive" : "",
+                                vacationInfo.vacationDaysTaken === vacationInfo.vacationDaysAvailable && "text-green-600"
+                            )}>
+                                {vacationInfo.vacationDaysTaken} / {vacationInfo.vacationDaysAvailable}
+                                <span className="text-sm text-muted-foreground ml-1">días</span>
                             </div>
-                        </PopoverContent>
-                    )}
-                </Popover>
+                        )}
+                        {!isMobile && vacationInfo && (
+                             <div className="pt-4 mt-4 border-t">
+                                <VacationPopoverContent vacationInfo={vacationInfo} currentYear={currentYear} />
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+                
             </div>
 
 
