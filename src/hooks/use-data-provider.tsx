@@ -1058,40 +1058,40 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     const prefilledRecords: Record<string, PrefilledWeeklyRecord> = prefilledData as any;
 
     const processEmployeeWeekData = useCallback((emp: Employee, weekDays: Date[], weekId: string): DailyEmployeeData | null => {
-        const activePeriod = getActivePeriod(emp.id, weekDays[0]);
-        if (!activePeriod) return null;
-    
         const dbRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
-    
-        if (dbRecord && dbRecord.confirmed) {
+        
+        // If a record (confirmed or not) already exists in Firestore, return it directly.
+        if (dbRecord) {
             return dbRecord;
         }
+
+        const activePeriod = getActivePeriod(emp.id, weekDays[0]);
+        if (!activePeriod) return null;
 
         const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(emp.id, weekDays[0]);
         const weeklyWorkHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
         const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
         
-        const baseDays: Record<string, DailyData> = {};
+        const newDays: Record<string, DailyData> = {};
+        
         weekDaysWithTheoreticalHours.forEach(d => {
             const dayDate = parseISO(d.dateKey);
             const dayOfWeek = getISODay(dayDate);
             const holidayDetails = holidays.find(h => isSameDay(h.date, dayDate));
-    
-            // Find any scheduled absence for the day. This logic is critical.
-            const absence = (activePeriod.scheduledAbsences || []).find(a =>
+            
+            // Find any scheduled absence for the day.
+            const absence = (activePeriod.scheduledAbsences || []).find(a => 
                 a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(dayDate, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
             );
 
             const absenceType = absence ? absenceTypes.find(at => at.id === absence.absenceTypeId) : undefined;
-
+    
             let absenceAbbreviation = 'ninguna';
             let absenceHours = 0;
             let workedHours = d.theoreticalHours;
             let leaveHours = 0;
-
-            const isOpeningHoliday = holidayDetails?.type === 'Apertura' && dayOfWeek !== 7;
-
-            if (isOpeningHoliday) {
+            
+            if (holidayDetails?.type === 'Apertura' && dayOfWeek !== 7) {
                 workedHours = 0;
             }
             
@@ -1102,15 +1102,12 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                     workedHours = 0;
                 }
             }
-
-            // Logic for pre-filling leave hours on holidays with 0 theoretical hours
-            const isFestivoNoDomingo = holidayDetails && dayOfWeek !== 7;
-            
-            if (isFestivoNoDomingo && d.theoreticalHours === 0 && contractType?.computesOffDayBag && absenceAbbreviation === 'ninguna') {
+    
+            if (holidayDetails && dayOfWeek !== 7 && d.theoreticalHours === 0 && contractType?.computesOffDayBag && absenceAbbreviation === 'ninguna') {
                 leaveHours = roundToNearestQuarter(weeklyWorkHours / 5);
             }
     
-            baseDays[d.dateKey] = {
+            newDays[d.dateKey] = {
                 theoreticalHours: d.theoreticalHours,
                 workedHours,
                 absence: absenceAbbreviation,
@@ -1121,20 +1118,10 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                 holidayType: holidayDetails?.type ?? null,
             };
         });
-
-        if (dbRecord) {
-             const mergedDays: Record<string, DailyData> = {};
-             for (const dayKey in baseDays) {
-                mergedDays[dayKey] = { ...baseDays[dayKey], ...(dbRecord.days?.[dayKey] || {}) };
-            }
-            return {
-                ...dbRecord,
-                days: mergedDays,
-            };
-        }
-
+        
+        // This is a new record, so generate from scratch
         let finalData: DailyEmployeeData = {
-            days: baseDays,
+            days: newDays,
             confirmed: false,
             totalComplementaryHours: null,
             generalComment: null,
@@ -1154,7 +1141,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         
         return finalData;
 
-    }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, getEffectiveWeeklyHours, holidays, absenceTypes, contractTypes, prefilledRecords, employees]);
+    }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, getEffectiveWeeklyHours, contractTypes, holidays, absenceTypes]);
 
     const findNextUnconfirmedWeek = (startDate: Date): string | null => {
         const auditStartDate = startOfDay(new Date('2025-01-27'));
@@ -1267,6 +1254,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
