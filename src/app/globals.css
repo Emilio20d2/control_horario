@@ -12,13 +12,13 @@
 
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 222.2 84% 4.9%; /* Black */
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 211 41% 77%;
-    --primary-foreground: 222.2 84% 4.9%;
+    --primary: 211 41% 45%; /* Darker Blue for better contrast */
+    --primary-foreground: 0 0% 100%; /* White */
     --secondary: 0 0% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
@@ -27,7 +27,7 @@
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
+    --border: 211 41% 45%; /* Primary color for borders */
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
@@ -58,7 +58,7 @@
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
  
-    --border: 217.2 32.6% 17.5%;
+    --border: 207 68% 53%; /* Primary color for dark mode borders */
     --input: 217.2 32.6% 17.5%;
     --ring: 207 68% 53%;
   }
