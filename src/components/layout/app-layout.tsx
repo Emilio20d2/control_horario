@@ -163,22 +163,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
     </nav>
   );
 
-  if (authLoading || (user && dataLoading)) {
-    return null; // The loading screen is handled by AppStateController
-  }
-  
-  // If we are on public pages like /login, render children without the layout
-  if (!user) {
-    return <main>{children}</main>;
-  }
-
   return (
     <div className="flex h-screen w-full flex-col bg-background">
       <header className="sticky top-0 inset-x-0 flex h-20 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">
         
         {viewMode === 'admin' && (
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-              <Image src="/logo.png" alt="Logo" width={40} height={40} className="h-10 w-10" />
+              <Image src="/logo.png" alt="Logo" width={70} height={70} className="h-[70px] w-[70px]" />
           </Link>
         )}
         
