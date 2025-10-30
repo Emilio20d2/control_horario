@@ -478,7 +478,7 @@ export default function CalendarPage() {
                     <div className="flex items-center gap-3">
                         <CalendarRange className="h-5 w-5 text-muted-foreground" />
                         <p>
-                            <strong>Periodo Completo:</strong> {format(selectedCell.absence.startDate, 'dd/MM/yyyy', {locale: es})} - {selectedCell.absence.endDate ? format(selectedCell.absence.endDate, 'dd/MM/yyyy', {locale: es}) : 'Indefinido'}
+                            <strong>Periodo Completo:</strong> {format(safeParseDate(selectedCell.absence.startDate)!, 'dd/MM/yyyy', {locale: es})} - {selectedCell.absence.endDate ? format(safeParseDate(selectedCell.absence.endDate)!, 'dd/MM/yyyy', {locale: es}) : 'Indefinido'}
                         </p>
                     </div>
                      {selectedCell.absence.notes && (
@@ -531,5 +531,8 @@ export default function CalendarPage() {
     </>
   );
 }
+
+    
+
 
     
