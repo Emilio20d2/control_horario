@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -157,7 +158,7 @@ export default function EmployeesPage() {
                 ) : (
                     <>
                         <TableCell>{lastPeriod?.contractType || 'N/A'}</TableCell>
-                        <TableCell>{lastPeriod?.endDate ? format(lastPeriod.endDate as Date, 'PPP', {locale: es}) : 'N/A'}</TableCell>
+                        <TableCell>{lastPeriod?.endDate ? format(lastPeriod.endDate as Date, 'dd/MM/yyyy', {locale: es}) : 'N/A'}</TableCell>
                     </>
                 )}
 

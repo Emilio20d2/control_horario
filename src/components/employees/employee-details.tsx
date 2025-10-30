@@ -172,11 +172,11 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
                             <>
                                 <div>
                                     <p className="text-sm font-medium text-muted-foreground">Fecha de Inicio</p>
-                                    <p>{format(startDate, 'PPP', { locale: es })}</p>
+                                    <p>{format(startDate, 'dd/MM/yyyy', { locale: es })}</p>
                                 </div>
                                 <div>
                                     <p className="text-sm font-medium text-muted-foreground">Fecha de Fin</p>
-                                    <p>{endDate ? format(endDate, 'PPP', { locale: es }) : 'Activo'}</p>
+                                    <p>{endDate ? format(endDate, 'dd/MM/yyyy', { locale: es }) : 'Activo'}</p>
                                 </div>
                             </>
                         )}
@@ -218,8 +218,8 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
                                     {sortedPeriods.map((p, index) => (
                                         <TableRow key={index}>
                                             <TableCell className="font-medium">{p.contractType}</TableCell>
-                                            <TableCell>{format(new Date(p.startDate as string), 'PPP', { locale: es })}</TableCell>
-                                            <TableCell className="text-right">{p.endDate ? format(new Date(p.endDate as string), 'PPP', { locale: es }) : 'Activo'}</TableCell>
+                                            <TableCell>{format(new Date(p.startDate as string), 'dd/MM/yyyy', { locale: es })}</TableCell>
+                                            <TableCell className="text-right">{p.endDate ? format(new Date(p.endDate as string), 'dd/MM/yyyy', { locale: es }) : 'Activo'}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -242,7 +242,7 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
                                 <TableBody>
                                     {workHoursHistoryToShow.map((record, index) => (
                                         <TableRow key={index}>
-                                            <TableCell>{format(new Date(record.effectiveDate), 'PPP', { locale: es })}</TableCell>
+                                            <TableCell>{format(new Date(record.effectiveDate), 'dd/MM/yyyy', { locale: es })}</TableCell>
                                             <TableCell className="text-right font-mono">{record.weeklyHours.toFixed(2)}h</TableCell>
                                         </TableRow>
                                     ))}
@@ -315,7 +315,7 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
                         <div>
                             <h3 className="text-lg font-medium">Historial de Calendarios Laborales</h3>
                              <p className="text-sm text-muted-foreground">
-                                Vigente: {currentWeeklySchedule ? format(new Date(currentWeeklySchedule.effectiveDate), 'PPP', { locale: es }) : 'No definido'}
+                                Vigente: {currentWeeklySchedule ? format(new Date(currentWeeklySchedule.effectiveDate), 'dd/MM/yyyy', { locale: es }) : 'No definido'}
                             </p>
                         </div>
                     </div>
@@ -323,7 +323,7 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
                         <div className="space-y-6">
                             {period.weeklySchedulesHistory.slice().reverse().map(schedule => (
                                 <div key={schedule.effectiveDate} className='border rounded-lg p-4'>
-                                     <p className="font-semibold pb-4">Vigente desde: {format(new Date(schedule.effectiveDate), 'PPP', { locale: es })}</p>
+                                     <p className="font-semibold pb-4">Vigente desde: {format(new Date(schedule.effectiveDate), 'dd/MM/yyyy', { locale: es })}</p>
                                     <div className="border rounded-lg overflow-hidden">
                                         <Table>
                                             <TableHeader>

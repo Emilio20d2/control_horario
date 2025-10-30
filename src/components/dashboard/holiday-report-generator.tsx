@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -99,7 +100,7 @@ export function HolidayReportGenerator() {
         
         const head = [
             'Empleado',
-            ...selectedHolidaysData.map(h => format(h!.date as Date, 'dd/MM/yy'))
+            ...selectedHolidaysData.map(h => format(h!.date as Date, 'dd/MM/yy', { locale: es }))
         ];
 
         const body = unifiedEmployees.map(emp => {
@@ -219,7 +220,7 @@ export function HolidayReportGenerator() {
                                 onCheckedChange={(checked) => setSelectedHolidays(prev => ({ ...prev, [holiday.id]: !!checked }))}
                                 onSelect={(e) => e.preventDefault()}
                             >
-                                {format(holiday.date as Date, 'dd/MM/yy')}
+                                {format(holiday.date as Date, 'dd/MM/yy', { locale: es })}
                             </DropdownMenuCheckboxItem>
                         ))}
                     </DropdownMenuContent>
@@ -233,5 +234,3 @@ export function HolidayReportGenerator() {
         </Card>
     );
 }
-
-    

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -232,7 +233,7 @@ export default function SettingsPageContent() {
                                             .map(holiday => (
                                             <TableRow key={holiday.id}>
                                                 <TableCell className="font-medium">{holiday.name}</TableCell>
-                                                <TableCell>{format(holiday.date, 'PPP', { locale: es })}</TableCell>
+                                                <TableCell>{format(holiday.date, 'dd/MM/yyyy', { locale: es })}</TableCell>
                                                 <TableCell>{holiday.type}</TableCell>
                                                 <TableCell className="text-right">
                                                     <Link href={`/settings/holidays/${holiday.id}/edit`} passHref>

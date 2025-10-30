@@ -293,8 +293,8 @@ export default function MyProfilePage() {
                             <TableBody>
                                 {vacationPeriods.map((period, index) => (
                                     <TableRow key={index}>
-                                        <TableCell>{format(period.startDate, 'PPP', { locale: es })}</TableCell>
-                                        <TableCell>{format(period.endDate, 'PPP', { locale: es })}</TableCell>
+                                        <TableCell>{format(period.startDate, 'dd/MM/yyyy', { locale: es })}</TableCell>
+                                        <TableCell>{format(period.endDate, 'dd/MM/yyyy', { locale: es })}</TableCell>
                                         <TableCell className="text-center">
                                             {period.isConfirmed && <CheckCircle className="h-5 w-5 text-green-600 mx-auto" />}
                                         </TableCell>
@@ -330,10 +330,4 @@ export default function MyProfilePage() {
         </div>
     );
 }
-
-
-
-    
-
-    
 

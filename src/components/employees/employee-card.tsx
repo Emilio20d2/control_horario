@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -57,7 +58,7 @@ export function EmployeeCard({ employee, balances, vacationInfo, lastPeriod, sho
                         {!showBalances && lastPeriod && (
                              <div className="flex flex-col text-sm text-muted-foreground mt-1">
                                 <span>{lastPeriod.contractType}</span>
-                                <span>Cese: {lastPeriod.endDate ? format(parseISO(lastPeriod.endDate as string), 'P', {locale: es}) : 'N/A'}</span>
+                                <span>Cese: {lastPeriod.endDate ? format(parseISO(lastPeriod.endDate as string), 'dd/MM/yyyy', {locale: es}) : 'N/A'}</span>
                             </div>
                         )}
                     </div>

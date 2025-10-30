@@ -87,7 +87,7 @@ const CorrectionRequestDialog = ({ open, onOpenChange, weekId, employee, onSubmi
             };
             await setDocument('correctionRequests', requestId, requestData);
 
-            const weekStartDateFormatted = format(parseISO(weekId), 'd MMM, yyyy', { locale: es });
+            const weekStartDateFormatted = format(parseISO(weekId), 'dd/MM/yyyy', { locale: es });
             const messageText = `**SOLICITUD DE CORRECCIÓN**\n\n**Semana:** ${weekStartDateFormatted}\n**Motivo:** ${reason.trim()}`;
             await sendMessage(messageText);
 
@@ -109,7 +109,7 @@ const CorrectionRequestDialog = ({ open, onOpenChange, weekId, employee, onSubmi
                 <DialogHeader>
                     <DialogTitle>Solicitar Corrección</DialogTitle>
                     <DialogDescription>
-                        Semana del {format(parseISO(weekId), 'd MMM, yyyy', { locale: es })}.
+                        Semana del {format(parseISO(weekId), 'dd/MM/yyyy', { locale: es })}.
                         Explica el motivo por el que crees que hay un error en esta semana.
                     </DialogDescription>
                 </DialogHeader>
@@ -196,7 +196,7 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                          <CardTitle className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline gap-1">
                             <span className="text-base font-bold">
-                                {format(weekStartDate, 'd MMM', { locale: es })} - {format(endOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM, yyyy', {locale:es})}
+                                {format(weekStartDate, 'dd/MM/yyyy', { locale: es })} - {format(endOfWeek(weekStartDate, {weekStartsOn:1}), 'dd/MM/yyyy', {locale:es})}
                             </span>
                             <span className="text-sm font-mono font-medium text-muted-foreground">{weekLabel}</span>
                         </CardTitle>

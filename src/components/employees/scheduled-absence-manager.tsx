@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -208,8 +209,8 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                                     return (
                                         <TableRow key={absence.id} className={isEditingCurrent ? 'bg-muted/50' : ''}>
                                             <TableCell className="font-medium">{absenceType?.name || 'Desconocido'}</TableCell>
-                                            <TableCell>{format(absence.startDate, 'PPP', { locale: es })}</TableCell>
-                                            <TableCell>{absence.endDate ? format(absence.endDate, 'PPP', { locale: es }) : 'Indefinida'}</TableCell>
+                                            <TableCell>{format(absence.startDate, 'dd/MM/yyyy', { locale: es })}</TableCell>
+                                            <TableCell>{absence.endDate ? format(absence.endDate, 'dd/MM/yyyy', { locale: es }) : 'Indefinida'}</TableCell>
                                             <TableCell className="text-right">
                                                  <Button variant="ghost" size="icon" onClick={() => handleEditAbsence(absence)} disabled={isEditingCurrent}>
                                                      <Edit className="h-4 w-4" />

@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -102,7 +103,7 @@ export async function generateAnnualReportPDF(employee: Employee, year: number, 
         }
         totalWeeklyComputableHours -= (weekData.totalComplementaryHours || 0);
 
-        const weekLabel = `Semana del ${format(weekDays[0], 'd MMM', { locale: es })} - ${format(weekDays[6], 'd MMM yyyy', { locale: es })} (Computadas: ${totalWeeklyComputableHours.toFixed(2)}h / Teóricas: ${effectiveWeeklyHours.toFixed(2)}h)`;
+        const weekLabel = `Semana del ${format(weekDays[0], 'dd/MM/yyyy', { locale: es })} - ${format(weekDays[6], 'dd/MM/yyyy', { locale: es })} (Computadas: ${totalWeeklyComputableHours.toFixed(2)}h / Teóricas: ${effectiveWeeklyHours.toFixed(2)}h)`;
 
         currentY += 5;
         
@@ -278,7 +279,7 @@ export async function generateAnnualDetailedReportPDF(employee: Employee, year: 
     const bodyRows = confirmedAnnualData.map(weekRecord => {
         const weekData = weekRecord.data;
         const weekStartDate = parseISO(weekRecord.id);
-        const weekLabel = `${format(weekStartDate, 'dd/MM', { locale: es })}`;
+        const weekLabel = `${format(weekStartDate, 'dd/MM/yyyy', { locale: es })}`;
         let weeklyComputableHours = 0;
         const weekAbsences = new Set<string>();
 
@@ -473,7 +474,7 @@ export const generateQuadrantReportPDF = (
         const tableHeader = [groupColumnLabel, ...weeksForPage.map(week => {
             const summary = weeklySummaries[week.key];
             const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
-            return `Sem: ${getISOWeek(week.start)} | ${format(week.start, 'dd/MM', { locale: es })} - ${format(week.end, 'dd/MM', { locale: es })}\n` +
+            return `Sem: ${getISOWeek(week.start)} | ${format(week.start, 'dd/MM/yy', { locale: es })} - ${format(week.end, 'dd/MM/yy', { locale: es })}\n` +
                    `Turno: ${turnId ? `T.${turnId.replace('turn', '')}` : 'N/A'}\n` +
                    `Nº Ausentes: ${summary?.employeeCount ?? 0} | Nºh: ${summary?.hourImpact.toFixed(0) ?? 0}`;
         })];
@@ -710,6 +711,7 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
 
