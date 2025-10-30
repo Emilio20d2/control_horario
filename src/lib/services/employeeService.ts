@@ -139,7 +139,7 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
 
     if (newWeeklyWorkHours && newWeeklyWorkHours > 0 && newWeeklyWorkHoursDate && newWeeklyWorkHoursDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const newRecord: WorkHoursRecord = {
-            effectiveDate: newWeeklyWorkHoursDate,
+            effectiveDate: format(parseISO(newWeeklyWorkHoursDate), 'yyyy-MM-dd'),
             weeklyHours: newWeeklyWorkHours
         };
         
@@ -200,7 +200,11 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
 
     // Add a brand new schedule if provided
     if (newWeeklySchedule && newWeeklySchedule.effectiveDate && newWeeklySchedule.effectiveDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        targetPeriodForSchedules.weeklySchedulesHistory.push(newWeeklySchedule);
+        const formattedNewSchedule = {
+            ...newWeeklySchedule,
+            effectiveDate: format(parseISO(newWeeklySchedule.effectiveDate), 'yyyy-MM-dd'),
+        };
+        targetPeriodForSchedules.weeklySchedulesHistory.push(formattedNewSchedule);
     }
     
     targetPeriodForSchedules.weeklySchedulesHistory.sort((a, b) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
@@ -514,6 +518,4 @@ export const hardDeleteScheduledAbsence = async (
 
     await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
 };
-    
-
     

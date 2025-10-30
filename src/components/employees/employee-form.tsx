@@ -136,6 +136,12 @@ const generateDefaultShift = (hours: number, days: string[]) => {
     return shift;
 };
 
+const safeFormatDate = (date: any): string => {
+    if (!date) return '';
+    const dateObj = date instanceof Date ? date : parseISO(date as string);
+    return isValid(dateObj) ? format(dateObj, 'yyyy-MM-dd') : '';
+};
+
 export function EmployeeForm({ employee }: EmployeeFormProps) {
   const { toast } = useToast();
   const router = useRouter();
@@ -169,24 +175,10 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             };
         }
 
-        const startDateObj = period.startDate instanceof Date ? period.startDate : parseISO(period.startDate as string);
-        const startDateString = isValid(startDateObj) ? format(startDateObj, 'yyyy-MM-dd') : '';
-
-        let endDateValue: string | null = null;
-        if (period.endDate) {
-            const endDateObj = period.endDate instanceof Date ? period.endDate : parseISO(period.endDate as string);
-            if (isValid(endDateObj)) {
-                endDateValue = format(endDateObj, 'yyyy-MM-dd');
-            }
-        }
-
-        const weeklySchedulesHistoryFormatted = (period.weeklySchedulesHistory || []).map(schedule => {
-            const effectiveDateObj = schedule.effectiveDate instanceof Date ? schedule.effectiveDate : parseISO(schedule.effectiveDate as string);
-            return {
-                ...schedule,
-                effectiveDate: isValid(effectiveDateObj) ? format(effectiveDateObj, 'yyyy-MM-dd') : '',
-            };
-        });
+        const weeklySchedulesHistoryFormatted = (period.weeklySchedulesHistory || []).map(schedule => ({
+            ...schedule,
+            effectiveDate: safeFormatDate(schedule.effectiveDate),
+        }));
 
         return {
             name: employee.name,
@@ -196,8 +188,8 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             email: employee.email,
             role: role,
             groupId: groupId || 'ninguno',
-            startDate: startDateString,
-            endDate: endDateValue,
+            startDate: safeFormatDate(period.startDate),
+            endDate: period.endDate ? safeFormatDate(period.endDate) : null,
             isTransfer: period.isTransfer || false,
             vacationDaysUsedInAnotherCenter: period.vacationDaysUsedInAnotherCenter,
             contractType: period.contractType,
