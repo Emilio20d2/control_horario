@@ -285,7 +285,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 sanitizedDays[dayKey] = {
                     ...dayData,
                     holidayType: dayData.holidayType ?? null,
-                    doublePay: dayData.doublePay,
+                    doublePay: dayData.doublePay ?? false,
                 };
             });
 
@@ -300,23 +300,12 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 isDifference: localWeekData.isDifference ?? false,
             };
     
-            Object.keys(dataToSave).forEach(key => {
-                const typedKey = key as keyof DailyEmployeeData;
-                if ((dataToSave as any)[typedKey] === undefined) {
-                    (dataToSave as any)[typedKey] = null;
-                }
-            });
-            Object.keys(dataToSave.days).forEach(dayKey => {
-                 Object.keys(dataToSave.days[dayKey]).forEach(fieldKey => {
-                    const typedFieldKey = fieldKey as keyof DailyData;
-                    if ((dataToSave.days[dayKey] as any)[typedFieldKey] === undefined) {
-                        (dataToSave.days[dayKey] as any)[typedFieldKey] = null;
-                    }
-                 });
-            });
+            const sanitizedDataToSave = JSON.parse(JSON.stringify(dataToSave, (key, value) => {
+                return value === undefined ? null : value;
+            }));
 
 
-            await setDoc(doc(db, 'weeklyRecords', weekId), { weekData: { [employee.id]: dataToSave } }, { merge: true });
+            await setDoc(doc(db, 'weeklyRecords', weekId), { weekData: { [employee.id]: sanitizedDataToSave } }, { merge: true });
             toast({ title: `Semana Confirmada para ${employee.name}` });
 
             // Check if all employees for this week are now confirmed
