@@ -30,7 +30,38 @@ export default function SchedulePage() {
         correctionRequests,
     } = useDataProvider();
     
-    const [currentDate, setCurrentDate] = useState(new Date('2024-12-30'));
+    const getInitialDate = useCallback(() => {
+        if (loading || Object.keys(weeklyRecords).length === 0) {
+          return startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
+        }
+    
+        const isWeekFullyConfirmed = (date: Date) => {
+          const currentWeekId = getWeekId(date);
+          const weekRecord = weeklyRecords[currentWeekId]?.weekData;
+          const activeEmpsForWeek = getActiveEmployeesForDate(date);
+    
+          if (activeEmpsForWeek.length === 0 && getYear(date) > getYear(new Date())) return true;
+          if (!weekRecord || activeEmpsForWeek.length === 0) return false;
+          
+          return activeEmpsForWeek.every(emp => weekRecord[emp.id]?.confirmed);
+        };
+    
+        const auditStartDate = startOfDay(new Date('2025-01-27'));
+        let dateToCheck = startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
+        if (isBefore(dateToCheck, auditStartDate)) {
+          dateToCheck = auditStartDate;
+        }
+    
+        const limit = addWeeks(new Date(), 104);
+        
+        let foundDate = dateToCheck;
+        while (isBefore(foundDate, limit) && isWeekFullyConfirmed(foundDate)) {
+          foundDate = addWeeks(foundDate, 1);
+        }
+        return foundDate;
+      }, [loading, weeklyRecords, getActiveEmployeesForDate, getWeekId]);
+    
+    const [currentDate, setCurrentDate] = useState(getInitialDate);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
     const [selectedYear, setSelectedYear] = useState(2025);
     const [processedWeeklyViewData, setProcessedWeeklyViewData] = useState<Record<string, DailyEmployeeData | null>>({});
@@ -82,42 +113,10 @@ export default function SchedulePage() {
 
     const weekDays = useMemo(() => eachDayOfInterval({ start: startOfWeek(currentDate, { weekStartsOn: 1 }), end: endOfWeek(currentDate, { weekStartsOn: 1 }) }), [currentDate]);
     
-    const isWeekFullyConfirmed = useCallback((date: Date) => {
-        const currentWeekId = getWeekId(date);
-        const weekRecord = weeklyRecords[currentWeekId]?.weekData;
-        
-        const activeEmpsForWeek = getActiveEmployeesForDate(date);
-
-        if (activeEmpsForWeek.length === 0 && getYear(date) > getYear(new Date())) return true;
-        if (!weekRecord || activeEmpsForWeek.length === 0) return false;
-        
-        return activeEmpsForWeek.every(emp => weekRecord[emp.id]?.confirmed);
-    }, [getActiveEmployeesForDate, getWeekId, weeklyRecords]);
-
     const onWeekCompleted = (completedWeekId: string) => {
         const nextWeekId = findNextUnconfirmedWeek(parseISO(completedWeekId));
         setCompletionInfo({ weekId: completedWeekId, nextWeekId });
     };
-
-    // Effect to find the first unconfirmed week
-    useEffect(() => {
-        if (loading || selectedEmployeeId !== 'all' || Object.keys(weeklyRecords).length === 0) return;
-    
-        const auditStartDate = startOfDay(new Date('2025-01-27'));
-        let dateToCheck = startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
-        if (isBefore(dateToCheck, auditStartDate)) {
-            dateToCheck = auditStartDate;
-        }
-
-        const limit = addWeeks(new Date(), 104); // Limit to 2 years of search from today
-        
-        let foundDate = dateToCheck;
-        while (isBefore(foundDate, limit) && isWeekFullyConfirmed(foundDate)) {
-            foundDate = addWeeks(foundDate, 1);
-        }
-        setCurrentDate(foundDate);
-    
-    }, [loading, selectedEmployeeId, weeklyRecords, isWeekFullyConfirmed]);
 
     // Data processor for WEEKLY view (all employees)
     useEffect(() => {
@@ -368,6 +367,3 @@ export default function SchedulePage() {
   );
 }
 
-    
-
-    
