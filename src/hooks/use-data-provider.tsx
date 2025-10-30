@@ -233,7 +233,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     if (date.toDate && typeof date.toDate === 'function') return date.toDate();
     if (typeof date === 'string') {
         const parsed = parseISO(date);
-        if (isValid(parsed)) return parsed;
+        return isValid(parsed) ? parsed : null;
     }
     return null;
   }, []);
@@ -241,20 +241,24 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const processScheduledAbsences = useCallback((absences: any[]): ScheduledAbsence[] => {
     if (!absences) return [];
     return absences.map(a => {
+        const startDate = safeParseDate(a.startDate);
+        if (!startDate) return null; // Skip invalid absences
+        
         const processedAbsence: any = {
             ...a,
-            startDate: safeParseDate(a.startDate),
+            startDate: startDate,
             endDate: safeParseDate(a.endDate),
         };
+
         if (a.originalRequest) {
             processedAbsence.originalRequest = {
                 ...a.originalRequest,
-                startDate: safeParseDate(a.originalRequest.startDate),
-                endDate: safeParseDate(a.originalRequest.endDate),
+                startDate: a.originalRequest.startDate instanceof Timestamp ? a.originalRequest.startDate.toDate().toISOString() : a.originalRequest.startDate,
+                endDate: a.originalRequest.endDate instanceof Timestamp ? a.originalRequest.endDate.toDate().toISOString() : a.originalRequest.endDate,
             };
         }
         return processedAbsence;
-    });
+    }).filter((a): a is ScheduledAbsence => a !== null);
   }, [safeParseDate]);
 
 
@@ -562,15 +566,15 @@ const getEffectiveWeeklyHours = (period: EmploymentPeriod | null, date: Date): n
     const targetDate = startOfDay(date);
 
     const history = [...period.workHoursHistory].sort((a,b) => {
-        const dateA = a.effectiveDate instanceof Date ? a.effectiveDate : parseISO(a.effectiveDate as string);
-        const dateB = b.effectiveDate instanceof Date ? b.effectiveDate : parseISO(b.effectiveDate as string);
-        if (!isValid(dateA) || !isValid(dateB)) return 0;
+        const dateA = safeParseDate(a.effectiveDate);
+        const dateB = safeParseDate(b.effectiveDate);
+        if (!dateA || !dateB) return 0;
         return dateB.getTime() - dateA.getTime();
     });
 
     const effectiveRecord = history.find(record => {
-        const recordDate = record.effectiveDate instanceof Date ? record.effectiveDate : parseISO(record.effectiveDate as string);
-        if (!isValid(recordDate)) return false;
+        const recordDate = safeParseDate(record.effectiveDate);
+        if (!recordDate) return false;
         return !isAfter(startOfDay(recordDate), targetDate);
     });
     

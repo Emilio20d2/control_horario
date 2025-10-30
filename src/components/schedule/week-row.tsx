@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -174,15 +175,15 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             hasChanges = true;
     
             if (isNowVacation) { // Added vacation
-                if (!activePeriod.scheduledAbsences) activePeriod.scheduledAbsences = [];
+                 if (!activePeriod.scheduledAbsences) activePeriod.scheduledAbsences = [];
                  const newAbsence = {
                     id: `abs_${Date.now()}_${Math.random()}`,
                     absenceTypeId: vacationType.id,
-                    startDate: startOfDay(day),
-                    endDate: startOfDay(day),
+                    startDate: format(day, 'yyyy-MM-dd'),
+                    endDate: format(day, 'yyyy-MM-dd'),
                     isDefinitive: true,
                 };
-                await addScheduledAbsence(employee.id, activePeriod.id, newAbsence, employee, undefined, true);
+                activePeriod.scheduledAbsences.push(newAbsence as any);
 
             } else { // Removed vacation
                 const absenceIndex = activePeriod.scheduledAbsences?.findIndex(a =>
@@ -280,19 +281,8 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 }
             }
 
-            const sanitizedDays: Record<string, DailyData> = {};
-            Object.keys(localWeekData.days).forEach(dayKey => {
-                const dayData = localWeekData.days[dayKey];
-                sanitizedDays[dayKey] = {
-                    ...dayData,
-                    holidayType: dayData.holidayType ?? null,
-                    doublePay: dayData.doublePay ?? false,
-                };
-            });
-
             const dataToSave: DailyEmployeeData = {
                 ...localWeekData,
-                days: sanitizedDays,
                 confirmed: true,
                 previousBalances: initialBalances,
                 weeklyHoursOverride: localWeekData.weeklyHoursOverride ?? null,
@@ -300,6 +290,18 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 generalComment: finalComment,
                 isDifference: localWeekData.isDifference ?? false,
             };
+
+            const sanitizedDays: Record<string, DailyData> = {};
+            Object.keys(dataToSave.days).forEach(dayKey => {
+                const dayData = dataToSave.days[dayKey];
+                sanitizedDays[dayKey] = {
+                    ...dayData,
+                    holidayType: dayData.holidayType ?? null,
+                    doublePay: dayData.doublePay ?? false,
+                };
+            });
+            dataToSave.days = sanitizedDays;
+
 
             await setDoc(doc(db, 'weeklyRecords', weekId), { weekData: { [employee.id]: dataToSave } }, { merge: true });
             toast({ title: `Semana Confirmada para ${employee.name}` });
