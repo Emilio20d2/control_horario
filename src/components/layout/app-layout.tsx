@@ -121,45 +121,53 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const menuItems = viewMode === 'admin' ? (isMobile ? mobileAdminNavItems : adminNavItems) : employeeMenuItems;
 
   const MainNav = ({className, isMobileNav}: {className?: string, isMobileNav?: boolean}) => (
-    <nav className={cn(
-        "flex items-center gap-1",
-        isMobileNav ? "flex-col !items-stretch" : 'justify-center'
-    )}>
-        {menuItems.map((item) => {
-             const isActive = pathname.startsWith(item.href);
-
-            return (
-                <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => isMobileNav && setMobileNavOpen(false)}
-                    className={cn(
-                        'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative',
-                        'flex-col text-center h-16 w-16 sm:h-auto sm:w-auto',
-                        isMobileNav ? 'w-full text-foreground' : '',
-                        isActive
-                            ? 'bg-primary text-white font-semibold'
-                            : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-                    )}
-                >
-                    <item.icon className={cn(
-                        viewMode === 'employee' ? "h-6 w-6" : "h-5 w-5",
-                        )} />
-                    
-                    <span className={cn(
-                        "font-medium",
-                        isMobileNav ? "text-base" : "text-xs",
-                    )}>{item.label}</span>
-
-                    {item.notification && (
-                         <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
-                        </span>
-                    )}
-                </Link>
-            )
-        })}
+    <nav className={cn("flex gap-1", isMobileNav ? "flex-col items-stretch" : 'justify-center items-center')}>
+      {menuItems.map((item) => {
+        const isActive = pathname.startsWith(item.href);
+        if (isMobileNav) {
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMobileNavOpen(false)}
+              className={cn(
+                'flex items-center justify-between p-3 rounded-md transition-colors text-lg',
+                isActive ? 'bg-muted font-semibold' : 'hover:bg-muted'
+              )}
+            >
+              <span>{item.label}</span>
+              {item.notification && (
+                <span className="flex h-2.5 w-2.5 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+                </span>
+              )}
+            </Link>
+          );
+        }
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative',
+              'flex-col text-center h-16 w-16 sm:h-auto sm:w-auto',
+              isActive
+                ? 'bg-primary text-primary-foreground font-semibold'
+                : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+            )}
+          >
+            <item.icon className="h-5 w-5" />
+            <span className="text-xs font-medium">{item.label}</span>
+            {item.notification && (
+              <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+              </span>
+            )}
+          </Link>
+        );
+      })}
     </nav>
   );
 
@@ -189,7 +197,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                         className={cn(
                             'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative flex-col text-center h-16 w-16 sm:h-auto sm:w-auto',
                             pathname.startsWith('/calendar')
-                                ? 'bg-primary text-white font-semibold'
+                                ? 'bg-primary text-primary-foreground font-semibold'
                                 : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                         )}
                     >
@@ -201,7 +209,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                         className={cn(
                             'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative flex-col text-center h-16 w-16 sm:h-auto sm:w-auto',
                             pathname.startsWith('/messages')
-                                ? 'bg-primary text-white font-semibold'
+                                ? 'bg-primary text-primary-foreground font-semibold'
                                 : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                         )}
                     >
