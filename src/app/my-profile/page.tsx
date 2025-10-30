@@ -18,21 +18,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-const BalanceItem = ({ title, value, icon: Icon, isLoading }: { title: string; value: number | undefined; icon: React.ElementType; isLoading: boolean }) => (
-    <div className="flex flex-col gap-2">
-        <div className="flex flex-row items-center justify-between space-y-0">
-            <h3 className="text-sm font-medium">{title}</h3>
-            <Icon className="h-4 w-4 text-muted-foreground" />
-        </div>
-        <div>
-            {isLoading || value === undefined ? (
-                <Skeleton className="h-8 w-24" />
-            ) : (
-                <div className={`text-2xl font-bold ${value < 0 ? 'text-destructive' : ''}`}>
-                    {value.toFixed(2)}h
-                </div>
-            )}
-        </div>
+const BalanceDisplay = ({ title, value, icon: Icon, isLoading }: { title: string; value: number | undefined; icon: React.ElementType; isLoading: boolean }) => (
+    <div className="flex flex-col items-center justify-center p-4">
+        <Icon className="h-6 w-6 text-muted-foreground mb-2" />
+        <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+        {isLoading || value === undefined ? (
+            <Skeleton className="h-7 w-20 mt-1" />
+        ) : (
+            <div className={`text-xl font-bold ${value < 0 ? 'text-destructive' : ''}`}>
+                {value.toFixed(2)}h
+            </div>
+        )}
     </div>
 );
 
@@ -145,7 +141,7 @@ export default function MyProfilePage() {
     
     if (dataLoading || !employee || !vacationInfo) {
         return (
-            <div className="flex flex-col gap-6 p-4 md:p-6">
+            <div className="flex flex-col gap-6 p-4 md:p-6 pt-6">
                 <Skeleton className="h-8 w-48" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Skeleton className="h-28 w-full" />
@@ -165,26 +161,32 @@ export default function MyProfilePage() {
     
 
     return (
-        <div className="flex flex-col gap-6 p-4 md:p-6">
+        <div className="flex flex-col gap-6 p-4 md:p-6 pt-6">
             <h1 className="text-2xl font-bold tracking-tight font-headline">
                 {employee.name} <span className="text-lg font-medium text-muted-foreground">({employee.employeeNumber})</span>
             </h1>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Card className="flex-1 min-w-[150px]">
+                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Balance Total</CardTitle>
-                        <Scale className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-base">Detalle de Bolsas de Horas</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        {!displayBalances ? (
-                             <Skeleton className="h-9 w-24" />
-                        ) : (
-                            <Badge variant={displayBalances.total >= 0 ? 'default' : 'destructive'} className="text-2xl font-bold">
-                                {displayBalances.total.toFixed(2)}h
-                            </Badge>
-                        )}
+                    <CardContent className="grid grid-cols-3 divide-x divide-border">
+                        <BalanceDisplay title="B. Ordinaria" value={displayBalances?.ordinary} icon={Briefcase} isLoading={!displayBalances} />
+                        <BalanceDisplay title="B. Festivos" value={displayBalances?.holiday} icon={Gift} isLoading={!displayBalances} />
+                        <BalanceDisplay title="B. Libranza" value={displayBalances?.leave} icon={Wallet} isLoading={!displayBalances} />
                     </CardContent>
+                    <CardFooter className="flex-col items-start gap-2 border-t pt-4">
+                        <div className="flex justify-between w-full">
+                             <div className="font-bold flex items-center gap-2">
+                                <Scale className="h-5 w-5 text-muted-foreground"/>
+                                Balance Total:
+                            </div>
+                            <Badge variant={displayBalances && displayBalances.total >= 0 ? 'default' : 'destructive'} className="text-lg font-bold">
+                                {displayBalances?.total.toFixed(2)}h
+                            </Badge>
+                        </div>
+                    </CardFooter>
                 </Card>
                 <Popover>
                     <PopoverTrigger asChild>
@@ -237,16 +239,6 @@ export default function MyProfilePage() {
                 </Popover>
             </div>
 
-            <Card className="col-span-2">
-                <CardHeader>
-                    <CardTitle className="text-base">Detalle de Bolsas de Horas</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-3 gap-4">
-                    <BalanceItem title="B. Ordinaria" value={displayBalances?.ordinary} icon={Briefcase} isLoading={!displayBalances} />
-                    <BalanceItem title="B. Festivos" value={displayBalances?.holiday} icon={Gift} isLoading={!displayBalances} />
-                    <BalanceItem title="B. Libranza" value={displayBalances?.leave} icon={Wallet} isLoading={!displayBalances} />
-                </CardContent>
-            </Card>
 
              <Card>
                 <CardHeader>
