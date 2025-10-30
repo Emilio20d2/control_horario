@@ -6,7 +6,7 @@ import { TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { format, isSameDay, getISODay, isBefore, parseISO, isAfter, eachDayOfInterval, subDays, addDays, startOfDay } from 'date-fns';
+import { format, isSameDay, getISODay, isBefore, parseISO, isAfter, eachDayOfInterval, subDays, addDays, startOfDay, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
@@ -224,6 +224,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                         if (merged.length > 0 && 
                             merged[merged.length - 1].absenceTypeId === abs.absenceTypeId && 
                             absEndDate && merged[merged.length-1].endDate &&
+                            isValid(parseISO(merged[merged.length-1].endDate as string)) &&
                             isSameDay(addDays(parseISO(merged[merged.length-1].endDate as string), 1), absStartDate)) {
                             
                             merged[merged.length-1].endDate = abs.endDate;
@@ -299,13 +300,8 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 generalComment: finalComment,
                 isDifference: localWeekData.isDifference ?? false,
             };
-    
-            const sanitizedDataToSave = JSON.parse(JSON.stringify(dataToSave, (key, value) => {
-                return value === undefined ? null : value;
-            }));
 
-
-            await setDoc(doc(db, 'weeklyRecords', weekId), { weekData: { [employee.id]: sanitizedDataToSave } }, { merge: true });
+            await setDoc(doc(db, 'weeklyRecords', weekId), { weekData: { [employee.id]: dataToSave } }, { merge: true });
             toast({ title: `Semana Confirmada para ${employee.name}` });
 
             // Check if all employees for this week are now confirmed
