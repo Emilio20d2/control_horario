@@ -395,6 +395,7 @@ export default function CalendarPage() {
 
   const renderMobileView = () => (
     <div className="space-y-4">
+        <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
       {weeklyAbsenceData.map(empData => (
         <Card key={empData.employee.id}>
           <CardHeader>
@@ -664,5 +665,6 @@ export default function CalendarPage() {
 
 
     
+
 
 
