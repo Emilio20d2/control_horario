@@ -332,7 +332,7 @@ Gracias.`;
                         endDate: format(day, 'yyyy-MM-dd'),
                         notes: finalNotes
                     },
-                    employeeRecord,
+                    employeeRecord, // Passing the full employee object
                     true
                 );
             }
