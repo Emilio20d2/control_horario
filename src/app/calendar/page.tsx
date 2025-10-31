@@ -237,8 +237,8 @@ export default function CalendarPage() {
   const weekDays = useMemo(() => eachDayOfInterval({ start: currentDate, end: endOfWeek(currentDate, { weekStartsOn: 1 }) }), [currentDate]);
   
   const activeEmployees = useMemo(() => {
-    return getActiveEmployeesForDate(new Date()).sort((a,b) => a.name.localeCompare(b.name));
-  }, [getActiveEmployeesForDate]);
+    return getActiveEmployeesForDate(currentDate).sort((a,b) => a.name.localeCompare(b.name));
+  }, [getActiveEmployeesForDate, currentDate]);
 
 
   const safeParseDate = useCallback((date: any): Date | null => {
@@ -495,50 +495,53 @@ export default function CalendarPage() {
                 refreshData={refreshData}
             />
         </div>
-      {weeklyAbsenceData.map(empData => (
-        <Card key={empData.employee.id}>
-          <CardHeader>
-            <CardTitle>{empData.employee.name}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-4 gap-2">
-              {weekDays.map(day => {
-                const dayKey = format(day, 'yyyy-MM-dd');
-                const cellInfo = empData.dayAbsences[dayKey];
-                const holiday = holidays.find(h => isSameDay(h.date, day));
+      {activeEmployees.map(emp => {
+        const empData = weeklyAbsenceData.find(d => d.employee.id === emp.id);
+        return (
+          <Card key={emp.id}>
+            <CardHeader className="py-4">
+              <CardTitle>{emp.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-4 gap-2">
+                {weekDays.map(day => {
+                  const dayKey = format(day, 'yyyy-MM-dd');
+                  const cellInfo = empData?.dayAbsences[dayKey];
+                  const holiday = holidays.find(h => isSameDay(h.date, day));
 
-                return (
-                  <div 
-                    key={dayKey}
-                    onClick={() => cellInfo && handleOpenDetails(cellInfo)}
-                    className={cn(
-                      "flex flex-col items-center justify-center p-2 rounded-md h-20",
-                      cellInfo && "cursor-pointer hover:bg-muted",
-                      holiday && !cellInfo && 'bg-blue-50/50'
-                    )}
-                    style={{ backgroundColor: cellInfo ? `${cellInfo.absenceType.color}40` : undefined }}
-                  >
-                    <span className="text-xs font-semibold">{format(day, 'E', { locale: es })}</span>
-                    <span className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</span>
-                    {cellInfo ? (
-                      <div className="flex flex-col items-center justify-center gap-1 mt-1">
-                          <span className="font-bold text-sm">{cellInfo.absenceType.abbreviation}</span>
-                          {cellInfo.substituteName && (
-                            <span className="text-xs text-muted-foreground font-semibold truncate">{cellInfo.substituteName}</span>
-                          )}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-      {!loading && weeklyAbsenceData.length === 0 && (
+                  return (
+                    <div 
+                      key={dayKey}
+                      onClick={() => cellInfo && handleOpenDetails(cellInfo)}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-2 rounded-md h-20",
+                        cellInfo && "cursor-pointer hover:bg-muted",
+                        holiday && !cellInfo && 'bg-blue-50/50'
+                      )}
+                      style={{ backgroundColor: cellInfo ? `${cellInfo.absenceType.color}40` : undefined }}
+                    >
+                      <span className="text-xs font-semibold">{format(day, 'E', { locale: es })}</span>
+                      <span className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</span>
+                      {cellInfo ? (
+                        <div className="flex flex-col items-center justify-center gap-1 mt-1">
+                            <span className="font-bold text-sm">{cellInfo.absenceType.abbreviation}</span>
+                            {cellInfo.substituteName && (
+                              <span className="text-xs text-muted-foreground font-semibold truncate">{cellInfo.substituteName}</span>
+                            )}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
+      {!loading && activeEmployees.length === 0 && (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
-            No hay empleados con ausencias programadas para esta semana.
+            No hay empleados activos para esta semana.
           </CardContent>
         </Card>
       )}
@@ -711,6 +714,7 @@ export default function CalendarPage() {
 
 
     
+
 
 
 
