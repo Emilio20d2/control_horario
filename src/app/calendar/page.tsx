@@ -483,7 +483,7 @@ export default function CalendarPage() {
 
   const renderMobileView = () => (
     <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col items-center gap-4">
             <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
             <AddAbsenceDialog 
                 isOpen={isAddDialogOpen} 
@@ -495,18 +495,17 @@ export default function CalendarPage() {
                 refreshData={refreshData}
             />
         </div>
-      {activeEmployees.map(emp => {
-        const empData = weeklyAbsenceData.find(d => d.employee.id === emp.id);
+      {weeklyAbsenceData.map(empData => {
         return (
-          <Card key={emp.id}>
-            <CardHeader className="py-4">
-              <CardTitle>{emp.name}</CardTitle>
+          <Card key={empData.employee.id}>
+            <CardHeader className="py-3">
+              <CardTitle className="text-base">{empData.employee.name}</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-4 gap-2">
+            <CardContent className="p-2">
+              <div className="grid grid-cols-4 gap-1">
                 {weekDays.map(day => {
                   const dayKey = format(day, 'yyyy-MM-dd');
-                  const cellInfo = empData?.dayAbsences[dayKey];
+                  const cellInfo = empData.dayAbsences[dayKey];
                   const holiday = holidays.find(h => isSameDay(h.date, day));
 
                   return (
@@ -514,17 +513,17 @@ export default function CalendarPage() {
                       key={dayKey}
                       onClick={() => cellInfo && handleOpenDetails(cellInfo)}
                       className={cn(
-                        "flex flex-col items-center justify-center p-2 rounded-md h-20",
+                        "flex flex-col items-center justify-center p-1 rounded-md h-16 text-xs",
                         cellInfo && "cursor-pointer hover:bg-muted",
                         holiday && !cellInfo && 'bg-blue-50/50'
                       )}
                       style={{ backgroundColor: cellInfo ? `${cellInfo.absenceType.color}40` : undefined }}
                     >
-                      <span className="text-xs font-semibold">{format(day, 'E', { locale: es })}</span>
-                      <span className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</span>
+                      <span className="font-semibold">{format(day, 'E', { locale: es })}</span>
+                      <span className="text-muted-foreground">{format(day, 'dd/MM')}</span>
                       {cellInfo ? (
-                        <div className="flex flex-col items-center justify-center gap-1 mt-1">
-                            <span className="font-bold text-sm">{cellInfo.absenceType.abbreviation}</span>
+                        <div className="flex flex-col items-center justify-center gap-0.5 mt-1">
+                            <span className="font-bold">{cellInfo.absenceType.abbreviation}</span>
                             {cellInfo.substituteName && (
                               <span className="text-xs text-muted-foreground font-semibold truncate">{cellInfo.substituteName}</span>
                             )}
@@ -538,10 +537,10 @@ export default function CalendarPage() {
           </Card>
         )
       })}
-      {!loading && activeEmployees.length === 0 && (
+      {!loading && weeklyAbsenceData.length === 0 && (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
-            No hay empleados activos para esta semana.
+            No hay empleados con ausencias programadas para esta semana.
           </CardContent>
         </Card>
       )}
@@ -714,6 +713,7 @@ export default function CalendarPage() {
 
 
     
+
 
 
 
