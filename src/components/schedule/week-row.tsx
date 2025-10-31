@@ -432,7 +432,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     (contractType?.computesOffDayBag ?? false) &&
                     dayData.absence === 'ninguna';
                 
-                const cellStyle = {
+                const cellStyle: React.CSSProperties = {
                     backgroundColor: absenceType?.color ? `${absenceType.color}40` : (holidayType ? '#e6f7ff' : 'transparent'),
                 };
 
