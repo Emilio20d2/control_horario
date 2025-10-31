@@ -433,7 +433,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     dayData.absence === 'ninguna';
                 
                 const cellStyle = {
-                    backgroundColor: absenceType?.color ? `${absenceType.color}40` : (isHoliday ? '#e6f7ff' : 'transparent'),
+                    backgroundColor: absenceType?.color ? `${absenceType.color}40` : (holidayType ? '#e6f7ff' : 'transparent'),
                 };
 
                 return (
