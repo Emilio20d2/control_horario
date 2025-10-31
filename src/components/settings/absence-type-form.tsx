@@ -47,15 +47,21 @@ interface AbsenceTypeFormProps {
   absenceType?: AbsenceType;
 }
 
+const generateRandomPastelColor = () => {
+    return "hsl(" + 360 * Math.random() + ',' +
+               (25 + 70 * Math.random()) + '%,' + 
+               (85 + 10 * Math.random()) + '%)'
+  }
+
 export function AbsenceTypeForm({ absenceType }: AbsenceTypeFormProps) {
   const { toast } = useToast();
   const { createAbsenceType, updateAbsenceType, refreshData } = useDataProvider();
   const router = useRouter();
 
   const defaultValues = absenceType || {
-    name: 'Recuperación de Horas',
-    abbreviation: 'RHA',
-    color: '#E0E0E0',
+    name: '',
+    abbreviation: '',
+    color: generateRandomPastelColor(),
     computesToWeeklyHours: false,
     computesToAnnualHours: true,
     suspendsContract: false,
@@ -73,7 +79,7 @@ export function AbsenceTypeForm({ absenceType }: AbsenceTypeFormProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      const dataToSave = { ...values, annualHourLimit: values.annualHourLimit ?? null, color: values.color || '#E0E0E0' };
+      const dataToSave = { ...values, annualHourLimit: values.annualHourLimit ?? null, color: values.color || generateRandomPastelColor() };
       if (absenceType?.id) {
         await updateAbsenceType(absenceType.id, dataToSave);
         toast({ title: 'Tipo de Ausencia Actualizado', description: `Se ha guardado "${values.name}".` });
