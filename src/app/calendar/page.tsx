@@ -286,11 +286,13 @@ export default function CalendarPage() {
             
             for (const period of employee.employmentPeriods || []) {
                 for (const absence of period.scheduledAbsences || []) {
-                    if (!absence.startDate || !isValid(absence.startDate)) continue;
-                    const absenceStart = startOfDay(absence.startDate);
-                    const absenceEnd = absence.endDate ? endOfDay(absence.endDate) : absenceStart;
+                    const absenceStart = safeParseDate(absence.startDate);
+                    if (!absenceStart || !isValid(absenceStart)) continue;
+                    
+                    const absenceEnd = absence.endDate ? safeParseDate(absence.endDate) : absenceStart;
+                    if (!absenceEnd || !isValid(absenceEnd)) continue;
 
-                    if (isWithinInterval(day, { start: absenceStart, end: absenceEnd })) {
+                    if (isWithinInterval(day, { start: startOfDay(absenceStart), end: endOfDay(absenceEnd) })) {
                         foundAbsence = absence;
                         foundPeriodId = period.id;
                         break;
@@ -481,10 +483,8 @@ export default function CalendarPage() {
 
   const renderMobileView = () => (
     <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4">
-            <div className="flex-grow">
-                <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
-            </div>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
             <AddAbsenceDialog 
                 isOpen={isAddDialogOpen} 
                 onOpenChange={setIsAddDialogOpen} 
@@ -714,6 +714,7 @@ export default function CalendarPage() {
 
 
     
+
 
 
 
