@@ -93,7 +93,8 @@ export default function HomePage() {
              <p className="text-lg text-muted-foreground -mt-4">
                 ¡Hola, <strong className="text-foreground">{welcomeName}</strong>! Aquí tienes un resumen de tus tareas pendientes.
             </p>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="flex flex-col flex-grow h-full">
+                <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 p-0 pt-6">
                 <Card className="flex flex-col">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -198,7 +199,8 @@ export default function HomePage() {
                          )}
                     </CardContent>
                 </Card>
-            </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }
