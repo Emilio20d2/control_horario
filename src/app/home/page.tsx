@@ -35,19 +35,24 @@ export default function HomePage() {
         const next5WeeksEnd = endOfWeek(addWeeks(now, 4), { weekStartsOn: 1 });
 
         const events: { weekId: string; employee: Employee; absence: ScheduledAbsence; absenceType: any }[] = [];
+        const processedAbsenceIds = new Set<string>();
 
         employees.forEach(emp => {
             (emp.employmentPeriods || []).forEach(p => {
                 (p.scheduledAbsences || []).forEach(a => {
+                    // Skip if already processed
+                    if (processedAbsenceIds.has(a.id)) return;
+
                     const startDate = a.startDate;
                     if (!startDate || !a.endDate) return;
 
                     const absenceInterval = { start: startDate, end: a.endDate };
-                    if (isAfter(absenceInterval.end, next5WeeksStart) && isAfter(next5WeeksEnd, absenceInterval.start)) {
+                    if (isAfter(absenceInterval.end, next5WeeksStart) && isBefore(absenceInterval.start, next5WeeksEnd)) {
                         const absenceType = absenceTypes.find(at => at.id === a.absenceTypeId);
                         if (absenceType) {
                             const weekId = format(startOfWeek(startDate, {weekStartsOn: 1}), 'yyyy-MM-dd');
                             events.push({ weekId, employee: emp, absence: a, absenceType });
+                            processedAbsenceIds.add(a.id); // Mark as processed
                         }
                     }
                 });
@@ -89,7 +94,7 @@ export default function HomePage() {
                                         <div key={detail.weekId} className="flex items-center justify-between p-2 rounded-md border">
                                             <div>
                                                 <p className="font-semibold text-sm">Semana del {format(parseISO(detail.weekId), 'dd/MM/yyyy', { locale: es })}</p>
-                                                <p className="text-xs text-muted-foreground">{detail.employeeNames.join(', ')}</p>
+                                                <p className="text-xs text-muted-foreground">{detail.employeeNames.length} empleado(s) pendiente(s)</p>
                                             </div>
                                             <Button asChild variant="secondary" size="sm">
                                                 <Link href={`/schedule?week=${detail.weekId}`}>Revisar</Link>
