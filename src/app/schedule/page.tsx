@@ -33,34 +33,36 @@ export default function SchedulePage() {
     
     const getInitialDate = useCallback(() => {
         if (loading || Object.keys(weeklyRecords).length === 0) {
-          return startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
+            return startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
         }
     
-        const isWeekFullyConfirmed = (date: Date) => {
-          const currentWeekId = getWeekId(date);
-          const weekRecord = weeklyRecords[currentWeekId]?.weekData;
-          const activeEmpsForWeek = getActiveEmployeesForDate(date);
+        const sortedWeekIds = Object.keys(weeklyRecords).sort((a, b) => b.localeCompare(a));
+        const today = new Date();
     
-          if (activeEmpsForWeek.length === 0 && getYear(date) > getYear(new Date())) return true;
-          if (!weekRecord || activeEmpsForWeek.length === 0) return false;
-          
-          return activeEmpsForWeek.every(emp => weekRecord[emp.id]?.confirmed);
-        };
+        for (const weekId of sortedWeekIds) {
+            const weekStartDate = parseISO(weekId);
+            if (getYear(weekStartDate) < 2025) {
+                continue; // Ignorar semanas anteriores a 2025
+            }
     
-        const auditStartDate = startOfDay(new Date('2025-01-27'));
-        let dateToCheck = startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
-        if (isBefore(dateToCheck, auditStartDate)) {
-          dateToCheck = auditStartDate;
+            const weekRecord = weeklyRecords[weekId]?.weekData;
+            const activeEmpsForWeek = getActiveEmployeesForDate(weekStartDate);
+    
+            if (!weekRecord || activeEmpsForWeek.length === 0) {
+                continue;
+            }
+    
+            const isUnconfirmed = activeEmpsForWeek.some(emp => !weekRecord[emp.id]?.confirmed);
+    
+            if (isUnconfirmed) {
+                return weekStartDate; // Devuelve la primera semana no confirmada que encuentra (la más reciente)
+            }
         }
     
-        const limit = addWeeks(new Date(), 104);
-        
-        let foundDate = dateToCheck;
-        while (isBefore(foundDate, limit) && isWeekFullyConfirmed(foundDate)) {
-          foundDate = addWeeks(foundDate, 1);
-        }
-        return foundDate;
-      }, [loading, weeklyRecords, getActiveEmployeesForDate, getWeekId]);
+        // Si no se encuentra ninguna semana sin confirmar, devuelve la semana actual.
+        return startOfWeek(today, { weekStartsOn: 1 });
+    
+    }, [loading, weeklyRecords, getActiveEmployeesForDate]);
     
     const [currentDate, setCurrentDate] = useState(getInitialDate);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
