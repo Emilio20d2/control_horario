@@ -40,19 +40,20 @@ export default function HomePage() {
         employees.forEach(emp => {
             (emp.employmentPeriods || []).forEach(p => {
                 (p.scheduledAbsences || []).forEach(a => {
-                    // Skip if already processed
-                    if (processedAbsenceIds.has(a.id)) return;
+                    // Skip if already processed or invalid
+                    if (processedAbsenceIds.has(a.id) || !a.startDate || !a.endDate) return;
 
-                    const startDate = a.startDate;
-                    if (!startDate || !a.endDate) return;
+                    const absenceStart = a.startDate;
+                    const absenceEnd = a.endDate;
 
-                    const absenceInterval = { start: startDate, end: a.endDate };
-                    if (isAfter(absenceInterval.end, next5WeeksStart) && isBefore(absenceInterval.start, next5WeeksEnd)) {
+                    // Correct interval overlap check:
+                    // The absence interval overlaps if it starts before the range ends AND it ends after the range starts.
+                    if (isBefore(absenceStart, next5WeeksEnd) && isAfter(absenceEnd, next5WeeksStart)) {
                         const absenceType = absenceTypes.find(at => at.id === a.absenceTypeId);
                         if (absenceType) {
-                            const weekId = format(startOfWeek(startDate, {weekStartsOn: 1}), 'yyyy-MM-dd');
+                            const weekId = format(startOfWeek(absenceStart, {weekStartsOn: 1}), 'yyyy-MM-dd');
                             events.push({ weekId, employee: emp, absence: a, absenceType });
-                            processedAbsenceIds.add(a.id); // Mark as processed
+                            processedAbsenceIds.add(a.id); // Mark as processed to prevent duplicates
                         }
                     }
                 });
@@ -162,7 +163,7 @@ export default function HomePage() {
                              <ScrollArea className="h-48">
                                 <div className="space-y-2">
                                     {upcomingEvents.map((event, index) => (
-                                        <div key={index} className="flex items-start gap-4 p-3 rounded-md border" style={{ backgroundColor: `${event.absenceType.color}20`}}>
+                                        <div key={`${event.absence.id}-${index}`} className="flex items-start gap-4 p-3 rounded-md border" style={{ backgroundColor: `${event.absenceType.color}20`}}>
                                             <div className="text-center w-16 shrink-0">
                                                 <p className="font-bold text-sm capitalize">{format(event.absence.startDate, 'E', { locale: es })}</p>
                                                 <p className="text-xs text-muted-foreground">{format(event.absence.startDate, 'dd MMM', { locale: es })}</p>
