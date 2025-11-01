@@ -662,27 +662,51 @@ const calculateBalancePreviewCallback = useCallback((employeeId: string, weekDat
   
  const getEmployeeBalancesForWeek = useCallback((employeeId: string, weekId: string): { ordinary: number, holiday: number, leave: number, total: number } => {
     const employee = employees.find(e => e.id === employeeId);
-    if (!employee) return { ordinary: 0, holiday: 0, leave: 0, total: 0 };
+    if (!employee || !employee.employmentPeriods) return { ordinary: 0, holiday: 0, leave: 0, total: 0 };
 
     const targetWeekStartDate = startOfWeek(parseISO(weekId), { weekStartsOn: 1 });
+    const allPeriodsSorted = [...employee.employmentPeriods].sort((a, b) => (a.startDate as Date).getTime() - (b.startDate as Date).getTime());
 
-    const previousConfirmedRecords = Object.values(weeklyRecords)
-      .filter(record => 
-        record.weekData?.[employeeId]?.confirmed && 
-        isBefore(parseISO(record.id), targetWeekStartDate)
-      )
-      .sort((a, b) => a.id.localeCompare(b.id)); 
-      
-    const firstPeriod = [...(employee.employmentPeriods || [])]
-        .sort((a, b) => (a.startDate as Date).getTime() - (b.startDate as Date).getTime())[0];
+    // Find the latest period that starts ON OR BEFORE the target week. This is our starting point.
+    let startingPeriodIndex = -1;
+    for (let i = allPeriodsSorted.length - 1; i >= 0; i--) {
+        if (!isAfter(startOfDay(allPeriodsSorted[i].startDate as Date), startOfDay(targetWeekStartDate))) {
+            startingPeriodIndex = i;
+            break;
+        }
+    }
 
+    if (startingPeriodIndex === -1) {
+        // This case should be rare, means the target week is before any contract started.
+        // Return the balances of the very first contract.
+        const firstPeriod = allPeriodsSorted[0];
+        const balances = {
+            ordinary: firstPeriod?.initialOrdinaryHours ?? 0,
+            holiday: firstPeriod?.initialHolidayHours ?? 0,
+            leave: firstPeriod?.initialLeaveHours ?? 0,
+        };
+        return { ...balances, total: balances.ordinary + balances.holiday + balances.leave };
+    }
+
+    const startingPeriod = allPeriodsSorted[startingPeriodIndex];
     let currentBalances = {
-        ordinary: firstPeriod?.initialOrdinaryHours ?? 0,
-        holiday: firstPeriod?.initialHolidayHours ?? 0,
-        leave: firstPeriod?.initialLeaveHours ?? 0,
+        ordinary: startingPeriod.initialOrdinaryHours ?? 0,
+        holiday: startingPeriod.initialHolidayHours ?? 0,
+        leave: startingPeriod.initialLeaveHours ?? 0,
     };
 
-    for (const record of previousConfirmedRecords) {
+    // Find all confirmed records from the start of the starting period up to (but not including) the target week
+    const recordsToProcess = Object.values(weeklyRecords)
+        .filter(record => {
+            const recordDate = parseISO(record.id);
+            return record.weekData?.[employeeId]?.confirmed &&
+                   !isBefore(recordDate, startOfDay(startingPeriod.startDate as Date)) &&
+                   isBefore(recordDate, targetWeekStartDate);
+        })
+        .sort((a, b) => a.id.localeCompare(b.id));
+
+    // Iterate through the records, applying the impact of each week
+    for (const record of recordsToProcess) {
         const weekData = record.weekData[employeeId];
         const preview = calculateBalancePreviewCallback(
             employeeId,
@@ -699,7 +723,7 @@ const calculateBalancePreviewCallback = useCallback((employeeId: string, weekDat
             };
         }
     }
-    
+
     return { ...currentBalances, total: currentBalances.ordinary + currentBalances.holiday + currentBalances.leave };
 }, [employees, weeklyRecords, calculateBalancePreviewCallback]);
   
@@ -713,25 +737,8 @@ const getEmployeeFinalBalances = useCallback((employeeId: string): { ordinary: n
 
     if (allConfirmedRecords.length > 0) {
         const latestRecordWeekId = allConfirmedRecords[0].id;
-        const initialBalances = getEmployeeBalancesForWeek(employeeId, latestRecordWeekId);
-        
-        const latestRecordData = allConfirmedRecords[0].weekData[employeeId];
-        const preview = calculateBalancePreviewCallback(
-            employeeId,
-            latestRecordData.days,
-            { ordinary: initialBalances.ordinary, holiday: initialBalances.holiday, leave: initialBalances.leave },
-            latestRecordData.weeklyHoursOverride,
-            latestRecordData.totalComplementaryHours
-        );
-
-        if (preview) {
-             const finalBalance = {
-                ordinary: preview.resultingOrdinary,
-                holiday: preview.resultingHoliday,
-                leave: preview.resultingLeave,
-            };
-            return { ...finalBalance, total: finalBalance.ordinary + finalBalance.holiday + finalBalance.leave };
-        }
+        const nextWeekId = getWeekId(addWeeks(parseISO(latestRecordWeekId), 1));
+        return getEmployeeBalancesForWeek(employeeId, nextWeekId);
     }
     
     const earliestPeriod = [...(employee.employmentPeriods || [])]
@@ -747,7 +754,7 @@ const getEmployeeFinalBalances = useCallback((employeeId: string): { ordinary: n
     }
 
     return { ordinary: 0, holiday: 0, leave: 0, total: 0 };
-}, [employees, weeklyRecords, getEmployeeBalancesForWeek, calculateBalancePreviewCallback]);
+}, [employees, weeklyRecords, getEmployeeBalancesForWeek, getWeekId]);
 
 
 const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { turnId: string | null; weekDaysWithTheoreticalHours: { dateKey: string; theoreticalHours: number }[] } => {
@@ -1310,6 +1317,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
