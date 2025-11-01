@@ -36,6 +36,7 @@ import {
   UserPlus,
   Plane,
   UserCircle2,
+  UserCheck,
 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -494,7 +495,8 @@ export default function VacationsPage() {
                     startDate: format(selectedDateRange.from, 'yyyy-MM-dd'),
                     endDate: format(selectedDateRange.to, 'yyyy-MM-dd'),
                 }, 
-                selectedEmployee
+                selectedEmployee,
+                false // Admin adding it directly, not from an employee request
             );
             
             toast({ title: 'Periodo de ausencia añadido', description: `Se ha guardado la ausencia para ${selectedEmployee?.name}.` });
@@ -909,7 +911,9 @@ export default function VacationsPage() {
                         {editingAbsence && (
                             <DialogDescription>
                                 Modificando la ausencia de <strong>{editingAbsence.employee.name}</strong> del tipo <strong>{absenceTypes.find(at => at.id === editingAbsence.absence.absenceTypeId)?.name}</strong>.
-                                {editingAbsence.absence.communicatedTo && <p className="text-xs pt-2">Petición comunicada a: <strong>{editingAbsence.absence.communicatedTo}</strong></p>}
+                                {editingAbsence.absence.communicatedTo && 
+                                    <p className="text-xs pt-2 flex items-center gap-2"><UserCheck className="h-4 w-4" />Petición comunicada a: <strong>{editingAbsence.absence.communicatedTo}</strong></p>
+                                }
                                 {editingAbsence.absence.originalRequest?.startDate && <p className="text-xs text-muted-foreground pt-2">Solicitud Original: del {format(safeParseDate(editingAbsence.absence.originalRequest.startDate)!, 'dd/MM/yy')} al {format(safeParseDate(editingAbsence.absence.originalRequest.endDate)!, 'dd/MM/yy')}</p>}
                             </DialogDescription>
                         )}
