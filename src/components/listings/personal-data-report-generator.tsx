@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isAfter } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { GripVertical, FileDown, Loader2 } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 
