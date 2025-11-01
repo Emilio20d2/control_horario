@@ -577,7 +577,7 @@ useEffect(() => {
 
     for (const weekId of sortedWeekIds) {
         const weekDate = parseISO(weekId);
-        if (getYear(weekDate) < 2025) continue;
+        if (getISOWeekYear(weekDate) < 2025) continue;
         
         if (isAfter(weekDate, auditStartDate) || isSameDay(weekDate, auditStartDate)) {
             const activeEmployeesThisWeek = getActiveEmployeesForDate(weekDate);
@@ -1153,7 +1153,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const absenceType = scheduledAbsence ? absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId) : undefined;
     
             let leaveHours = 0;
-            if (holidayDetails && theoreticalHours === 0 && getISODay(day) !== 7) {
+            if (holidayDetails && getISODay(day) !== 7 && theoreticalHours === 0) {
                  const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
                  if (contractType?.computesOffDayBag) {
                     leaveHours = weeklyWorkHours / 5;
@@ -1162,9 +1162,9 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 
             newDays[dayKey] = {
                 theoreticalHours: theoreticalHours,
-                workedHours: absenceType ? 0 : theoreticalHours,
+                workedHours: absenceType && !absenceType.isAbsenceSplittable ? 0 : theoreticalHours,
                 absence: absenceType ? absenceType.abbreviation : 'ninguna',
-                absenceHours: absenceType ? theoreticalHours : 0,
+                absenceHours: absenceType && !absenceType.isAbsenceSplittable ? theoreticalHours : 0,
                 leaveHours: leaveHours,
                 doublePay: false,
                 isHoliday: !!holidayDetails,
@@ -1314,6 +1314,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
