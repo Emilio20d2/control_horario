@@ -101,12 +101,12 @@ interface DataContextType {
   createHoliday: (data: Omit<Holiday, 'id' | 'date'> & { date: string }) => Promise<string>;
   updateHoliday: (id: string, data: HolidayFormData) => Promise<void>;
   deleteHoliday: (id: string) => Promise<void>;
-createAnnualConfig: async () => '',
-    updateAnnualConfig: async () => {},
-    deleteAnnualConfig: async () => {},
-    createContractType: async () => '',
-    updateContractType: async () => {},
-deleteContractType: async () => {},
+  createAnnualConfig: (data: Omit<AnnualConfiguration, 'id'>) => Promise<string>;
+  updateAnnualConfig: (id: string, data: Partial<Omit<AnnualConfiguration, 'id'>>) => Promise<void>;
+  deleteAnnualConfig: (id: string) => Promise<void>;
+  createContractType: (data: Omit<ContractType, 'id'>) => Promise<string>;
+  updateContractType: (id: string, data: Partial<Omit<ContractType, 'id'>>) => Promise<void>;
+  deleteContractType: (id: string) => Promise<void>;
   updateEmployeeWorkHours: (employeeId: string, employee: Employee, weeklyHours: number, effectiveDate: string) => Promise<void>;
   getWeekId: (d: Date) => string;
   processEmployeeWeekData: (emp: Employee, weekDays: Date[], weekId: string) => DailyEmployeeData | null;
@@ -176,30 +176,30 @@ const DataContext = createContext<DataContextType>({
   createHoliday: async () => '',
   updateHoliday: async () => {},
   deleteHoliday: async () => {},
-createAnnualConfig: async () => '',
-    updateAnnualConfig: async () => {},
-    deleteAnnualConfig: async () => {},
-    createContractType: async () => '',
-    updateContractType: async () => {},
-deleteContractType: async () => {},
+  createAnnualConfig: async () => '',
+  updateAnnualConfig: async () => {},
+  deleteAnnualConfig: async () => {},
+  createContractType: async () => '',
+  updateContractType: async () => {},
+  deleteContractType: async () => {},
   updateEmployeeWorkHours: async () => {},
   getWeekId: () => '',
   processEmployeeWeekData: () => null,
   calculateEmployeeVacations: () => ({ vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31, baseDays: 31, carryOverDays: 0, suspensionDeduction: 0, proratedDays: 31 }),
   calculateSeasonalVacationStatus: () => ({ employeeName: '', winterDaysTaken: 0, summerDaysTaken: 0, winterDaysRemaining: 10, summerDaysRemaining: 21 }),
-  addHolidayEmployee: async (data) => '',
-  updateHolidayEmployee: async (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>) => {},
-  deleteHolidayEmployee: async (id: string) => {},
-  addHolidayReport: async (report: Omit<HolidayReport, 'id'>) => {},
-  updateHolidayReport: async (reportId: string, data: Partial<Omit<HolidayReport, 'id'>>) => {},
-  deleteHolidayReport: async (reportId: string) => {},
-  createEmployeeGroup: async (data: Omit<EmployeeGroup, 'id'>) => '',
-  updateEmployeeGroup: async (id: string, data: Partial<Omit<EmployeeGroup, 'id'>>) => {},
-  deleteEmployeeGroup: async (id: string) => {},
-  updateEmployeeGroupOrder: async (groups: EmployeeGroup[]) => {},
-  createVacationCampaign: async (data: Omit<VacationCampaign, 'id'>) => '',
-  updateVacationCampaign: async (id: string, data: Partial<Omit<VacationCampaign, 'id'>>) => {},
-  deleteVacationCampaign: async (id: string) => {},
+  addHolidayEmployee: async () => '',
+  updateHolidayEmployee: async () => {},
+  deleteHolidayEmployee: async () => {},
+  addHolidayReport: async () => {},
+  updateHolidayReport: async () => {},
+  deleteHolidayReport: async () => {},
+  createEmployeeGroup: async () => '',
+  updateEmployeeGroup: async () => {},
+  deleteEmployeeGroup: async () => {},
+  updateEmployeeGroupOrder: async () => {},
+  createVacationCampaign: async () => '',
+  updateVacationCampaign: async () => {},
+  deleteVacationCampaign: async () => {},
   findNextUnconfirmedWeek: () => null,
   availableYears: [],
 });
@@ -1308,3 +1308,5 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
+
