@@ -79,7 +79,7 @@ export default function EmployeeDetailPage() {
     useEffect(() => {
         if (!loading && employee) {
             setDisplayBalances(getEmployeeFinalBalances(employee.id));
-            setVacationInfo(calculateEmployeeVacations(employee, currentYear, 'programmed'));
+            setVacationInfo(calculateEmployeeVacations(employee, currentYear, 'confirmed'));
         }
     }, [id, employee, loading, getEmployeeFinalBalances, calculateEmployeeVacations, currentYear, weeklyRecords]);
     

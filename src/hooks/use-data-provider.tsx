@@ -443,31 +443,37 @@ const pendingCorrectionRequestCount = useMemo(() => {
     let vacationDaysTakenInCurrentYear = 0;
     const currentYearDayMap = new Map<string, 'V' | 'S'>();
 
-    if (mode === 'programmed') {
-        emp.employmentPeriods?.forEach(period => {
-          period.scheduledAbsences?.forEach(absence => {
-            if (!absence.endDate || !absence.startDate || !isValid(absence.startDate) || !isValid(absence.endDate)) return;
-            const absenceCode = suspensionTypeIds.has(absence.absenceTypeId) ? 'S' : (absence.absenceTypeId === vacationType.id ? 'V' : null);
-            if (!absenceCode) return;
-            eachDayOfInterval({ start: startOfDay(absence.startDate), end: endOfDay(absence.endDate) }).forEach(day => {
-                if (getYear(day) === year) {
-                    currentYearDayMap.set(format(day, 'yyyy-MM-dd'), absenceCode);
-                }
-            });
-          });
+    // Source 1: Programmed Absences from Employee record
+    emp.employmentPeriods?.forEach(period => {
+      period.scheduledAbsences?.forEach(absence => {
+        if (!absence.endDate || !absence.startDate || !isValid(absence.startDate) || !isValid(absence.endDate)) return;
+        const absenceCode = suspensionTypeIds.has(absence.absenceTypeId) ? 'S' : (absence.absenceTypeId === vacationType.id ? 'V' : null);
+        if (!absenceCode) return;
+        eachDayOfInterval({ start: startOfDay(absence.startDate), end: endOfDay(absence.endDate) }).forEach(day => {
+            if (getYear(day) === year) {
+                currentYearDayMap.set(format(day, 'yyyy-MM-dd'), absenceCode);
+            }
         });
-    }
+      });
+    });
     
+    // Source 2: Confirmed Absences from Weekly Records (overwrites programmed data)
     Object.values(weeklyRecords).forEach(record => {
       const empWeekData = record.weekData[emp.id];
       if (!empWeekData?.days || !empWeekData.confirmed) return;
       Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
           if (getYear(parseISO(dayStr)) !== year) return;
           const dayKey = format(parseISO(dayStr), 'yyyy-MM-dd');
-          if (currentYearDayMap.has(dayKey) && mode === 'programmed') return; // Don't double count if already in scheduledAbsences for programmed mode
+          
           if (dayData.absence && dayData.absence !== 'ninguna') {
-              if (suspensionAbbrs.has(dayData.absence)) currentYearDayMap.set(dayKey, 'S');
-              else if (dayData.absence === vacationType.abbreviation) currentYearDayMap.set(dayKey, 'V');
+              if (suspensionAbbrs.has(dayData.absence)) {
+                  currentYearDayMap.set(dayKey, 'S');
+              } else if (dayData.absence === vacationType.abbreviation) {
+                  currentYearDayMap.set(dayKey, 'V');
+              }
+          } else {
+              // If a day was programmed as vacation/suspension but is now confirmed as something else, remove it.
+              currentYearDayMap.delete(dayKey);
           }
       });
     });
@@ -1317,6 +1323,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
