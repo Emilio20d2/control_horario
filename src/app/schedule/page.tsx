@@ -16,8 +16,10 @@ import type { Employee, DailyEmployeeData, DailyData } from '@/lib/types';
 import { CompletionDialog } from '@/components/schedule/completion-dialog';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquareWarning } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 export default function SchedulePage() {
+    const dataProvider = useDataProvider();
     const { 
         loading, 
         employees, 
@@ -29,48 +31,43 @@ export default function SchedulePage() {
         findNextUnconfirmedWeek,
         correctionRequests,
         availableYears,
-    } = useDataProvider();
-    
+        unconfirmedWeeksDetails
+    } = dataProvider;
+    const searchParams = useSearchParams();
+
     const getInitialDate = useCallback(() => {
-        if (loading || Object.keys(weeklyRecords).length === 0) {
-            return startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
+        const weekParam = searchParams.get('week');
+        if (weekParam) {
+            const date = parseISO(weekParam);
+            if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
+        }
+        
+        if (unconfirmedWeeksDetails.length > 0) {
+            // The first item is the most recent unconfirmed week
+            return parseISO(unconfirmedWeeksDetails[0].weekId);
         }
     
-        const sortedWeekIds = Object.keys(weeklyRecords).sort((a, b) => b.localeCompare(a));
-    
-        for (const weekId of sortedWeekIds) {
-            const weekStartDate = parseISO(weekId);
-            if (getYear(weekStartDate) < 2025) {
-                continue;
-            }
-    
-            const activeEmpsForWeek = getActiveEmployeesForDate(weekStartDate);
-            if (activeEmpsForWeek.length === 0) {
-                continue;
-            }
-    
-            const weekRecordData = weeklyRecords[weekId]?.weekData;
-    
-            const isUnconfirmed = activeEmpsForWeek.some(emp => {
-                const empData = weekRecordData?.[emp.id];
-                return !empData?.confirmed;
-            });
-    
-            if (isUnconfirmed) {
-                return weekStartDate;
-            }
-        }
-    
+        // If no unconfirmed weeks, default to the current week
         return startOfWeek(new Date(), { weekStartsOn: 1 });
     
-    }, [loading, weeklyRecords, getActiveEmployeesForDate]);
+    }, [unconfirmedWeeksDetails, searchParams]);
     
     const [currentDate, setCurrentDate] = useState(getInitialDate);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
-    const [selectedYear, setSelectedYear] = useState(2025);
+    const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
     const [processedWeeklyViewData, setProcessedWeeklyViewData] = useState<Record<string, DailyEmployeeData | null>>({});
     const [completionInfo, setCompletionInfo] = useState<{ weekId: string; nextWeekId: string | null } | null>(null);
 
+    useEffect(() => {
+        if (!loading) {
+            setCurrentDate(getInitialDate());
+            if (selectedEmployeeId === 'all') {
+                 setSelectedYear(getYear(new Date()));
+            } else {
+                setSelectedYear(getISOWeekYear(currentDate));
+            }
+        }
+    }, [loading, getInitialDate, selectedEmployeeId]);
     
     const isEmployeeActiveForWeek = useCallback((employee: Employee, weekStartDate: Date): boolean => {
         const weekStart = startOfDay(weekStartDate);
@@ -170,26 +167,21 @@ export default function SchedulePage() {
         if (!employee) return <div className="text-center p-8">Empleado no encontrado.</div>;
     
         let weeksOfYear: Date[] = [];
-        if (selectedYear === 2025) {
-            // Hardcoded start for 2025
-            const start2025 = new Date('2024-12-30');
-            const end2025 = endOfWeek(new Date('2025-12-28'));
-            let current = start2025;
-            while (current <= end2025) {
-                weeksOfYear.push(current);
-                current = addWeeks(current, 1);
-            }
-        } else {
-            let firstMondayOfYear = startOfWeek(new Date(selectedYear, 0, 4), { weekStartsOn: 1 });
-            if (getISOWeek(firstMondayOfYear) > 1) {
-                firstMondayOfYear = subWeeks(firstMondayOfYear, 1);
-            }
-            weeksOfYear = Array.from({ length: 53 }).map((_, i) => addWeeks(firstMondayOfYear, i))
-                .filter(d => {
-                    const yearOfWeek = getISOWeekYear(d);
-                    return yearOfWeek === selectedYear;
-                });
+        const year = selectedYear;
+
+        let firstMondayOfYear = startOfWeek(new Date(year, 0, 4), { weekStartsOn: 1 });
+        if (getISOWeek(firstMondayOfYear) > 1) {
+            firstMondayOfYear = subWeeks(firstMondayOfYear, 1);
         }
+        weeksOfYear = Array.from({ length: 53 }).map((_, i) => addWeeks(firstMondayOfYear, i))
+            .filter(d => {
+                const isoYear = getISOWeekYear(d);
+                // Special case for 2025: include the week of 2024-12-30
+                if (year === 2025) {
+                    return isoYear === 2025;
+                }
+                return isoYear === year;
+            });
     
         return (
             <Card className="rounded-none border-0 border-t bg-card">
