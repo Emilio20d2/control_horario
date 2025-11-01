@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -58,13 +59,19 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
 
     useEffect(() => {
         setLocalWeekData(initialWeekData);
-        if (initialWeekData) {
-            const { turnId } = getTheoreticalHoursAndTurn(employee.id, weekDays[0]);
-            setWeekTurn(turnId);
+    }, [initialWeekData]);
+    
+    // This effect ensures balances are always fresh if the employee data changes.
+    useEffect(() => {
+        if (employee && weekId) {
             const balances = getEmployeeBalancesForWeek(employee.id, weekId);
             setInitialBalances(balances);
         }
-    }, [initialWeekData, employee.id, weekId, weekDays, getTheoreticalHoursAndTurn, getEmployeeBalancesForWeek]);
+        if (employee && weekDays && weekDays.length > 0) {
+            const { turnId } = getTheoreticalHoursAndTurn(employee.id, weekDays[0]);
+            setWeekTurn(turnId);
+        }
+    }, [employee, weekId, getEmployeeBalancesForWeek, getTheoreticalHoursAndTurn, weekDays]);
 
     useEffect(() => {
         const updatePreview = async () => {
