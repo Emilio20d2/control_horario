@@ -779,14 +779,13 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
     
     if (!schedule) return defaultReturn;
     
-    const ANCHOR_DATE = startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
+    const ANCHOR_DATE = startOfWeek(new Date('2024-12-16'), { weekStartsOn: 1 }); // T1 week
     const currentWeekStartDate = startOfWeek(dateInWeek, { weekStartsOn: 1 });
-    const daysSinceAnchor = differenceInDays(currentWeekStartDate, ANCHOR_DATE);
-    const weeksSinceAnchor = Math.floor(daysSinceAnchor / 7);
 
-    const turnIndex = (2 + weeksSinceAnchor) % 4; // Turno 3 (índice 2) es el ancla
-    const finalTurnIndex = (turnIndex < 0) ? turnIndex + 4 : turnIndex; // Asegurar índice positivo
-    const turnId = `turn${finalTurnIndex + 1}` as keyof typeof schedule.shifts;
+    const weeksDifference = Math.floor(differenceInDays(currentWeekStartDate, ANCHOR_DATE) / 7);
+    
+    const turnIndex = (weeksDifference % 4 + 4) % 4; // Ensures positive index for past dates
+    const turnId = `turn${turnIndex + 1}` as keyof typeof schedule.shifts;
 
     const turnSchedule = schedule.shifts[turnId];
 
@@ -801,7 +800,7 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
         return { dateKey, theoreticalHours: isNaN(theoreticalHours) ? 0 : theoreticalHours };
     });
 
-    return { turnId: `turn${finalTurnIndex + 1}`, weekDaysWithTheoreticalHours: results };
+    return { turnId: `turn${turnIndex + 1}`, weekDaysWithTheoreticalHours: results };
 };
 
   
@@ -1321,6 +1320,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
