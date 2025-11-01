@@ -27,7 +27,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
 export default function MyMessagesPage() {
-    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, getTheoreticalHoursAndTurn, holidays } = useDataProvider();
+    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, getTheoreticalHoursAndTurn, holidays } from useDataProvider();
     const [newMessage, setNewMessage] = useState('');
     const conversationId = employeeRecord?.id;
     const viewportRef = useRef<HTMLDivElement>(null);
@@ -171,10 +171,10 @@ export default function MyMessagesPage() {
         const messageText = newMessage;
         setNewMessage('');
 
-        await sendMessage(messageText);
+        await sendMessage(messageText, true); // true for unreadByAdmin
     };
 
-    const sendMessage = async (text: string) => {
+    const sendMessage = async (text: string, unreadByAdmin: boolean) => {
         if (!conversationId || !employeeRecord) return;
         
         const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
@@ -193,14 +193,14 @@ export default function MyMessagesPage() {
                 employeeName: employeeRecord.name,
                 lastMessageText: text,
                 lastMessageTimestamp: serverTimestamp(),
-                unreadByAdmin: true,
+                unreadByAdmin: unreadByAdmin,
                 unreadByEmployee: false,
             });
         } else {
              await updateDoc(convDocRef, {
                 lastMessageText: text,
                 lastMessageTimestamp: serverTimestamp(),
-                unreadByAdmin: true,
+                unreadByAdmin: unreadByAdmin,
                 unreadByEmployee: false,
             });
         }
@@ -264,7 +264,7 @@ La solicitud ha sido pre-aprobada y registrada en el planificador para su revisi
 
 Gracias.`;
     
-            await sendMessage(requestMessage);
+            await sendMessage(requestMessage, false); // Don't mark as unread for admin
     
             setIsRequestDialogOpen(false);
         } catch (error) {
@@ -350,7 +350,7 @@ He solicitado un permiso que he comunicado verbalmente a ${communicatedTo}.
 
 Gracias.`;
     
-            await sendMessage(requestMessage);
+            await sendMessage(requestMessage, true);
             
             toast({ title: 'Solicitud Enviada', description: 'Tu petición ha sido registrada y enviada al administrador.' });
             setIsOtherRequestDialogOpen(false);
