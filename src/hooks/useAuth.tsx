@@ -7,6 +7,7 @@ import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
 import type { AppUser, Employee } from '@/lib/types';
+import { useIsMobile } from './use-is-mobile';
 
 
 interface AuthContextType {
@@ -37,6 +38,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
   const router = useRouter();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -47,18 +49,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
           
-          // Hardcoded override for specific admin user
           const isAdminByEmail = user.email === 'mariaavg@inditex.com';
 
           if (userDoc.exists()) {
               const dbData = userDoc.data() as Omit<AppUser, 'id'>;
-              // Set the definitive role and view mode from the database
               const finalRole = isAdminByEmail ? 'admin' : dbData.role;
               setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: finalRole });
-              setViewMode(finalRole);
+              
+              if (finalRole === 'admin') {
+                setViewMode(isMobile ? 'employee' : 'admin');
+              } else {
+                setViewMode('employee');
+              }
+
           } else {
-              // This is a fallback for users that exist in Auth but not in 'users' collection yet,
-              // or for the hardcoded admin user.
               if(user.email) {
                 const q = query(collection(db, 'employees'), where('email', '==', user.email));
                 const empSnapshot = await getDocs(q);
@@ -67,10 +71,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 const employeeId = !empSnapshot.empty ? empSnapshot.docs[0].id : null;
                 
                 const newUserDocData = { email: user.email, employeeId, role: defaultRole };
-                await setDoc(userDocRef, newUserDocData, { merge: true }); // Use merge to be safe
+                await setDoc(userDocRef, newUserDocData, { merge: true });
                 
                 setAppUser({ id: user.uid, ...newUserDocData, trueRole: defaultRole });
-                setViewMode(defaultRole);
+                
+                if (defaultRole === 'admin') {
+                  setViewMode(isMobile ? 'employee' : 'admin');
+                } else {
+                  setViewMode('employee');
+                }
               }
           }
         } catch (error) {
@@ -84,7 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [isMobile]); // Rerun on mobile change
 
   // Effect to handle view mode changes for admins
   useEffect(() => {
@@ -99,8 +108,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     await signOut(auth);
-    // The redirect is now handled by the useEffect in this same hook watching the `user` state.
-    // Explicitly pushing here can cause race conditions.
   };
   
   const reauthenticateWithPassword = async (password: string): Promise<boolean> => {
