@@ -232,6 +232,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     weeklyRecords: false,
     other: false,
   });
+  const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
+
 
   const allLoadingStepsComplete = useMemo(() => {
     return Object.values(loadingSteps).every(Boolean);
@@ -1308,5 +1310,6 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
