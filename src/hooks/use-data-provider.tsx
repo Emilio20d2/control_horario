@@ -430,7 +430,7 @@ const pendingCorrectionRequestCount = useMemo(() => {
     setUsers(freshUsers);
   };
 
-  const calculateEmployeeVacations = useCallback((emp: Employee, calculationYear?: number, mode: 'confirmed' | 'programmed' = 'programmed') => {
+  const calculateEmployeeVacations = useCallback((emp: Employee, calculationYear?: number, mode: 'confirmed' | 'programmed' = 'confirmed') => {
     const year = calculationYear ?? getYear(new Date());
     const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
     const suspensionTypeIds = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.id));
@@ -443,7 +443,7 @@ const pendingCorrectionRequestCount = useMemo(() => {
     let vacationDaysTakenInCurrentYear = 0;
     const currentYearDayMap = new Map<string, 'V' | 'S'>();
 
-    // Source 1: Programmed Absences from Employee record
+    // Source 1: Programmed Absences from Employee record. This establishes the base.
     emp.employmentPeriods?.forEach(period => {
       period.scheduledAbsences?.forEach(absence => {
         if (!absence.endDate || !absence.startDate || !isValid(absence.startDate) || !isValid(absence.endDate)) return;
@@ -457,7 +457,7 @@ const pendingCorrectionRequestCount = useMemo(() => {
       });
     });
     
-    // Source 2: Confirmed Absences from Weekly Records (overwrites programmed data)
+    // Source 2: Confirmed Absences from Weekly Records. This OVERWRITES programmed data.
     Object.values(weeklyRecords).forEach(record => {
       const empWeekData = record.weekData[emp.id];
       if (!empWeekData?.days || !empWeekData.confirmed) return;
@@ -1321,6 +1321,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
