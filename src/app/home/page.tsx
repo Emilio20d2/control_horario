@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { format, parseISO, addWeeks, startOfWeek, endOfWeek, isAfter, isSameDay, isBefore } from 'date-fns';
+import { format, parseISO, addWeeks, startOfWeek, endOfWeek, isAfter, isSameDay, isBefore, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
 import { AlertTriangle, ArrowRight, CalendarClock, Mail } from 'lucide-react';
@@ -22,7 +23,8 @@ export default function HomePage() {
         unconfirmedWeeksDetails, 
         conversations, 
         employees, 
-        absenceTypes
+        absenceTypes,
+        employeeRecord,
     } = useDataProvider();
 
     const unreadConversations = useMemo(() => {
@@ -44,21 +46,18 @@ export default function HomePage() {
         activeEmployees.forEach(emp => {
             (emp.employmentPeriods || []).forEach(p => {
                 (p.scheduledAbsences || []).forEach(a => {
-                    // Skip if already processed or invalid
-                    if (processedAbsenceIds.has(a.id) || !a.startDate || !a.endDate) return;
+                    if (!a.id || processedAbsenceIds.has(a.id) || !a.startDate || !a.endDate || !isValid(a.startDate) || !isValid(a.endDate)) return;
+                    
+                    processedAbsenceIds.add(a.id);
 
-                    const absenceStart = a.startDate;
-                    const absenceEnd = a.endDate;
+                    if (isBefore(a.endDate, next5WeeksStart) || isAfter(a.startDate, next5WeeksEnd)) {
+                        return;
+                    }
 
-                    // Correct interval overlap check:
-                    // The absence interval overlaps if it starts before the range ends AND it ends after the range starts.
-                    if (isBefore(absenceStart, next5WeeksEnd) && isAfter(absenceEnd, next5WeeksStart)) {
-                        const absenceType = absenceTypes.find(at => at.id === a.absenceTypeId);
-                        if (absenceType) {
-                            const weekId = format(startOfWeek(absenceStart, {weekStartsOn: 1}), 'yyyy-MM-dd');
-                            events.push({ weekId, employee: emp, absence: a, absenceType });
-                            processedAbsenceIds.add(a.id); // Mark as processed to prevent duplicates
-                        }
+                    const absenceType = absenceTypes.find(at => at.id === a.absenceTypeId);
+                    if (absenceType) {
+                        const weekId = format(startOfWeek(a.startDate, {weekStartsOn: 1}), 'yyyy-MM-dd');
+                        events.push({ weekId, employee: emp, absence: a, absenceType });
                     }
                 });
             });
@@ -67,6 +66,8 @@ export default function HomePage() {
         return events.sort((a,b) => a.absence.startDate.getTime() - b.absence.startDate.getTime());
 
     }, [employees, absenceTypes]);
+
+    const welcomeName = employeeRecord?.name ? employeeRecord.name.split(' ')[0] : 'Admin';
 
 
     if (loading) {
@@ -82,6 +83,9 @@ export default function HomePage() {
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
             <h1 className="text-2xl font-bold tracking-tight font-headline">Inicio</h1>
+             <p className="text-muted-foreground -mt-4">
+                ¡Hola, {welcomeName}! Aquí tienes un resumen de tus tareas pendientes.
+            </p>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <Card className="flex flex-col">
                     <CardHeader>
