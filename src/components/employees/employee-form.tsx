@@ -517,9 +517,9 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             <FormItem>
                                 <FormLabel>Jornada Semanal Inicial</FormLabel>
                                 <FormControl>
-                                    <InputStepper {...field} value={field.value} step={0.25} disabled={!!employee} />
+                                    <InputStepper {...field} value={field.value} step={0.25} disabled={!isFirstPeriod} />
                                 </FormControl>
-                                {!!employee && <FormDescription>La jornada se gestiona en las modificaciones de contrato.</FormDescription>}
+                                {!isFirstPeriod && <FormDescription>La jornada se gestiona en las modificaciones de contrato.</FormDescription>}
                                 <FormMessage />
                             </FormItem>
                         )}
@@ -531,7 +531,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         <FormItem>
                             <FormLabel>Horas Computadas Anuales</FormLabel>
                             <FormControl>
-                                <InputStepper {...field} step={0.25} value={field.value ?? 0} disabled={!!employee && !isFirstPeriod} />
+                                <InputStepper {...field} step={0.25} value={field.value ?? 0} disabled={!isFirstPeriod} />
                             </FormControl>
                              <FormDescription>Horas ya trabajadas si el contrato empezó a mitad de año.</FormDescription>
                             <FormMessage />
@@ -545,7 +545,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             <FormItem>
                                 <FormLabel>Bolsa Ordinaria Inicial</FormLabel>
                                 <FormControl>
-                                    <InputStepper {...field} value={field.value} step={0.25} disabled={!!employee} />
+                                    <InputStepper {...field} value={field.value} step={0.25} disabled={!isFirstPeriod} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -558,7 +558,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             <FormItem>
                                 <FormLabel>Bolsa Festivos Inicial</FormLabel>
                                 <FormControl>
-                                    <InputStepper {...field} value={field.value} step={0.25} disabled={!!employee} />
+                                    <InputStepper {...field} value={field.value} step={0.25} disabled={!isFirstPeriod} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -571,7 +571,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             <FormItem>
                                 <FormLabel>Bolsa Libranza Inicial</FormLabel>
                                 <FormControl>
-                                    <InputStepper {...field} value={field.value} step={0.25} disabled={!!employee} />
+                                    <InputStepper {...field} value={field.value} step={0.25} disabled={!isFirstPeriod} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -584,7 +584,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             <FormItem>
                                 <FormLabel>Vacaciones Pendientes 2024</FormLabel>
                                 <FormControl>
-                                    <InputStepper {...field} value={field.value} step={1} disabled={!isFirstPeriod && !!employee} />
+                                    <InputStepper {...field} value={field.value} step={1} disabled={!isFirstPeriod} />
                                 </FormControl>
                                 <FormDescription>Días de 2024 que se suman a 2025.</FormDescription>
                                 <FormMessage />
@@ -608,7 +608,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                                 <Switch
                                 checked={field.value}
                                 onCheckedChange={field.onChange}
-                                disabled={!isFirstPeriod && !!employee}
+                                disabled={!isFirstPeriod}
                                 />
                             </FormControl>
                             </FormItem>
@@ -622,7 +622,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                                 <FormItem className="rounded-lg border p-3 shadow-sm">
                                     <FormLabel>Vacaciones Disfrutadas (Otro Centro)</FormLabel>
                                     <FormControl>
-                                        <InputStepper {...field} value={field.value} step={1} disabled={!isFirstPeriod && !!employee} />
+                                        <InputStepper {...field} value={field.value} step={1} disabled={!isFirstPeriod} />
                                     </FormControl>
                                     <FormDescription>Días ya consumidos en el centro de origen.</FormDescription>
                                     <FormMessage />
