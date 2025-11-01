@@ -93,8 +93,7 @@ export default function HomePage() {
              <p className="text-lg text-muted-foreground -mt-4">
                 ¡Hola, <strong className="text-foreground">{welcomeName}</strong>! Aquí tienes un resumen de tus tareas pendientes.
             </p>
-            <Card className="flex flex-col flex-grow h-full">
-                <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 p-0 pt-6">
+            <div className="grid gap-6 auto-rows-fr sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 <Card className="flex flex-col">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -149,7 +148,7 @@ export default function HomePage() {
                                                     </Avatar>
                                                     <div>
                                                         <p className="font-semibold text-sm">{conv.employeeName}</p>
-                                                        <p className="text-xs text-muted-foreground truncate max-w-[200px]">{conv.lastMessageText}</p>
+                                                        <p className="text-sm text-muted-foreground truncate max-w-[200px]">{conv.lastMessageText}</p>
                                                     </div>
                                                 </div>
                                                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -199,8 +198,7 @@ export default function HomePage() {
                          )}
                     </CardContent>
                 </Card>
-                </CardContent>
-            </Card>
+            </div>
         </div>
     );
 }
