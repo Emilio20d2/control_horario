@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { DailyData, WeeklyRecord, Employee, CorrectionRequest } from '@/lib/types';
-import { Loader2, MessageSquareWarning, Send } from 'lucide-react';
+import { Loader2, MessageSquareWarning, Send, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,6 +21,7 @@ import { setDocument } from '@/lib/services/firestoreService';
 import { Timestamp, collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface ConfirmedWeek {
     weekId: string;
@@ -110,12 +111,18 @@ const CorrectionRequestDialog = ({ open, onOpenChange, weekId, employee, onSubmi
                     <DialogTitle>Solicitar Corrección</DialogTitle>
                     <DialogDescription>
                         Semana del {format(parseISO(weekId), 'dd/MM/yyyy', { locale: es })}.
-                        Explica el motivo por el que crees que hay un error en esta semana.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="py-4">
+                <div className="py-4 space-y-4">
+                     <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>¡Atención!</AlertTitle>
+                        <AlertDescription>
+                            Antes de enviar una corrección, asegúrate de haber contrastado tus presencias con los datos registrados en INET.
+                        </AlertDescription>
+                    </Alert>
                     <Textarea
-                        placeholder="Ej: Faltan horas en el día martes, trabajé de 8 a 14 y solo figuran 4 horas."
+                        placeholder="Explica el motivo por el que crees que hay un error. Ej: Faltan horas en el día martes, trabajé de 8 a 14 y solo figuran 4 horas."
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                         rows={4}
