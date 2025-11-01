@@ -481,71 +481,71 @@ export default function CalendarPage() {
     );
   }
 
-  const renderMobileView = () => (
-    <div className="space-y-4">
-        <div className="flex flex-col items-center gap-4">
-            <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
-            <AddAbsenceDialog 
-                isOpen={isAddDialogOpen} 
-                onOpenChange={setIsAddDialogOpen} 
-                activeEmployees={activeEmployees} 
-                absenceTypes={absenceTypes} 
-                holidays={holidays}
-                employees={employees}
-                refreshData={refreshData}
-            />
-        </div>
-      {weeklyAbsenceData.map(empData => {
-        return (
-          <Card key={empData.employee.id}>
-            <CardHeader className="py-3">
-              <CardTitle className="text-base">{empData.employee.name}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-2">
-              <div className="grid grid-cols-4 gap-1">
-                {weekDays.map(day => {
-                  const dayKey = format(day, 'yyyy-MM-dd');
-                  const cellInfo = empData.dayAbsences[dayKey];
-                  const holiday = holidays.find(h => isSameDay(h.date, day));
+  const renderMobileView = () => {
+    const absenceDaysByEmployee = weeklyAbsenceData.map(empData => {
+        const daysWithAbsences = weekDays
+            .map(day => empData.dayAbsences[format(day, 'yyyy-MM-dd')])
+            .filter((cellInfo): cellInfo is CellAbsenceInfo => cellInfo !== null);
+        return {
+            employee: empData.employee,
+            absences: daysWithAbsences
+        };
+    }).filter(data => data.absences.length > 0);
 
-                  return (
-                    <div 
-                      key={dayKey}
-                      onClick={() => cellInfo && handleOpenDetails(cellInfo)}
-                      className={cn(
-                        "flex flex-col items-center justify-center p-1 rounded-md h-16 text-xs",
-                        cellInfo && "cursor-pointer hover:bg-muted",
-                        holiday && !cellInfo && 'bg-blue-50/50'
-                      )}
-                      style={{ backgroundColor: cellInfo ? `${cellInfo.absenceType.color}40` : undefined }}
-                    >
-                      <span className="font-semibold">{format(day, 'E', { locale: es })}</span>
-                      <span className="text-muted-foreground">{format(day, 'dd/MM')}</span>
-                      {cellInfo ? (
-                        <div className="flex flex-col items-center justify-center gap-0.5 mt-1">
-                            <span className="font-bold">{cellInfo.absenceType.abbreviation}</span>
-                            {cellInfo.substituteName && (
-                              <span className="text-xs text-muted-foreground font-semibold truncate">{cellInfo.substituteName}</span>
-                            )}
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )
-      })}
-      {!loading && weeklyAbsenceData.length === 0 && (
-        <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            No hay empleados con ausencias programadas para esta semana.
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
+    return (
+        <div className="space-y-4">
+            <div className="flex flex-col items-center gap-4">
+                <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
+                <AddAbsenceDialog
+                    isOpen={isAddDialogOpen}
+                    onOpenChange={setIsAddDialogOpen}
+                    activeEmployees={activeEmployees}
+                    absenceTypes={absenceTypes}
+                    holidays={holidays}
+                    employees={employees}
+                    refreshData={refreshData}
+                />
+            </div>
+            {absenceDaysByEmployee.map(({ employee, absences }) => (
+                <Card key={employee.id}>
+                    <CardHeader className="py-3">
+                        <CardTitle className="text-base">{employee.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-2 space-y-2">
+                        {absences.map(cellInfo => (
+                            <div
+                                key={cellInfo.absence.id}
+                                onClick={() => handleOpenDetails(cellInfo)}
+                                className="flex items-center gap-4 p-3 rounded-md cursor-pointer hover:bg-muted"
+                                style={{ backgroundColor: `${cellInfo.absenceType.color}40` }}
+                            >
+                                <div className="flex flex-col items-center justify-center w-16 shrink-0">
+                                    <span className="font-semibold capitalize text-sm">{format(cellInfo.absence.startDate, 'E', { locale: es })}</span>
+                                    <span className="text-muted-foreground text-xs">{format(cellInfo.absence.startDate, 'dd/MM/yyyy')}</span>
+                                </div>
+                                <div className="flex-grow">
+                                    <p className="font-bold">{cellInfo.absenceType.name}</p>
+                                    {cellInfo.substituteName && (
+                                        <p className="text-xs text-muted-foreground font-semibold">Sustituto: {cellInfo.substituteName}</p>
+                                    )}
+                                </div>
+                                <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            ))}
+            {!loading && weeklyAbsenceData.length === 0 && (
+                <Card>
+                    <CardContent className="p-8 text-center text-muted-foreground">
+                        No hay empleados con ausencias programadas para esta semana.
+                    </CardContent>
+                </Card>
+            )}
+        </div>
+    );
+};
+
 
   const renderDesktopView = () => (
     <Card>
@@ -713,6 +713,7 @@ export default function CalendarPage() {
 
 
     
+
 
 
 
