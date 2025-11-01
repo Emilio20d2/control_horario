@@ -568,42 +568,33 @@ const pendingCorrectionRequestCount = useMemo(() => {
 
 
 useEffect(() => {
-    if (loading || !employees.length) return;
+    if (loading) return;
 
     const details: { weekId: string; employeeNames: string[] }[] = [];
-    const startOfCurrentWeek = startOfDay(startOfWeek(new Date(), { weekStartsOn: 1 }));
-    
-    // The alert will only be effective from January 27, 2025 onwards.
     const auditStartDate = startOfDay(new Date('2025-01-27'));
 
-    const excludedWeeks = new Set(['2024-12-16', '2024-12-23', '2025-01-13', '2025-01-20']);
+    const sortedWeekIds = Object.keys(weeklyRecords).sort((a,b) => b.localeCompare(a)); // Sort descending
 
-    for (const weekId in weeklyRecords) {
-        if (excludedWeeks.has(weekId)) {
-            continue;
-        }
-
+    for (const weekId of sortedWeekIds) {
         const weekDate = parseISO(weekId);
+        if (getYear(weekDate) < 2025) continue;
         
-        // Check if the week is strictly before the current week AND on or after the audit start date.
-        if (isBefore(startOfDay(weekDate), startOfCurrentWeek) && (isAfter(weekDate, auditStartDate) || isSameDay(weekDate, auditStartDate))) {
+        if (isAfter(weekDate, auditStartDate) || isSameDay(weekDate, auditStartDate)) {
             const activeEmployeesThisWeek = getActiveEmployeesForDate(weekDate);
-            if (activeEmployeesThisWeek.length === 0) {
-                continue;
-            }
+            if (activeEmployeesThisWeek.length === 0) continue;
 
             const weekRecord = weeklyRecords[weekId];
-            const unconfirmedEmployeeNames = activeEmployeesThisWeek
-                .filter(emp => !(weekRecord?.weekData?.[emp.id]?.confirmed ?? false))
-                .map(emp => emp.name);
-
-            if (unconfirmedEmployeeNames.length > 0) {
-                details.push({ weekId: weekId, employeeNames: unconfirmedEmployeeNames });
+            const isUnconfirmed = activeEmployeesThisWeek.some(emp => !(weekRecord?.weekData?.[emp.id]?.confirmed ?? false));
+            
+            if (isUnconfirmed) {
+                details.push({
+                    weekId,
+                    employeeNames: activeEmployeesThisWeek.filter(emp => !(weekRecord?.weekData?.[emp.id]?.confirmed ?? false)).map(e => e.name)
+                });
             }
         }
     }
     
-    details.sort((a, b) => a.weekId.localeCompare(b.weekId));
     setUnconfirmedWeeksDetails(details);
 
 }, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
@@ -1323,6 +1314,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
