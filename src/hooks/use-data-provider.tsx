@@ -1,4 +1,5 @@
 
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -422,7 +423,6 @@ const pendingCorrectionRequestCount = useMemo(() => {
   
   const refreshData = useCallback(() => {
     // This is now just a placeholder. The onSnapshot listeners handle live updates.
-    console.log("Data refresh triggered (onSnapshot handles this).");
   }, []);
 
   const refreshUsers = async () => {
@@ -577,7 +577,6 @@ useEffect(() => {
 
     for (const weekId in weeklyRecords) {
         if (excludedWeeks.has(weekId)) {
-            console.log(`Skipping excluded week: ${weekId}`);
             continue;
         }
 
@@ -666,25 +665,25 @@ const calculateBalancePreviewCallback = useCallback((employeeId: string, weekDat
     );
   }, [employees, absenceTypes, contractTypes]);
   
- const getEmployeeBalancesForWeek = useCallback((employeeId: string, weekId: string): { ordinary: number, holiday: number, leave: number, total: number } => {
+const getEmployeeBalancesForWeek = useCallback((employeeId: string, weekId: string): { ordinary: number, holiday: number, leave: number, total: number } => {
     const employee = employees.find(e => e.id === employeeId);
-    if (!employee || !employee.employmentPeriods) return { ordinary: 0, holiday: 0, leave: 0, total: 0 };
-
-    const targetWeekStartDate = startOfWeek(parseISO(weekId), { weekStartsOn: 1 });
-    const allPeriodsSorted = [...employee.employmentPeriods].sort((a, b) => (a.startDate as Date).getTime() - (b.startDate as Date).getTime());
-
-    // Find the latest period that starts ON OR BEFORE the target week. This is our starting point.
-    let startingPeriodIndex = -1;
-    for (let i = allPeriodsSorted.length - 1; i >= 0; i--) {
-        if (!isAfter(startOfDay(allPeriodsSorted[i].startDate as Date), startOfDay(targetWeekStartDate))) {
-            startingPeriodIndex = i;
-            break;
-        }
+    if (!employee || !employee.employmentPeriods || employee.employmentPeriods.length === 0) {
+        return { ordinary: 0, holiday: 0, leave: 0, total: 0 };
     }
 
-    if (startingPeriodIndex === -1) {
-        // This case should be rare, means the target week is before any contract started.
-        // Return the balances of the very first contract.
+    const targetWeekStartDate = startOfDay(parseISO(weekId));
+    
+    const allPeriodsSorted = [...employee.employmentPeriods].sort((a, b) => 
+        (a.startDate as Date).getTime() - (b.startDate as Date).getTime()
+    );
+
+    // Find the current or most recent period relative to the target week.
+    const relevantPeriod = allPeriodsSorted
+        .filter(p => !isAfter(startOfDay(p.startDate as Date), targetWeekStartDate))
+        .pop();
+
+    if (!relevantPeriod) {
+        // This case occurs if the weekId is before any contract started. Return the first period's initial balances.
         const firstPeriod = allPeriodsSorted[0];
         const balances = {
             ordinary: firstPeriod?.initialOrdinaryHours ?? 0,
@@ -694,24 +693,23 @@ const calculateBalancePreviewCallback = useCallback((employeeId: string, weekDat
         return { ...balances, total: balances.ordinary + balances.holiday + balances.leave };
     }
 
-    const startingPeriod = allPeriodsSorted[startingPeriodIndex];
     let currentBalances = {
-        ordinary: startingPeriod.initialOrdinaryHours ?? 0,
-        holiday: startingPeriod.initialHolidayHours ?? 0,
-        leave: startingPeriod.initialLeaveHours ?? 0,
+        ordinary: relevantPeriod.initialOrdinaryHours ?? 0,
+        holiday: relevantPeriod.initialHolidayHours ?? 0,
+        leave: relevantPeriod.initialLeaveHours ?? 0,
     };
+    
+    const relevantPeriodStartDate = startOfDay(relevantPeriod.startDate as Date);
 
-    // Find all confirmed records from the start of the starting period up to (but not including) the target week
     const recordsToProcess = Object.values(weeklyRecords)
         .filter(record => {
             const recordDate = parseISO(record.id);
             return record.weekData?.[employeeId]?.confirmed &&
-                   !isBefore(recordDate, startOfDay(startingPeriod.startDate as Date)) &&
-                   isBefore(recordDate, targetWeekStartDate);
+                   !isBefore(recordDate, relevantPeriodStartDate) && // Only from the start of the relevant period
+                   isBefore(recordDate, targetWeekStartDate);        // Up to the week before the target
         })
         .sort((a, b) => a.id.localeCompare(b.id));
 
-    // Iterate through the records, applying the impact of each week
     for (const record of recordsToProcess) {
         const weekData = record.weekData[employeeId];
         const preview = calculateBalancePreviewCallback(
@@ -1323,6 +1321,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
