@@ -9,9 +9,8 @@ export interface CreateUserPayload {
     password?: string; // Optional password for creation, can be auto-generated
 }
 
-export const createUserAccount = async (payload: {email: string, password?: string}): Promise<{ success: boolean; uid?: string, error?: string; }> => {
-    const { email, password } = payload;
-    const db = getDbAdmin();
+export const createUserAccount = async (payload: {email: string, password?: string, name?: string}): Promise<{ success: boolean; uid?: string, error?: string; }> => {
+    const { email, password, name } = payload;
     const authAdmin = getAuthAdmin();
 
     try {
@@ -23,45 +22,10 @@ export const createUserAccount = async (payload: {email: string, password?: stri
             throw new Error('La contraseña es obligatoria.');
         }
 
-        // 1. Check if employee with this email exists
-        const employeesRef = db.collection('employees');
-        const querySnapshot = await employeesRef.where('email', '==', email).limit(1).get();
-
-        if (querySnapshot.empty) {
-            return { success: false, error: 'No se ha encontrado ninguna ficha de empleado con este correo electrónico.' };
-        }
-
-        const employeeDoc = querySnapshot.docs[0];
-        const employeeData = employeeDoc.data() as Employee;
-        
-        // 2. Check if employee is already registered (has authId)
-        if (employeeData.authId) {
-            // Check if a user account already exists in Firebase Auth, if so, just link it.
-            try {
-                const userRecord = await authAdmin.getUserByEmail(email);
-                if(userRecord.uid !== employeeData.authId) {
-                    await employeeDoc.ref.update({ authId: userRecord.uid });
-                }
-                 return { success: true, uid: userRecord.uid, error: 'Este empleado ya tiene una cuenta registrada.' };
-            } catch (error: any) {
-                 if (error.code === 'auth/user-not-found') {
-                    // Auth user deleted, but authId still exists on employee. Let's recreate.
-                 } else {
-                     throw error; // Re-throw other errors
-                 }
-            }
-        }
-
-        // 3. Create Firebase Auth user
         const userRecord = await authAdmin.createUser({
             email,
             password,
-            displayName: employeeData.name,
-        });
-
-        // 4. Update the employee document with the new authId (UID)
-        await employeeDoc.ref.update({
-            authId: userRecord.uid
+            displayName: name,
         });
 
         return { success: true, uid: userRecord.uid };

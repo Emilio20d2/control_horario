@@ -10,7 +10,7 @@ import { db } from '../firebase';
 import { createUserAccount } from '../actions/userActions';
 import { addHolidayEmployee } from './settingsService';
 
-export const createEmployee = async (formData: EmployeeFormData & { authId: string | null }): Promise<string> => {
+export const createEmployee = async (formData: EmployeeFormData): Promise<string> => {
     const { name, employeeNumber, dni, phone, email, role, groupId, startDate, isTransfer, vacationDaysUsedInAnotherCenter, contractType, initialWeeklyWorkHours, annualComputedHours, weeklySchedules, initialOrdinaryHours, initialHolidayHours, initialLeaveHours, vacationDays2024 } = formData;
     
     if (!employeeNumber) {
@@ -20,7 +20,7 @@ export const createEmployee = async (formData: EmployeeFormData & { authId: stri
     let authId: string | null = null;
     if (email) {
         const password = Math.random().toString(36).slice(-8); // Generate a random temporary password
-        const userResult = await createUserAccount({ email, password });
+        const userResult = await createUserAccount({ email, password, name });
         if (userResult.success && userResult.uid) {
             authId = userResult.uid;
         } else {

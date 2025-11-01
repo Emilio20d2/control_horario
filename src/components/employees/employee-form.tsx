@@ -267,18 +267,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             router.push(`/employees/${employee.id}`);
         } else {
             // Create new employee
-            const dataToSave: EmployeeFormData & { authId: string | null } = {
-                ...values,
-                authId: null, // Placeholder, will be handled in createEmployee service
-                annualComputedHours: values.annualComputedHours ?? 0,
-                initialOrdinaryHours: values.initialOrdinaryHours ?? 0,
-                initialHolidayHours: values.initialHolidayHours ?? 0,
-                initialLeaveHours: values.initialLeaveHours ?? 0,
-                vacationDays2024: values.vacationDays2024 ?? 0,
-                vacationDaysUsedInAnotherCenter: values.vacationDaysUsedInAnotherCenter ?? 0,
-            };
-
-            await createEmployee(dataToSave);
+            const newEmployeeId = await createEmployee(values as EmployeeFormData);
             toast({
                 title: "Empleado Creado",
                 description: `Se ha creado el empleado ${values.name}.`,
