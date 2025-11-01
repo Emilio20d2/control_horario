@@ -136,33 +136,35 @@ export default function SettingsPageContent() {
     <Badge variant={value ? 'default' : 'secondary'}>{value ? 'Sí' : 'No'}</Badge>
   )
   
-  const DeleteDialog = ({ trigger, title, description, onConfirm }: { trigger: React.ReactNode, title: string, description: string, onConfirm: () => void }) => (
-    <AlertDialog onOpenChange={(open) => !open && setPassword('')}>
-        <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>{title}</AlertDialogTitle>
-                <AlertDialogDescription>{description}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="space-y-2 py-2">
-                <Label htmlFor="password">Contraseña</Label>
-                <Input
-                    id="password"
-                    type="password"
-                    placeholder="Introduce tu contraseña para confirmar"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
-            </div>
-            <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={onConfirm} disabled={isDeleting}>
-                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sí, eliminar'}
-                </AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
-  )
+  const DeleteDialog = ({ trigger, title, description, onConfirm }: { trigger: React.ReactNode, title: string, description: string, onConfirm: () => void }) => {
+    return (
+        <AlertDialog onOpenChange={(open) => !open && setPassword('')}>
+            <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>{title}</AlertDialogTitle>
+                    <AlertDialogDescription>{description}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-2 py-2">
+                    <Label htmlFor="password">Contraseña</Label>
+                    <Input
+                        id="password"
+                        type="password"
+                        placeholder="Introduce tu contraseña para confirmar"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                </div>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={onConfirm} disabled={isDeleting}>
+                        {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sí, eliminar'}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -210,7 +212,7 @@ export default function SettingsPageContent() {
                                         </SelectTrigger>
                                         <SelectContent>
                                             {holidayYears.map(year => (
-                                                <SelectItem key={year} value={String(year)}>{year}</SelectItem>)}
+                                                <SelectItem key={year} value={String(year)}>{year}</SelectItem>))}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -232,7 +234,7 @@ export default function SettingsPageContent() {
                                             .map(holiday => (
                                             <TableRow key={holiday.id}>
                                                 <TableCell className="font-medium">{holiday.name}</TableCell>
-                                                <TableCell>{format(holiday.date, 'dd/MM/yyyy', { locale: es })}</TableCell>
+                                                <TableCell>{format(holiday.date as Date, 'dd/MM/yyyy', { locale: es })}</TableCell>
                                                 <TableCell>{holiday.type}</TableCell>
                                                 <TableCell className="text-right">
                                                     <Link href={`/settings/holidays/${holiday.id}/edit`} passHref>
@@ -467,5 +469,3 @@ export default function SettingsPageContent() {
     </div>
   );
 }
-
-    
