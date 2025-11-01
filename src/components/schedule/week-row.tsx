@@ -279,6 +279,9 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             // Sanitize data before saving
             const sanitizedDataToSave = {
                 ...dataToSave,
+                expectedOrdinaryImpact: dataToSave.expectedOrdinaryImpact ?? null,
+                expectedHolidayImpact: dataToSave.expectedHolidayImpact ?? null,
+                expectedLeaveImpact: dataToSave.expectedLeaveImpact ?? null,
                 days: Object.fromEntries(
                     Object.entries(dataToSave.days).map(([key, dayData]) => [
                         key,
