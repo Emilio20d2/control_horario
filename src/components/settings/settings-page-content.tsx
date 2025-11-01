@@ -199,7 +199,7 @@ export default function SettingsPageContent() {
                     <div className="md:col-span-2">
                         <Card>
                             <CardHeader>
-                                <div className="flex justify-between items-center">
+                                <div className="flex flex-wrap justify-between items-center gap-2">
                                     <div>
                                         <CardTitle>Calendario de Festivos y Aperturas</CardTitle>
                                         <CardDescription>Gestionar los días festivos y aperturas especiales.</CardDescription>
@@ -210,8 +210,7 @@ export default function SettingsPageContent() {
                                         </SelectTrigger>
                                         <SelectContent>
                                             {holidayYears.map(year => (
-                                                <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                                            ))}
+                                                <SelectItem key={year} value={String(year)}>{year}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -340,10 +339,11 @@ export default function SettingsPageContent() {
                     </CardHeader>
                     <CardContent>
                     {loading ? renderSkeleton() : (
+                        <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Nombre</TableHead>
+                                    <TableHead className="min-w-[150px]">Nombre</TableHead>
                                     <TableHead className="text-center">Computa Semanal</TableHead>
                                     <TableHead className="text-center">Computa Anual</TableHead>
                                     <TableHead className="text-center">Suspende Contrato</TableHead>
@@ -383,6 +383,7 @@ export default function SettingsPageContent() {
                                 ))}
                             </TableBody>
                         </Table>
+                        </div>
                     )}
                     </CardContent>
                 </Card>
@@ -466,3 +467,5 @@ export default function SettingsPageContent() {
     </div>
   );
 }
+
+    
