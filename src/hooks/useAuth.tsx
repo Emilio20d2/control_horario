@@ -50,11 +50,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Hardcoded override for specific admin user
           const isAdminByEmail = user.email === 'mariaavg@inditex.com';
 
-          if (userDoc.exists() && !isAdminByEmail) {
+          if (userDoc.exists()) {
               const dbData = userDoc.data() as Omit<AppUser, 'id'>;
               // Set the definitive role and view mode from the database
-              setAppUser({ id: user.uid, ...dbData, trueRole: dbData.role });
-              setViewMode(dbData.role);
+              const finalRole = isAdminByEmail ? 'admin' : dbData.role;
+              setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: finalRole });
+              setViewMode(finalRole);
           } else {
               // This is a fallback for users that exist in Auth but not in 'users' collection yet,
               // or for the hardcoded admin user.

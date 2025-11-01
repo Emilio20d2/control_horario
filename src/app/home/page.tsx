@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { Employee, ScheduledAbsence } from '@/lib/types';
+import { useAuth } from '@/hooks/useAuth';
 
 
 export default function HomePage() {
@@ -26,6 +27,7 @@ export default function HomePage() {
         absenceTypes,
         employeeRecord,
     } = useDataProvider();
+    const { appUser } = useAuth();
 
     const unreadConversations = useMemo(() => {
         return conversations.filter(c => c.unreadByAdmin).slice(0, 5);
@@ -67,7 +69,12 @@ export default function HomePage() {
 
     }, [employees, absenceTypes]);
 
-    const welcomeName = employeeRecord?.name ? employeeRecord.name.split(' ')[0] : 'Admin';
+    const welcomeName = useMemo(() => {
+        if (appUser?.email === 'mariaavg@inditex.com') {
+            return 'Arantxa';
+        }
+        return employeeRecord?.name ? employeeRecord.name.split(' ')[0] : 'Admin';
+    }, [appUser, employeeRecord]);
 
 
     if (loading) {
@@ -83,8 +90,8 @@ export default function HomePage() {
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
             <h1 className="text-2xl font-bold tracking-tight font-headline">Inicio</h1>
-             <p className="text-muted-foreground -mt-4">
-                ¡Hola, {welcomeName}! Aquí tienes un resumen de tus tareas pendientes.
+             <p className="text-lg text-muted-foreground -mt-4">
+                ¡Hola, <strong className="text-foreground">{welcomeName}</strong>! Aquí tienes un resumen de tus tareas pendientes.
             </p>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <Card className="flex flex-col">
