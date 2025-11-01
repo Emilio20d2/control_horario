@@ -37,30 +37,31 @@ export default function SchedulePage() {
         }
     
         const sortedWeekIds = Object.keys(weeklyRecords).sort((a, b) => b.localeCompare(a));
-        const today = new Date();
     
         for (const weekId of sortedWeekIds) {
             const weekStartDate = parseISO(weekId);
             if (getYear(weekStartDate) < 2025) {
-                continue; // Ignorar semanas anteriores a 2025
-            }
-    
-            const weekRecord = weeklyRecords[weekId]?.weekData;
-            const activeEmpsForWeek = getActiveEmployeesForDate(weekStartDate);
-    
-            if (!weekRecord || activeEmpsForWeek.length === 0) {
                 continue;
             }
     
-            const isUnconfirmed = activeEmpsForWeek.some(emp => !weekRecord[emp.id]?.confirmed);
+            const activeEmpsForWeek = getActiveEmployeesForDate(weekStartDate);
+            if (activeEmpsForWeek.length === 0) {
+                continue;
+            }
+    
+            const weekRecordData = weeklyRecords[weekId]?.weekData;
+    
+            const isUnconfirmed = activeEmpsForWeek.some(emp => {
+                const empData = weekRecordData?.[emp.id];
+                return !empData?.confirmed;
+            });
     
             if (isUnconfirmed) {
-                return weekStartDate; // Devuelve la primera semana no confirmada que encuentra (la más reciente)
+                return weekStartDate;
             }
         }
     
-        // Si no se encuentra ninguna semana sin confirmar, devuelve la semana actual.
-        return startOfWeek(today, { weekStartsOn: 1 });
+        return startOfWeek(new Date(), { weekStartsOn: 1 });
     
     }, [loading, weeklyRecords, getActiveEmployeesForDate]);
     
