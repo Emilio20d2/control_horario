@@ -252,17 +252,7 @@ export default function MyMessagesPage() {
             toast({ title: 'Solicitud Enviada', description: 'Tu solicitud de ausencia ha sido registrada.' });
     
             const absenceName = absenceTypes.find(at => at.id === requestAbsenceTypeId)?.name || 'Ausencia';
-            const requestMessage = `Hola,
-
-Quiero solicitar una ausencia dentro de la campaña "${selectedCampaign.title}".
-
-- Tipo: ${absenceName}
-- Desde: ${format(requestDateRange.from, 'dd/MM/yyyy')}
-- Hasta: ${format(requestDateRange.to, 'dd/MM/yyyy')}
-
-La solicitud ha sido pre-aprobada y registrada en el planificador para su revisión.
-
-Gracias.`;
+            const requestMessage = `Hola,\n\nQuiero solicitar una ausencia dentro de la campaña "${selectedCampaign.title}".\n\nTipo: ${absenceName}\nDesde: ${format(requestDateRange.from, 'dd/MM/yyyy')}\nHasta: ${format(requestDateRange.to, 'dd/MM/yyyy')}\n\nLa solicitud ha sido pre-aprobada y registrada en el planificador para su revisión.\n\nGracias.`;
     
             await sendMessage(requestMessage, false); // Don't mark as unread for admin
     
@@ -340,15 +330,7 @@ Gracias.`;
             const absenceName = selectedAbsenceType?.name || 'Ausencia';
             const datesForMessage = otherRequestMultipleDates.map(d => format(d, 'dd/MM/yyyy')).sort().join(', ');
             
-            const requestMessage = `Hola,
-
-He solicitado un permiso que he comunicado verbalmente a ${communicatedTo}.
-
-- Tipo: ${absenceName}
-- Fecha(s): ${datesForMessage}${extraInfoForMessage}
-- Motivo: ${otherRequestNotes}
-
-Gracias.`;
+            const requestMessage = `Hola,\n\nHe solicitado un permiso que he comunicado verbalmente a ${communicatedTo}.\n\n- Tipo: ${absenceName}\n- Fecha(s): ${datesForMessage}${extraInfoForMessage}\n- Motivo: ${otherRequestNotes}\n\nGracias.`;
     
             await sendMessage(requestMessage, true);
             
@@ -690,5 +672,7 @@ Gracias.`;
         </>
     );
 }
+
+    
 
     

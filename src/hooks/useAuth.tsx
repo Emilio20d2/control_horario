@@ -49,15 +49,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
           
-          const isAdminByEmail = user.email === 'mariaavg@inditex.com';
+          const isSpecialAdmin = user.email === 'mariaavg@inditex.com';
 
           if (userDoc.exists()) {
               const dbData = userDoc.data() as Omit<AppUser, 'id'>;
-              const finalRole = isAdminByEmail ? 'admin' : dbData.role;
+              const finalRole = isSpecialAdmin ? 'admin' : dbData.role;
               setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: finalRole });
               
               if (finalRole === 'admin') {
-                setViewMode(isMobile ? 'employee' : 'admin');
+                if (isSpecialAdmin) {
+                  setViewMode('admin');
+                } else {
+                  setViewMode(isMobile ? 'employee' : 'admin');
+                }
               } else {
                 setViewMode('employee');
               }
@@ -67,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 const q = query(collection(db, 'employees'), where('email', '==', user.email));
                 const empSnapshot = await getDocs(q);
                 
-                const defaultRole = isAdminByEmail ? 'admin' : 'employee';
+                const defaultRole = isSpecialAdmin ? 'admin' : 'employee';
                 const employeeId = !empSnapshot.empty ? empSnapshot.docs[0].id : null;
                 
                 const newUserDocData = { email: user.email, employeeId, role: defaultRole };
@@ -76,7 +80,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setAppUser({ id: user.uid, ...newUserDocData, trueRole: defaultRole });
                 
                 if (defaultRole === 'admin') {
-                  setViewMode(isMobile ? 'employee' : 'admin');
+                   if (isSpecialAdmin) {
+                    setViewMode('admin');
+                   } else {
+                    setViewMode(isMobile ? 'employee' : 'admin');
+                   }
                 } else {
                   setViewMode('employee');
                 }
@@ -140,3 +148,5 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+    

@@ -112,17 +112,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/help', label: 'Ayuda', icon: HelpCircle },
   ];
 
-  // The mobile nav will contain all items
+  // The mobile nav will contain all items for that view
   const mobileAdminNavItems = [
     { href: '/home', label: 'Inicio', icon: Home },
     ...adminNavItems,
   ];
 
-  const menuItems = viewMode === 'admin' ? (isMobile ? mobileAdminNavItems : adminNavItems) : employeeMenuItems;
+  const menuItems = viewMode === 'admin' ? adminNavItems : employeeMenuItems;
 
   const MainNav = ({className, isMobileNav}: {className?: string, isMobileNav?: boolean}) => (
     <nav className={cn("flex gap-1", isMobileNav ? "flex-col items-stretch" : 'justify-center items-center')}>
-      {menuItems.map((item) => {
+      {(isMobileNav ? mobileAdminNavItems : menuItems).map((item) => {
         const isActive = pathname.startsWith(item.href);
         if (isMobileNav) {
           return (
@@ -183,7 +183,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         
         <div className={cn(
             "flex-1 justify-center",
-            viewMode === 'admin' ? 'hidden md:flex' : 'flex'
+            viewMode === 'admin' ? (isMobile ? 'hidden' : 'flex') : 'flex'
         )}>
             <MainNav isMobileNav={false} />
         </div>
@@ -325,3 +325,5 @@ export function AppLayout({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+    
