@@ -518,8 +518,7 @@ export default function VacationsPage() {
                     startDate: format(selectedDateRange.from, 'yyyy-MM-dd'),
                     endDate: format(selectedDateRange.to, 'yyyy-MM-dd'),
                 }, 
-                selectedEmployee,
-                true // Explicitly create both records
+                selectedEmployee
             );
             
             toast({ title: 'Periodo de ausencia añadido', description: `Se ha guardado la ausencia para ${selectedEmployee?.name}.` });
@@ -1056,6 +1055,7 @@ export default function VacationsPage() {
 
 
     
+
 
 
 

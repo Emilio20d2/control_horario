@@ -247,7 +247,7 @@ export default function MyMessagesPage() {
                 startDate: format(requestDateRange.from, 'yyyy-MM-dd'),
                 endDate: format(requestDateRange.to, 'yyyy-MM-dd'),
                 notes: null,
-            }, employeeRecord, true);
+            }, employeeRecord);
     
             toast({ title: 'Solicitud Enviada', description: 'Tu solicitud de ausencia ha sido registrada.' });
     
@@ -333,8 +333,7 @@ Gracias.`;
                         notes: finalNotes,
                         communicatedTo: communicatedTo,
                     },
-                    employeeRecord, // Passing the full employee object
-                    true
+                    employeeRecord // Passing the full employee object
                 );
             }
     

@@ -287,61 +287,48 @@ export const deleteEmployee = async (id: string): Promise<void> => {
 
 
 export const addScheduledAbsence = async (
-    employeeId: string, 
-    periodId: string, 
+    employeeId: string,
+    periodId: string,
     newAbsence: {
-        absenceTypeId: string;
-        startDate: string; // YYYY-MM-DD
-        endDate: string | null;
-        notes?: string | null;
-        communicatedTo?: string | null;
+      absenceTypeId: string;
+      startDate: string; // YYYY-MM-DD
+      endDate: string | null;
+      notes?: string | null;
+      communicatedTo?: string | null;
     },
     currentEmployee: Employee,
-    createDefinitiveCopy: boolean = false
-): Promise<void> => {
+    originalRequest?: any
+  ): Promise<void> => {
     const employeeCopy = JSON.parse(JSON.stringify(currentEmployee));
     const period = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => p.id === periodId);
     if (!period) throw new Error("Periodo laboral no encontrado");
-
+  
     if (!period.scheduledAbsences) {
-        period.scheduledAbsences = [];
+      period.scheduledAbsences = [];
     }
-    
+  
     const finalEndDate = newAbsence.endDate || newAbsence.startDate;
-
-    const originalRequestData = {
+  
+    // Create one definitive record for the planner.
+    // It holds the reference to the original request if it exists.
+    const definitiveRecord: any = {
+      id: `abs_${Date.now()}_${Math.random()}`,
+      absenceTypeId: newAbsence.absenceTypeId,
+      startDate: newAbsence.startDate,
+      endDate: finalEndDate,
+      notes: newAbsence.notes || null,
+      communicatedTo: newAbsence.communicatedTo || null,
+      isDefinitive: true,
+      originalRequest: originalRequest || {
         startDate: newAbsence.startDate,
         endDate: finalEndDate,
+      },
     };
-
-    if (createDefinitiveCopy) {
-        // Create the original, non-definitive record for reporting
-        const originalRecord: any = {
-            id: `abs_${Date.now()}_${Math.random()}`,
-            absenceTypeId: newAbsence.absenceTypeId,
-            notes: newAbsence.notes || null,
-            communicatedTo: newAbsence.communicatedTo || null,
-            ...originalRequestData,
-            isDefinitive: false,
-            originalRequest: { ...originalRequestData }
-        };
-        period.scheduledAbsences.push(originalRecord);
-    }
-
-    // Create the definitive, editable record for the planner
-    const definitiveRecord: any = {
-        id: `abs_def_${Date.now()}_${Math.random()}`,
-        absenceTypeId: newAbsence.absenceTypeId,
-        notes: newAbsence.notes || null,
-        communicatedTo: newAbsence.communicatedTo || null,
-        ...originalRequestData,
-        isDefinitive: true,
-        originalRequest: { ...originalRequestData }
-    };
+  
     period.scheduledAbsences.push(definitiveRecord);
-
+  
     await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
-};
+  };
 
 
 
