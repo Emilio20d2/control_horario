@@ -294,6 +294,7 @@ export const addScheduledAbsence = async (
         startDate: string; // YYYY-MM-DD
         endDate: string | null;
         notes?: string | null;
+        communicatedTo?: string | null;
     },
     currentEmployee: Employee,
     createDefinitiveCopy: boolean = false
@@ -319,6 +320,7 @@ export const addScheduledAbsence = async (
             id: `abs_${Date.now()}_${Math.random()}`,
             absenceTypeId: newAbsence.absenceTypeId,
             notes: newAbsence.notes || null,
+            communicatedTo: newAbsence.communicatedTo || null,
             ...originalRequestData,
             isDefinitive: false,
             originalRequest: { ...originalRequestData }
@@ -331,6 +333,7 @@ export const addScheduledAbsence = async (
         id: `abs_def_${Date.now()}_${Math.random()}`,
         absenceTypeId: newAbsence.absenceTypeId,
         notes: newAbsence.notes || null,
+        communicatedTo: newAbsence.communicatedTo || null,
         ...originalRequestData,
         isDefinitive: true,
         originalRequest: { ...originalRequestData }

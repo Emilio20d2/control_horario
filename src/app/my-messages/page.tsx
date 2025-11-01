@@ -330,7 +330,8 @@ Gracias.`;
                         absenceTypeId: otherRequestAbsenceTypeId,
                         startDate: format(day, 'yyyy-MM-dd'),
                         endDate: format(day, 'yyyy-MM-dd'),
-                        notes: finalNotes
+                        notes: finalNotes,
+                        communicatedTo: communicatedTo,
                     },
                     employeeRecord, // Passing the full employee object
                     true
@@ -493,7 +494,7 @@ Gracias.`;
                          <form onSubmit={handleSendMessage} className="relative flex items-end w-full">
                              <Textarea
                                 ref={textareaRef}
-                                placeholder="Escribe tu mensaje para cualquier otra consulta..."
+                                placeholder="Escribe tu mensaje..."
                                 className="pr-12 resize-none flex-grow"
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}

@@ -35,6 +35,7 @@ import {
   UserX,
   UserPlus,
   Plane,
+  UserCircle2,
 } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -933,6 +934,7 @@ export default function VacationsPage() {
                         {editingAbsence && (
                             <DialogDescription>
                                 Modificando la ausencia de <strong>{editingAbsence.employee.name}</strong> del tipo <strong>{absenceTypes.find(at => at.id === editingAbsence.absence.absenceTypeId)?.name}</strong>.
+                                {editingAbsence.absence.communicatedTo && <p className="text-xs pt-2">Petición comunicada a: <strong>{editingAbsence.absence.communicatedTo}</strong></p>}
                                 {editingAbsence.absence.originalRequest?.startDate && <p className="text-xs text-muted-foreground pt-2">Solicitud Original: del {format(safeParseDate(editingAbsence.absence.originalRequest.startDate)!, 'dd/MM/yy')} al {format(safeParseDate(editingAbsence.absence.originalRequest.endDate)!, 'dd/MM/yy')}</p>}
                             </DialogDescription>
                         )}
@@ -1054,5 +1056,6 @@ export default function VacationsPage() {
 
 
     
+
 
 
