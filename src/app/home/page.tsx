@@ -4,7 +4,7 @@
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { format, parseISO, addWeeks, startOfWeek, endOfWeek, isAfter, isSameDay } from 'date-fns';
+import { format, parseISO, addWeeks, startOfWeek, endOfWeek, isAfter, isSameDay, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
 import { AlertTriangle, ArrowRight, CalendarClock, Mail } from 'lucide-react';
