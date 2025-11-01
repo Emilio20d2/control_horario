@@ -52,14 +52,14 @@ import {
     addHolidayReport,
     updateHolidayReport,
     deleteHolidayReport,
-} from '../lib/services/settingsService';
+} from '@/lib/services/settingsService';
 import { addDays, addWeeks, differenceInCalendarISOWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, getISOWeekYear, isValid } from 'date-fns';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp, collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
 import { calculateBalancePreview } from '@/lib/calculators/balance-calculator';
-import { useAuth } from './useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { db } from '@/lib/firebase';
 import { getFinalBalancesForEmployee, getVacationSummaryForEmployee } from '@/lib/services/employee-data-service';
 
@@ -577,7 +577,7 @@ useEffect(() => {
 
     for (const weekId of sortedWeekIds) {
         const weekDate = parseISO(weekId);
-        if (getISOWeekYear(weekDate) < 2025) continue;
+        if (getYear(weekDate) < 2025) continue;
         
         if (isAfter(weekDate, auditStartDate) || isSameDay(weekDate, auditStartDate)) {
             const activeEmployeesThisWeek = getActiveEmployeesForDate(weekDate);
@@ -1153,7 +1153,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const absenceType = scheduledAbsence ? absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId) : undefined;
     
             let leaveHours = 0;
-            if (holidayDetails && getISODay(day) !== 7 && theoreticalHours === 0) {
+            if (holidayDetails && theoreticalHours === 0 && getISODay(day) !== 7) {
                  const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
                  if (contractType?.computesOffDayBag) {
                     leaveHours = weeklyWorkHours / 5;
@@ -1314,6 +1314,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
