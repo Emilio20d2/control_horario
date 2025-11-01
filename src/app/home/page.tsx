@@ -37,7 +37,11 @@ export default function HomePage() {
         const events: { weekId: string; employee: Employee; absence: ScheduledAbsence; absenceType: any }[] = [];
         const processedAbsenceIds = new Set<string>();
 
-        employees.forEach(emp => {
+        const activeEmployees = employees.filter(emp => 
+            emp.employmentPeriods.some(p => !p.endDate || isAfter(p.endDate as Date, now))
+        );
+
+        activeEmployees.forEach(emp => {
             (emp.employmentPeriods || []).forEach(p => {
                 (p.scheduledAbsences || []).forEach(a => {
                     // Skip if already processed or invalid
