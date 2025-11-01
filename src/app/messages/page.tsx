@@ -184,7 +184,7 @@ export default function MessagesPage() {
                                         <p className="whitespace-pre-wrap break-words">{message.text}</p>
                                         {message.timestamp && (
                                             <p className="text-xs opacity-70 mt-1 text-right">
-                                                {format(message.timestamp, 'HH:mm')}
+                                                {format(message.timestamp, 'dd/MM/yy HH:mm')}
                                             </p>
                                         )}
                                     </div>
