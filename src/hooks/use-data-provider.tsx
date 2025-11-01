@@ -1148,12 +1148,12 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const theoreticalHours = theoreticalDay?.theoreticalHours ?? 0;
             
             const scheduledAbsence = (emp.employmentPeriods || []).flatMap(p => p.scheduledAbsences || [])
-                .find(a => a.endDate && a.startDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(day, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) }));
+                .find(a => a.isDefinitive && a.endDate && a.startDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(day, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) }));
     
             const absenceType = scheduledAbsence ? absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId) : undefined;
     
             let leaveHours = 0;
-            if (holidayDetails && holidayDetails.type !== 'Apertura' && theoreticalHours === 0) {
+            if (holidayDetails && theoreticalHours === 0 && getISODay(day) !== 7) {
                  const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
                  if (contractType?.computesOffDayBag) {
                     leaveHours = weeklyWorkHours / 5;
@@ -1314,6 +1314,8 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
+
 
 
 
