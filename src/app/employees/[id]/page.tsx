@@ -202,7 +202,7 @@ export default function EmployeeDetailPage() {
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Vacaciones</CardTitle>
                          {isMobile && <Plane className="h-4 w-4 text-muted-foreground" />}
-                         {!isMobile && (
+                         {!isMobile && vacationInfo && (
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button variant="ghost" size="sm" className="text-xs">Ver detalle</Button>

@@ -53,7 +53,7 @@ import {
     updateHolidayReport,
     deleteHolidayReport,
 } from '../lib/services/settingsService';
-import { addDays, addWeeks, differenceInCalendarWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, getISOWeekYear, isValid } from 'date-fns';
+import { addDays, addWeeks, differenceInCalendarISOWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, getISOWeekYear, isValid } from 'date-fns';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp, collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
@@ -438,46 +438,49 @@ const pendingCorrectionRequestCount = useMemo(() => {
 
     const defaultReturn = { vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31, baseDays: 31, carryOverDays: 0, suspensionDeduction: 0, proratedDays: 31 };
     if (!vacationType) return defaultReturn;
-    
-    // --- Calculate days taken and suspension days IN THE CURRENT YEAR ---
-    let vacationDaysTakenInCurrentYear = 0;
-    const currentYearDayMap = new Map<string, 'V' | 'S'>();
 
-    // Source 1: Programmed Absences from Employee record. This establishes the base.
+    // --- Create a definitive map of the employee's year ---
+    const currentYearDayMap = new Map<string, 'V' | 'S' | 'W'>(); // Vacation, Suspension, Work
+
+    // 1. Base layer: Programmed Absences from Employee record.
     emp.employmentPeriods?.forEach(period => {
-      period.scheduledAbsences?.forEach(absence => {
-        if (!absence.endDate || !absence.startDate || !isValid(absence.startDate) || !isValid(absence.endDate)) return;
-        const absenceCode = suspensionTypeIds.has(absence.absenceTypeId) ? 'S' : (absence.absenceTypeId === vacationType.id ? 'V' : null);
-        if (!absenceCode) return;
-        eachDayOfInterval({ start: startOfDay(absence.startDate), end: endOfDay(absence.endDate) }).forEach(day => {
-            if (getYear(day) === year) {
-                currentYearDayMap.set(format(day, 'yyyy-MM-dd'), absenceCode);
-            }
-        });
+      (period.scheduledAbsences || []).forEach(absence => {
+          if (!absence.endDate || !absence.startDate || !isValid(absence.startDate) || !isValid(absence.endDate)) return;
+          const absenceCode = suspensionTypeIds.has(absence.absenceTypeId) ? 'S' : (absence.absenceTypeId === vacationType.id ? 'V' : null);
+          if (!absenceCode) return;
+          eachDayOfInterval({ start: startOfDay(absence.startDate), end: endOfDay(absence.endDate) }).forEach(day => {
+              if (getYear(day) === year) {
+                  currentYearDayMap.set(format(day, 'yyyy-MM-dd'), absenceCode);
+              }
+          });
       });
     });
     
-    // Source 2: Confirmed Absences from Weekly Records. This OVERWRITES programmed data.
+    // 2. Override layer: Confirmed Absences from Weekly Records. This is the source of truth.
     Object.values(weeklyRecords).forEach(record => {
       const empWeekData = record.weekData[emp.id];
       if (!empWeekData?.days || !empWeekData.confirmed) return;
+      
       Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
           if (getYear(parseISO(dayStr)) !== year) return;
           const dayKey = format(parseISO(dayStr), 'yyyy-MM-dd');
           
-          if (dayData.absence && dayData.absence !== 'ninguna') {
-              if (suspensionAbbrs.has(dayData.absence)) {
-                  currentYearDayMap.set(dayKey, 'S');
-              } else if (dayData.absence === vacationType.abbreviation) {
-                  currentYearDayMap.set(dayKey, 'V');
-              }
-          } else {
-              // If a day was programmed as vacation/suspension but is now confirmed as something else, remove it.
-              currentYearDayMap.delete(dayKey);
+          if (suspensionAbbrs.has(dayData.absence)) {
+              currentYearDayMap.set(dayKey, 'S');
+          } else if (dayData.absence === vacationType.abbreviation) {
+              currentYearDayMap.set(dayKey, 'V');
+          } else if (dayData.absence !== 'ninguna') {
+              // If the day was programmed as a vacation/suspension but is confirmed as something else, mark as worked/other.
+              currentYearDayMap.set(dayKey, 'W');
+          } else if (dayData.workedHours > 0 || dayData.theoreticalHours > 0) {
+              // Also mark as worked if it was programmed but is now a workday.
+              currentYearDayMap.set(dayKey, 'W');
           }
       });
     });
     
+    // 3. Count from the final map
+    let vacationDaysTakenInCurrentYear = 0;
     let suspensionDaysInCurrentYear = 0;
     currentYearDayMap.forEach(value => {
         if (value === 'S') suspensionDaysInCurrentYear++;
@@ -677,7 +680,7 @@ const getEmployeeBalancesForWeek = useCallback((employeeId: string, weekId: stri
         (a.startDate as Date).getTime() - (b.startDate as Date).getTime()
     );
 
-    // Find the current or most recent period relative to the target week.
+    // Find the period active DURING or JUST BEFORE the target week.
     const relevantPeriod = allPeriodsSorted
         .filter(p => !isAfter(startOfDay(p.startDate as Date), targetWeekStartDate))
         .pop();
@@ -779,7 +782,7 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
     
     if (!schedule) return defaultReturn;
     
-    const ANCHOR_DATE = startOfWeek(new Date('2024-12-16'), { weekStartsOn: 1 }); // T1 week
+    const ANCHOR_DATE = startOfWeek(new Date('2024-12-16'), { weekStartsOn: 1 }); // T1 week, as per new business rule
     const currentWeekStartDate = startOfWeek(dateInWeek, { weekStartsOn: 1 });
 
     const weeksDifference = Math.floor(differenceInDays(currentWeekStartDate, ANCHOR_DATE) / 7);
@@ -1320,6 +1323,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
