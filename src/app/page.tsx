@@ -22,7 +22,7 @@ export default function Home() {
     // Una vez que la carga ha terminado y tenemos un usuario,
     // el viewMode ya estará correctamente establecido.
     if (viewMode === 'admin') {
-        router.replace('/dashboard');
+        router.replace('/home');
     } else if (viewMode === 'employee') {
         router.replace('/my-profile');
     }

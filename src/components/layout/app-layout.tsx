@@ -25,6 +25,7 @@ import {
   Mail,
   MessageSquareWarning,
   CalendarClock,
+  Home
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -66,13 +67,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
     if (authLoading || !appUser) return;
   
     const employeePages = ['/my-profile', '/my-schedule', '/my-messages', '/help'];
-    const adminPages = ['/dashboard', '/schedule', '/employees', '/listings', '/vacations', '/calendar', '/messages', '/settings'];
+    const adminPages = ['/home', '/dashboard', '/schedule', '/employees', '/listings', '/vacations', '/calendar', '/messages', '/settings'];
   
     if (appUser.trueRole === 'admin') {
       if (viewMode === 'employee' && adminPages.some(p => pathname.startsWith(p))) {
         router.replace('/my-profile');
       } else if (viewMode === 'admin' && employeePages.some(p => pathname.startsWith(p))) {
-        router.replace('/dashboard');
+        router.replace('/home');
       }
     } else if (appUser.trueRole === 'employee') {
       // For regular employees, ensure they don't access admin pages.
@@ -113,6 +114,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   // The mobile nav will contain all items
   const mobileAdminNavItems = [
+    { href: '/home', label: 'Inicio', icon: Home },
     ...adminNavItems,
   ];
 
@@ -174,7 +176,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 inset-x-0 flex h-20 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">
         
         {viewMode === 'admin' && (
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+          <Link href="/home" className="flex items-center gap-2 font-semibold">
               <Image src="/logo.png" alt="Logo" width={70} height={70} className="h-[70px] w-[70px]" />
           </Link>
         )}
@@ -307,7 +309,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="flex flex-col">
-                    <Link href="/dashboard" className="flex items-center gap-2 font-semibold mb-4">
+                    <Link href="/home" className="flex items-center gap-2 font-semibold mb-4">
                         <Image src="/logo.png" alt="Logo" width={60} height={60} className="h-14 w-14" />
                         <span className="text-xl">Control Horario</span>
                     </Link>
