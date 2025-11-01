@@ -342,11 +342,11 @@ Gracias.`;
             
             const requestMessage = `Hola,
 
-He solicitado un permiso que he comunicado verbalmente a **${communicatedTo}**.
+He solicitado un permiso que he comunicado verbalmente a ${communicatedTo}.
 
-- **Tipo:** ${absenceName}
-- **Fecha(s):** ${datesForMessage}${extraInfoForMessage}
-- **Motivo:** ${otherRequestNotes}
+- Tipo: ${absenceName}
+- Fecha(s): ${datesForMessage}${extraInfoForMessage}
+- Motivo: ${otherRequestNotes}
 
 Gracias.`;
     

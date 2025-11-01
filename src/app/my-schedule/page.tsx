@@ -88,7 +88,7 @@ const CorrectionRequestDialog = ({ open, onOpenChange, weekId, employee, onSubmi
             await setDocument('correctionRequests', requestId, requestData);
 
             const weekStartDateFormatted = format(parseISO(weekId), 'dd/MM/yyyy', { locale: es });
-            const messageText = `**SOLICITUD DE CORRECCIÓN**\n\n**Semana:** ${weekStartDateFormatted}\n**Motivo:** ${reason.trim()}`;
+            const messageText = `SOLICITUD DE CORRECCIÓN\n\nSemana: ${weekStartDateFormatted}\nMotivo: ${reason.trim()}`;
             await sendMessage(messageText);
 
             toast({ title: "Solicitud enviada", description: "Tu solicitud de corrección ha sido enviada al administrador." });
