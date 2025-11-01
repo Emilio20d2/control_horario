@@ -260,7 +260,7 @@ export default function MyMessagesPage() {
             const absenceName = absenceTypes.find(at => at.id === requestAbsenceTypeId)?.name || 'Ausencia';
             const requestMessage = `Hola,\n\nQuiero solicitar una ausencia dentro de la campaña "${selectedCampaign.title}".\n\nTipo: ${absenceName}\nDesde: ${format(requestDateRange.from, 'dd/MM/yyyy')}\nHasta: ${format(requestDateRange.to, 'dd/MM/yyyy')}\n\nLa solicitud ha sido enviada para su revisión.\n\nGracias.`;
     
-            await sendMessage(requestMessage, false); // Don't mark as unread for admin
+            await sendMessage(requestMessage, false);
     
             setIsRequestDialogOpen(false);
         } catch (error) {
@@ -329,7 +329,7 @@ export default function MyMessagesPage() {
                         notes: finalNotes,
                         communicatedTo: communicatedTo,
                     },
-                    employeeRecord, // Passing the full employee object
+                    employeeRecord,
                     true // It's an employee request
                 );
             }
