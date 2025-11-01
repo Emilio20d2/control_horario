@@ -242,12 +242,18 @@ export default function MyMessagesPage() {
     
         setIsSubmittingRequest(true);
         try {
-            await addScheduledAbsence(employeeRecord.id, activePeriod.id, {
-                absenceTypeId: requestAbsenceTypeId,
-                startDate: format(requestDateRange.from, 'yyyy-MM-dd'),
-                endDate: format(requestDateRange.to, 'yyyy-MM-dd'),
-                notes: null,
-            }, employeeRecord, true); // It's an employee request
+            await addScheduledAbsence(
+                employeeRecord.id,
+                activePeriod.id,
+                {
+                    absenceTypeId: requestAbsenceTypeId,
+                    startDate: format(requestDateRange.from, 'yyyy-MM-dd'),
+                    endDate: format(requestDateRange.to, 'yyyy-MM-dd'),
+                    notes: null,
+                }, 
+                employeeRecord, 
+                true // isEmployeeRequest
+            );
     
             toast({ title: 'Solicitud Enviada', description: 'Tu solicitud de ausencia ha sido registrada.' });
     
@@ -673,7 +679,3 @@ export default function MyMessagesPage() {
         </>
     );
 }
-
-    
-
-    
