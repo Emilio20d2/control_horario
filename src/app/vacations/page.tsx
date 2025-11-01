@@ -88,10 +88,10 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { cn, generateGroupColors } from '@/lib/utils';
@@ -329,43 +329,19 @@ export default function VacationsPage() {
         allEmployeesForQuadrant.forEach(emp => {
             const absences: FormattedAbsence[] = [];
             (emp.employmentPeriods || []).forEach((p: EmploymentPeriod) => {
-                const definitiveAbsences = new Map<string, ScheduledAbsence>();
-                const originalRequests: ScheduledAbsence[] = [];
-
-                (p.scheduledAbsences || []).forEach(a => {
-                    const startDate = a.startDate;
-                    if (!startDate || !isValid(startDate)) return;
-
-                    if (a.isDefinitive) {
-                        if (!a.originalRequest?.startDate) return;
-                        const originalStartDate = safeParseDate(a.originalRequest.startDate);
-                        if (!originalStartDate || !isValid(originalStartDate)) return;
-                        const key = format(originalStartDate, 'yyyy-MM-dd');
-                        definitiveAbsences.set(key, a);
-                    } else {
-                        originalRequests.push(a);
-                    }
-                });
-
-                originalRequests.forEach(orig => {
-                    if (!orig.startDate || !isValid(orig.startDate)) return;
-                    const key = format(orig.startDate, 'yyyy-MM-dd');
-                    if (!definitiveAbsences.has(key)) {
-                        definitiveAbsences.set(key, { ...orig, isDefinitive: true });
-                    }
-                });
-
-                definitiveAbsences.forEach(a => {
-                    if (schedulableIds.has(a.absenceTypeId)) {
-                        const absenceType = absenceTypes.find(at => at.id === a.absenceTypeId);
-                        absences.push({
-                            ...a,
-                            absenceAbbreviation: absenceType?.abbreviation || '??',
-                            color: absenceType?.color,
-                            periodId: p.id,
-                        });
-                    }
-                });
+                (p.scheduledAbsences || [])
+                    .filter(a => a.isDefinitive) // Only show definitive absences on the planner
+                    .forEach(a => {
+                        if (schedulableIds.has(a.absenceTypeId)) {
+                            const absenceType = absenceTypes.find(at => at.id === a.absenceTypeId);
+                            absences.push({
+                                ...a,
+                                absenceAbbreviation: absenceType?.abbreviation || '??',
+                                color: absenceType?.color,
+                                periodId: p.id,
+                            });
+                        }
+                    });
             });
             employeesWithAbsences[emp.id] = absences;
         });
@@ -1055,6 +1031,9 @@ export default function VacationsPage() {
 
 
     
+
+
+
 
 
 

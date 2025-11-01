@@ -247,12 +247,12 @@ export default function MyMessagesPage() {
                 startDate: format(requestDateRange.from, 'yyyy-MM-dd'),
                 endDate: format(requestDateRange.to, 'yyyy-MM-dd'),
                 notes: null,
-            }, employeeRecord);
+            }, employeeRecord, true); // It's an employee request
     
             toast({ title: 'Solicitud Enviada', description: 'Tu solicitud de ausencia ha sido registrada.' });
     
             const absenceName = absenceTypes.find(at => at.id === requestAbsenceTypeId)?.name || 'Ausencia';
-            const requestMessage = `Hola,\n\nQuiero solicitar una ausencia dentro de la campaña "${selectedCampaign.title}".\n\nTipo: ${absenceName}\nDesde: ${format(requestDateRange.from, 'dd/MM/yyyy')}\nHasta: ${format(requestDateRange.to, 'dd/MM/yyyy')}\n\nLa solicitud ha sido pre-aprobada y registrada en el planificador para su revisión.\n\nGracias.`;
+            const requestMessage = `Hola,\n\nQuiero solicitar una ausencia dentro de la campaña "${selectedCampaign.title}".\n\nTipo: ${absenceName}\nDesde: ${format(requestDateRange.from, 'dd/MM/yyyy')}\nHasta: ${format(requestDateRange.to, 'dd/MM/yyyy')}\n\nLa solicitud ha sido enviada para su revisión.\n\nGracias.`;
     
             await sendMessage(requestMessage, false); // Don't mark as unread for admin
     
@@ -323,7 +323,8 @@ export default function MyMessagesPage() {
                         notes: finalNotes,
                         communicatedTo: communicatedTo,
                     },
-                    employeeRecord // Passing the full employee object
+                    employeeRecord, // Passing the full employee object
+                    true // It's an employee request
                 );
             }
     
