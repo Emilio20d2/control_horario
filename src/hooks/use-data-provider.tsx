@@ -1,5 +1,4 @@
 
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -102,12 +101,12 @@ interface DataContextType {
   createHoliday: (data: Omit<Holiday, 'id' | 'date'> & { date: string }) => Promise<string>;
   updateHoliday: (id: string, data: HolidayFormData) => Promise<void>;
   deleteHoliday: (id: string) => Promise<void>;
-  createAnnualConfig: (data: Omit<AnnualConfiguration, 'id'>) => Promise<string>;
-  updateAnnualConfig: (id: string, data: Partial<AnnualConfiguration>) => Promise<void>;
-  deleteAnnualConfig: (id: string) => Promise<void>;
-  createContractType: (data: Omit<ContractType, 'id'>) => Promise<string>;
-  updateContractType: (id: string, data: Partial<Omit<ContractType, 'id'>>) => Promise<void>;
-deleteContractType: (id: string) => Promise<void>;
+createAnnualConfig: async () => '',
+    updateAnnualConfig: async () => {},
+    deleteAnnualConfig: async () => {},
+    createContractType: async () => '',
+    updateContractType: async () => {},
+deleteContractType: async () => {},
   updateEmployeeWorkHours: (employeeId: string, employee: Employee, weeklyHours: number, effectiveDate: string) => Promise<void>;
   getWeekId: (d: Date) => string;
   processEmployeeWeekData: (emp: Employee, weekDays: Date[], weekId: string) => DailyEmployeeData | null;
@@ -227,12 +226,21 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [vacationCampaigns, setVacationCampaigns] = useState<VacationCampaign[]>([]);
   const [correctionRequests, setCorrectionRequests] = useState<CorrectionRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
-  
+  const [loadingSteps, setLoadingSteps] = useState<Record<string, boolean>>({
+    static: false,
+    employees: false,
+    weeklyRecords: false,
+    other: false,
+  });
+
+  const allLoadingStepsComplete = useMemo(() => {
+    return Object.values(loadingSteps).every(Boolean);
+  }, [loadingSteps]);
+
   const safeParseDate = useCallback((date: any): Date | null => {
     if (!date) return null;
     if (date instanceof Date) return date;
-    if (date.toDate && typeof date.toDate === 'function') return date.toDate();
+    if (date instanceof Timestamp) return date.toDate();
     if (typeof date === 'string') {
         const parsed = parseISO(date);
         return isValid(parsed) ? parsed : null;
@@ -240,8 +248,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     return null;
   }, []);
 
-  const processScheduledAbsences = useCallback((absences: any[]): ScheduledAbsence[] => {
-    if (!absences) return [];
+  const processScheduledAbsences = useCallback((absences: any[], loadedAbsenceTypes: AbsenceType[]): ScheduledAbsence[] => {
+    if (!absences || !loadedAbsenceTypes.length) return [];
     return absences.map(a => {
         const startDate = safeParseDate(a.startDate);
         if (!startDate) return null; // Skip invalid absences
@@ -263,68 +271,120 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }).filter((a): a is ScheduledAbsence => a !== null);
   }, [safeParseDate]);
 
-
+  // Effect for static data that employees depend on
   useEffect(() => {
-    if (authLoading) {
-        return; // Wait for auth to finish
-    }
-    if (!user || !appUser) {
-        setLoading(false); // No user, so no data to load
+    if (authLoading || !user || !appUser) {
+        if (!user) setLoading(false);
         return;
     }
-
-    setLoading(true);
+    
+    let active = true;
     
     const unsubs: (() => void)[] = [];
-
     const setupSubscription = <T extends { id: string }>(collectionName: string, setter: React.Dispatch<React.SetStateAction<T[]>>, processor?: (data: any[]) => T[]) => {
-        const { unsubscribe, ready } = onCollectionUpdate<T>(collectionName, (data) => {
-            const processedData = processor ? processor(data) : data;
-            setter(processedData as T[]);
-        });
-        unsubs.push(unsubscribe);
-        return ready;
+      const { unsubscribe } = onCollectionUpdate<T>(collectionName, (data) => {
+        if (active) {
+          const processedData = processor ? processor(data) : data;
+          setter(processedData as T[]);
+        }
+      });
+      unsubs.push(unsubscribe);
     };
-    
-    const dataPromises = [
-        setupSubscription<Employee>('employees', setEmployees, (data) => data.map(emp => ({
-            ...emp, 
-            employmentPeriods: (emp.employmentPeriods || []).map((p: any) => ({
-                ...p, 
-                startDate: safeParseDate(p.startDate), 
-                endDate: safeParseDate(p.endDate), 
-                scheduledAbsences: processScheduledAbsences(p.scheduledAbsences),
-                workHoursHistory: (p.workHoursHistory || []).map((wh: any) => ({
-                    ...wh,
-                    effectiveDate: safeParseDate(wh.effectiveDate)
-                })),
-                weeklySchedulesHistory: (p.weeklySchedulesHistory || []).map((ws: any) => ({
-                    ...ws,
-                    effectiveDate: safeParseDate(ws.effectiveDate)
-                }))
-            }))
-        })).sort((a,b) => a.name.localeCompare(b.name))),
-        setupSubscription<AbsenceType>('absenceTypes', setAbsenceTypes, data => data.sort((a,b) => a.name.localeCompare(b.name))),
-        setupSubscription<Holiday>('holidays', setHolidays, data => data.map(h => ({ ...h, date: safeParseDate(h.date) as Date })).sort((a,b) => (a.date as Date).getTime() - (b.date as Date).getTime())),
-        setupSubscription<ContractType>('contractTypes', setContractTypes),
-        setupSubscription<AnnualConfiguration>('annualConfigurations', setAnnualConfigs, data => data.sort((a,b) => a.year - b.year)),
-        setupSubscription<WeeklyRecord>('weeklyRecords', (data) => setWeeklyRecords(data.reduce((acc, record) => ({ ...acc, [record.id]: record }), {}))),
-        setupSubscription<AppUser>('users', setUsers),
-        setupSubscription<HolidayEmployee>('holidayEmployees', setHolidayEmployees, data => data.sort((a,b) => a.name.localeCompare(b.name))),
-        setupSubscription<HolidayReport>('holidayReports', setHolidayReports),
-        setupSubscription<EmployeeGroup>('employeeGroups', setEmployeeGroups, data => data.sort((a,b) => a.order - b.order)),
-        setupSubscription<Conversation>('conversations', setConversations, data => data.sort((a, b) => (b.lastMessageTimestamp as any).toDate().getTime() - (a.lastMessageTimestamp as any).toDate().getTime())),
-        setupSubscription<VacationCampaign>('vacationCampaigns', setVacationCampaigns, data => data.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime())),
-        setupSubscription<CorrectionRequest>('correctionRequests', setCorrectionRequests),
-    ];
 
-    Promise.all(dataPromises).then(() => {
-      setLoading(false);
+    setupSubscription<AbsenceType>('absenceTypes', setAbsenceTypes, data => data.sort((a,b) => a.name.localeCompare(b.name)));
+    setupSubscription<ContractType>('contractTypes', setContractTypes);
+    
+    Promise.all([
+      getCollection<AbsenceType>('absenceTypes'),
+      getCollection<ContractType>('contractTypes'),
+      getCollection<AnnualConfiguration>('annualConfigurations'),
+      getCollection<Holiday>('holidays'),
+      getCollection<AppUser>('users'),
+      getCollection<HolidayEmployee>('holidayEmployees'),
+      getCollection<HolidayReport>('holidayReports'),
+      getCollection<EmployeeGroup>('employeeGroups'),
+      getCollection<Conversation>('conversations'),
+      getCollection<VacationCampaign>('vacationCampaigns'),
+      getCollection<CorrectionRequest>('correctionRequests')
+    ]).then(([absTypes, conTypes, annConfigs, hols, usrs, holEmps, holReps, empGrps, convs, vacCamps, corReqs]) => {
+      if (active) {
+        setAbsenceTypes(absTypes.sort((a,b) => a.name.localeCompare(b.name)));
+        setContractTypes(conTypes);
+        setAnnualConfigs(annConfigs.sort((a,b) => a.year - b.year));
+        setHolidays(hols.map(h => ({ ...h, date: safeParseDate(h.date) as Date })).sort((a,b) => (a.date as Date).getTime() - (b.date as Date).getTime()));
+        setUsers(usrs);
+        setHolidayEmployees(holEmps.sort((a,b) => a.name.localeCompare(b.name)));
+        setHolidayReports(holReps);
+        setEmployeeGroups(empGrps.sort((a,b) => a.order - b.order));
+        setConversations(convs.sort((a, b) => (b.lastMessageTimestamp as any).toDate().getTime() - (a.lastMessageTimestamp as any).toDate().getTime()));
+        setVacationCampaigns(vacCamps.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime()));
+        setCorrectionRequests(corReqs);
+        setLoadingSteps(prev => ({...prev, static: true}));
+      }
     });
 
-    return () => unsubs.forEach(unsub => unsub());
-  }, [authLoading, user, appUser, safeParseDate, processScheduledAbsences]);
-  
+    return () => {
+      active = false;
+      unsubs.forEach(unsub => unsub());
+    }
+  }, [authLoading, user, appUser, safeParseDate]);
+
+  // Effect for employees (depends on static data)
+  useEffect(() => {
+    if (!loadingSteps.static) return;
+    
+    let active = true;
+    const unsub = onCollectionUpdate<Employee>('employees', (data) => {
+      if (active) {
+        const processed = data.map(emp => ({
+          ...emp, 
+          employmentPeriods: (emp.employmentPeriods || []).map((p: any) => ({
+            ...p, 
+            startDate: safeParseDate(p.startDate), 
+            endDate: safeParseDate(p.endDate), 
+            scheduledAbsences: processScheduledAbsences(p.scheduledAbsences, absenceTypes),
+            workHoursHistory: (p.workHoursHistory || []).map((wh: any) => ({ ...wh, effectiveDate: safeParseDate(wh.effectiveDate) })),
+            weeklySchedulesHistory: (p.weeklySchedulesHistory || []).map((ws: any) => ({ ...ws, effectiveDate: safeParseDate(ws.effectiveDate) }))
+          }))
+        })).sort((a,b) => a.name.localeCompare(b.name));
+        setEmployees(processed);
+        setLoadingSteps(prev => ({...prev, employees: true}));
+      }
+    }).unsubscribe;
+
+    return () => {
+      active = false;
+      unsub();
+    }
+  }, [loadingSteps.static, absenceTypes, processScheduledAbsences, safeParseDate]);
+
+  // Effect for weekly records and other dynamic data
+  useEffect(() => {
+    if (!loadingSteps.static) return;
+
+    let active = true;
+    const unsubWeekly = onCollectionUpdate<WeeklyRecord>('weeklyRecords', (data) => {
+      if (active) {
+        setWeeklyRecords(data.reduce((acc, record) => ({ ...acc, [record.id]: record }), {}));
+        setLoadingSteps(prev => ({...prev, weeklyRecords: true}));
+      }
+    }).unsubscribe;
+
+    // other subscriptions can go here
+    setLoadingSteps(prev => ({...prev, other: true}));
+
+    return () => {
+      active = false;
+      unsubWeekly();
+    }
+  }, [loadingSteps.static]);
+
+  useEffect(() => {
+    if (allLoadingStepsComplete) {
+      setLoading(false);
+    }
+  }, [allLoadingStepsComplete]);
+
   useEffect(() => {
     if (appUser && employees.length > 0) {
         const foundEmployee = employees.find(e => e.email === appUser.email);
@@ -1060,29 +1120,21 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     const prefilledRecords: Record<string, PrefilledWeeklyRecord> = prefilledData as any;
 
     const processEmployeeWeekData = useCallback((emp: Employee, weekDays: Date[], weekId: string): DailyEmployeeData | null => {
-        // 1. Prioritize existing DB data
         const dbRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
         if (dbRecord) {
             return dbRecord;
         }
     
-        // 2. If no DB data, build from scratch
         const activePeriod = getActivePeriod(emp.id, weekDays[0]);
         if (!activePeriod) {
-            return null; // Employee not active this week
+            return null;
         }
     
         const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(emp.id, weekDays[0]);
-        const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
+        const weeklyWorkHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
     
-        // 3. Initialize new week data
         const newDays: Record<string, DailyData> = {};
-        let weekHasScheduledAbsence = false;
         
-        let isPartialVacationWeek = false;
-        let workDaysInVacationWeek = 0;
-        const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
-    
         for (const day of weekDays) {
             const dayKey = format(day, 'yyyy-MM-dd');
             const holidayDetails = holidays.find(h => isSameDay(h.date, day));
@@ -1094,75 +1146,26 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     
             const absenceType = scheduledAbsence ? absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId) : undefined;
     
+            let leaveHours = 0;
+            if (holidayDetails && holidayDetails.type !== 'Apertura' && theoreticalHours === 0) {
+                 const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
+                 if (contractType?.computesOffDayBag) {
+                    leaveHours = weeklyWorkHours / 5;
+                 }
+            }
+
             newDays[dayKey] = {
                 theoreticalHours: theoreticalHours,
                 workedHours: absenceType ? 0 : theoreticalHours,
                 absence: absenceType ? absenceType.abbreviation : 'ninguna',
                 absenceHours: absenceType ? theoreticalHours : 0,
-                leaveHours: 0,
+                leaveHours: leaveHours,
                 doublePay: false,
                 isHoliday: !!holidayDetails,
                 holidayType: holidayDetails?.type ?? null,
             };
-    
-            if (absenceType) {
-                weekHasScheduledAbsence = true;
-                 if (vacationType && absenceType.id === vacationType.id) {
-                    isPartialVacationWeek = true;
-                }
-            } else {
-                if (theoreticalHours > 0) {
-                    workDaysInVacationWeek++;
-                }
-            }
         }
     
-        // 4. Smart-fill logic for vacation weeks
-        if (isPartialVacationWeek && workDaysInVacationWeek > 0) {
-            const balances = getEmployeeBalancesForWeek(emp.id, weekId);
-            const totalBalance = balances.total;
-            const recoveryAbsenceType = absenceTypes.find(at => at.name === 'Recuperación de Horas');
-
-            if (totalBalance > 0 && recoveryAbsenceType) {
-                let availableHolidayHours = balances.holiday;
-                let availableLeaveHours = balances.leave;
-                
-                for (const day of weekDays) {
-                    const dayKey = format(day, 'yyyy-MM-dd');
-                    const dayData = newDays[dayKey];
-                    const dayIsHoliday = holidays.some(h => isSameDay(h.date, day));
-                    
-                    if (dayData.theoreticalHours > 0 && !dayIsHoliday && dayData.absence === 'ninguna') {
-                        const neededHours = dayData.theoreticalHours;
-                        let usedHours = 0;
-                        
-                        const useFromBag = (bagHours: number): [number, number] => {
-                            if (bagHours > 0) {
-                                const hoursToUse = Math.min(neededHours - usedHours, bagHours);
-                                if (hoursToUse > 0) {
-                                    dayData.absence = recoveryAbsenceType.abbreviation;
-                                    dayData.absenceHours += hoursToUse;
-                                    dayData.workedHours = dayData.theoreticalHours - dayData.absenceHours;
-                                    usedHours += hoursToUse;
-                                    return [bagHours - hoursToUse, hoursToUse];
-                                }
-                            }
-                            return [bagHours, 0];
-                        };
-                        
-                        const [newHolidayHours] = useFromBag(availableHolidayHours);
-                        availableHolidayHours = newHolidayHours;
-
-                        if (usedHours < neededHours) {
-                             const [newLeaveHours] = useFromBag(availableLeaveHours);
-                             availableLeaveHours = newLeaveHours;
-                        }
-                    }
-                }
-            }
-        }
-    
-        // 5. Build and return the final structure
         const prefilledWeek = prefilledRecords[weekId];
         const prefilledEmployeeData = prefilledWeek?.weekData?.[emp.name];
     
@@ -1179,7 +1182,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             expectedLeaveImpact: prefilledEmployeeData?.expectedLeaveImpact,
         };
     
-    }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, contractTypes, holidays, absenceTypes, getEmployeeBalancesForWeek]);
+    }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, contractTypes, holidays, absenceTypes, getEffectiveWeeklyHours]);
 
     const findNextUnconfirmedWeek = (startDate: Date): string | null => {
         const auditStartDate = startOfDay(new Date('2025-01-27'));
@@ -1305,14 +1308,3 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
-
-
-
-
-
-
-
-
-
-
-

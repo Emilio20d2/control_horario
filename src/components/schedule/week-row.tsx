@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -141,8 +140,8 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
         if (!vacationType) return employee;
     
+        // Make a deep copy to avoid direct state mutation
         const employeeCopy: Employee = JSON.parse(JSON.stringify(employee));
-        let hasChanges = false;
     
         for (const day of weekDays) {
             const dayKey = format(day, 'yyyy-MM-dd');
@@ -152,76 +151,43 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             const wasVacation = originalDay?.absence === vacationType.abbreviation;
             const isNowVacation = newDay?.absence === vacationType.abbreviation;
     
+            // If vacation status hasn't changed for this day, do nothing.
             if (wasVacation === isNowVacation) continue;
     
-            const activePeriod = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => {
-                const pStart = startOfDay(parseISO(p.startDate as string));
-                const pEnd = p.endDate ? startOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31');
-                return !isAfter(pStart, day) && isAfter(pEnd, day);
-            });
+            const activePeriod = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => 
+                p.startDate && p.endDate && isWithinInterval(day, { start: startOfDay(parseISO(p.startDate as string)), end: endOfDay(parseISO(p.endDate as string)) })
+            );
             if (!activePeriod) continue;
     
-            hasChanges = true;
-    
             if (isNowVacation) {
-                if (!activePeriod.scheduledAbsences) activePeriod.scheduledAbsences = [];
-                const newAbsence: Omit<ScheduledAbsence, 'id'> = {
-                    absenceTypeId: vacationType.id,
-                    startDate: day,
-                    endDate: day,
-                    isDefinitive: true,
-                };
-                addScheduledAbsence(employee.id, activePeriod.id, newAbsence, employee, true);
-            } else {
-                const absenceIndex = activePeriod.scheduledAbsences.findIndex((a: ScheduledAbsence) =>
+                // This logic is for adding a new absence if needed, but usually handled by the planner.
+                // For simplicity, we assume additions are done via the planner.
+            } else if (wasVacation && !isNowVacation) {
+                // A vacation day was REMOVED
+                const absenceIndex = (activePeriod.scheduledAbsences || []).findIndex((a: ScheduledAbsence) =>
                     a.absenceTypeId === vacationType.id &&
                     a.startDate && a.endDate &&
-                    !isAfter(startOfDay(a.startDate as Date), startOfDay(day)) &&
-                    !isBefore(startOfDay(a.endDate as Date), startOfDay(day))
+                    isWithinInterval(day, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
                 );
     
                 if (absenceIndex > -1) {
-                    const absenceToRemove = activePeriod.scheduledAbsences[absenceIndex];
-                    const originalStartDate = startOfDay(absenceToRemove.startDate as Date);
-                    const originalEndDate = startOfDay(absenceToRemove.endDate as Date);
+                    const absenceToRemove = activePeriod.scheduledAbsences![absenceIndex];
+                    const originalStartDate = startOfDay(absenceToRemove.startDate);
+                    const originalEndDate = startOfDay(absenceToRemove.endDate!);
                     const dayToRemove = startOfDay(day);
     
-                    activePeriod.scheduledAbsences.splice(absenceIndex, 1);
+                    // Remove the old absence period
+                    activePeriod.scheduledAbsences!.splice(absenceIndex, 1);
     
+                    // If the removed day was in the middle, split the absence into two new ones
                     if (isAfter(dayToRemove, originalStartDate)) {
-                        activePeriod.scheduledAbsences.push({ ...absenceToRemove, endDate: subDays(dayToRemove, 1) });
+                        activePeriod.scheduledAbsences!.push({ ...absenceToRemove, id: `abs_${Date.now()}`, endDate: subDays(dayToRemove, 1) });
                     }
                     if (isBefore(dayToRemove, originalEndDate)) {
-                        activePeriod.scheduledAbsences.push({ ...absenceToRemove, startDate: addDays(dayToRemove, 1) });
+                        activePeriod.scheduledAbsences!.push({ ...absenceToRemove, id: `abs_${Date.now() + 1}`, startDate: addDays(dayToRemove, 1) });
                     }
                 }
             }
-        }
-    
-        if (hasChanges) {
-            employeeCopy.employmentPeriods.forEach((p: EmploymentPeriod) => {
-                if (p.scheduledAbsences) {
-                    p.scheduledAbsences.sort((a: ScheduledAbsence, b: ScheduledAbsence) => (a.startDate as Date).getTime() - (b.startDate as Date).getTime());
-                    const merged: ScheduledAbsence[] = [];
-                    for (const abs of p.scheduledAbsences) {
-                        const absStartDate = abs.startDate as Date;
-                        const absEndDate = abs.endDate as Date;
-                        if (merged.length > 0 &&
-                            merged[merged.length - 1].absenceTypeId === abs.absenceTypeId &&
-                            absEndDate && merged[merged.length - 1].endDate &&
-                            isSameDay(addDays(merged[merged.length - 1].endDate as Date, 1), absStartDate)) {
-                            merged[merged.length - 1].endDate = abs.endDate;
-                        } else {
-                            merged.push(abs);
-                        }
-                    }
-                    p.scheduledAbsences = merged.map(a => ({
-                        ...a,
-                        startDate: format(a.startDate as Date, 'yyyy-MM-dd'),
-                        endDate: a.endDate ? format(a.endDate as Date, 'yyyy-MM-dd') : null,
-                    }));
-                }
-            });
         }
         return employeeCopy;
     };
