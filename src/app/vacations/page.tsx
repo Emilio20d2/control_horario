@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -108,6 +109,7 @@ import { useAuth } from '@/hooks/useAuth';
 interface FormattedAbsence extends ScheduledAbsence {
     absenceAbbreviation: string;
     periodId: string;
+    color?: string;
 }
 
 export default function VacationsPage() {
@@ -354,9 +356,11 @@ export default function VacationsPage() {
 
                 definitiveAbsences.forEach(a => {
                     if (schedulableIds.has(a.absenceTypeId)) {
+                        const absenceType = absenceTypes.find(at => at.id === a.absenceTypeId);
                         absences.push({
                             ...a,
-                            absenceAbbreviation: absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation || '??',
+                            absenceAbbreviation: absenceType?.abbreviation || '??',
+                            color: absenceType?.color,
                             periodId: p.id,
                         });
                     }
@@ -392,7 +396,7 @@ export default function VacationsPage() {
         }));
     
         const weeklySummaries: Record<string, { employeeCount: number; hourImpact: number }> = {};
-        const employeesByWeek: Record<string, { employeeId: string; employeeName: string; groupId?: string | null; absenceAbbreviation: string }[]> = {};
+        const employeesByWeek: Record<string, { employeeId: string; employeeName: string; groupId?: string | null; absenceAbbreviation: string; color?: string; }[]> = {};
         
         weekInfo.forEach(week => {
             weeklySummaries[week.key] = { employeeCount: 0, hourImpact: 0 };
@@ -409,7 +413,7 @@ export default function VacationsPage() {
                     const activePeriod = emp.employmentPeriods.find((p: EmploymentPeriod) => !p.endDate || isAfter(p.endDate, new Date()));
                     const weeklyHours = getEffectiveWeeklyHours(activePeriod || null, week.start);
                     weeklySummaries[week.key].hourImpact += weeklyHours;
-                    employeesByWeek[week.key].push({ employeeId: emp.id, employeeName: emp.name, groupId: emp.groupId, absenceAbbreviation: absenceThisWeek.absenceAbbreviation });
+                    employeesByWeek[week.key].push({ employeeId: emp.id, employeeName: emp.name, groupId: emp.groupId, absenceAbbreviation: absenceThisWeek.absenceAbbreviation, color: absenceThisWeek.color });
                 }
             });
         });
@@ -422,7 +426,7 @@ export default function VacationsPage() {
     useEffect(() => {
         const emp = employees.find(e => e.id === selectedEmployeeId);
         if (emp && selectedYear) {
-            const calculation = calculateEmployeeVacations(emp, Number(selectedYear), 'programmed');
+            const calculation = calculateEmployeeVacations(emp, Number(selectedYear));
             setVacationCalculation(calculation);
         }
     }, [selectedEmployeeId, selectedYear, employees, calculateEmployeeVacations, weeklyRecords, employeesWithAbsences]);
@@ -677,27 +681,27 @@ export default function VacationsPage() {
                     <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 bg-card" style={{ backgroundColor: groupColors[group.id] || '#f0f0f0', width: '0.0025px' }}>
                     </td>
                     {weeksOfYear.map(week => {
-                      const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
-                        const absence = (employeesWithAbsences[emp.id] || []).find(a =>
-                          a.endDate && isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
-                        );
-                        return absence ? { employee: emp, absence } : null;
-                      }).filter((item): item is { employee: Employee & { isEventual: boolean, groupId: string | null }, absence: FormattedAbsence } => item !== null);
-  
-                      let cellBg = 'transparent';
-                      if (editingAbsence) {
-                          const isEditingInThisCell = employeesWithAbsenceInWeek.some(item => item.absence.id === editingAbsence.absence.id);
-                          if (isEditingInThisCell) {
-                              cellBg = '#bfdbfe'; // Light blue for editing
-                          } else if (employeesWithAbsenceInWeek.length > 0) {
-                              cellBg = groupColors[group.id] || '#f0f0f0';
-                          }
-                      } else if (employeesWithAbsenceInWeek.length > 0) {
-                          cellBg = groupColors[group.id] || '#f0f0f0';
-                      }
-  
+                        const employeesWithAbsenceInWeek = groupEmployees.map(emp => {
+                            const absence = (employeesWithAbsences[emp.id] || []).find(a =>
+                                a.endDate && isAfter(a.endDate, week.start) && isBefore(a.startDate, week.end)
+                            );
+                            return absence ? { employee: emp, absence } : null;
+                        }).filter((item): item is { employee: Employee & { isEventual: boolean, groupId: string | null }, absence: FormattedAbsence } => item !== null);
+
+                        const absenceColors = Array.from(new Set(employeesWithAbsenceInWeek.map(item => item.absence.color).filter(Boolean)));
+                        
+                        let backgroundStyle: React.CSSProperties = { backgroundColor: 'transparent' };
+                        if (editingAbsence && employeesWithAbsenceInWeek.some(item => item.absence.id === editingAbsence.absence.id)) {
+                            backgroundStyle = { backgroundColor: '#bfdbfe' }; // Editing color
+                        } else if (absenceColors.length === 1) {
+                            backgroundStyle = { backgroundColor: absenceColors[0] };
+                        } else if (absenceColors.length > 1) {
+                            const gradient = `linear-gradient(to right, ${absenceColors.join(', ')})`;
+                            backgroundStyle = { background: gradient };
+                        }
+
                       return (
-                        <td key={`${group.id}-${week.key}`} className="border align-top py-1 px-0.5" style={{ backgroundColor: cellBg }}>
+                        <td key={`${group.id}-${week.key}`} className="border align-top py-1 px-0.5" style={backgroundStyle}>
                            <div className="flex flex-col gap-0.5 relative h-full">
                                 {employeesWithAbsenceInWeek.map(item => {
                                     if (!item) return null;
@@ -1050,4 +1054,5 @@ export default function VacationsPage() {
 
 
     
+
 

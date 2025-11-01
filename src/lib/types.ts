@@ -1,4 +1,5 @@
 
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface WorkHoursRecord {
@@ -279,6 +280,7 @@ export interface Ausencia {
         endDate: Date | null;
     },
     isDefinitive: boolean;
+    color?: string;
   }
 
 export interface Conversation {
