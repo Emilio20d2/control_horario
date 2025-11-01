@@ -531,7 +531,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                         <FormItem>
                             <FormLabel>Horas Computadas Anuales</FormLabel>
                             <FormControl>
-                                <InputStepper {...field} step={0.25} value={field.value ?? 0} disabled={!isFirstPeriod} />
+                                <InputStepper {...field} step={0.25} value={field.value ?? 0} />
                             </FormControl>
                              <FormDescription>Horas ya trabajadas si el contrato empezó a mitad de año.</FormDescription>
                             <FormMessage />

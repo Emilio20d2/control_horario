@@ -82,39 +82,40 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
     return employeeNumber;
 };
 
-export const updateEmployee = async (id: string, currentEmployee: Employee, formData: EmployeeFormData, finalBalances: { ordinary: number; holiday: number; leave: number; total: number; }): Promise<void> => {
-    const { name, employeeNumber, dni, phone, email, role, groupId, newWeeklyWorkHours, newWeeklyWorkHoursDate, endDate, newContractType, newContractTypeDate, newWeeklySchedule, weeklySchedules, isTransfer, vacationDays2024, vacationDaysUsedInAnotherCenter, annualComputedHours } = formData;
-
-    const updatedPeriods = [...(currentEmployee.employmentPeriods || [])];
-    const periodToUpdate = updatedPeriods.sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
+export const updateEmployee = async (
+    id: string, 
+    currentEmployee: Employee, 
+    formData: EmployeeFormData, 
+    finalBalances: { ordinary: number; holiday: number; leave: number; total: number; }
+): Promise<void> => {
     
-    if (!periodToUpdate) {
+    const { 
+        name, dni, phone, email, role, groupId, endDate,
+        newContractType, newContractTypeDate, newWeeklyWorkHours, newWeeklyWorkHoursDate, newWeeklySchedule, 
+        weeklySchedules, contractType, annualComputedHours, isTransfer, vacationDaysUsedInAnotherCenter, vacationDays2024,
+        initialOrdinaryHours, initialHolidayHours, initialLeaveHours
+    } = formData;
+
+    // Create a deep copy to avoid direct state mutation
+    const updatedEmployeeData: Omit<Employee, 'id'> = JSON.parse(JSON.stringify({
+        ...currentEmployee,
+        name,
+        dni: dni || null,
+        phone: phone || null,
+        email: email || null,
+    }));
+    
+    // Always find the latest period to modify
+    const latestPeriod = updatedEmployeeData.employmentPeriods.sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
+
+    if (!latestPeriod) {
         throw new Error("No se encontró un periodo laboral para actualizar.");
     }
     
-    // This logic ensures that if endDate is an invalid date or null/undefined, it's set to null.
-    // Otherwise, it's formatted correctly.
-    let endDateValue: string | null = null;
-    if (endDate) {
-        const parsedEndDate = endDate instanceof Date ? endDate : parseISO(endDate);
-        if (isValid(parsedEndDate)) {
-            endDateValue = format(parsedEndDate, 'yyyy-MM-dd');
-        }
-    }
-    periodToUpdate.endDate = endDateValue;
-
-    periodToUpdate.annualComputedHours = annualComputedHours ?? periodToUpdate.annualComputedHours ?? 0;
-
-    if (updatedPeriods.length === 1) { // Only update these for the very first period
-        periodToUpdate.isTransfer = isTransfer;
-        periodToUpdate.vacationDays2024 = vacationDays2024 ?? periodToUpdate.vacationDays2024 ?? 0;
-        periodToUpdate.vacationDaysUsedInAnotherCenter = vacationDaysUsedInAnotherCenter ?? periodToUpdate.vacationDaysUsedInAnotherCenter ?? 0;
-    }
-
-    // Handle contract type change - ONLY if fields are valid and provided.
+    // 1. Handle Contract Change - This takes precedence
     if (newContractType && newContractTypeDate && newContractTypeDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const changeDate = parseISO(newContractTypeDate);
-        periodToUpdate.endDate = format(subDays(changeDate, 1), 'yyyy-MM-dd');
+        latestPeriod.endDate = format(subDays(changeDate, 1), 'yyyy-MM-dd');
 
         const newPeriod: EmploymentPeriod = {
             id: `period_${Date.now()}`,
@@ -125,101 +126,75 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
             initialOrdinaryHours: finalBalances.ordinary,
             initialHolidayHours: finalBalances.holiday,
             initialLeaveHours: finalBalances.leave,
-            vacationDays2024: 0, // Reset for new periods
-            workHoursHistory: periodToUpdate.workHoursHistory ? [periodToUpdate.workHoursHistory[periodToUpdate.workHoursHistory.length - 1]] : [],
-            weeklySchedulesHistory: periodToUpdate.weeklySchedulesHistory,
+            vacationDays2024: 0,
+            workHoursHistory: latestPeriod.workHoursHistory ? [latestPeriod.workHoursHistory[latestPeriod.workHoursHistory.length - 1]] : [],
+            weeklySchedulesHistory: latestPeriod.weeklySchedulesHistory,
             scheduledAbsences: [],
         };
-        updatedPeriods.push(newPeriod);
+        updatedEmployeeData.employmentPeriods.push(newPeriod);
     } else {
-        // Only update these if there is no contract change
-        periodToUpdate.contractType = formData.contractType;
-        // Preserve original initial hours on simple edit
-        periodToUpdate.initialOrdinaryHours = periodToUpdate.initialOrdinaryHours ?? formData.initialOrdinaryHours ?? 0;
-        periodToUpdate.initialHolidayHours = periodToUpdate.initialHolidayHours ?? formData.initialHolidayHours ?? 0;
-        periodToUpdate.initialLeaveHours = periodToUpdate.initialLeaveHours ?? formData.initialLeaveHours ?? 0;
-    }
-
-    if (newWeeklyWorkHours && newWeeklyWorkHours > 0 && newWeeklyWorkHoursDate && newWeeklyWorkHoursDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        const newRecord: WorkHoursRecord = {
-            effectiveDate: format(parseISO(newWeeklyWorkHoursDate), 'yyyy-MM-dd'),
-            weeklyHours: newWeeklyWorkHours
-        };
+        // 2. Handle Simple Edits on the latest period if no contract change
+        latestPeriod.endDate = endDate ? format(parseISO(endDate), 'yyyy-MM-dd') : null;
+        latestPeriod.contractType = contractType;
+        latestPeriod.annualComputedHours = annualComputedHours ?? latestPeriod.annualComputedHours ?? 0;
         
-        const targetPeriod = updatedPeriods.sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
-
-        if (!targetPeriod.workHoursHistory) {
-            targetPeriod.workHoursHistory = [];
+        // Only allow editing these on the very first period of an employee
+        if (currentEmployee.employmentPeriods.length <= 1) {
+            latestPeriod.isTransfer = isTransfer;
+            latestPeriod.vacationDays2024 = vacationDays2024 ?? latestPeriod.vacationDays2024 ?? 0;
+            latestPeriod.vacationDaysUsedInAnotherCenter = vacationDaysUsedInAnotherCenter ?? latestPeriod.vacationDaysUsedInAnotherCenter ?? 0;
+            latestPeriod.initialOrdinaryHours = initialOrdinaryHours ?? latestPeriod.initialOrdinaryHours ?? 0;
+            latestPeriod.initialHolidayHours = initialHolidayHours ?? latestPeriod.initialHolidayHours ?? 0;
+            latestPeriod.initialLeaveHours = initialLeaveHours ?? latestPeriod.initialLeaveHours ?? 0;
         }
 
-        const recordIndex = targetPeriod.workHoursHistory.findIndex(
-            record => record.effectiveDate === newRecord.effectiveDate
-        );
-
-        if (recordIndex > -1) {
-             targetPeriod.workHoursHistory[recordIndex] = newRecord;
-        } else {
-            targetPeriod.workHoursHistory.push(newRecord);
-        }
-        
-        targetPeriod.workHoursHistory.sort((a, b) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
-    }
-
-    // This handles both updating the current schedule and adding a new one.
-    const targetPeriodForSchedules = updatedPeriods.sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
-    if (!targetPeriodForSchedules.weeklySchedulesHistory) {
-        targetPeriodForSchedules.weeklySchedulesHistory = [];
-    }
-
-    // Update existing schedule from `weeklySchedules` array (it's the most recent one)
-    if (weeklySchedules && weeklySchedules.length > 0) {
-        const scheduleToUpdate = weeklySchedules[0];
-        const effectiveDateString = scheduleToUpdate.effectiveDate;
-
-        if(effectiveDateString && typeof effectiveDateString === 'string' && effectiveDateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            const existingScheduleIndex = targetPeriodForSchedules.weeklySchedulesHistory.findIndex(
-                s => s.effectiveDate === effectiveDateString
-            );
-            if (existingScheduleIndex > -1) {
-                targetPeriodForSchedules.weeklySchedulesHistory[existingScheduleIndex] = {
-                    ...scheduleToUpdate,
-                    effectiveDate: effectiveDateString, // Ensure it's stored as a string
-                };
+        // Add new weekly work hours if provided
+        if (newWeeklyWorkHours && newWeeklyWorkHours > 0 && newWeeklyWorkHoursDate && newWeeklyWorkHoursDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const newRecord: WorkHoursRecord = {
+                effectiveDate: format(parseISO(newWeeklyWorkHoursDate), 'yyyy-MM-dd'),
+                weeklyHours: newWeeklyWorkHours
+            };
+            if (!latestPeriod.workHoursHistory) latestPeriod.workHoursHistory = [];
+            
+            const existingIndex = latestPeriod.workHoursHistory.findIndex(wh => wh.effectiveDate === newRecord.effectiveDate);
+            if(existingIndex > -1) {
+                latestPeriod.workHoursHistory[existingIndex] = newRecord;
             } else {
-                targetPeriodForSchedules.weeklySchedulesHistory.push({
-                    ...scheduleToUpdate,
-                    effectiveDate: effectiveDateString,
-                });
+                 latestPeriod.workHoursHistory.push(newRecord);
             }
+            latestPeriod.workHoursHistory.sort((a, b) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
+        }
+
+        // Update current schedule
+        if (weeklySchedules && weeklySchedules.length > 0) {
+            const currentSchedule = weeklySchedules[0];
+             if (!latestPeriod.weeklySchedulesHistory) latestPeriod.weeklySchedulesHistory = [];
+            
+            const existingIndex = latestPeriod.weeklySchedulesHistory.findIndex(s => s.effectiveDate === currentSchedule.effectiveDate);
+            if (existingIndex > -1) {
+                latestPeriod.weeklySchedulesHistory[existingIndex] = currentSchedule;
+            } else {
+                // This case should ideally not happen if we're editing the latest, but as a fallback:
+                 latestPeriod.weeklySchedulesHistory.push(currentSchedule);
+            }
+            latestPeriod.weeklySchedulesHistory.sort((a,b) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
+        }
+
+        // Add new schedule if provided
+        if (newWeeklySchedule && newWeeklySchedule.effectiveDate && newWeeklySchedule.effectiveDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            if (!latestPeriod.weeklySchedulesHistory) latestPeriod.weeklySchedulesHistory = [];
+            latestPeriod.weeklySchedulesHistory.push({
+                ...newWeeklySchedule,
+                effectiveDate: format(parseISO(newWeeklySchedule.effectiveDate), 'yyyy-MM-dd')
+            });
+            latestPeriod.weeklySchedulesHistory.sort((a,b) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
         }
     }
 
-    // Add a brand new schedule if provided
-    if (newWeeklySchedule && newWeeklySchedule.effectiveDate && newWeeklySchedule.effectiveDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        const formattedNewSchedule = {
-            ...newWeeklySchedule,
-            effectiveDate: format(parseISO(newWeeklySchedule.effectiveDate), 'yyyy-MM-dd'),
-        };
-        targetPeriodForSchedules.weeklySchedulesHistory.push(formattedNewSchedule);
-    }
-    
-    targetPeriodForSchedules.weeklySchedulesHistory.sort((a, b) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
-
-    const finalData = {
-        name,
-        employeeNumber: employeeNumber || null,
-        dni: dni || null,
-        phone: phone || null,
-        email: email || null,
-        employmentPeriods: updatedPeriods,
-        authId: currentEmployee.authId || null,
-    };
-
-    await updateDocument('employees', id, finalData);
+    await updateDocument('employees', id, updatedEmployeeData);
 
     // Update group in holidayEmployees collection
     await addHolidayEmployee({ id: id, name: name, groupId: groupId || null, active: true });
-
 
     // Update user role if authId exists and role is provided
     if (currentEmployee.authId && role) {
@@ -227,12 +202,9 @@ export const updateEmployee = async (id: string, currentEmployee: Employee, form
         const userDoc = await getDoc(userRef);
         if (userDoc.exists()) {
             await updateDocument('users', currentEmployee.authId, { role });
-        } else if (email) { // Only create if email exists
+        } else if (email) {
             await setDocument('users', currentEmployee.authId, { email: email, employeeId: id, role });
         }
-    } else if (email && role && currentEmployee.authId) {
-        // This handles creating the user doc if it was missing but authId exists
-        await setDocument('users', currentEmployee.authId, { email: email, employeeId: id, role });
     }
 };
 
