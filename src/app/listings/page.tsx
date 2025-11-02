@@ -20,12 +20,7 @@ import { format, isAfter, parseISO } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HolidayEmployeeManager } from '@/components/settings/holiday-employee-manager';
 import { Textarea } from '@/components/ui/textarea';
-import dynamic from 'next/dynamic';
-
-const PersonalDataReportGenerator = dynamic(
-  () => import('@/components/listings/personal-data-report-generator').then(mod => mod.PersonalDataReportGenerator),
-  { ssr: false, loading: () => <Loader2 className="h-8 w-8 animate-spin" /> }
-);
+import { PersonalDataReportGenerator } from '@/components/listings/personal-data-report-generator';
 
 
 const columnSchema = z.object({
