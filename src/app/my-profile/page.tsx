@@ -7,7 +7,7 @@ import { useDataProvider } from '@/hooks/use-data-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmployeeDetails } from '@/components/employees/employee-details';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
-import { isAfter, parseISO, startOfDay, getYear, isWithinInterval, startOfYear, endOfYear, getISOWeekYear, eachDayOfInterval, startOfWeek, isSameDay } from 'date-fns';
+import { isAfter, parseISO, startOfDay, getYear, isWithinInterval, startOfYear, endOfYear, getISOWeekYear, eachDayOfInterval, startOfWeek, isSameDay, addDays } from 'date-fns';
 import { Briefcase, Gift, Scale, Wallet, Plane, Info, CalendarX2, CheckCircle, Hourglass } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -108,56 +108,69 @@ export default function MyProfilePage() {
         const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
         if (!vacationType) return [];
     
-        const nextYear = currentYear + 1;
-        const allVacationDays = new Map<string, 'programmed' | 'confirmed'>();
+        const allVacationDays = new Map<string, { isConfirmed: boolean }>();
     
-        // 1. Get from scheduledAbsences
-        (employee.employmentPeriods || []).forEach(p => {
-            (p.scheduledAbsences || []).forEach(a => {
-                if (a.absenceTypeId === vacationType.id && a.endDate) {
-                    const absenceYear = getYear(a.startDate);
-                    if (absenceYear === currentYear || absenceYear === nextYear) {
-                        eachDayOfInterval({ start: a.startDate, end: a.endDate }).forEach(day => {
-                            allVacationDays.set(format(day, 'yyyy-MM-dd'), 'programmed');
-                        });
-                    }
-                }
-            });
-        });
-    
-        // 2. Get from weeklyRecords (confirmed vacations)
+        // 1. Get from weeklyRecords (confirmed vacations) - HIGHEST PRIORITY
         Object.values(weeklyRecords).forEach(record => {
             const empWeekData = record.weekData[employee.id];
             if (empWeekData?.confirmed && empWeekData.days) {
                 Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
                     const dayDate = parseISO(dayStr);
                     const dayYear = getYear(dayDate);
-                    if ((dayYear === currentYear || dayYear === nextYear) && dayData.absence === vacationType.abbreviation) {
-                        allVacationDays.set(dayStr, 'confirmed');
+                    if ((dayYear === currentYear || dayYear === currentYear + 1) && dayData.absence === vacationType.abbreviation) {
+                        allVacationDays.set(dayStr, { isConfirmed: true });
                     }
                 });
             }
         });
         
+        // 2. Get from scheduledAbsences, but only if the day hasn't been confirmed
+        (employee.employmentPeriods || []).forEach(p => {
+            (p.scheduledAbsences || []).forEach(a => {
+                if (a.absenceTypeId === vacationType.id && a.endDate) {
+                    const absenceYear = getYear(a.startDate);
+                    if (absenceYear === currentYear || absenceYear === currentYear + 1) {
+                        eachDayOfInterval({ start: a.startDate, end: a.endDate }).forEach(day => {
+                            const dayStr = format(day, 'yyyy-MM-dd');
+                            if (!allVacationDays.has(dayStr)) {
+                                allVacationDays.set(dayStr, { isConfirmed: false });
+                            }
+                        });
+                    }
+                }
+            });
+        });
+        
         const sortedDays = Array.from(allVacationDays.keys()).sort();
+        if (sortedDays.length === 0) return [];
+        
         const periods: { startDate: Date, endDate: Date, isConfirmed: boolean }[] = [];
     
-        for (let i = 0; i < sortedDays.length; i++) {
-            const day = parseISO(sortedDays[i]);
-            if (i > 0 && isSameDay(day, new Date(parseISO(sortedDays[i - 1]).getTime() + 86400000))) {
-                periods[periods.length - 1].endDate = day;
-                // If any day in the period is confirmed, the whole period is considered confirmed for display
-                if (allVacationDays.get(sortedDays[i]) === 'confirmed') {
-                    periods[periods.length - 1].isConfirmed = true;
+        let currentPeriod = {
+            startDate: parseISO(sortedDays[0]),
+            endDate: parseISO(sortedDays[0]),
+            isConfirmed: allVacationDays.get(sortedDays[0])!.isConfirmed
+        };
+
+        for (let i = 1; i < sortedDays.length; i++) {
+            const currentDay = parseISO(sortedDays[i]);
+            const prevDay = parseISO(sortedDays[i-1]);
+
+            if (isSameDay(currentDay, addDays(prevDay, 1))) {
+                currentPeriod.endDate = currentDay;
+                if (allVacationDays.get(sortedDays[i])!.isConfirmed) {
+                    currentPeriod.isConfirmed = true;
                 }
             } else {
-                periods.push({
-                    startDate: day,
-                    endDate: day,
-                    isConfirmed: allVacationDays.get(sortedDays[i]) === 'confirmed'
-                });
+                periods.push(currentPeriod);
+                currentPeriod = {
+                    startDate: currentDay,
+                    endDate: currentDay,
+                    isConfirmed: allVacationDays.get(sortedDays[i])!.isConfirmed
+                };
             }
         }
+        periods.push(currentPeriod);
     
         return periods;
     
@@ -191,7 +204,7 @@ export default function MyProfilePage() {
             </h1>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 <Card>
+                 <Card className="bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-background">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-base">Detalle de Bolsas de Horas</CardTitle>
                     </CardHeader>
@@ -214,7 +227,7 @@ export default function MyProfilePage() {
                 </Card>
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Card className="cursor-pointer">
+                        <Card className="cursor-pointer bg-gradient-to-br from-cyan-50 to-white dark:from-cyan-950/30 dark:to-background">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Vacaciones</CardTitle>
                                 <Plane className="h-4 w-4 text-muted-foreground" />
@@ -264,7 +277,7 @@ export default function MyProfilePage() {
             </div>
 
 
-             <Card>
+             <Card className="bg-gradient-to-br from-pink-50 to-white dark:from-pink-950/30 dark:to-background">
                 <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">
                         <CalendarX2 className="h-5 w-5 text-primary" />
@@ -308,7 +321,7 @@ export default function MyProfilePage() {
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-gradient-to-br from-teal-50 to-white dark:from-teal-950/30 dark:to-background">
                 <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">
                         <Plane className="h-5 w-5 text-primary" />
@@ -352,7 +365,7 @@ export default function MyProfilePage() {
                         <EmployeeDetails employee={employee} period={activePeriod} allPeriods={employee.employmentPeriods} isEmployeeView={true} />
                     </>
                 ) : (
-                    <Card>
+                    <Card className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/30 dark:to-background">
                         <CardHeader>
                             <CardTitle>Sin Contrato Activo</CardTitle>
                         </CardHeader>
@@ -367,3 +380,5 @@ export default function MyProfilePage() {
 }
 
 
+
+    

@@ -198,7 +198,7 @@ const ConfirmedWeekCard: React.FC<{ employee: Employee } & ConfirmedWeek> = ({ e
                 employee={employee}
                 onSubmitted={refreshData}
             />
-            <Card>
+            <Card className="bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-background">
                 <CardHeader className="pb-4">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                          <CardTitle className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline gap-1">
@@ -420,3 +420,5 @@ export default function MySchedulePage() {
         </div>
     );
 }
+
+    

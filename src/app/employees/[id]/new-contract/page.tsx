@@ -157,7 +157,7 @@ export default function NewContractPage() {
             </div>
 
             <div className="px-4 md:px-6 pb-4">
-                <Card>
+                <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
                     <CardHeader>
                         <CardTitle>Crear Nuevo Periodo Laboral</CardTitle>
                         <CardDescription>
@@ -333,3 +333,5 @@ export default function NewContractPage() {
         </div>
     );
 }
+
+    

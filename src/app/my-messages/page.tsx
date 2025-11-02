@@ -469,7 +469,7 @@ export default function MyMessagesPage() {
                      <Button size="sm" variant="secondary" onClick={handleOpenOtherRequestDialog}><CalendarClock className="mr-2 h-4 w-4"/>Otras Solicitudes</Button>
                 </div>
                 
-                <Card className="flex flex-col flex-grow h-[calc(100vh-12rem)]">
+                <Card className="flex flex-col flex-grow h-[calc(100vh-12rem)] bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background">
                     <CardHeader className="p-4 border-b">
                         {renderChatHeader()}
                     </CardHeader>
@@ -698,3 +698,5 @@ export default function MyMessagesPage() {
         </>
     );
 }
+
+    

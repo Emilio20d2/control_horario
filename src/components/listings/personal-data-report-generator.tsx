@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -144,7 +145,7 @@ export function PersonalDataReportGenerator() {
   };
 
   return (
-    <Card>
+    <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
       <CardHeader>
         <CardTitle>Formulario de Datos Personales</CardTitle>
         <CardDescription>
@@ -280,3 +281,5 @@ export function PersonalDataReportGenerator() {
     </Card>
   );
 }
+
+    

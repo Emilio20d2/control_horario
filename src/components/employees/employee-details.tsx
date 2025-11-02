@@ -138,7 +138,7 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
     }
 
     return (
-        <Card>
+        <Card className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/30 dark:to-background">
             <CardContent className="space-y-8 pt-6">
 
                 {!isEmployeeView && (
@@ -352,3 +352,5 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
         </Card>
     );
 }
+
+    

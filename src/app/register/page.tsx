@@ -57,7 +57,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-sm">
+      <Card className="w-full max-w-sm bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background">
         <CardHeader className="text-center">
             <div className="mb-4 flex justify-center">
                 <Image src="/logo.png" alt="Logo de la aplicación" width={112} height={112} className="h-28 w-28" />
@@ -113,3 +113,5 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+    

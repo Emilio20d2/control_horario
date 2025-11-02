@@ -35,7 +35,7 @@ const BalanceItem = ({ label, value, icon: Icon }: { label: string, value: numbe
 
 export function EmployeeCard({ employee, balances, vacationInfo, lastPeriod, showBalances }: EmployeeCardProps) {
     return (
-        <Card>
+        <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
             <CardHeader>
                 <div className="flex items-center gap-4">
                     <Avatar className="h-12 w-12">
@@ -93,3 +93,5 @@ export function EmployeeCard({ employee, balances, vacationInfo, lastPeriod, sho
         </Card>
     );
 }
+
+    

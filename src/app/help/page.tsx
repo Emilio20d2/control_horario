@@ -155,7 +155,7 @@ export default function HelpPage() {
               </AlertDescription>
             </Alert>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card>
+              <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <Smartphone className="h-5 w-5" />
@@ -170,7 +170,7 @@ export default function HelpPage() {
                   </ol>
                 </CardContent>
               </Card>
-               <Card>
+               <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
                 <CardHeader>
                    <div className="flex items-center gap-3">
                     <Smartphone className="h-5 w-5" />
@@ -193,3 +193,5 @@ export default function HelpPage() {
     </div>
   );
 }
+
+    

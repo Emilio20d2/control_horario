@@ -149,7 +149,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
     };
     
     return (
-        <Card>
+        <Card className="bg-gradient-to-br from-pink-50 to-white dark:from-pink-950/30 dark:to-background">
             <CardHeader>
                 <CardTitle>Gestión de Ausencias Programadas (Bajas, etc.)</CardTitle>
                 <CardDescription>
@@ -254,3 +254,5 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
         </Card>
     );
 }
+
+    

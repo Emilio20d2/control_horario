@@ -189,7 +189,7 @@ export function HolidayReportGenerator() {
     const selectedCount = Object.values(selectedHolidays).filter(Boolean).length;
 
     return (
-        <Card className="min-w-[280px] sm:min-w-0">
+        <Card className="min-w-[280px] sm:min-w-0 bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-background">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-xl font-bold">Informe de Festivos</CardTitle>
                 <Gift className="h-4 w-4 text-muted-foreground" />
@@ -234,3 +234,5 @@ export function HolidayReportGenerator() {
         </Card>
     );
 }
+
+    
