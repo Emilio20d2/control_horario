@@ -326,7 +326,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
     };
     
     if (!localWeekData) {
-        return <TableRow><TableCell colSpan={8} className="p-0"><Skeleton className="h-48 w-full rounded-none" /></TableRow>;
+        return <TableRow><TableCell colSpan={8} className="p-0"><Skeleton className="h-48 w-full rounded-none" /></TableCell></TableRow>;
     }
     
     const isConfirmed = !!localWeekData.confirmed;
@@ -415,7 +415,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     dayData.absence === 'ninguna';
                 
                 const cellStyle: React.CSSProperties = {
-                    backgroundColor: absenceType?.color ? `${absenceType.color}40` : (holidayType ? '#e6f7ff' : 'transparent'),
+                    backgroundColor: absenceType?.color ? `${absenceType.color}40` : 'transparent',
                 };
 
                 return (
@@ -441,7 +441,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                                 </div>
 
 
-                                {absenceType && !absenceType.computesFullDay && (
+                                {absenceType && !absenceType.isAbsenceSplittable && (
                                      <div className="space-y-1 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
                                          <span className="text-xs font-medium text-muted-foreground hidden sm:inline">Aus:</span>
                                          <InputStepper
@@ -499,5 +499,3 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         </TableRow>
     );
 };
-
-    
