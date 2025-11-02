@@ -666,6 +666,62 @@ export default function VacationsPage() {
     };
 
     const specialAbsenceAbbreviations = new Set(['EXD', 'PNR']);
+
+    const uniqueAbsencesForYear = useMemo(() => {
+        if (!selectedEmployeeId) return [];
+        const year = Number(selectedYear);
+
+        const allDaysWithAbsenceType = (employeesWithAbsences[selectedEmployeeId] || [])
+            .map(absence => {
+                const startDate = safeParseDate(absence.startDate);
+                if (!startDate || getYear(startDate) !== year) return null;
+                return {
+                    date: startDate,
+                    absenceTypeId: absence.absenceTypeId,
+                    absenceAbbreviation: absence.absenceAbbreviation
+                };
+            })
+            .filter((item): item is { date: Date; absenceTypeId: string; absenceAbbreviation: string } => item !== null)
+            .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+        const periods: { startDate: Date; endDate: Date; absenceAbbreviation: string; absenceTypeId: string; }[] = [];
+        if (allDaysWithAbsenceType.length === 0) return periods;
+
+        let currentPeriod = {
+            startDate: allDaysWithAbsenceType[0].date,
+            endDate: allDaysWithAbsenceType[0].date,
+            absenceAbbreviation: allDaysWithAbsenceType[0].absenceAbbreviation,
+            absenceTypeId: allDaysWithAbsenceType[0].absenceTypeId,
+        };
+
+        for (let i = 1; i < allDaysWithAbsenceType.length; i++) {
+            const currentDay = allDaysWithAbsenceType[i];
+            const prevDay = allDaysWithAbsenceType[i - 1];
+
+            if (isSameDay(currentDay.date, addDays(prevDay.date, 1)) && currentDay.absenceTypeId === prevDay.absenceTypeId) {
+                currentPeriod.endDate = currentDay.date;
+            } else {
+                periods.push(currentPeriod);
+                currentPeriod = {
+                    startDate: currentDay.date,
+                    endDate: currentDay.date,
+                    absenceAbbreviation: currentDay.absenceAbbreviation,
+                    absenceTypeId: currentDay.absenceTypeId,
+                };
+            }
+        }
+        periods.push(currentPeriod);
+        
+        // This is a simplified representation; we lose the original absence IDs here
+        // which might be needed for editing/deleting. For now, it's just for display.
+        return periods.map((p, index) => ({
+             ...p,
+             id: `${p.absenceTypeId}-${p.startDate.toISOString()}-${index}`,
+             periodId: '', // Placeholder
+             originalRequest: undefined,
+             isDefinitive: true,
+        }));
+    }, [selectedEmployeeId, selectedYear, employeesWithAbsences, safeParseDate]);
     
     const renderQuadrant = () => (
         <div className="overflow-auto h-full border rounded-lg">
@@ -802,24 +858,6 @@ export default function VacationsPage() {
         </div>
     );
 
-    const uniqueAbsencesForYear = useMemo(() => {
-        const seen = new Set();
-        return employeeAbsencesForYear.filter(absence => {
-            const startDate = safeParseDate(absence.startDate);
-            const endDate = safeParseDate(absence.endDate);
-            if (!startDate) return false;
-
-            const key = `${absence.absenceTypeId}-${startDate.toISOString()}-${endDate?.toISOString()}`;
-            if (seen.has(key)) {
-                return false;
-            } else {
-                seen.add(key);
-                return true;
-            }
-        });
-    }, [employeeAbsencesForYear, safeParseDate]);
-
-    
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
              <Card>
@@ -928,7 +966,7 @@ export default function VacationsPage() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {uniqueAbsencesForYear.map((absence) => (
+                                            {uniqueAbsencesForYear.map((absence: any) => (
                                                 <TableRow key={absence.id}>
                                                     <TableCell className="px-1 py-1 text-xs">{absence.absenceAbbreviation}</TableCell>
                                                     <TableCell className="px-1 py-1 text-xs">{format(safeParseDate(absence.startDate)!, 'dd/MM/yy', { locale: es })}</TableCell>
