@@ -459,6 +459,7 @@ export default function DashboardPage() {
                                     tickLine={false}
                                     axisLine={false}
                                     interval={0}
+                                    tickFormatter={() => ''}
                                 />
                                 <ChartTooltip 
                                     cursor={false}
@@ -492,3 +493,5 @@ export default function DashboardPage() {
     
 
       
+
+    
