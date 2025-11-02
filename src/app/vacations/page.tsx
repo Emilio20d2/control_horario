@@ -266,10 +266,9 @@ export default function VacationsPage() {
           (emp.employmentPeriods || []).forEach(p => {
             if(p.scheduledAbsences) {
               p.scheduledAbsences.forEach(a => {
-                if (!a.startDate) return;
-                const startDate = a.startDate;
-                const endDate = a.endDate;
-                if (isValid(startDate)) years.add(getYear(startDate));
+                const startDate = safeParseDate(a.startDate);
+                const endDate = a.endDate ? safeParseDate(a.endDate) : null;
+                if (startDate && isValid(startDate)) years.add(getYear(startDate));
                 if (endDate && isValid(endDate)) years.add(getYear(endDate));
               })
             }
@@ -279,18 +278,18 @@ export default function VacationsPage() {
         years.add(currentYear);
         years.add(currentYear + 1);
         return Array.from(years).sort((a,b) => b - a);
-    }, [allEmployeesForQuadrant]);
+    }, [allEmployeesForQuadrant, safeParseDate]);
     
     useEffect(() => {
         const hasData = availableYears.length > 0;
-        const currentYearString = String(new Date().getFullYear());
-        const mostRecentYearWithData = hasData ? String(availableYears[0]) : currentYearString;
+        const mostRecentYearWithData = hasData ? String(availableYears[0]) : String(new Date().getFullYear());
     
-        if (selectedYear !== mostRecentYearWithData) {
+        // Set the year only on initial load or if the currently selected year becomes invalid
+        if (!availableYears.map(String).includes(selectedYear)) {
             setSelectedYear(mostRecentYearWithData);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [availableYears]); // We only want this to run when availableYears changes.
+    }, [availableYears]); // This effect should only run when availableYears changes.
 
     useEffect(() => {
         if (activeEmployees.length > 0 && !selectedEmployeeId) {
@@ -334,10 +333,15 @@ export default function VacationsPage() {
             (emp.employmentPeriods || []).forEach((p: EmploymentPeriod) => {
                 (p.scheduledAbsences || [])
                     .forEach(a => {
+                        const startDate = safeParseDate(a.startDate);
+                        if (!startDate) return;
+
                         if (schedulableIds.has(a.absenceTypeId)) {
                             const absenceType = absenceTypes.find(at => at.id === a.absenceTypeId);
                             absences.push({
                                 ...a,
+                                startDate, // ensure it's a Date object
+                                endDate: a.endDate ? safeParseDate(a.endDate) : null,
                                 absenceAbbreviation: absenceType?.abbreviation || '??',
                                 color: absenceType?.color,
                                 periodId: p.id,
@@ -389,7 +393,7 @@ export default function VacationsPage() {
     
                 if (absenceThisWeek) {
                     weeklySummaries[week.key].employeeCount++;
-                    const activePeriod = emp.employmentPeriods.find((p: EmploymentPeriod) => !p.endDate || isAfter(p.endDate, new Date()));
+                    const activePeriod = emp.employmentPeriods.find((p: EmploymentPeriod) => !p.endDate || isAfter(safeParseDate(p.endDate)!, new Date()));
                     const weeklyHours = getEffectiveWeeklyHours(activePeriod || null, week.start);
                     weeklySummaries[week.key].hourImpact += weeklyHours;
                     employeesByWeek[week.key].push({ employeeId: emp.id, employeeName: emp.name, groupId: emp.groupId, absenceAbbreviation: absenceThisWeek.absenceAbbreviation, color: absenceThisWeek.color });
@@ -517,9 +521,9 @@ export default function VacationsPage() {
     const employeeAbsencesForYear = useMemo(() => {
         if (!selectedEmployeeId || !selectedYear) return [];
         return (employeesWithAbsences[selectedEmployeeId] || [])
-            .filter(a => getYear(safeParseDate(a.startDate)!) === Number(selectedYear))
-            .sort((a,b) => safeParseDate(a.startDate)!.getTime() - safeParseDate(b.startDate)!.getTime());
-    }, [selectedEmployeeId, selectedYear, employeesWithAbsences, safeParseDate]);
+            .filter(a => getYear(a.startDate) === Number(selectedYear))
+            .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
+    }, [selectedEmployeeId, selectedYear, employeesWithAbsences]);
     
     const employeeAbsenceDays = useMemo(() => {
         if (!selectedEmployeeId) return [];
@@ -755,7 +759,11 @@ export default function VacationsPage() {
     const uniqueAbsencesForYear = useMemo(() => {
         const seen = new Set();
         return employeeAbsencesForYear.filter(absence => {
-            const key = `${absence.absenceTypeId}-${safeParseDate(absence.startDate)!.toISOString()}-${safeParseDate(absence.endDate!)?.toISOString()}`;
+            const startDate = safeParseDate(absence.startDate);
+            const endDate = safeParseDate(absence.endDate);
+            if (!startDate) return false;
+
+            const key = `${absence.absenceTypeId}-${startDate.toISOString()}-${endDate?.toISOString()}`;
             if (seen.has(key)) {
                 return false;
             } else {
