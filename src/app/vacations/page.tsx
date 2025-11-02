@@ -674,25 +674,41 @@ export default function VacationsPage() {
         if (isNaN(year)) return [];
     
         const dayMap = new Map<string, any>();
-        const allAbsences = employeesWithAbsences[selectedEmployeeId] || [];
-        
-        allAbsences.forEach(absence => {
-            const startDate = safeParseDate(absence.startDate);
-            if (!startDate || getYear(startDate) !== year) return;
-            const dayKey = format(startDate, 'yyyy-MM-dd');
     
-            if (!dayMap.has(dayKey) || absence.isDefinitive) {
-                dayMap.set(dayKey, {
-                    date: startDate,
-                    absenceTypeId: absence.absenceTypeId,
-                    absenceAbbreviation: absence.absenceAbbreviation,
-                    originalAbsenceId: absence.id,
-                    originalPeriodId: absence.periodId,
-                    isDefinitive: absence.isDefinitive,
-                    originalRequest: absence.originalRequest
-                });
-            }
-        });
+        // Use a set to ensure each day is processed once, prioritizing definitive records
+        (employeesWithAbsences[selectedEmployeeId] || [])
+            .filter(a => a.startDate && getYear(safeParseDate(a.startDate)!) === year)
+            .forEach(absence => {
+                const dayKey = format(safeParseDate(absence.startDate)!, 'yyyy-MM-dd');
+                
+                // If the day is already mapped by a definitive record, skip.
+                if (dayMap.has(dayKey) && dayMap.get(dayKey).isDefinitive) {
+                    return;
+                }
+                
+                // If the new absence is definitive, it overwrites any non-definitive one.
+                if (absence.isDefinitive) {
+                     dayMap.set(dayKey, {
+                        date: safeParseDate(absence.startDate),
+                        absenceTypeId: absence.absenceTypeId,
+                        absenceAbbreviation: absence.absenceAbbreviation,
+                        originalAbsenceId: absence.id,
+                        originalPeriodId: absence.periodId,
+                        isDefinitive: absence.isDefinitive,
+                        originalRequest: absence.originalRequest
+                    });
+                } else if (!dayMap.has(dayKey)) { // Only add if not present, as non-definitive
+                    dayMap.set(dayKey, {
+                        date: safeParseDate(absence.startDate),
+                        absenceTypeId: absence.absenceTypeId,
+                        absenceAbbreviation: absence.absenceAbbreviation,
+                        originalAbsenceId: absence.id,
+                        originalPeriodId: absence.periodId,
+                        isDefinitive: absence.isDefinitive,
+                        originalRequest: absence.originalRequest
+                    });
+                }
+            });
     
         const allDaysWithAbsenceType = Array.from(dayMap.values())
             .sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -710,11 +726,11 @@ export default function VacationsPage() {
     
         for (let i = 1; i < allDaysWithAbsenceType.length; i++) {
             const dayInfo = allDaysWithAbsenceType[i];
-            const prevDayInfo = allDaysWithAbsenceType[i - 1];
+            const prevDayInfo = allDaysWithAbsenceType[i-1];
     
             if (isSameDay(dayInfo.date, addDays(prevDayInfo.date, 1)) && dayInfo.absenceTypeId === currentPeriod.absenceTypeId) {
                 currentPeriod.endDate = dayInfo.date;
-                // If any day in the period is definitive, the whole grouped period should point to its ID for editing.
+                // If any day in the period is definitive, the whole grouped period points to its ID for editing.
                 if (dayInfo.isDefinitive) {
                     currentPeriod.id = dayInfo.originalAbsenceId;
                     currentPeriod.periodId = dayInfo.originalPeriodId;
