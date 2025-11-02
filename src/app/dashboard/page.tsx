@@ -10,7 +10,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, FileDown, CalendarX2, Library, BookUser, AlertTriangle, FileSignature, ScanText, Loader2 as Loader2Icon, Mail } from 'lucide-react';
+import { Users, FileDown, CalendarX2, Library, BookUser, AlertTriangle, FileSignature, ScanText, Loader2 as Loader2Icon, Mail, User } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useAuth } from '@/hooks/useAuth';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -51,8 +51,6 @@ export default function DashboardPage() {
     
     // Default to a date from data if available, otherwise today
     const [referenceDate, setReferenceDate] = useState(new Date());
-    const [selectedYear, setSelectedYear] = useState(getYear(referenceDate));
-    const [selectedMonth, setSelectedMonth] = useState(getMonth(referenceDate));
     const [selectedBalanceReportWeek, setSelectedBalanceReportWeek] = useState(getWeekId(subWeeks(new Date(), 1)));
     const [complementaryHoursReportWeek, setComplementaryHoursReportWeek] = useState(getWeekId(subWeeks(new Date(), 1)));
 
@@ -62,18 +60,10 @@ export default function DashboardPage() {
     const [reportYear, setReportYear] = useState(2025);
     const [isGenerating, setIsGenerating] = useState(false);
     
-    // For detailed annual report
-    const [detailedReportEmployeeId, setDetailedReportEmployeeId] = useState('');
-    const [detailedReportYear, setDetailedReportYear] = useState(2025);
     const [isGeneratingDetailed, setIsGeneratingDetailed] = useState(false);
     
-    // For absence report
-    const [absenceReportEmployeeId, setAbsenceReportEmployeeId] = useState('');
-    const [absenceReportYear, setAbsenceReportYear] = useState(2025);
     const [isGeneratingAbsenceReport, setIsGeneratingAbsenceReport] = useState(false);
     
-    // For signature report
-    const [signatureReportYear, setSignatureReportYear] = useState(2025);
     const [isGeneratingSignatureReport, setIsGeneratingSignatureReport] = useState(false);
 
     const [isGeneratingBalanceReport, setIsGeneratingBalanceReport] = useState(false);
@@ -99,23 +89,14 @@ export default function DashboardPage() {
             if (firstDayOfWeek) {
                  const initialDate = new Date();
                  setReferenceDate(initialDate);
-                 setSelectedYear(getYear(initialDate));
-                 setSelectedMonth(getMonth(initialDate));
             }
         }
          if (allEmployeesForReport.length > 0) {
             if (!reportEmployeeId) setReportEmployeeId(allEmployeesForReport[0].id);
-            if (!detailedReportEmployeeId) setDetailedReportEmployeeId(allEmployeesForReport[0].id);
-            if (!absenceReportEmployeeId) setAbsenceReportEmployeeId(allEmployeesForReport[0].id);
         }
-    }, [loading, weeklyRecords, allEmployeesForReport, reportEmployeeId, detailedReportEmployeeId, absenceReportEmployeeId]);
+    }, [loading, weeklyRecords, allEmployeesForReport, reportEmployeeId]);
 
 
-    const months = Array.from({ length: 12 }, (_, i) => ({
-        value: i,
-        label: format(new Date(selectedYear, i), 'MMMM', { locale: es }),
-    }));
-    
     const availableYears = useMemo(() => {
         if (!weeklyRecords) return [new Date().getFullYear()];
         const years = new Set(Object.keys(weeklyRecords).map(id => getISOWeekYear(parseISO(id))));
@@ -170,11 +151,7 @@ export default function DashboardPage() {
             </div>
         )
     }
-
-    const totalEmployees = employees.length;
-    const activeEmployeesCount = employees.filter(e => e.employmentPeriods?.some(p => !p.endDate)).length;
     
-
     const chartData = employees.map(emp => ({
         name: emp.name,
         balance: getEmployeeFinalBalances(emp.id).total,
@@ -220,13 +197,9 @@ export default function DashboardPage() {
         doc.save(`informe-complementarias-${safeWeekId}.pdf`);
     };
     
-    const parseDateFromString = (dateString: string) => {
-        return parse(dateString, 'dd/MM/yyyy', new Date());
-    };
-
     const handleGenerateAbsenceReport = async () => {
         setIsGeneratingAbsenceReport(true);
-        const employee = employees.find(e => e.id === absenceReportEmployeeId);
+        const employee = employees.find(e => e.id === reportEmployeeId);
         if (!employee) {
             alert("Selecciona un empleado válido.");
             setIsGeneratingAbsenceReport(false);
@@ -234,7 +207,7 @@ export default function DashboardPage() {
         }
 
         try {
-            await generateAbsenceReportPDF(employee, absenceReportYear, weeklyRecords, absenceTypes);
+            await generateAbsenceReportPDF(employee, reportYear, weeklyRecords, absenceTypes);
         } catch (error) {
             console.error(error);
             toast({
@@ -346,7 +319,7 @@ export default function DashboardPage() {
 
     const handleGenerateAnnualDetailedReport = async () => {
         setIsGeneratingDetailed(true);
-        const employee = employees.find(e => e.id === detailedReportEmployeeId);
+        const employee = employees.find(e => e.id === reportEmployeeId);
         if (!employee) {
             alert("Selecciona un empleado válido.");
             setIsGeneratingDetailed(false);
@@ -354,7 +327,7 @@ export default function DashboardPage() {
         }
     
         try {
-            await generateAnnualDetailedReportPDF(employee, detailedReportYear, dataProvider);
+            await generateAnnualDetailedReportPDF(employee, reportYear, dataProvider);
         } catch (error) {
              console.error(error);
              toast({
@@ -375,9 +348,9 @@ export default function DashboardPage() {
             </h1>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 md:px-6">
-                <Card>
+                <Card className="lg:col-span-1">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Informe Resumen Anual</CardTitle>
+                    <CardTitle className="text-sm font-medium">Informes por Empleado</CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -397,70 +370,27 @@ export default function DashboardPage() {
                                 {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                             </SelectContent>
                         </Select>
-                        <Button onClick={handleGenerateAnnualReport} disabled={isGenerating || !reportEmployeeId} className="w-full">
-                            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                            {isGenerating ? 'Generando...' : 'Generar Resumen'}
-                        </Button>
+                        <div className="grid grid-cols-1 gap-2 pt-2">
+                            <Button onClick={handleGenerateAnnualReport} disabled={isGenerating || !reportEmployeeId}>
+                                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                {isGenerating ? 'Generando...' : 'Resumen Anual'}
+                            </Button>
+                             <Button onClick={handleGenerateAnnualDetailedReport} disabled={isGeneratingDetailed || !reportEmployeeId}>
+                                {isGeneratingDetailed ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BookUser className="mr-2 h-4 w-4" />}
+                                {isGeneratingDetailed ? 'Generando...' : 'Jornada Anual'}
+                            </Button>
+                             <Button onClick={handleGenerateAbsenceReport} disabled={isGeneratingAbsenceReport || !reportEmployeeId}>
+                                {isGeneratingAbsenceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarX2 className="mr-2 h-4 w-4" />}
+                                {isGeneratingAbsenceReport ? 'Generando...' : 'Informe Ausencias'}
+                            </Button>
+                            <Button onClick={() => router.push(`/employees/${reportEmployeeId}`)} disabled={!reportEmployeeId} variant="outline">
+                               <User className="mr-2 h-4 w-4" />
+                                Ver Ficha
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Informe Jornada Anual</CardTitle>
-                    <BookUser className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <Select value={detailedReportEmployeeId} onValueChange={setDetailedReportEmployeeId}>
-                            <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Seleccionar empleado..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {allEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <Select value={String(detailedReportYear)} onValueChange={v => setDetailedReportYear(Number(v))}>
-                            <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Seleccionar año..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <Button onClick={handleGenerateAnnualDetailedReport} disabled={isGeneratingDetailed || !detailedReportEmployeeId} className="w-full">
-                            {isGeneratingDetailed ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                            {isGeneratingDetailed ? 'Generando...' : 'Generar Informe'}
-                        </Button>
-                    </CardContent>
-                </Card>
-                <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                    Informe Ausencias por Empleado
-                    </CardTitle>
-                    <CalendarX2 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Select value={absenceReportEmployeeId} onValueChange={setAbsenceReportEmployeeId}>
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Seleccionar empleado..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {allEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Select value={String(absenceReportYear)} onValueChange={v => setAbsenceReportYear(Number(v))}>
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Seleccionar año..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Button onClick={handleGenerateAbsenceReport} disabled={isGeneratingAbsenceReport || !absenceReportEmployeeId} className="w-full">
-                        {isGeneratingAbsenceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                        {isGeneratingAbsenceReport ? 'Generando...' : 'Generar Resumen'}
-                    </Button>
-                </CardContent>
-                </Card>
+                
                 <HolidayReportGenerator />
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

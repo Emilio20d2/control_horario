@@ -229,7 +229,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="relative">
-                                    <Bell className="h-5 w-5" />
+                                    <Bell className="h-5 w-5 text-foreground" />
                                     {unconfirmedWeeksDetails.length > 0 && (
                                         <span className="absolute top-1.5 right-1.5 flex h-3 w-3">
                                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
