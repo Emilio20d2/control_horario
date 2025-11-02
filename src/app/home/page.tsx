@@ -8,15 +8,15 @@ import { Button } from '@/components/ui/button';
 import { format, parseISO, addWeeks, startOfWeek, endOfWeek, isAfter, isSameDay, isBefore, isValid, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
-import { AlertTriangle, ArrowRight, CalendarClock, Mail } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarClock, Mail, User, Info, CalendarRange, UserCheck, MessageCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { Employee, ScheduledAbsence, AbsenceType } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
 export default function HomePage() {
     const { 
@@ -28,7 +28,21 @@ export default function HomePage() {
         employeeRecord,
     } = useDataProvider();
     const { appUser } = useAuth();
+    
+    const [selectedEvent, setSelectedEvent] = useState<{ employee: Employee; absence: ScheduledAbsence; absenceType: AbsenceType } | null>(null);
+    const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
+    const safeParseDate = useCallback((date: any): Date | null => {
+        if (!date) return null;
+        if (date instanceof Date) return date;
+        if (date.toDate && typeof date.toDate === 'function') return date.toDate();
+        if (typeof date === 'string') {
+            const parsed = parseISO(date);
+            return isValid(parsed) ? parsed : null;
+        }
+        return null;
+    }, []);
+    
     const unreadConversations = useMemo(() => {
         return conversations.filter(c => c.unreadByAdmin).slice(0, 5);
     }, [conversations]);
@@ -51,21 +65,17 @@ export default function HomePage() {
                     
                     if (!a.id || !startDate || !isValid(startDate)) return;
                     
-                    const effectiveEndDate = a.endDate && isValid(a.endDate) ? a.endDate : startDate;
+                    const effectiveEndDate = a.endDate && isValid(a.endDate) ? a.endDate as Date : startDate;
     
-                    // Check if the absence interval overlaps with the 5-week window
                     if (isBefore(effectiveEndDate, next5WeeksStart) || isAfter(startDate, next5WeeksEnd)) {
                         return;
                     }
     
                     const absenceType = absenceTypes.find(at => at.id === a.absenceTypeId);
                     if (absenceType) {
-                        // Check if an identical period for this employee and type is already added
                         const isDuplicate = events.some(e => 
                             e.employee.id === emp.id &&
-                            e.absence.absenceTypeId === a.absenceTypeId &&
-                            isSameDay(e.absence.startDate, startDate) &&
-                            isSameDay(e.absence.endDate || e.absence.startDate, effectiveEndDate)
+                            e.absence.id === a.id
                         );
                         
                         if (!isDuplicate) {
@@ -87,6 +97,10 @@ export default function HomePage() {
         return employeeRecord?.name ? employeeRecord.name.split(' ')[0] : 'Admin';
     }, [appUser, employeeRecord]);
 
+    const handleOpenDetails = (event: { employee: Employee; absence: ScheduledAbsence; absenceType: AbsenceType }) => {
+        setSelectedEvent(event);
+        setIsDetailDialogOpen(true);
+    };
 
     if (loading) {
         return (
@@ -99,132 +113,186 @@ export default function HomePage() {
     }
 
     return (
-        <div className="flex flex-col gap-6 p-4 md:p-8">
-            <div className="space-y-1">
-                <h1 className="text-3xl font-bold tracking-tight font-headline">
-                    ¡Hola, {welcomeName}!
-                </h1>
-                <p className="text-lg text-muted-foreground">
-                    Aquí tienes un resumen de tus tareas pendientes.
-                </p>
-            </div>
-            <div className="grid gap-6 auto-rows-fr sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                <Card className="flex flex-col bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-background">
-                    <CardHeader className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-destructive/10 p-3 rounded-full">
-                                <AlertTriangle className="h-6 w-6 text-destructive" />
-                            </div>
-                            <CardTitle>Semanas Pendientes</CardTitle>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="flex-grow p-4 space-y-2">
-                        {unconfirmedWeeksDetails.length > 0 ? (
-                            <ScrollArea className="h-48">
-                                <div className="space-y-2">
-                                    {unconfirmedWeeksDetails.map(detail => (
-                                        <div key={detail.weekId} className="flex items-center justify-between p-2 rounded-md border bg-background/50">
-                                            <div>
-                                                <p className="font-semibold text-sm">Semana del {format(parseISO(detail.weekId), 'dd/MM/yyyy', { locale: es })}</p>
-                                                <p className="text-xs text-muted-foreground">{detail.employeeNames.length} empleado(s) pendiente(s)</p>
-                                            </div>
-                                            <Button asChild variant="secondary" size="sm">
-                                                <Link href={`/schedule?week=${detail.weekId}`}>Revisar</Link>
-                                            </Button>
-                                        </div>
-                                    ))}
+        <>
+            <div className="flex flex-col gap-6 p-4 md:p-8">
+                <div className="space-y-1">
+                    <h1 className="text-3xl font-bold tracking-tight font-headline">
+                        ¡Hola, {welcomeName}!
+                    </h1>
+                    <p className="text-lg text-muted-foreground">
+                        Aquí tienes un resumen de tus tareas pendientes.
+                    </p>
+                </div>
+                <div className="grid gap-6 auto-rows-fr sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    <Card className="flex flex-col bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-background">
+                        <CardHeader className="p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-destructive/10 p-3 rounded-full">
+                                    <AlertTriangle className="h-6 w-6 text-destructive" />
                                 </div>
-                            </ScrollArea>
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-muted-foreground">
-                                <p>¡Ninguna semana pendiente!</p>
+                                <CardTitle>Semanas Pendientes</CardTitle>
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
+                        </CardHeader>
+                        <CardContent className="flex-grow p-4 space-y-2">
+                            {unconfirmedWeeksDetails.length > 0 ? (
+                                <ScrollArea className="h-48">
+                                    <div className="space-y-2">
+                                        {unconfirmedWeeksDetails.map(detail => (
+                                            <div key={detail.weekId} className="flex items-center justify-between p-2 rounded-md border bg-background/50">
+                                                <div>
+                                                    <p className="font-semibold text-sm">Semana del {format(parseISO(detail.weekId), 'dd/MM/yyyy', { locale: es })}</p>
+                                                    <p className="text-xs text-muted-foreground">{detail.employeeNames.length} empleado(s) pendiente(s)</p>
+                                                </div>
+                                                <Button asChild variant="secondary" size="sm">
+                                                    <Link href={`/schedule?week=${detail.weekId}`}>Revisar</Link>
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-muted-foreground">
+                                    <p>¡Ninguna semana pendiente!</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
 
-                <Card className="flex flex-col bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
-                    <CardHeader className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-primary/10 p-3 rounded-full">
-                                <Mail className="h-6 w-6 text-primary" />
+                    <Card className="flex flex-col bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
+                        <CardHeader className="p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-primary/10 p-3 rounded-full">
+                                    <Mail className="h-6 w-6 text-primary" />
+                                </div>
+                                <CardTitle>Mensajes Sin Leer</CardTitle>
                             </div>
-                            <CardTitle>Mensajes Sin Leer</CardTitle>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="flex-grow p-4 space-y-2">
-                        {unreadConversations.length > 0 ? (
-                             <ScrollArea className="h-48">
-                                <div className="space-y-2">
-                                    {unreadConversations.map(conv => (
-                                        <Link key={conv.id} href="/messages">
-                                            <div className="flex items-center justify-between p-3 rounded-md border bg-background/50 hover:bg-muted">
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar>
-                                                        <AvatarFallback>{conv.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                                    </Avatar>
+                        </CardHeader>
+                        <CardContent className="flex-grow p-4 space-y-2">
+                            {unreadConversations.length > 0 ? (
+                                <ScrollArea className="h-48">
+                                    <div className="space-y-2">
+                                        {unreadConversations.map(conv => (
+                                            <Link key={conv.id} href="/messages">
+                                                <div className="flex items-center justify-between p-3 rounded-md border bg-background/50 hover:bg-muted">
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar>
+                                                            <AvatarFallback>{conv.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <p className="font-semibold text-sm">{conv.employeeName}</p>
+                                                            <p className="text-sm text-muted-foreground truncate max-w-[200px]">{conv.lastMessageText}</p>
+                                                        </div>
+                                                    </div>
+                                                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-muted-foreground">
+                                    <p>Bandeja de entrada al día.</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    <Card className="flex flex-col bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
+                        <CardHeader className="p-4">
+                        <div className="flex items-center gap-3">
+                                <div className="bg-primary/10 p-3 rounded-full">
+                                <CalendarClock className="h-6 w-6 text-primary" />
+                                </div>
+                                <CardTitle>Próximos Eventos</CardTitle>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="flex-grow p-4 space-y-2">
+                            {upcomingEvents.length > 0 ? (
+                                <ScrollArea className="h-48">
+                                    <div className="space-y-2">
+                                        {upcomingEvents.map((event, index) => {
+                                            const startDate = event.absence.startDate as Date;
+                                            const endDate = event.absence.endDate as Date;
+                                            const isSingleDay = !endDate || isSameDay(startDate, endDate);
+                                            
+                                            return (
+                                                <div 
+                                                    key={`${event.absence.id}-${index}`} 
+                                                    className="flex items-start gap-4 p-3 rounded-md border cursor-pointer hover:bg-black/5" 
+                                                    style={{ backgroundColor: `${event.absenceType.color}20` }}
+                                                    onClick={() => handleOpenDetails(event)}
+                                                >
+                                                    <div className="text-center w-20 shrink-0">
+                                                        <p className="font-bold text-sm capitalize text-black">{format(startDate, 'dd MMM', { locale: es })}</p>
+                                                        {!isSingleDay && endDate && (
+                                                            <p className="text-xs text-black">al {format(endDate, 'dd MMM', { locale: es })}</p>
+                                                        )}
+                                                    </div>
                                                     <div>
-                                                        <p className="font-semibold text-sm">{conv.employeeName}</p>
-                                                        <p className="text-sm text-muted-foreground truncate max-w-[200px]">{conv.lastMessageText}</p>
+                                                        <p className="font-semibold text-sm text-black">{event.employee.name}</p>
+                                                        <p className="text-xs font-medium text-black">{event.absenceType.name}</p>
                                                     </div>
                                                 </div>
-                                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                            </div>
-                                        </Link>
-                                    ))}
+                                            )
+                                        })}
+                                    </div>
+                                </ScrollArea>
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-muted-foreground">
+                                    <p>No hay ausencias programadas.</p>
                                 </div>
-                            </ScrollArea>
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-muted-foreground">
-                                <p>Bandeja de entrada al día.</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                <Card className="flex flex-col bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
-                    <CardHeader className="p-4">
-                       <div className="flex items-center gap-3">
-                            <div className="bg-primary/10 p-3 rounded-full">
-                               <CalendarClock className="h-6 w-6 text-primary" />
-                            </div>
-                            <CardTitle>Próximos Eventos</CardTitle>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="flex-grow p-4 space-y-2">
-                         {upcomingEvents.length > 0 ? (
-                             <ScrollArea className="h-48">
-                                <div className="space-y-2">
-                                    {upcomingEvents.map((event, index) => {
-                                        const startDate = event.absence.startDate as Date;
-                                        const endDate = event.absence.endDate as Date;
-                                        const isSingleDay = !endDate || isSameDay(startDate, endDate);
-                                        
-                                        return (
-                                            <div key={`${event.absence.id}-${index}`} className="flex items-start gap-4 p-3 rounded-md border" style={{ backgroundColor: `${event.absenceType.color}20`}}>
-                                                <div className="text-center w-20 shrink-0">
-                                                    <p className="font-bold text-sm capitalize">{format(startDate, 'dd MMM', { locale: es })}</p>
-                                                    {!isSingleDay && endDate && (
-                                                        <p className="text-xs">al {format(endDate, 'dd MMM', { locale: es })}</p>
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <p className="font-semibold text-sm">{event.employee.name}</p>
-                                                    <p className="text-xs font-medium">{event.absenceType.name}</p>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </ScrollArea>
-                         ) : (
-                             <div className="flex items-center justify-center h-full text-muted-foreground">
-                                <p>No hay ausencias programadas.</p>
-                            </div>
-                         )}
-                    </CardContent>
-                </Card>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
-        </div>
+            
+            <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Detalle de la Ausencia</DialogTitle>
+                        <DialogDescription>Revisa la información de la ausencia programada.</DialogDescription>
+                    </DialogHeader>
+                    {selectedEvent && (
+                        <div className="space-y-4 py-4">
+                            <div className="flex items-center gap-3">
+                                <User className="h-5 w-5 text-muted-foreground" />
+                                <p><strong>Empleado:</strong> {selectedEvent.employee.name}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Info className="h-5 w-5 text-muted-foreground" />
+                                <p><strong>Tipo:</strong> {selectedEvent.absenceType.name}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <CalendarRange className="h-5 w-5 text-muted-foreground" />
+                                <p>
+                                    <strong>Periodo Completo:</strong> {format(safeParseDate(selectedEvent.absence.startDate)!, 'dd/MM/yyyy', {locale: es})} - {selectedEvent.absence.endDate ? format(safeParseDate(selectedEvent.absence.endDate)!, 'dd/MM/yyyy', {locale: es}) : 'Indefinido'}
+                                </p>
+                            </div>
+                            {selectedEvent.absence.communicatedTo && (
+                                <div className="flex items-center gap-3">
+                                    <UserCheck className="h-5 w-5 text-muted-foreground" />
+                                    <p><strong>Comunicado a:</strong> {selectedEvent.absence.communicatedTo}</p>
+                                </div>
+                            )}
+                            {selectedEvent.absence.notes && (
+                                <div className="flex items-start gap-3">
+                                    <MessageCircle className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                                    <div>
+                                        <p><strong>Notas Adicionales:</strong></p>
+                                        <p className="text-muted-foreground whitespace-pre-wrap">{selectedEvent.absence.notes}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="secondary">Cerrar</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
