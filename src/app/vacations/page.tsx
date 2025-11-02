@@ -518,8 +518,8 @@ export default function VacationsPage() {
         if (!selectedEmployeeId || !selectedYear) return [];
         return (employeesWithAbsences[selectedEmployeeId] || [])
             .filter(a => getYear(a.startDate) === Number(selectedYear))
-            .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
-    }, [selectedEmployeeId, selectedYear, employeesWithAbsences]);
+            .sort((a,b) => safeParseDate(a.startDate)!.getTime() - safeParseDate(b.startDate)!.getTime());
+    }, [selectedEmployeeId, selectedYear, employeesWithAbsences, safeParseDate]);
     
     const employeeAbsenceDays = useMemo(() => {
         if (!selectedEmployeeId) return [];
