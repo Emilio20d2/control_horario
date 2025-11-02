@@ -419,11 +419,11 @@ export default function CalendarPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="sticky left-0 bg-card z-10 w-[200px] min-w-[200px]">Empleado</TableHead>
+                            <TableHead className="sticky left-0 bg-card z-10 w-[250px] min-w-[250px] p-2">Empleado</TableHead>
                             {weekDays.map(day => {
                                 const holiday = holidays.find(h => isSameDay(h.date, day));
                                 return (
-                                    <TableHead key={day.toISOString()} className={cn("text-center", holiday && 'bg-blue-50/70')}>
+                                    <TableHead key={day.toISOString()} className={cn("text-center min-w-[70px] p-1", holiday && 'bg-blue-50/70')}>
                                         <div className="flex flex-col items-center">
                                             <span>{format(day, 'E', { locale: es })}</span>
                                             <span className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</span>
@@ -436,7 +436,7 @@ export default function CalendarPage() {
                     <TableBody>
                         {weeklyAbsenceData.map(empData => (
                             <TableRow key={empData.employee.id}>
-                                <TableCell className="sticky left-0 bg-card z-10 font-medium">{empData.employee.name}</TableCell>
+                                <TableCell className="sticky left-0 bg-card z-10 font-medium p-2">{empData.employee.name}</TableCell>
                                 {weekDays.map(day => {
                                     const dayKey = format(day, 'yyyy-MM-dd');
                                     const cellInfo = empData.dayAbsences[dayKey];
@@ -447,7 +447,7 @@ export default function CalendarPage() {
                                             key={dayKey} 
                                             onClick={() => cellInfo && handleOpenDetails(cellInfo)}
                                             className={cn(
-                                                "text-center p-2 align-middle", 
+                                                "text-center p-1 align-middle", 
                                                 cellInfo && "cursor-pointer hover:bg-muted",
                                                 holiday && !cellInfo && 'bg-blue-50/50'
                                             )}
