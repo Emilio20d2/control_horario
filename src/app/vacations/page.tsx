@@ -671,57 +671,57 @@ export default function VacationsPage() {
     const uniqueAbsencesForYear = useMemo(() => {
         if (!selectedEmployeeId) return [];
         const year = Number(selectedYear);
-
+    
         const allDaysWithAbsenceType = (employeesWithAbsences[selectedEmployeeId] || [])
-            .map(absence => {
+            .flatMap(absence => {
                 const startDate = safeParseDate(absence.startDate);
-                if (!startDate || getYear(startDate) !== year) return null;
-                return {
-                    date: startDate,
+                if (!startDate || getYear(startDate) !== year) return [];
+                
+                const endDate = absence.endDate ? safeParseDate(absence.endDate) : startDate;
+                if(!endDate) return [];
+    
+                return eachDayOfInterval({ start: startDate, end: endDate }).map(day => ({
+                    date: day,
                     absenceTypeId: absence.absenceTypeId,
-                    absenceAbbreviation: absence.absenceAbbreviation
-                };
+                    absenceAbbreviation: absence.absenceAbbreviation,
+                    originalAbsenceId: absence.id,
+                    originalPeriodId: absence.periodId,
+                    isDefinitive: absence.isDefinitive,
+                    originalRequest: absence.originalRequest
+                }));
             })
-            .filter((item): item is { date: Date; absenceTypeId: string; absenceAbbreviation: string } => item !== null)
             .sort((a, b) => a.date.getTime() - b.date.getTime());
-
-        const periods: { startDate: Date; endDate: Date; absenceAbbreviation: string; absenceTypeId: string; }[] = [];
+    
+        const periods: (FormattedAbsence & { startDate: Date; endDate: Date})[] = [];
         if (allDaysWithAbsenceType.length === 0) return periods;
-
-        let currentPeriod = {
-            startDate: allDaysWithAbsenceType[0].date,
-            endDate: allDaysWithAbsenceType[0].date,
-            absenceAbbreviation: allDaysWithAbsenceType[0].absenceAbbreviation,
-            absenceTypeId: allDaysWithAbsenceType[0].absenceTypeId,
-        };
-
-        for (let i = 1; i < allDaysWithAbsenceType.length; i++) {
-            const currentDay = allDaysWithAbsenceType[i];
-            const prevDay = allDaysWithAbsenceType[i - 1];
-
-            if (isSameDay(currentDay.date, addDays(prevDay.date, 1)) && currentDay.absenceTypeId === prevDay.absenceTypeId) {
-                currentPeriod.endDate = currentDay.date;
+    
+        let currentPeriod: FormattedAbsence & { startDate: Date; endDate: Date} | null = null;
+    
+        allDaysWithAbsenceType.forEach(dayInfo => {
+            if (currentPeriod && isSameDay(dayInfo.date, addDays(currentPeriod.endDate, 1)) && dayInfo.absenceTypeId === currentPeriod.absenceTypeId) {
+                currentPeriod.endDate = dayInfo.date;
             } else {
-                periods.push(currentPeriod);
+                if (currentPeriod) {
+                    periods.push(currentPeriod);
+                }
                 currentPeriod = {
-                    startDate: currentDay.date,
-                    endDate: currentDay.date,
-                    absenceAbbreviation: currentDay.absenceAbbreviation,
-                    absenceTypeId: currentDay.absenceTypeId,
+                    id: dayInfo.originalAbsenceId,
+                    periodId: dayInfo.originalPeriodId,
+                    absenceTypeId: dayInfo.absenceTypeId,
+                    absenceAbbreviation: dayInfo.absenceAbbreviation,
+                    startDate: dayInfo.date,
+                    endDate: dayInfo.date,
+                    isDefinitive: dayInfo.isDefinitive,
+                    originalRequest: dayInfo.originalRequest
                 };
             }
+        });
+    
+        if (currentPeriod) {
+            periods.push(currentPeriod);
         }
-        periods.push(currentPeriod);
-        
-        // This is a simplified representation; we lose the original absence IDs here
-        // which might be needed for editing/deleting. For now, it's just for display.
-        return periods.map((p, index) => ({
-             ...p,
-             id: `${p.absenceTypeId}-${p.startDate.toISOString()}-${index}`,
-             periodId: '', // Placeholder
-             originalRequest: undefined,
-             isDefinitive: true,
-        }));
+    
+        return periods;
     }, [selectedEmployeeId, selectedYear, employeesWithAbsences, safeParseDate]);
     
     const renderQuadrant = () => (
