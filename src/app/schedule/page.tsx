@@ -190,15 +190,6 @@ export default function SchedulePage() {
             <Card className="rounded-none border-0 border-t bg-card">
                 <CardHeader className="flex flex-row justify-between items-center">
                     <h2 className="text-xl font-bold text-center">Vista Anual de {employee.name} - {selectedYear}</h2>
-                    <AddAbsenceDialog
-                        isOpen={isAddDialogOpen}
-                        onOpenChange={setIsAddDialogOpen}
-                        activeEmployees={employees}
-                        absenceTypes={absenceTypes}
-                        holidays={holidays}
-                        employees={employees}
-                        refreshData={dataProvider.refreshData}
-                    />
                 </CardHeader>
                 <CardContent className="overflow-x-auto p-0">
                     <Table>
@@ -244,15 +235,6 @@ export default function SchedulePage() {
             <CardHeader className="flex flex-col gap-2 items-center">
                 <div className="flex w-full justify-center items-center gap-4">
                     <div className="flex-1 flex justify-end">
-                         <AddAbsenceDialog
-                            isOpen={isAddDialogOpen}
-                            onOpenChange={setIsAddDialogOpen}
-                            activeEmployees={activeEmployeesForSchedule}
-                            absenceTypes={absenceTypes}
-                            holidays={holidays}
-                            employees={employees}
-                            refreshData={dataProvider.refreshData}
-                        />
                     </div>
                     <div className="flex-grow-0">
                         <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
