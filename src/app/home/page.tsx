@@ -125,7 +125,7 @@ export default function HomePage() {
                 </div>
                 <div className="grid gap-6 auto-rows-fr sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     <Card className="flex flex-col bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-background">
-                        <CardHeader className="p-4">
+                        <CardHeader className="p-3">
                             <div className="flex items-center gap-3">
                                 <div className="bg-destructive/10 p-3 rounded-full">
                                     <AlertTriangle className="h-6 w-6 text-destructive" />
@@ -133,7 +133,7 @@ export default function HomePage() {
                                 <CardTitle>Semanas Pendientes</CardTitle>
                             </div>
                         </CardHeader>
-                        <CardContent className="flex-grow p-4 space-y-2">
+                        <CardContent className="flex-grow p-3 space-y-2">
                             {unconfirmedWeeksDetails.length > 0 ? (
                                 <ScrollArea className="h-48">
                                     <div className="space-y-2">
@@ -159,7 +159,7 @@ export default function HomePage() {
                     </Card>
 
                     <Card className="flex flex-col bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
-                        <CardHeader className="p-4">
+                        <CardHeader className="p-3">
                             <div className="flex items-center gap-3">
                                 <div className="bg-primary/10 p-3 rounded-full">
                                     <Mail className="h-6 w-6 text-primary" />
@@ -167,7 +167,7 @@ export default function HomePage() {
                                 <CardTitle>Mensajes Sin Leer</CardTitle>
                             </div>
                         </CardHeader>
-                        <CardContent className="flex-grow p-4 space-y-2">
+                        <CardContent className="flex-grow p-3 space-y-2">
                             {unreadConversations.length > 0 ? (
                                 <ScrollArea className="h-48">
                                     <div className="space-y-2">
@@ -198,7 +198,7 @@ export default function HomePage() {
                     </Card>
 
                     <Card className="flex flex-col bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
-                        <CardHeader className="p-4">
+                        <CardHeader className="p-3">
                         <div className="flex items-center gap-3">
                                 <div className="bg-primary/10 p-3 rounded-full">
                                 <CalendarClock className="h-6 w-6 text-primary" />
@@ -206,7 +206,7 @@ export default function HomePage() {
                                 <CardTitle>Próximos Eventos</CardTitle>
                             </div>
                         </CardHeader>
-                        <CardContent className="flex-grow p-4 space-y-2">
+                        <CardContent className="flex-grow p-3 space-y-2">
                             {upcomingEvents.length > 0 ? (
                                 <ScrollArea className="h-48">
                                     <div className="space-y-2">
@@ -223,7 +223,7 @@ export default function HomePage() {
                                                     onClick={() => handleOpenDetails(event)}
                                                 >
                                                     <div className="text-center w-20 shrink-0">
-                                                        <p className="font-bold text-sm capitalize text-black">{format(startDate, 'dd MMM', { locale: es })}</p>
+                                                        <p className="font-bold text-sm text-black">{format(startDate, 'dd MMM', { locale: es })}</p>
                                                         {!isSingleDay && endDate && (
                                                             <p className="text-xs text-black">al {format(endDate, 'dd MMM', { locale: es })}</p>
                                                         )}
