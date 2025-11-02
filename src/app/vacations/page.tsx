@@ -517,29 +517,31 @@ export default function VacationsPage() {
     const employeeAbsencesForYear = useMemo(() => {
         if (!selectedEmployeeId || !selectedYear) return [];
         return (employeesWithAbsences[selectedEmployeeId] || [])
-            .filter(a => getYear(a.startDate) === Number(selectedYear))
-            .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
-    }, [selectedEmployeeId, selectedYear, employeesWithAbsences]);
+            .filter(a => getYear(safeParseDate(a.startDate)!) === Number(selectedYear))
+            .sort((a,b) => safeParseDate(a.startDate)!.getTime() - safeParseDate(b.startDate)!.getTime());
+    }, [selectedEmployeeId, selectedYear, employeesWithAbsences, safeParseDate]);
     
     const employeeAbsenceDays = useMemo(() => {
         if (!selectedEmployeeId) return [];
         return (employeesWithAbsences[selectedEmployeeId] || []).flatMap(p => {
-            if (!p.startDate || !isValid(p.startDate)) return [];
-            const startDate = p.startDate;
-            if (!p.endDate || !isValid(p.endDate)) return [startDate];
-            const endDate = p.endDate;
+            const startDate = safeParseDate(p.startDate);
+            if (!startDate) return [];
+            const endDate = p.endDate ? safeParseDate(p.endDate) : startDate;
+            if (!endDate) return [startDate];
             return eachDayOfInterval({ start: startDate, end: endDate });
         });
-    }, [selectedEmployeeId, employeesWithAbsences]);
+    }, [selectedEmployeeId, employeesWithAbsences, safeParseDate]);
 
 
     const editingAbsenceDays = useMemo(() => {
         if (!editingAbsence?.absence?.startDate) return [];
         const { startDate, endDate } = editingAbsence.absence;
-        if (!startDate || !isValid(startDate)) return [];
-        const validEndDate = endDate && isValid(endDate) ? endDate : startDate;
-        return eachDayOfInterval({ start: startDate, end: validEndDate });
-    }, [editingAbsence]);
+        const validStartDate = safeParseDate(startDate);
+        if (!validStartDate) return [];
+        const validEndDate = endDate ? safeParseDate(endDate) : validStartDate;
+        if (!validEndDate) return [];
+        return eachDayOfInterval({ start: validStartDate, end: validEndDate });
+    }, [editingAbsence, safeParseDate]);
 
     const plannerModifiers = { opening: openingHolidays, other: otherHolidays, employeeAbsence: employeeAbsenceDays, editing: editingAbsenceDays };
     const editModifiers = { opening: openingHolidays, other: otherHolidays };
@@ -620,14 +622,14 @@ export default function VacationsPage() {
           <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
             <thead className="sticky top-0 z-10 bg-card shadow-sm">
               <tr>
-                <th className="p-1 border-b border-r font-semibold text-sm sticky left-0 bg-card z-20" style={{ width: '150px' }}>
+                <th className="p-1 border-b border-r font-semibold text-sm sticky left-0 bg-card z-20" style={{ width: '0.15px' }}>
                     Agrupación
                 </th>
                 {weeksOfYear.map(week => {
                   const { turnId } = allEmployeesForQuadrant.length > 0 ? getTheoreticalHoursAndTurn(allEmployeesForQuadrant[0].id, week.start) : { turnId: null };
   
                   return (
-                    <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date as Date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '180px' }}>
+                    <th key={week.key} className={cn("p-1 text-center font-semibold border-b border-r", holidays.some(h => isWithinInterval(h.date as Date, { start: week.start, end: week.end })) && "bg-blue-50")} style={{ width: '300px' }}>
                       <div className='flex justify-between items-center h-full px-1'>
                         <div className="flex flex-col items-start">
                           <span className='text-xs'>{format(week.start, 'dd/MM')} - {format(week.end, 'dd/MM')}</span>
@@ -659,7 +661,7 @@ export default function VacationsPage() {
                 const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
                 return (
                   <tr key={group.id}>
-                    <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10" style={{ backgroundColor: groupColors[group.id] || '#f0f0f0', width: '150px' }}>
+                    <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10" style={{ backgroundColor: groupColors[group.id] || '#f0f0f0', width: '0.15px' }}>
                         {group.name}
                     </td>
                     {weeksOfYear.map(week => {
@@ -753,7 +755,7 @@ export default function VacationsPage() {
     const uniqueAbsencesForYear = useMemo(() => {
         const seen = new Set();
         return employeeAbsencesForYear.filter(absence => {
-            const key = `${absence.absenceTypeId}-${absence.startDate.toISOString()}-${absence.endDate?.toISOString()}`;
+            const key = `${absence.absenceTypeId}-${safeParseDate(absence.startDate)!.toISOString()}-${safeParseDate(absence.endDate!)?.toISOString()}`;
             if (seen.has(key)) {
                 return false;
             } else {
@@ -761,7 +763,7 @@ export default function VacationsPage() {
                 return true;
             }
         });
-    }, [employeeAbsencesForYear]);
+    }, [employeeAbsencesForYear, safeParseDate]);
 
     
     return (
@@ -875,8 +877,8 @@ export default function VacationsPage() {
                                             {uniqueAbsencesForYear.map((absence) => (
                                                 <TableRow key={absence.id}>
                                                     <TableCell className="px-1 py-1 text-xs">{absence.absenceAbbreviation}</TableCell>
-                                                    <TableCell className="px-1 py-1 text-xs">{format(absence.startDate, 'dd/MM/yy', { locale: es })}</TableCell>
-                                                    <TableCell className="px-1 py-1 text-xs">{absence.endDate ? format(absence.endDate, 'dd/MM/yy', { locale: es }) : 'N/A'}</TableCell>
+                                                    <TableCell className="px-1 py-1 text-xs">{format(safeParseDate(absence.startDate)!, 'dd/MM/yy', { locale: es })}</TableCell>
+                                                    <TableCell className="px-1 py-1 text-xs">{absence.endDate ? format(safeParseDate(absence.endDate)!, 'dd/MM/yy', { locale: es }) : 'N/A'}</TableCell>
                                                     <TableCell className="text-right p-0">
                                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingAbsence({employee: activeEmployees.find(e => e.id === selectedEmployeeId), absence: absence})}>
                                                             <Edit className="h-3 w-3" />
