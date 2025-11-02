@@ -112,7 +112,7 @@ export default function MessagesPage() {
     }
 
     const ConversationList = () => (
-        <Card className="flex flex-col h-[calc(100vh-8rem)]">
+        <Card className="flex flex-col h-[calc(100vh-8rem)] bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
             <div className="p-4 border-b">
                 <h2 className="text-xl font-bold font-headline">Bandeja de Entrada</h2>
             </div>
@@ -131,7 +131,7 @@ export default function MessagesPage() {
                                     key={conv.id}
                                     className={cn(
                                         'flex items-center gap-4 p-4 text-left w-full border-b transition-colors',
-                                        selectedConversationId === conv.id ? 'bg-muted' : 'hover:bg-muted/50'
+                                        selectedConversationId === conv.id ? 'bg-primary/10' : 'hover:bg-primary/5'
                                     )}
                                     onClick={() => setSelectedConversationId(conv.id)}
                                 >
@@ -155,7 +155,7 @@ export default function MessagesPage() {
     );
     
     const ChatView = () => (
-         <Card className="flex flex-col h-[calc(100vh-8rem)]">
+         <Card className="flex flex-col h-[calc(100vh-8rem)] bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
             {selectedConversation ? (
                 <>
                     <div className="flex items-center gap-4 p-4 border-b">
@@ -178,8 +178,8 @@ export default function MessagesPage() {
                             messages.map((message, index) => (
                                 <div key={index} className={cn('flex items-end gap-2', message.senderId === 'admin' ? 'justify-end' : 'justify-start')}>
                                     <div className={cn(
-                                        'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg',
-                                        message.senderId === 'admin' ? 'bg-primary/50 text-black' : 'bg-muted/50 text-black'
+                                        'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg shadow-sm',
+                                        message.senderId === 'admin' ? 'bg-gradient-to-br from-primary/80 to-primary/60 text-primary-foreground' : 'bg-gradient-to-br from-muted to-background'
                                     )}>
                                         <p className="whitespace-pre-wrap break-words">{message.text}</p>
                                         {message.timestamp && (

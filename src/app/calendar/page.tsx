@@ -360,7 +360,7 @@ export default function CalendarPage() {
                 />
             </div>
             {absenceDaysByEmployee.map(({ employee, absences }) => (
-                <Card key={employee.id}>
+                <Card key={employee.id} className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
                     <CardHeader className="py-3">
                         <CardTitle className="text-base">{employee.name}</CardTitle>
                     </CardHeader>
@@ -369,7 +369,7 @@ export default function CalendarPage() {
                             <div
                                 key={cellInfo.absence.id}
                                 onClick={() => handleOpenDetails(cellInfo)}
-                                className="flex items-center gap-4 p-3 rounded-md cursor-pointer hover:bg-muted"
+                                className="flex items-center gap-4 p-3 rounded-md cursor-pointer hover:bg-muted/50"
                                 style={{ backgroundColor: `${cellInfo.absenceType.color}40` }}
                             >
                                 <div className="flex flex-col items-center justify-center w-16 shrink-0">
@@ -401,7 +401,7 @@ export default function CalendarPage() {
 
 
   const renderDesktopView = () => (
-    <Card>
+    <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
         <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
             <AddAbsenceDialog 
                 isOpen={isAddDialogOpen} 
@@ -423,7 +423,7 @@ export default function CalendarPage() {
                             {weekDays.map(day => {
                                 const holiday = holidays.find(h => isSameDay(h.date, day));
                                 return (
-                                    <TableHead key={day.toISOString()} className={cn("text-center min-w-[70px] p-1", holiday && 'bg-blue-50/70')}>
+                                    <TableHead key={day.toISOString()} className={cn("text-center min-w-[70px] p-1", holiday && 'bg-primary/10')}>
                                         <div className="flex flex-col items-center">
                                             <span>{format(day, 'E', { locale: es })}</span>
                                             <span className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</span>
@@ -448,8 +448,8 @@ export default function CalendarPage() {
                                             onClick={() => cellInfo && handleOpenDetails(cellInfo)}
                                             className={cn(
                                                 "text-center p-1 align-middle", 
-                                                cellInfo && "cursor-pointer hover:bg-muted",
-                                                holiday && !cellInfo && 'bg-blue-50/50'
+                                                cellInfo && "cursor-pointer hover:bg-muted/50",
+                                                holiday && !cellInfo && 'bg-primary/5'
                                             )}
                                             style={{ backgroundColor: cellInfo ? `${cellInfo.absenceType.color}40` : undefined }}
                                         >
