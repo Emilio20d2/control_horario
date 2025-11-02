@@ -419,7 +419,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 };
 
                 return (
-                    <TableCell key={day.toISOString()} className="p-1 align-top text-xs" style={cellStyle}>
+                    <TableCell key={day.toISOString()} className={cn("p-1 align-top text-xs", isHoliday ? 'bg-gradient-to-br from-green-100/50 to-transparent' : 'bg-gradient-to-br from-gray-50/50 to-transparent')} style={cellStyle}>
                         <div className="flex flex-col gap-1 h-full">
                             <div className='w-full space-y-1 flex-grow'>
                                 <p className="text-muted-foreground text-xs h-4">
