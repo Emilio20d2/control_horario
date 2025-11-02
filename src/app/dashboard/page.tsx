@@ -411,7 +411,7 @@ export default function DashboardPage() {
                             </SelectContent>
                         </Select>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                        <div className="grid grid-cols-1 gap-2 pt-2">
                             <div className="space-y-2 rounded-md border p-4">
                                 <div className="flex justify-between items-center">
                                     <CardDescription>
@@ -476,5 +476,7 @@ export default function DashboardPage() {
         </div>
       );
 }
+
+    
 
     
