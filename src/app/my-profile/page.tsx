@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmployeeDetails } from '@/components/employees/employee-details';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { isAfter, parseISO, startOfDay, getYear, isWithinInterval, startOfYear, endOfYear, getISOWeekYear, eachDayOfInterval, startOfWeek, isSameDay } from 'date-fns';
-import { Briefcase, Gift, Scale, Wallet, Plane, Info, CalendarX2, CheckCircle } from 'lucide-react';
+import { Briefcase, Gift, Scale, Wallet, Plane, Info, CalendarX2, CheckCircle, Hourglass } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -37,6 +37,7 @@ export default function MyProfilePage() {
     const { employeeRecord: employee, weeklyRecords, loading: dataLoading, absenceTypes, getEmployeeFinalBalances, calculateEmployeeVacations } = useDataProvider();
     const [displayBalances, setDisplayBalances] = useState<{ ordinary: number; holiday: number; leave: number; total: number; } | null>(null);
     const [vacationInfo, setVacationInfo] = useState<ReturnType<typeof calculateEmployeeVacations> | null>(null);
+    const [seniorHoursTotal, setSeniorHoursTotal] = useState(0);
     const currentYear = getYear(new Date());
 
     useEffect(() => {
@@ -78,6 +79,29 @@ export default function MyProfilePage() {
         return Object.values(summary);
     
     }, [employee, weeklyRecords, absenceTypes, currentYear]);
+    
+    useEffect(() => {
+        const seniorType = absenceTypes.find(at => at.name === 'Reducción Jornada Senior');
+        if (!seniorType || !employee || !weeklyRecords) {
+            setSeniorHoursTotal(0);
+            return;
+        }
+
+        let total = 0;
+        const currentYear = getYear(new Date());
+
+        Object.values(weeklyRecords).forEach(record => {
+            const empWeekData = record.weekData[employee.id];
+            if (empWeekData?.confirmed && empWeekData.days) {
+                Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                    if (getYear(parseISO(dayStr)) === currentYear && dayData.absence === seniorType.abbreviation) {
+                        total += dayData.absenceHours;
+                    }
+                });
+            }
+        });
+        setSeniorHoursTotal(total);
+    }, [employee, weeklyRecords, absenceTypes]);
 
     const vacationPeriods = useMemo(() => {
         if (!employee) return [];
@@ -248,7 +272,9 @@ export default function MyProfilePage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {absenceSummary.length > 0 ? (
+                    {absenceSummary.length === 0 && seniorHoursTotal === 0 ? (
+                        <p className="text-muted-foreground text-center py-4">No tienes ausencias registradas este año.</p>
+                    ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -257,6 +283,17 @@ export default function MyProfilePage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
+                                {seniorHoursTotal > 0 && (
+                                    <TableRow className="bg-muted/50">
+                                        <TableCell className="font-semibold flex items-center gap-2">
+                                            <Hourglass className="h-4 w-4 text-muted-foreground" />
+                                            Reducción Jornada Senior
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono font-semibold">
+                                            {seniorHoursTotal.toFixed(2)} horas
+                                        </TableCell>
+                                    </TableRow>
+                                )}
                                 {absenceSummary.map(item => (
                                     <TableRow key={item.type.id}>
                                         <TableCell>{item.type.name}</TableCell>
@@ -267,8 +304,6 @@ export default function MyProfilePage() {
                                 ))}
                             </TableBody>
                         </Table>
-                    ) : (
-                        <p className="text-muted-foreground text-center py-4">No tienes ausencias registradas este año.</p>
                     )}
                 </CardContent>
             </Card>
@@ -330,3 +365,4 @@ export default function MyProfilePage() {
         </div>
     );
 }
+
