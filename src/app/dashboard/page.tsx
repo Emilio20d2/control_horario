@@ -26,6 +26,7 @@ import { HolidayReportGenerator } from '@/components/dashboard/holiday-report-ge
 import { useRouter } from 'next/navigation';
 import { generateAnnualReportPDF, generateAnnualDetailedReportPDF, generateAbsenceReportPDF } from '@/lib/report-generators';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
 
 const chartConfig = {
     balance: {
@@ -51,9 +52,7 @@ export default function DashboardPage() {
     
     // Default to a date from data if available, otherwise today
     const [referenceDate, setReferenceDate] = useState(new Date());
-    const [selectedBalanceReportWeek, setSelectedBalanceReportWeek] = useState(getWeekId(subWeeks(new Date(), 1)));
-    const [complementaryHoursReportWeek, setComplementaryHoursReportWeek] = useState(getWeekId(subWeeks(new Date(), 1)));
-
+    const [selectedGeneralReportWeek, setSelectedGeneralReportWeek] = useState(getWeekId(subWeeks(new Date(), 1)));
 
     // For annual report
     const [reportEmployeeId, setReportEmployeeId] = useState('');
@@ -67,6 +66,7 @@ export default function DashboardPage() {
     const [isGeneratingSignatureReport, setIsGeneratingSignatureReport] = useState(false);
 
     const [isGeneratingBalanceReport, setIsGeneratingBalanceReport] = useState(false);
+    const [isGeneratingComplementaryReport, setIsGeneratingComplementaryReport] = useState(false);
 
 
     
@@ -125,9 +125,9 @@ export default function DashboardPage() {
     }, [weeklyRecords]);
 
     const complementaryHoursRecord = useMemo(() => {
-        if (loading || !complementaryHoursReportWeek) return null;
-        return weeklyRecords[complementaryHoursReportWeek];
-      }, [weeklyRecords, complementaryHoursReportWeek, loading]);
+        if (loading || !selectedGeneralReportWeek) return null;
+        return weeklyRecords[selectedGeneralReportWeek];
+      }, [weeklyRecords, selectedGeneralReportWeek, loading]);
 
     const complementaryHours = useMemo(() => {
         if (!complementaryHoursRecord) return 0;
@@ -157,11 +157,12 @@ export default function DashboardPage() {
         balance: getEmployeeFinalBalances(emp.id).total,
       })).sort((a, b) => b.balance - a.balance).slice(0, 10);
     
-    const handleGenerateReport = () => {
+    const handleGenerateComplementaryReport = () => {
         if (!complementaryHoursRecord) {
             alert("No hay datos de horas complementarias para la semana seleccionada.");
             return;
         }
+        setIsGeneratingComplementaryReport(true);
 
         const reportData = allEmployeesForReport.map(emp => {
             const empWeekData = complementaryHoursRecord.weekData[emp.id];
@@ -175,11 +176,12 @@ export default function DashboardPage() {
 
         if (reportData.length === 0) {
             alert("No hay horas complementarias para generar un informe en la semana seleccionada.");
+            setIsGeneratingComplementaryReport(false);
             return;
         }
 
         const doc = new jsPDF();
-        const weekStartDate = parseISO(complementaryHoursReportWeek);
+        const weekStartDate = parseISO(selectedGeneralReportWeek);
         const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
         const weekLabel = `${format(weekStartDate, 'd MMM', { locale: es })} - ${format(weekEndDate, 'd MMM yyyy', { locale: es })}`;
         
@@ -193,8 +195,9 @@ export default function DashboardPage() {
             headStyles: { fillColor: [41, 128, 185] },
         });
         
-        const safeWeekId = complementaryHoursReportWeek.replace(/-/g, '');
+        const safeWeekId = selectedGeneralReportWeek.replace(/-/g, '');
         doc.save(`informe-complementarias-${safeWeekId}.pdf`);
+        setIsGeneratingComplementaryReport(false);
     };
     
     const handleGenerateAbsenceReport = async () => {
@@ -245,13 +248,13 @@ export default function DashboardPage() {
     };
 
     const handleGenerateBalanceReport = () => {
-        if (!selectedBalanceReportWeek) {
+        if (!selectedGeneralReportWeek) {
             alert("Por favor, selecciona una semana.");
             return;
         }
         setIsGeneratingBalanceReport(true);
     
-        const weekDate = parseISO(selectedBalanceReportWeek);
+        const weekDate = parseISO(selectedGeneralReportWeek);
         const nextWeekDate = addDays(weekDate, 7);
         const nextWeekId = getWeekId(nextWeekDate);
 
@@ -279,7 +282,7 @@ export default function DashboardPage() {
         });
     
         const doc = new jsPDF();
-        const weekDateParsed = parseISO(selectedBalanceReportWeek);
+        const weekDateParsed = parseISO(selectedGeneralReportWeek);
         const weekLabel = `${format(weekDateParsed, 'd MMM', { locale: es })} - ${format(endOfWeek(weekDateParsed, { weekStartsOn: 1 }), 'd MMM, yyyy', { locale: es })}`;
         const pageMargin = 14;
         const addHeader = () => {
@@ -311,7 +314,7 @@ export default function DashboardPage() {
 
         addFooter();
 
-        const safeWeekId = selectedBalanceReportWeek.replace(/-/g, '');
+        const safeWeekId = selectedGeneralReportWeek.replace(/-/g, '');
         doc.save(`informe-balances-${safeWeekId}.pdf`);
 
         setIsGeneratingBalanceReport(false);
@@ -392,37 +395,14 @@ export default function DashboardPage() {
                 </Card>
                 
                 <HolidayReportGenerator />
+                
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Horas Complementarias</CardTitle>
-                        <CardDescription>
-                            Total semana: <span className="font-bold text-primary">+{complementaryHours.toFixed(2)}h</span>
-                        </CardDescription>
+                        <CardTitle className="text-sm font-medium">Informes Generales</CardTitle>
+                        <Library className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <Select value={complementaryHoursReportWeek} onValueChange={setComplementaryHoursReportWeek}>
-                            <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Seleccionar semana..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableWeeks.map(w => (
-                                    <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Button onClick={handleGenerateReport} className="w-full">
-                            <FileDown className="mr-2 h-4 w-4" />
-                            Generar Informe
-                        </Button>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Informe Semanal Horas</CardTitle>
-                    <Library className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <Select value={selectedBalanceReportWeek} onValueChange={setSelectedBalanceReportWeek}>
+                        <Select value={selectedGeneralReportWeek} onValueChange={setSelectedGeneralReportWeek}>
                             <SelectTrigger className="w-full">
                                 <SelectValue placeholder="Seleccionar semana..." />
                             </SelectTrigger>
@@ -430,10 +410,30 @@ export default function DashboardPage() {
                                 {availableWeeks.map(w => <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>)}
                             </SelectContent>
                         </Select>
-                        <Button onClick={handleGenerateBalanceReport} disabled={isGeneratingBalanceReport || !selectedBalanceReportWeek} className="w-full">
-                            {isGeneratingBalanceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                            {isGeneratingBalanceReport ? 'Generando...' : 'Generar Informe'}
-                        </Button>
+
+                        <div className="space-y-4 rounded-md border p-4">
+                            <div className="flex justify-between items-center">
+                                <CardDescription>
+                                    Total semana: <span className="font-bold text-primary">+{complementaryHours.toFixed(2)}h</span>
+                                </CardDescription>
+                                <Button onClick={handleGenerateComplementaryReport} size="sm" disabled={isGeneratingComplementaryReport || !selectedGeneralReportWeek}>
+                                    {isGeneratingComplementaryReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                    H. Complem.
+                                </Button>
+                            </div>
+                        </div>
+
+                         <div className="space-y-4 rounded-md border p-4">
+                             <div className="flex justify-between items-center">
+                                <CardDescription>
+                                    Balances al final de la semana seleccionada.
+                                </CardDescription>
+                                <Button onClick={handleGenerateBalanceReport} size="sm" disabled={isGeneratingBalanceReport || !selectedGeneralReportWeek}>
+                                    {isGeneratingBalanceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                    Balances
+                                </Button>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
@@ -483,3 +483,4 @@ export default function DashboardPage() {
     
 
     
+
