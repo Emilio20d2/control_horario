@@ -4,14 +4,14 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Edit, PlusCircle, Wallet, Briefcase, Gift, Scale, Plane } from 'lucide-react';
+import { ChevronLeft, Edit, PlusCircle, Wallet, Briefcase, Gift, Scale, Plane, CalendarX2, Hourglass, CheckCircle } from 'lucide-react';
 import { notFound, useParams } from 'next/navigation';
 import { Badge } from "@/components/ui/badge";
 import { EmployeeDetails } from "@/components/employees/employee-details";
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { ScheduledAbsenceManager } from '@/components/employees/scheduled-absence-manager';
-import { isAfter, parseISO, startOfDay, getYear } from 'date-fns';
+import { isAfter, parseISO, startOfDay, getYear, getISOWeekYear } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useMemo, useState, useEffect } from 'react';
 import { EmployeeReportGenerator } from '@/components/employees/employee-report-generator';
@@ -19,6 +19,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-is-mobile';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import type { AbsenceType } from '@/lib/types';
+
 
 const BalanceDisplay = ({ title, value, icon: Icon, isLoading }: { title: string; value: number | undefined; icon: React.ElementType; isLoading: boolean }) => (
     <div className="flex flex-col items-center justify-center p-4">
@@ -68,9 +73,10 @@ const VacationPopoverContent = ({ vacationInfo, currentYear }: { vacationInfo: N
 export default function EmployeeDetailPage() {
     const params = useParams();
     const id = params.id as string;
-    const { getEmployeeById, loading, weeklyRecords, getEmployeeFinalBalances, calculateEmployeeVacations } = useDataProvider();
+    const { getEmployeeById, loading, weeklyRecords, getEmployeeFinalBalances, calculateEmployeeVacations, absenceTypes } = useDataProvider();
     const [displayBalances, setDisplayBalances] = useState<{ ordinary: number; holiday: number; leave: number; total: number; } | null>(null);
     const [vacationInfo, setVacationInfo] = useState<ReturnType<typeof calculateEmployeeVacations> | null>(null);
+    const [seniorHoursTotal, setSeniorHoursTotal] = useState(0);
     const currentYear = getYear(new Date());
     const isMobile = useIsMobile();
 
@@ -82,6 +88,62 @@ export default function EmployeeDetailPage() {
             setVacationInfo(calculateEmployeeVacations(employee, currentYear, 'confirmed'));
         }
     }, [id, employee, loading, getEmployeeFinalBalances, calculateEmployeeVacations, currentYear, weeklyRecords]);
+
+    const absenceSummary = useMemo(() => {
+        if (!employee || !weeklyRecords || absenceTypes.length === 0) return [];
+    
+        const summary: Record<string, { type: AbsenceType; total: number; isDays: boolean }> = {};
+    
+        const dayCountAbsences = new Set(['V', 'AT', 'AP', 'B', 'B/C', 'EG', 'EXD', 'FF', 'PE']);
+    
+        Object.values(weeklyRecords).forEach(record => {
+            const weekDate = parseISO(record.id);
+            if (getISOWeekYear(weekDate) !== currentYear) return;
+    
+            const empWeekData = record.weekData[employee.id];
+            if (empWeekData?.days) {
+                Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                    if (getYear(parseISO(dayStr)) !== currentYear) return;
+    
+                    if (dayData.absence && dayData.absence !== 'ninguna') {
+                        const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
+                        if (absenceType) {
+                            if (!summary[absenceType.id]) {
+                                summary[absenceType.id] = { type: absenceType, total: 0, isDays: dayCountAbsences.has(absenceType.abbreviation) };
+                            }
+                            summary[absenceType.id].total += summary[absenceType.id].isDays ? 1 : (dayData.absenceHours || 0);
+                        }
+                    }
+                });
+            }
+        });
+    
+        return Object.values(summary);
+    
+    }, [employee, weeklyRecords, absenceTypes, currentYear]);
+
+     useEffect(() => {
+        const seniorType = absenceTypes.find(at => at.name === 'Reducción Jornada Senior');
+        if (!seniorType || !employee || !weeklyRecords) {
+            setSeniorHoursTotal(0);
+            return;
+        }
+
+        let total = 0;
+        const currentYear = getYear(new Date());
+
+        Object.values(weeklyRecords).forEach(record => {
+            const empWeekData = record.weekData[employee.id];
+            if (empWeekData?.confirmed && empWeekData.days) {
+                Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                    if (getYear(parseISO(dayStr)) === currentYear && dayData.absence === seniorType.abbreviation) {
+                        total += dayData.absenceHours;
+                    }
+                });
+            }
+        });
+        setSeniorHoursTotal(total);
+    }, [employee, weeklyRecords, absenceTypes]);
     
     if (loading) {
         return (
@@ -171,7 +233,7 @@ export default function EmployeeDetailPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-4 md:px-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 md:px-6">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-base">Detalle de Bolsas de Horas</CardTitle>
@@ -233,6 +295,50 @@ export default function EmployeeDetailPage() {
                         )}
                     </CardContent>
                 </Card>
+
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <CalendarX2 className="h-5 w-5 text-primary" />
+                            Resumen de Ausencias ({getYear(new Date())})
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {absenceSummary.length === 0 && seniorHoursTotal === 0 ? (
+                            <p className="text-muted-foreground text-center py-4">No hay ausencias registradas este año.</p>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Tipo de Ausencia</TableHead>
+                                        <TableHead className="text-right">Total Consumido</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {seniorHoursTotal > 0 && (
+                                        <TableRow className="bg-muted/50">
+                                            <TableCell className="font-semibold flex items-center gap-2">
+                                                <Hourglass className="h-4 w-4 text-muted-foreground" />
+                                                Reducción Jornada Senior
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono font-semibold">
+                                                {seniorHoursTotal.toFixed(2)} horas
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                    {absenceSummary.map(item => (
+                                        <TableRow key={item.type.id}>
+                                            <TableCell>{item.type.name}</TableCell>
+                                            <TableCell className="text-right font-mono">
+                                                {item.total} {item.isDays ? 'días' : 'horas'}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </CardContent>
+                </Card>
                 
             </div>
 
@@ -245,5 +351,3 @@ export default function EmployeeDetailPage() {
         </div>
     );
 }
-
-    
