@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -327,7 +326,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
     };
     
     if (!localWeekData) {
-        return <TableRow><TableCell colSpan={8} className="p-0"><Skeleton className="h-48 w-full rounded-none" /></TableCell></TableRow>;
+        return <TableRow><TableCell colSpan={8} className="p-0"><Skeleton className="h-48 w-full rounded-none" /></TableRow>;
     }
     
     const isConfirmed = !!localWeekData.confirmed;
@@ -343,7 +342,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
 
     return (
         <TableRow className="align-top">
-            <TableCell className="font-medium sticky left-0 z-10 p-2 text-xs w-[170px] sm:w-[200px] min-w-[170px] sm:min-w-[200px] bg-card">
+            <TableCell className="font-medium sticky left-0 z-10 p-2 text-xs w-[170px] sm:w-[200px] min-w-[170px] sm:min-w-[200px] bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-950">
                 <div className="flex flex-col gap-2 h-full">
                     <div className="flex justify-between items-baseline">
                         <p className="font-bold text-sm flex items-center gap-1.5">
@@ -467,7 +466,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                                             inputClassName="text-xs"
                                             className='sm:w-[105px]'
                                         />
-                                    </div>
+                                     </div>
                                 )}
                                 
                                 {showLeaveHours && (
@@ -500,3 +499,5 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         </TableRow>
     );
 };
+
+    
