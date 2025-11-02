@@ -14,7 +14,7 @@ import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDo
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
 import type { Message, VacationCampaign, AbsenceType, Holiday } from '@/lib/types';
-import { format, isWithinInterval, parseISO, isValid } from 'date-fns';
+import { format, isWithinInterval, parseISO, isValid, getYear } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { addScheduledAbsence } from '@/lib/services/employeeService';
@@ -27,7 +27,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
 export default function MyMessagesPage() {
-    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, getTheoreticalHoursAndTurn, holidays } = useDataProvider();
+    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, getTheoreticalHoursAndTurn, holidays, weeklyRecords } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
     const conversationId = employeeRecord?.id;
     const viewportRef = useRef<HTMLDivElement>(null);
@@ -112,23 +112,42 @@ export default function MyMessagesPage() {
         conversationId ? query(collection(db, 'conversations', conversationId, 'messages'), orderBy('timestamp', 'asc')) : null
     );
     
-    // Effect to calculate senior hours total
+    // Effect to calculate senior hours total, now including previously confirmed hours from the current year
     useEffect(() => {
-        const selectedAbsenceName = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.name;
-        if (selectedAbsenceName === 'Reducción Jornada Senior' && employeeRecord && otherRequestMultipleDates.length > 0) {
-            let total = 0;
-            otherRequestMultipleDates.forEach(date => {
-                const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(employeeRecord.id, date);
-                const dayData = weekDaysWithTheoreticalHours.find(d => d.dateKey === format(date, 'yyyy-MM-dd'));
-                if (dayData) {
-                    total += dayData.theoreticalHours;
+        const selectedAbsenceType = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId);
+        if (selectedAbsenceType?.name !== 'Reducción Jornada Senior' || !employeeRecord) {
+            setSeniorHoursTotal(0);
+            return;
+        }
+
+        let total = 0;
+        const currentYear = getYear(new Date());
+
+        // 1. Calculate hours from the current, unsubmitted request
+        otherRequestMultipleDates.forEach(date => {
+            const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(employeeRecord.id, date);
+            const dayData = weekDaysWithTheoreticalHours.find(d => d.dateKey === format(date, 'yyyy-MM-dd'));
+            if (dayData) {
+                total += dayData.theoreticalHours;
+            }
+        });
+
+        // 2. Add hours from previously confirmed records in the current year
+        if (weeklyRecords && selectedAbsenceType) {
+            Object.values(weeklyRecords).forEach(record => {
+                const empWeekData = record.weekData[employeeRecord.id];
+                if (empWeekData?.confirmed && empWeekData.days) {
+                    Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                        if (getYear(parseISO(dayStr)) === currentYear && dayData.absence === selectedAbsenceType.abbreviation) {
+                            total += dayData.absenceHours;
+                        }
+                    });
                 }
             });
-            setSeniorHoursTotal(total);
-        } else {
-            setSeniorHoursTotal(0);
         }
-    }, [otherRequestMultipleDates, otherRequestAbsenceTypeId, employeeRecord, getTheoreticalHoursAndTurn, absenceTypes]);
+        
+        setSeniorHoursTotal(total);
+    }, [otherRequestMultipleDates, otherRequestAbsenceTypeId, employeeRecord, getTheoreticalHoursAndTurn, absenceTypes, weeklyRecords]);
 
      // Effect to mark conversation as read
     useEffect(() => {
@@ -618,7 +637,7 @@ export default function MyMessagesPage() {
                             {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.abbreviation === 'RJS' && (
                                 <Card className="mt-2 p-3 bg-muted/20">
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                        <CardTitle className="text-sm font-medium">Total de Horas Solicitadas</CardTitle>
+                                        <CardTitle className="text-sm font-medium">Total de Horas Solicitadas (Acumulado Anual)</CardTitle>
                                         <Hourglass className="h-4 w-4 text-muted-foreground" />
                                     </CardHeader>
                                     <CardContent>
