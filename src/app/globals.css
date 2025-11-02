@@ -27,7 +27,7 @@
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 211 41% 45%; /* Primary color for borders */
+    --border: 211 41% 45% / 0.5; /* Primary color with 50% opacity */
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
@@ -58,7 +58,7 @@
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
  
-    --border: 207 68% 53%; /* Primary color for dark mode borders */
+    --border: 207 68% 53% / 0.5; /* Primary color with 50% opacity for dark mode borders */
     --input: 217.2 32.6% 17.5%;
     --ring: 207 68% 53%;
   }
