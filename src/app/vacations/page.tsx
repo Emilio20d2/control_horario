@@ -138,7 +138,7 @@ export default function VacationsPage() {
     const { toast } = useToast();
     const { appUser, reauthenticateWithPassword } = useAuth();
     
-    const [selectedYear, setSelectedYear] = useState<string>(() => String(getYear(new Date())));
+    const [selectedYear, setSelectedYear] = useState<string>(() => String(new Date().getFullYear()));
     const [isGenerating, setIsGenerating] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [isHolidayEmployeeManagerOpen, setIsHolidayEmployeeManagerOpen] = useState(false);
@@ -282,13 +282,15 @@ export default function VacationsPage() {
     }, [allEmployeesForQuadrant]);
     
     useEffect(() => {
-        if (!loading && availableYears.length > 0) {
-            const latestYear = String(availableYears[0]);
-            if(selectedYear !== latestYear) {
-                setSelectedYear(latestYear);
-            }
+        const hasData = availableYears.length > 0;
+        const currentYearString = String(new Date().getFullYear());
+        const mostRecentYearWithData = hasData ? String(availableYears[0]) : currentYearString;
+    
+        if (selectedYear !== mostRecentYearWithData) {
+            setSelectedYear(mostRecentYearWithData);
         }
-    }, [loading, availableYears, selectedYear]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [availableYears]); // We only want this to run when availableYears changes.
 
     useEffect(() => {
         if (activeEmployees.length > 0 && !selectedEmployeeId) {
@@ -331,7 +333,6 @@ export default function VacationsPage() {
             const absences: FormattedAbsence[] = [];
             (emp.employmentPeriods || []).forEach((p: EmploymentPeriod) => {
                 (p.scheduledAbsences || [])
-                    .filter(a => a.isDefinitive) // Only show definitive absences on the planner
                     .forEach(a => {
                         if (schedulableIds.has(a.absenceTypeId)) {
                             const absenceType = absenceTypes.find(at => at.id === a.absenceTypeId);
@@ -671,11 +672,8 @@ export default function VacationsPage() {
                         let backgroundStyle: React.CSSProperties = { backgroundColor: 'transparent' };
                         if (editingAbsence && employeesWithAbsenceInWeek.some(item => item.absence.id === editingAbsence.absence.id)) {
                             backgroundStyle = { backgroundColor: '#bfdbfe' }; // Editing color
-                        } else if (absenceColors.length === 1) {
-                            backgroundStyle = { backgroundColor: absenceColors[0] };
-                        } else if (absenceColors.length > 1) {
-                            const gradient = `linear-gradient(to right, ${absenceColors.join(', ')})`;
-                            backgroundStyle = { background: gradient };
+                        } else if(employeesWithAbsenceInWeek.length > 0) {
+                            backgroundStyle = { backgroundColor: groupColors[group.id] || '#f0f0f0' };
                         }
 
                       return (
@@ -762,8 +760,8 @@ export default function VacationsPage() {
                         Gestionar Empleados Eventuales
                     </Button>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
-                    <div className="lg:col-span-2 space-y-4">
+                <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                    <div className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="space-y-2 sm:col-span-1">
                                 <label className="text-sm font-medium">Año</label>
