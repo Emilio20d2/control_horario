@@ -179,7 +179,7 @@ export default function MessagesPage() {
                                 <div key={index} className={cn('flex items-end gap-2', message.senderId === 'admin' ? 'justify-end' : 'justify-start')}>
                                     <div className={cn(
                                         'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg shadow-sm',
-                                        message.senderId === 'admin' ? 'bg-gradient-to-br from-primary/80 to-primary/60 text-primary-foreground' : 'bg-gradient-to-br from-muted to-background'
+                                        message.senderId === 'admin' ? 'bg-gradient-to-br from-primary to-primary/60 text-primary-foreground' : 'bg-gradient-to-br from-muted to-background'
                                     )}>
                                         <p className="whitespace-pre-wrap break-words">{message.text}</p>
                                         {message.timestamp && (
