@@ -1132,7 +1132,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         if (dbRecord?.confirmed) {
             return dbRecord;
         }
-
+    
         const activePeriod = getActivePeriod(emp.id, weekDays[0]);
         if (!activePeriod) {
             return null;
@@ -1140,7 +1140,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     
         // If there's an unconfirmed record in DB, use its days as a base
         const baseDays = dbRecord?.days;
-
+    
         const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(emp.id, weekDays[0]);
         const weeklyWorkHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
     
@@ -1151,7 +1151,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             
             // Start with the existing data if it exists, otherwise create from scratch
             const existingDayData = baseDays?.[dayKey];
-
+    
             if (existingDayData) {
                  newDays[dayKey] = { ...existingDayData };
                  continue; // Use existing unconfirmed data and move to next day
@@ -1162,10 +1162,25 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const theoreticalDay = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
             const theoreticalHours = theoreticalDay?.theoreticalHours ?? 0;
             
-            const scheduledAbsence = (emp.employmentPeriods || []).flatMap(p => p.scheduledAbsences || [])
-                .find(a => a.isDefinitive && a.endDate && a.startDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(day, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) }));
+            const confirmedRecordForDay = Object.values(weeklyRecords).find(rec => rec.weekData[emp.id]?.confirmed && rec.weekData[emp.id]?.days[dayKey]);
+            const confirmedAbsence = confirmedRecordForDay ? confirmedRecordForDay.weekData[emp.id].days[dayKey].absence : undefined;
+            
+            let absenceTypeAbbr = 'ninguna';
+            let scheduledAbsence: ScheduledAbsence | undefined;
+
+            if (confirmedAbsence && confirmedAbsence !== 'ninguna') {
+                absenceTypeAbbr = confirmedAbsence;
+            } else {
+                scheduledAbsence = (emp.employmentPeriods || [])
+                    .flatMap(p => p.scheduledAbsences || [])
+                    .find(a => a.startDate && a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(day, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) }));
+                if (scheduledAbsence) {
+                    const foundType = absenceTypes.find(at => at.id === scheduledAbsence!.absenceTypeId);
+                    if (foundType) absenceTypeAbbr = foundType.abbreviation;
+                }
+            }
     
-            const absenceType = scheduledAbsence ? absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId) : undefined;
+            const absenceType = absenceTypes.find(at => at.abbreviation === absenceTypeAbbr);
     
             let leaveHours = 0;
             if (holidayDetails && theoreticalHours === 0 && getISODay(day) !== 7) {
@@ -1331,6 +1346,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
