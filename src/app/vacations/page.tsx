@@ -281,15 +281,17 @@ export default function VacationsPage() {
     }, [allEmployeesForQuadrant, safeParseDate]);
     
     useEffect(() => {
-        const hasData = availableYears.length > 0;
-        const mostRecentYearWithData = hasData ? String(availableYears[0]) : String(new Date().getFullYear());
-    
-        // Set the year only on initial load or if the currently selected year becomes invalid
-        if (!availableYears.map(String).includes(selectedYear)) {
-            setSelectedYear(mostRecentYearWithData);
-        }
+      if (availableYears.length > 0) {
+          const mostRecentYear = String(availableYears[0]);
+          const currentYearIsValid = availableYears.map(String).includes(selectedYear);
+          
+          // Set the year on initial load or if the currently selected year becomes invalid.
+          if (!currentYearIsValid || selectedYear === String(new Date().getFullYear())) {
+              setSelectedYear(mostRecentYear);
+          }
+      }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [availableYears]); // This effect should only run when availableYears changes.
+    }, [availableYears]); // Only run when availableYears changes.
 
     useEffect(() => {
         if (activeEmployees.length > 0 && !selectedEmployeeId) {
@@ -522,8 +524,8 @@ export default function VacationsPage() {
         if (!selectedEmployeeId || !selectedYear) return [];
         return (employeesWithAbsences[selectedEmployeeId] || [])
             .filter(a => getYear(a.startDate) === Number(selectedYear))
-            .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
-    }, [selectedEmployeeId, selectedYear, employeesWithAbsences]);
+            .sort((a,b) => safeParseDate(a.startDate)!.getTime() - safeParseDate(b.startDate)!.getTime());
+    }, [selectedEmployeeId, selectedYear, employeesWithAbsences, safeParseDate]);
     
     const employeeAbsenceDays = useMemo(() => {
         if (!selectedEmployeeId) return [];
