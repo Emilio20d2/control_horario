@@ -437,14 +437,19 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="flex flex-col">
                     <CardHeader>
                         <CardTitle className="text-xl font-bold">Top 10 Empleados por Balance</CardTitle>
-                        <CardDescription>Los 10 empleados con el mayor balance de horas acumulado.</CardDescription>
                     </CardHeader>
-                    <CardContent className="h-full">
+                    <CardContent className="flex-grow">
                         <ChartContainer config={chartConfig} className="w-full h-full min-h-[250px]">
-                            <RechartsBarChart data={chartData} accessibilityLayer>
+                             <RechartsBarChart data={chartData} accessibilityLayer>
+                                <defs>
+                                    <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="var(--color-balance)" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="var(--color-balance)" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
                                 <CartesianGrid vertical={false} />
                                 <XAxis
                                     dataKey="name"
@@ -460,7 +465,7 @@ export default function DashboardPage() {
                                         indicator="dot"
                                     />} 
                                 />
-                                <Bar dataKey="balance" fill="var(--color-balance)" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="balance" fill="url(#colorBalance)" radius={[4, 4, 0, 0]} />
                             </RechartsBarChart>
                         </ChartContainer>
                     </CardContent>
