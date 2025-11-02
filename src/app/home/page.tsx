@@ -5,7 +5,7 @@
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { format, parseISO, addWeeks, startOfWeek, endOfWeek, isAfter, isSameDay, isBefore, isValid } from 'date-fns';
+import { format, parseISO, addWeeks, startOfWeek, endOfWeek, isAfter, isSameDay, isBefore, isValid, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
 import { AlertTriangle, ArrowRight, CalendarClock, Mail } from 'lucide-react';
@@ -14,7 +14,7 @@ import { useMemo } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import type { Employee, ScheduledAbsence } from '@/lib/types';
+import type { Employee, ScheduledAbsence, AbsenceType } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 
 
@@ -38,7 +38,7 @@ export default function HomePage() {
         const next5WeeksStart = startOfWeek(now, { weekStartsOn: 1 });
         const next5WeeksEnd = endOfWeek(addWeeks(now, 4), { weekStartsOn: 1 });
 
-        const events: { weekId: string; employee: Employee; absence: ScheduledAbsence; absenceType: any }[] = [];
+        const events: { employee: Employee; absence: ScheduledAbsence; absenceType: AbsenceType }[] = [];
         const processedAbsenceIds = new Set<string>();
 
         const activeEmployees = employees.filter(emp => 
@@ -48,24 +48,28 @@ export default function HomePage() {
         activeEmployees.forEach(emp => {
             (emp.employmentPeriods || []).forEach(p => {
                 (p.scheduledAbsences || []).forEach(a => {
-                    if (!a.id || processedAbsenceIds.has(a.id) || !a.startDate || !a.endDate || !isValid(a.startDate) || !isValid(a.endDate)) return;
+                    const startDate = a.startDate as Date;
+                    const endDate = a.endDate as Date;
+
+                    if (!a.id || processedAbsenceIds.has(a.id) || !startDate || !isValid(startDate)) return;
                     
                     processedAbsenceIds.add(a.id);
+                    
+                    const effectiveEndDate = endDate && isValid(endDate) ? endDate : startDate;
 
-                    if (isBefore(a.endDate, next5WeeksStart) || isAfter(a.startDate, next5WeeksEnd)) {
+                    if (isBefore(effectiveEndDate, next5WeeksStart) || isAfter(startDate, next5WeeksEnd)) {
                         return;
                     }
 
                     const absenceType = absenceTypes.find(at => at.id === a.absenceTypeId);
                     if (absenceType) {
-                        const weekId = format(startOfWeek(a.startDate, {weekStartsOn: 1}), 'yyyy-MM-dd');
-                        events.push({ weekId, employee: emp, absence: a, absenceType });
+                        events.push({ employee: emp, absence: a, absenceType });
                     }
                 });
             });
         });
         
-        return events.sort((a,b) => a.absence.startDate.getTime() - b.absence.startDate.getTime());
+        return events.sort((a,b) => (a.absence.startDate as Date).getTime() - (b.absence.startDate as Date).getTime());
 
     }, [employees, absenceTypes]);
 
@@ -184,18 +188,26 @@ export default function HomePage() {
                          {upcomingEvents.length > 0 ? (
                              <ScrollArea className="h-48">
                                 <div className="space-y-2">
-                                    {upcomingEvents.map((event, index) => (
-                                        <div key={`${event.absence.id}-${index}`} className="flex items-start gap-4 p-3 rounded-md border" style={{ backgroundColor: `${event.absenceType.color}20`}}>
-                                            <div className="text-center w-16 shrink-0">
-                                                <p className="font-bold text-sm capitalize">{format(event.absence.startDate, 'E', { locale: es })}</p>
-                                                <p className="text-xs text-muted-foreground">{format(event.absence.startDate, 'dd MMM', { locale: es })}</p>
+                                    {upcomingEvents.map((event, index) => {
+                                        const startDate = event.absence.startDate as Date;
+                                        const endDate = event.absence.endDate as Date;
+                                        const isSingleDay = !endDate || isSameDay(startDate, endDate);
+                                        
+                                        return (
+                                            <div key={`${event.absence.id}-${index}`} className="flex items-start gap-4 p-3 rounded-md border" style={{ backgroundColor: `${event.absenceType.color}20`}}>
+                                                <div className="text-center w-20 shrink-0">
+                                                    <p className="font-bold text-sm capitalize">{format(startDate, 'dd MMM', { locale: es })}</p>
+                                                    {!isSingleDay && endDate && (
+                                                        <p className="text-xs text-muted-foreground">al {format(endDate, 'dd MMM', { locale: es })}</p>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <p className="font-semibold text-sm">{event.employee.name}</p>
+                                                    <p className="text-xs font-medium" style={{color: event.absenceType.color ? event.absenceType.color : 'inherit'}}>{event.absenceType.name}</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="font-semibold text-sm">{event.employee.name}</p>
-                                                <p className="text-xs font-medium" style={{color: event.absenceType.color ? event.absenceType.color : 'inherit'}}>{event.absenceType.name}</p>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
                             </ScrollArea>
                          ) : (
