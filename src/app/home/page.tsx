@@ -88,26 +88,31 @@ export default function HomePage() {
     }
 
     return (
-        <div className="flex flex-col gap-6 p-4 md:p-6">
-            <h1 className="text-2xl font-bold tracking-tight font-headline">Inicio</h1>
-             <p className="text-lg text-muted-foreground -mt-4">
-                ¡Hola, <strong className="text-foreground">{welcomeName}</strong>! Aquí tienes un resumen de tus tareas pendientes.
-            </p>
+        <div className="flex flex-col gap-6 p-4 md:p-8">
+            <div className="space-y-1">
+                <h1 className="text-3xl font-bold tracking-tight font-headline">
+                    ¡Hola, {welcomeName}!
+                </h1>
+                <p className="text-lg text-muted-foreground">
+                    Aquí tienes un resumen de tus tareas pendientes.
+                </p>
+            </div>
             <div className="grid gap-6 auto-rows-fr sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                <Card className="flex flex-col">
+                <Card className="flex flex-col bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-background">
                     <CardHeader className="p-4">
-                        <CardTitle className="flex items-center gap-2">
-                            <AlertTriangle className="h-5 w-5 text-destructive" />
-                            Semanas Pendientes de Confirmar
-                        </CardTitle>
-                        <CardDescription>Semanas pasadas que requieren tu atención.</CardDescription>
+                        <div className="flex items-center gap-3">
+                            <div className="bg-destructive/10 p-3 rounded-full">
+                                <AlertTriangle className="h-6 w-6 text-destructive" />
+                            </div>
+                            <CardTitle>Semanas Pendientes</CardTitle>
+                        </div>
                     </CardHeader>
-                    <CardContent className="flex-grow p-4">
+                    <CardContent className="flex-grow p-4 space-y-2">
                         {unconfirmedWeeksDetails.length > 0 ? (
                             <ScrollArea className="h-48">
                                 <div className="space-y-2">
                                     {unconfirmedWeeksDetails.map(detail => (
-                                        <div key={detail.weekId} className="flex items-center justify-between p-2 rounded-md border">
+                                        <div key={detail.weekId} className="flex items-center justify-between p-2 rounded-md border bg-background/50">
                                             <div>
                                                 <p className="font-semibold text-sm">Semana del {format(parseISO(detail.weekId), 'dd/MM/yyyy', { locale: es })}</p>
                                                 <p className="text-xs text-muted-foreground">{detail.employeeNames.length} empleado(s) pendiente(s)</p>
@@ -127,21 +132,22 @@ export default function HomePage() {
                     </CardContent>
                 </Card>
 
-                <Card className="flex flex-col">
+                <Card className="flex flex-col bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
                     <CardHeader className="p-4">
-                        <CardTitle className="flex items-center gap-2">
-                            <Mail className="h-5 w-5 text-primary" />
-                            Mensajes Sin Leer
-                        </CardTitle>
-                        <CardDescription>Conversaciones con mensajes nuevos de empleados.</CardDescription>
+                        <div className="flex items-center gap-3">
+                            <div className="bg-primary/10 p-3 rounded-full">
+                                <Mail className="h-6 w-6 text-primary" />
+                            </div>
+                            <CardTitle>Mensajes Sin Leer</CardTitle>
+                        </div>
                     </CardHeader>
-                    <CardContent className="flex-grow p-4">
+                    <CardContent className="flex-grow p-4 space-y-2">
                         {unreadConversations.length > 0 ? (
                              <ScrollArea className="h-48">
                                 <div className="space-y-2">
                                     {unreadConversations.map(conv => (
                                         <Link key={conv.id} href="/messages">
-                                            <div className="flex items-center justify-between p-3 rounded-md border hover:bg-muted">
+                                            <div className="flex items-center justify-between p-3 rounded-md border bg-background/50 hover:bg-muted">
                                                 <div className="flex items-center gap-3">
                                                     <Avatar>
                                                         <AvatarFallback>{conv.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback>
@@ -165,15 +171,16 @@ export default function HomePage() {
                     </CardContent>
                 </Card>
 
-                <Card className="flex flex-col">
+                <Card className="flex flex-col bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
                     <CardHeader className="p-4">
-                        <CardTitle className="flex items-center gap-2">
-                            <CalendarClock className="h-5 w-5 text-primary" />
-                            Próximos Eventos en la Agenda
-                        </CardTitle>
-                        <CardDescription>Ausencias programadas en las próximas 5 semanas.</CardDescription>
+                       <div className="flex items-center gap-3">
+                            <div className="bg-primary/10 p-3 rounded-full">
+                               <CalendarClock className="h-6 w-6 text-primary" />
+                            </div>
+                            <CardTitle>Próximos Eventos</CardTitle>
+                        </div>
                     </CardHeader>
-                    <CardContent className="flex-grow p-4">
+                    <CardContent className="flex-grow p-4 space-y-2">
                          {upcomingEvents.length > 0 ? (
                              <ScrollArea className="h-48">
                                 <div className="space-y-2">
