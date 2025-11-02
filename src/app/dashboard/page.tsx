@@ -411,27 +411,29 @@ export default function DashboardPage() {
                             </SelectContent>
                         </Select>
 
-                        <div className="space-y-2 rounded-md border p-4">
-                            <div className="flex justify-between items-center">
-                                <CardDescription>
-                                    Total semana: <span className="font-bold text-primary">+{complementaryHours.toFixed(2)}h</span>
-                                </CardDescription>
-                                <Button onClick={handleGenerateComplementaryReport} size="sm" disabled={isGeneratingComplementaryReport || !selectedGeneralReportWeek}>
-                                    {isGeneratingComplementaryReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                                    H. Complem.
-                                </Button>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                            <div className="space-y-2 rounded-md border p-4">
+                                <div className="flex justify-between items-center">
+                                    <CardDescription>
+                                        Total semana: <span className="font-bold text-primary">+{complementaryHours.toFixed(2)}h</span>
+                                    </CardDescription>
+                                    <Button onClick={handleGenerateComplementaryReport} size="sm" disabled={isGeneratingComplementaryReport || !selectedGeneralReportWeek}>
+                                        {isGeneratingComplementaryReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                        H. Complem.
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
 
-                         <div className="space-y-2 rounded-md border p-4">
-                             <div className="flex justify-between items-center">
-                                <CardDescription>
-                                    Balances al final de la semana seleccionada.
-                                </CardDescription>
-                                <Button onClick={handleGenerateBalanceReport} size="sm" disabled={isGeneratingBalanceReport || !selectedGeneralReportWeek}>
-                                    {isGeneratingBalanceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                                    Balances
-                                </Button>
+                             <div className="space-y-2 rounded-md border p-4">
+                                 <div className="flex justify-between items-center">
+                                    <CardDescription>
+                                        Balances de plantilla para la semana.
+                                    </CardDescription>
+                                    <Button onClick={handleGenerateBalanceReport} size="sm" disabled={isGeneratingBalanceReport || !selectedGeneralReportWeek}>
+                                        {isGeneratingBalanceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                        Balances
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </CardContent>
@@ -475,3 +477,4 @@ export default function DashboardPage() {
       );
 }
 
+    
