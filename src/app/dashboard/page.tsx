@@ -344,28 +344,24 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="flex flex-col gap-6">
-           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-4 md:px-6 pt-4">
+        <div className="flex flex-col gap-6 p-4 md:p-6">
+           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h1 className="text-2xl font-bold tracking-tight font-headline">
               Panel de Control
             </h1>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 md:px-6">
-                <Card className="lg:col-span-1">
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <CardTitle className="text-sm font-medium">Informes por Empleado</CardTitle>
-                            <div className="w-28">
-                                <Select value={String(reportYear)} onValueChange={v => setReportYear(Number(v))}>
-                                    <SelectTrigger className="h-8 text-xs">
-                                        <SelectValue placeholder="Año..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                    <CardHeader className="flex-row items-start justify-between gap-4">
+                        <CardTitle className="text-sm font-medium">Informes por Empleado</CardTitle>
+                        <Select value={String(reportYear)} onValueChange={v => setReportYear(Number(v))}>
+                            <SelectTrigger className="h-8 text-xs w-28">
+                                <SelectValue placeholder="Año..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <Select value={reportEmployeeId} onValueChange={setReportEmployeeId}>
@@ -377,7 +373,7 @@ export default function DashboardPage() {
                             </SelectContent>
                         </Select>
                         
-                        <div className="grid grid-cols-1 gap-2 pt-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
                             <Button onClick={handleGenerateAnnualReport} disabled={isGenerating || !reportEmployeeId}>
                                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                                 {isGenerating ? 'Generando...' : 'Resumen Anual'}
@@ -415,7 +411,7 @@ export default function DashboardPage() {
                             </SelectContent>
                         </Select>
 
-                        <div className="space-y-4 rounded-md border p-4">
+                        <div className="space-y-2 rounded-md border p-4">
                             <div className="flex justify-between items-center">
                                 <CardDescription>
                                     Total semana: <span className="font-bold text-primary">+{complementaryHours.toFixed(2)}h</span>
@@ -427,7 +423,7 @@ export default function DashboardPage() {
                             </div>
                         </div>
 
-                         <div className="space-y-4 rounded-md border p-4">
+                         <div className="space-y-2 rounded-md border p-4">
                              <div className="flex justify-between items-center">
                                 <CardDescription>
                                     Balances al final de la semana seleccionada.
@@ -440,51 +436,36 @@ export default function DashboardPage() {
                         </div>
                     </CardContent>
                 </Card>
-            </div>
 
-           <div className="px-4 md:px-6 pb-4">
-            <Card>
-                <CardHeader>
-                <CardTitle>Top 10 Empleados por Balance de Horas</CardTitle>
-                <CardDescription>Los 10 empleados con el mayor balance de horas acumulado.</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[300px]">
-                    <ChartContainer config={chartConfig} className="w-full h-full">
-                        <RechartsBarChart data={chartData} accessibilityLayer>
-                            <CartesianGrid vertical={false} />
-                            <XAxis
-                                dataKey="name"
-                                stroke="#888888"
-                                fontSize={12}
-                                tickLine={false}
-                                axisLine={false}
-                            />
-                            <ChartTooltip 
-                                cursor={false}
-                                content={<ChartTooltipContent 
-                                    formatter={(value) => `${Number(value).toFixed(2)}h`}
-                                    indicator="dot"
-                                />} 
-                            />
-                            <Bar dataKey="balance" fill="var(--color-balance)" radius={[4, 4, 0, 0]} />
-                        </RechartsBarChart>
-                    </ChartContainer>
-                </CardContent>
-            </Card>
-           </div>
+                <Card>
+                    <CardHeader>
+                    <CardTitle>Top 10 Empleados por Balance de Horas</CardTitle>
+                    <CardDescription>Los 10 empleados con el mayor balance de horas acumulado.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                        <ChartContainer config={chartConfig} className="w-full h-full">
+                            <RechartsBarChart data={chartData} accessibilityLayer>
+                                <CartesianGrid vertical={false} />
+                                <XAxis
+                                    dataKey="name"
+                                    stroke="#888888"
+                                    fontSize={12}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <ChartTooltip 
+                                    cursor={false}
+                                    content={<ChartTooltipContent 
+                                        formatter={(value) => `${Number(value).toFixed(2)}h`}
+                                        indicator="dot"
+                                    />} 
+                                />
+                                <Bar dataKey="balance" fill="var(--color-balance)" radius={[4, 4, 0, 0]} />
+                            </RechartsBarChart>
+                        </ChartContainer>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
       );
 }
-
-    
-
-    
-
-    
-
-  
-
-    
-
-    
-
