@@ -352,20 +352,20 @@ export default function DashboardPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between gap-4">
-                        <CardTitle className="text-xl font-bold">Informes por Empleado</CardTitle>
+                    <CardHeader className="flex flex-row items-start justify-between gap-4 p-4 pb-2">
+                        <CardTitle className="text-lg font-bold">Informes por Empleado</CardTitle>
                         <Select value={String(reportYear)} onValueChange={v => setReportYear(Number(v))}>
-                            <SelectTrigger className="h-8 text-xs w-28">
-                                <SelectValue placeholder="Año..." />
+                            <SelectTrigger className="h-8 text-xs w-24">
+                                <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                                 {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3 p-4 pt-0">
                         <Select value={reportEmployeeId} onValueChange={setReportEmployeeId}>
-                            <SelectTrigger className="w-full">
+                            <SelectTrigger className="w-full h-9">
                                 <SelectValue placeholder="Seleccionar empleado..." />
                             </SelectTrigger>
                             <SelectContent>
@@ -373,20 +373,20 @@ export default function DashboardPage() {
                             </SelectContent>
                         </Select>
                         
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-                            <Button onClick={handleGenerateAnnualReport} disabled={isGenerating || !reportEmployeeId}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <Button size="sm" onClick={handleGenerateAnnualReport} disabled={isGenerating || !reportEmployeeId}>
                                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                                {isGenerating ? 'Generando...' : 'Resumen Anual'}
+                                Resumen Anual
                             </Button>
-                             <Button onClick={handleGenerateAnnualDetailedReport} disabled={isGeneratingDetailed || !reportEmployeeId}>
+                             <Button size="sm" onClick={handleGenerateAnnualDetailedReport} disabled={isGeneratingDetailed || !reportEmployeeId}>
                                 {isGeneratingDetailed ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BookUser className="mr-2 h-4 w-4" />}
-                                {isGeneratingDetailed ? 'Generando...' : 'Jornada Anual'}
+                                Jornada Anual
                             </Button>
-                             <Button onClick={handleGenerateAbsenceReport} disabled={isGeneratingAbsenceReport || !reportEmployeeId}>
+                             <Button size="sm" onClick={handleGenerateAbsenceReport} disabled={isGeneratingAbsenceReport || !reportEmployeeId}>
                                 {isGeneratingAbsenceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarX2 className="mr-2 h-4 w-4" />}
-                                {isGeneratingAbsenceReport ? 'Generando...' : 'Informe Ausencias'}
+                                Ausencias
                             </Button>
-                            <Button onClick={() => router.push(`/employees/${reportEmployeeId}`)} disabled={!reportEmployeeId} variant="outline">
+                            <Button size="sm" onClick={() => router.push(`/employees/${reportEmployeeId}`)} disabled={!reportEmployeeId} variant="outline">
                                <User className="mr-2 h-4 w-4" />
                                 Ver Ficha
                             </Button>
@@ -397,13 +397,12 @@ export default function DashboardPage() {
                 <HolidayReportGenerator />
                 
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-xl font-bold">Informes Generales</CardTitle>
-                        <Library className="h-4 w-4 text-muted-foreground" />
+                    <CardHeader className="p-4 pb-2">
+                        <CardTitle className="text-lg font-bold">Informes Generales</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3 p-4 pt-2">
                         <Select value={selectedGeneralReportWeek} onValueChange={setSelectedGeneralReportWeek}>
-                            <SelectTrigger className="w-full">
+                            <SelectTrigger className="w-full h-9">
                                 <SelectValue placeholder="Seleccionar semana..." />
                             </SelectTrigger>
                             <SelectContent>
@@ -411,25 +410,25 @@ export default function DashboardPage() {
                             </SelectContent>
                         </Select>
 
-                        <div className="grid grid-cols-1 gap-4 pt-2">
-                            <div className="space-y-2 rounded-md border p-4">
+                        <div className="grid grid-cols-1 gap-2">
+                            <div className="space-y-2 rounded-md border p-3">
                                 <div className="flex justify-between items-center">
-                                    <CardDescription>
+                                    <CardDescription className="text-sm">
                                         Total semana: <span className="font-bold text-primary">+{complementaryHours.toFixed(2)}h</span>
                                     </CardDescription>
-                                    <Button onClick={handleGenerateComplementaryReport} size="sm" disabled={isGeneratingComplementaryReport || !selectedGeneralReportWeek} className="w-[150px]">
+                                    <Button onClick={handleGenerateComplementaryReport} size="sm" disabled={isGeneratingComplementaryReport || !selectedGeneralReportWeek}>
                                         {isGeneratingComplementaryReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                                         H. Complem.
                                     </Button>
                                 </div>
                             </div>
 
-                             <div className="space-y-2 rounded-md border p-4">
+                             <div className="space-y-2 rounded-md border p-3">
                                  <div className="flex justify-between items-center">
-                                    <CardDescription>
-                                        Balances de plantilla para la semana.
+                                    <CardDescription className="text-sm">
+                                        Balances de plantilla.
                                     </CardDescription>
-                                    <Button onClick={handleGenerateBalanceReport} size="sm" disabled={isGeneratingBalanceReport || !selectedGeneralReportWeek} className="w-[150px]">
+                                    <Button onClick={handleGenerateBalanceReport} size="sm" disabled={isGeneratingBalanceReport || !selectedGeneralReportWeek}>
                                         {isGeneratingBalanceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                                         Balances
                                     </Button>
@@ -440,10 +439,10 @@ export default function DashboardPage() {
                 </Card>
 
                 <Card className="flex flex-col">
-                    <CardHeader>
-                        <CardTitle className="text-xl font-bold">Top 10 Empleados por Balance</CardTitle>
+                    <CardHeader className="p-4 pb-2">
+                        <CardTitle className="text-lg font-bold">Top 10 Empleados por Balance</CardTitle>
                     </CardHeader>
-                    <CardContent className="flex-grow">
+                    <CardContent className="flex-grow p-2">
                         <ChartContainer config={chartConfig} className="w-full h-full min-h-[250px]">
                              <RechartsBarChart data={chartData} accessibilityLayer>
                                 <defs>
@@ -456,9 +455,10 @@ export default function DashboardPage() {
                                 <XAxis
                                     dataKey="name"
                                     stroke="#888888"
-                                    fontSize={12}
+                                    fontSize={10}
                                     tickLine={false}
                                     axisLine={false}
+                                    interval={0}
                                 />
                                 <ChartTooltip 
                                     cursor={false}
@@ -490,3 +490,5 @@ export default function DashboardPage() {
     
 
     
+
+      
