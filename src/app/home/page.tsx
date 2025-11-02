@@ -95,14 +95,14 @@ export default function HomePage() {
             </p>
             <div className="grid gap-6 auto-rows-fr sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 <Card className="flex flex-col">
-                    <CardHeader>
+                    <CardHeader className="p-4">
                         <CardTitle className="flex items-center gap-2">
                             <AlertTriangle className="h-5 w-5 text-destructive" />
                             Semanas Pendientes de Confirmar
                         </CardTitle>
                         <CardDescription>Semanas pasadas que requieren tu atención.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-grow">
+                    <CardContent className="flex-grow p-4">
                         {unconfirmedWeeksDetails.length > 0 ? (
                             <ScrollArea className="h-48">
                                 <div className="space-y-2">
@@ -128,14 +128,14 @@ export default function HomePage() {
                 </Card>
 
                 <Card className="flex flex-col">
-                    <CardHeader>
+                    <CardHeader className="p-4">
                         <CardTitle className="flex items-center gap-2">
                             <Mail className="h-5 w-5 text-primary" />
                             Mensajes Sin Leer
                         </CardTitle>
                         <CardDescription>Conversaciones con mensajes nuevos de empleados.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-grow">
+                    <CardContent className="flex-grow p-4">
                         {unreadConversations.length > 0 ? (
                              <ScrollArea className="h-48">
                                 <div className="space-y-2">
@@ -166,14 +166,14 @@ export default function HomePage() {
                 </Card>
 
                 <Card className="flex flex-col">
-                    <CardHeader>
+                    <CardHeader className="p-4">
                         <CardTitle className="flex items-center gap-2">
                             <CalendarClock className="h-5 w-5 text-primary" />
                             Próximos Eventos en la Agenda
                         </CardTitle>
                         <CardDescription>Ausencias programadas en las próximas 5 semanas.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-grow">
+                    <CardContent className="flex-grow p-4">
                          {upcomingEvents.length > 0 ? (
                              <ScrollArea className="h-48">
                                 <div className="space-y-2">
