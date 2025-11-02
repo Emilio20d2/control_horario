@@ -322,7 +322,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             )}
         </div>
       </header>
-      <div className="flex-1 flex flex-col overflow-y-auto">
+      <div className="flex-1 flex flex-col overflow-y-auto bg-gradient-to-t from-primary/10 to-transparent">
         <main className="flex-1">{children}</main>
       </div>
     </div>
