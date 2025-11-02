@@ -352,7 +352,7 @@ export default function DashboardPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
-                    <CardHeader className="flex-row items-center justify-between gap-4">
+                    <CardHeader className="flex flex-row items-center justify-between gap-4">
                         <CardTitle className="text-xl font-bold">Informes por Empleado</CardTitle>
                         <Select value={String(reportYear)} onValueChange={v => setReportYear(Number(v))}>
                             <SelectTrigger className="h-8 text-xs w-28">
