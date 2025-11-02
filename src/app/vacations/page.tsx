@@ -65,7 +65,8 @@ import {
   eachWeekOfInterval,
   parse,
   isEqual,
-  isValid
+  isValid,
+  isSameDay
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
