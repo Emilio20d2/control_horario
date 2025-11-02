@@ -174,7 +174,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen w-full flex-col bg-background">
-      <header className="sticky top-0 inset-x-0 flex h-20 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">
+      <header className="sticky top-0 inset-x-0 flex h-20 shrink-0 items-center gap-4 border-b bg-gradient-to-l from-primary/10 to-background px-4 md:px-6 z-10">
         
         {viewMode === 'admin' && (
           <Link href="/home" className="flex items-center gap-2 font-semibold">
