@@ -622,7 +622,7 @@ export default function VacationsPage() {
           <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
             <thead className="sticky top-0 z-10 bg-card shadow-sm">
               <tr>
-                <th className="p-1 border-b border-r font-semibold text-sm sticky left-0 bg-card z-20" style={{ width: '0.15px' }}>
+                <th className="p-1 border-b border-r font-semibold text-sm sticky left-0 bg-card z-20 text-transparent" style={{ width: '0.15px' }}>
                     Agrupación
                 </th>
                 {weeksOfYear.map(week => {
@@ -661,7 +661,7 @@ export default function VacationsPage() {
                 const groupEmployees = allEmployeesForQuadrant.filter(e => e.groupId === group.id);
                 return (
                   <tr key={group.id}>
-                    <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10" style={{ backgroundColor: groupColors[group.id] || '#f0f0f0', width: '0.15px' }}>
+                    <td className="border p-1 font-semibold text-sm align-top sticky left-0 z-10 text-transparent" style={{ backgroundColor: groupColors[group.id] || '#f0f0f0', width: '0.15px' }}>
                         {group.name}
                     </td>
                     {weeksOfYear.map(week => {
