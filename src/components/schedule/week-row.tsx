@@ -343,7 +343,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
 
     return (
         <TableRow className="align-top">
-            <TableCell className="font-medium sticky left-0 z-10 p-2 text-xs w-[200px] min-w-[200px] bg-gradient-to-br from-primary/5 to-transparent">
+            <TableCell className="font-medium sticky left-0 z-10 p-2 text-xs w-[150px] sm:w-[200px] min-w-[150px] sm:min-w-[200px] bg-gradient-to-br from-primary/5 to-transparent">
                 <div className="flex flex-col gap-2 h-full">
                     <div className="flex justify-between items-baseline">
                         <p className="font-bold text-sm flex items-center gap-1.5">
@@ -354,7 +354,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     </div>
                     <p className="text-muted-foreground">{contractType?.name ?? 'N/A'}</p>
                     
-                    <div className="space-y-1 sm:space-y-2 mt-2">
+                    <div className="space-y-2 mt-2">
                          <InputStepper label="Jornada Semanal" value={localWeekData.weeklyHoursOverride ?? weeklyHours} onChange={(v) => handleWeekLevelDataChange('weeklyHoursOverride', v)} className="text-xs" disabled={isConfirmed} />
                          <InputStepper label="H. Complementarias" value={localWeekData.totalComplementaryHours ?? undefined} onChange={(v) => handleWeekLevelDataChange('totalComplementaryHours', v)} disabled={isConfirmed} />
                          {showDifferenceCheckbox && (
@@ -417,7 +417,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 
                  const cellStyle: React.CSSProperties = isHoliday
                     ? { background: 'linear-gradient(to bottom right, #e0f2f1, transparent)'}
-                    : { background: 'linear-gradient(to bottom right, #fafafa, transparent)' };
+                    : { background: 'linear-gradient(to bottom right, rgba(240, 240, 240, 0.5), transparent)' };
 
                 if (absenceType?.color) {
                     cellStyle.backgroundColor = `${absenceType.color}40`;

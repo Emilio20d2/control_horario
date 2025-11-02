@@ -888,7 +888,7 @@ export default function VacationsPage() {
 
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
-             <Card>
+             <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
                 <CardHeader className="flex-row justify-between items-start">
                     <div className="flex-grow">
                         <CardTitle>Planificar Nueva Ausencia</CardTitle>
