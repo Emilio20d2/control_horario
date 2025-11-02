@@ -352,9 +352,20 @@ export default function DashboardPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 md:px-6">
                 <Card className="lg:col-span-1">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Informes por Empleado</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <CardTitle className="text-sm font-medium">Informes por Empleado</CardTitle>
+                            <div className="w-28">
+                                <Select value={String(reportYear)} onValueChange={v => setReportYear(Number(v))}>
+                                    <SelectTrigger className="h-8 text-xs">
+                                        <SelectValue placeholder="Año..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <Select value={reportEmployeeId} onValueChange={setReportEmployeeId}>
@@ -365,14 +376,7 @@ export default function DashboardPage() {
                                 {allEmployeesForReport.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
-                        <Select value={String(reportYear)} onValueChange={v => setReportYear(Number(v))}>
-                            <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Seleccionar año..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                        
                         <div className="grid grid-cols-1 gap-2 pt-2">
                             <Button onClick={handleGenerateAnnualReport} disabled={isGenerating || !reportEmployeeId}>
                                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
