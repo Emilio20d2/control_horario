@@ -1127,15 +1127,20 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 
     const processEmployeeWeekData = useCallback((emp: Employee, weekDays: Date[], weekId: string): DailyEmployeeData | null => {
         const dbRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
-        if (dbRecord) {
+        
+        // If the record is confirmed, return it as is.
+        if (dbRecord?.confirmed) {
             return dbRecord;
         }
-    
+
         const activePeriod = getActivePeriod(emp.id, weekDays[0]);
         if (!activePeriod) {
             return null;
         }
     
+        // If there's an unconfirmed record in DB, use its days as a base
+        const baseDays = dbRecord?.days;
+
         const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(emp.id, weekDays[0]);
         const weeklyWorkHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
     
@@ -1143,6 +1148,16 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         
         for (const day of weekDays) {
             const dayKey = format(day, 'yyyy-MM-dd');
+            
+            // Start with the existing data if it exists, otherwise create from scratch
+            const existingDayData = baseDays?.[dayKey];
+
+            if (existingDayData) {
+                 newDays[dayKey] = { ...existingDayData };
+                 continue; // Use existing unconfirmed data and move to next day
+            }
+            
+            // Logic to build from scratch if no unconfirmed data exists
             const holidayDetails = holidays.find(h => isSameDay(h.date, day));
             const theoreticalDay = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
             const theoreticalHours = theoreticalDay?.theoreticalHours ?? 0;
@@ -1175,13 +1190,15 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         const prefilledWeek = prefilledRecords[weekId];
         const prefilledEmployeeData = prefilledWeek?.weekData?.[emp.name];
     
+        // Return a combined object, prioritizing existing dbRecord fields
         return {
+            ...dbRecord, // Spread existing unconfirmed data first
             days: newDays,
-            confirmed: false,
-            totalComplementaryHours: null,
-            generalComment: null,
-            weeklyHoursOverride: null,
-            isDifference: false,
+            confirmed: false, // Always false as we are processing an unconfirmed week
+            totalComplementaryHours: dbRecord?.totalComplementaryHours ?? null,
+            generalComment: dbRecord?.generalComment ?? null,
+            weeklyHoursOverride: dbRecord?.weeklyHoursOverride ?? null,
+            isDifference: dbRecord?.isDifference ?? false,
             hasPreregistration: !!prefilledEmployeeData,
             expectedOrdinaryImpact: prefilledEmployeeData?.expectedOrdinaryImpact,
             expectedHolidayImpact: prefilledEmployeeData?.expectedHolidayImpact,
@@ -1314,6 +1331,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
