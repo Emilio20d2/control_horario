@@ -427,7 +427,7 @@ export default function DashboardPage() {
                              <div className="space-y-2 rounded-md border p-4">
                                  <div className="flex justify-between items-center">
                                     <CardDescription>
-                                        Balances de plantilla para la semana.
+                                        Balances semanales de la plantilla.
                                     </CardDescription>
                                     <Button onClick={handleGenerateBalanceReport} size="sm" disabled={isGeneratingBalanceReport || !selectedGeneralReportWeek}>
                                         {isGeneratingBalanceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
@@ -476,6 +476,8 @@ export default function DashboardPage() {
         </div>
       );
 }
+
+    
 
     
 
