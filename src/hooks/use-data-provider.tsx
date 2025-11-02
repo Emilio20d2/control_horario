@@ -1168,9 +1168,11 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             let absenceTypeAbbr = 'ninguna';
             let scheduledAbsence: ScheduledAbsence | undefined;
 
+            // Start with confirmed records as the source of truth
             if (confirmedAbsence && confirmedAbsence !== 'ninguna') {
                 absenceTypeAbbr = confirmedAbsence;
             } else {
+                // If not confirmed, fall back to scheduled absences
                 scheduledAbsence = (emp.employmentPeriods || [])
                     .flatMap(p => p.scheduledAbsences || [])
                     .find(a => a.startDate && a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(day, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) }));
@@ -1346,6 +1348,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 

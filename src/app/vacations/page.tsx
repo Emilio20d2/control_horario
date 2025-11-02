@@ -328,30 +328,74 @@ export default function VacationsPage() {
     
     const { employeesWithAbsences, weeklySummaries, employeesByWeek, allAbsences } = useMemo(() => {
         const schedulableIds = new Set(schedulableAbsenceTypes.map(at => at.id));
+        const schedulableAbbrs = new Set(schedulableAbsenceTypes.map(at => at.abbreviation));
         const employeesWithAbsences: Record<string, FormattedAbsence[]> = {};
-
+        const confirmedAbsenceDays = new Set<string>(); // "employeeId-dayString"
+    
+        // 1. Process confirmed records first. They are the source of truth.
         allEmployeesForQuadrant.forEach(emp => {
             const absences: FormattedAbsence[] = [];
-            (emp.employmentPeriods || []).forEach((p: EmploymentPeriod) => {
-                (p.scheduledAbsences || [])
-                    .forEach(a => {
-                        const startDate = safeParseDate(a.startDate);
-                        if (!startDate) return;
-
-                        if (schedulableIds.has(a.absenceTypeId)) {
-                            const absenceType = absenceTypes.find(at => at.id === a.absenceTypeId);
+            Object.values(weeklyRecords).forEach(record => {
+                const empWeekData = record.weekData[emp.id];
+                if (!empWeekData?.confirmed || !empWeekData.days) return;
+    
+                Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                    if (schedulableAbbrs.has(dayData.absence)) {
+                        const absenceType = absenceTypes.find(at => at.abbreviation === dayData.absence);
+                        const period = emp.employmentPeriods.find(p => isWithinInterval(parseISO(dayStr), { start: p.startDate, end: p.endDate || new Date('9999-12-31') }));
+                        
+                        if (absenceType && period) {
                             absences.push({
-                                ...a,
-                                startDate, // ensure it's a Date object
-                                endDate: a.endDate ? safeParseDate(a.endDate) : null,
-                                absenceAbbreviation: absenceType?.abbreviation || '??',
-                                color: absenceType?.color,
-                                periodId: p.id,
+                                id: `confirmed_${emp.id}_${dayStr}`,
+                                absenceTypeId: absenceType.id,
+                                startDate: parseISO(dayStr),
+                                endDate: parseISO(dayStr),
+                                isDefinitive: true,
+                                absenceAbbreviation: absenceType.abbreviation,
+                                color: absenceType.color,
+                                periodId: period.id,
                             });
+                            confirmedAbsenceDays.add(`${emp.id}-${dayStr}`);
                         }
-                    });
+                    }
+                });
             });
             employeesWithAbsences[emp.id] = absences;
+        });
+    
+        // 2. Process scheduled absences, but only if they haven't been confirmed.
+        allEmployeesForQuadrant.forEach(emp => {
+            (emp.employmentPeriods || []).forEach((p: EmploymentPeriod) => {
+                (p.scheduledAbsences || []).forEach(a => {
+                    if (schedulableIds.has(a.absenceTypeId)) {
+                        const startDate = safeParseDate(a.startDate);
+                        const endDate = a.endDate ? safeParseDate(a.endDate) : startDate;
+                        if (!startDate || !endDate) return;
+
+                        const absenceType = absenceTypes.find(at => at.id === a.absenceTypeId);
+                        if (!absenceType) return;
+                        
+                        // Check each day of the scheduled absence.
+                        eachDayOfInterval({ start: startDate, end: endDate }).forEach(day => {
+                            const dayStr = format(day, 'yyyy-MM-dd');
+                            // If this day was NOT confirmed in weeklyRecords, add it as a planned absence.
+                            if (!confirmedAbsenceDays.has(`${emp.id}-${dayStr}`)) {
+                                if (!employeesWithAbsences[emp.id]) {
+                                    employeesWithAbsences[emp.id] = [];
+                                }
+                                employeesWithAbsences[emp.id].push({
+                                    ...a,
+                                    startDate: day,
+                                    endDate: day,
+                                    absenceAbbreviation: absenceType.abbreviation,
+                                    color: absenceType.color,
+                                    periodId: p.id,
+                                });
+                            }
+                        });
+                    }
+                });
+            });
         });
         
         const allAbsences = Object.values(employeesWithAbsences).flat();
@@ -405,7 +449,7 @@ export default function VacationsPage() {
     
         return { employeesWithAbsences, weeklySummaries, employeesByWeek, allAbsences };
     
-    }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, safeParseDate]);
+    }, [allEmployeesForQuadrant, schedulableAbsenceTypes, absenceTypes, selectedYear, getEffectiveWeeklyHours, getWeekId, safeParseDate, weeklyRecords]);
     
     // Recalculate vacation data when employee or year changes
     useEffect(() => {
