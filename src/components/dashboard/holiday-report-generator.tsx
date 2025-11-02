@@ -95,7 +95,7 @@ export function HolidayReportGenerator() {
             doc.text(`LISTA PARA TRABAJAR FESTIVO`, pageMargin, 15);
             const pageText = `Página ${pageNumber} de ${totalPages}`;
             doc.setFontSize(10).setFont('helvetica', 'normal');
-            doc.text(pageText, doc.internal.pageSize.width - pageMargin, doc.internal.pageSize.height - 10, { align: 'right' });
+            doc.text(pageText, doc.internal.pageSize.getWidth() - pageMargin, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
         };
         
         const head = [
@@ -183,7 +183,7 @@ export function HolidayReportGenerator() {
     };
 
     if (loading) {
-        return <Card><CardHeader><CardTitle>Informe de Festivos</CardTitle></CardHeader><CardContent><Loader2/></CardContent></Card>;
+        return <Card><CardHeader><CardTitle className="text-xl font-bold">Informe de Festivos</CardTitle></CardHeader><CardContent><Loader2/></CardContent></Card>;
     }
     
     const selectedCount = Object.values(selectedHolidays).filter(Boolean).length;
@@ -191,7 +191,7 @@ export function HolidayReportGenerator() {
     return (
         <Card className="min-w-[280px] sm:min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Informe de Festivos</CardTitle>
+                <CardTitle className="text-xl font-bold">Informe de Festivos</CardTitle>
                 <Gift className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="space-y-4">

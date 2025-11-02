@@ -352,8 +352,8 @@ export default function DashboardPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
-                    <CardHeader className="flex-row items-start justify-between gap-4">
-                        <CardTitle className="text-sm font-medium">Informes por Empleado</CardTitle>
+                    <CardHeader className="flex-row items-center justify-between gap-4">
+                        <CardTitle className="text-xl font-bold">Informes por Empleado</CardTitle>
                         <Select value={String(reportYear)} onValueChange={v => setReportYear(Number(v))}>
                             <SelectTrigger className="h-8 text-xs w-28">
                                 <SelectValue placeholder="Año..." />
@@ -398,7 +398,7 @@ export default function DashboardPage() {
                 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Informes Generales</CardTitle>
+                        <CardTitle className="text-xl font-bold">Informes Generales</CardTitle>
                         <Library className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -439,11 +439,11 @@ export default function DashboardPage() {
 
                 <Card>
                     <CardHeader>
-                    <CardTitle>Top 10 Empleados por Balance de Horas</CardTitle>
-                    <CardDescription>Los 10 empleados con el mayor balance de horas acumulado.</CardDescription>
+                        <CardTitle className="text-xl font-bold">Top 10 Empleados por Balance</CardTitle>
+                        <CardDescription>Los 10 empleados con el mayor balance de horas acumulado.</CardDescription>
                     </CardHeader>
-                    <CardContent className="h-[300px]">
-                        <ChartContainer config={chartConfig} className="w-full h-full">
+                    <CardContent className="h-full">
+                        <ChartContainer config={chartConfig} className="w-full h-full min-h-[250px]">
                             <RechartsBarChart data={chartData} accessibilityLayer>
                                 <CartesianGrid vertical={false} />
                                 <XAxis
@@ -469,3 +469,4 @@ export default function DashboardPage() {
         </div>
       );
 }
+
