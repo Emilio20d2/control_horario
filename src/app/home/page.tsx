@@ -37,40 +37,47 @@ export default function HomePage() {
         const now = new Date();
         const next5WeeksStart = startOfWeek(now, { weekStartsOn: 1 });
         const next5WeeksEnd = endOfWeek(addWeeks(now, 4), { weekStartsOn: 1 });
-
+    
         const events: { employee: Employee; absence: ScheduledAbsence; absenceType: AbsenceType }[] = [];
-        const processedAbsenceIds = new Set<string>();
-
+    
         const activeEmployees = employees.filter(emp => 
             emp.employmentPeriods.some(p => !p.endDate || isAfter(p.endDate as Date, now))
         );
-
+    
         activeEmployees.forEach(emp => {
             (emp.employmentPeriods || []).forEach(p => {
                 (p.scheduledAbsences || []).forEach(a => {
                     const startDate = a.startDate as Date;
-                    const endDate = a.endDate as Date;
-
-                    if (!a.id || processedAbsenceIds.has(a.id) || !startDate || !isValid(startDate)) return;
                     
-                    processedAbsenceIds.add(a.id);
+                    if (!a.id || !startDate || !isValid(startDate)) return;
                     
-                    const effectiveEndDate = endDate && isValid(endDate) ? endDate : startDate;
-
+                    const effectiveEndDate = a.endDate && isValid(a.endDate) ? a.endDate : startDate;
+    
+                    // Check if the absence interval overlaps with the 5-week window
                     if (isBefore(effectiveEndDate, next5WeeksStart) || isAfter(startDate, next5WeeksEnd)) {
                         return;
                     }
-
+    
                     const absenceType = absenceTypes.find(at => at.id === a.absenceTypeId);
                     if (absenceType) {
-                        events.push({ employee: emp, absence: a, absenceType });
+                        // Check if an identical period for this employee and type is already added
+                        const isDuplicate = events.some(e => 
+                            e.employee.id === emp.id &&
+                            e.absence.absenceTypeId === a.absenceTypeId &&
+                            isSameDay(e.absence.startDate, startDate) &&
+                            isSameDay(e.absence.endDate || e.absence.startDate, effectiveEndDate)
+                        );
+                        
+                        if (!isDuplicate) {
+                             events.push({ employee: emp, absence: a, absenceType });
+                        }
                     }
                 });
             });
         });
         
         return events.sort((a,b) => (a.absence.startDate as Date).getTime() - (b.absence.startDate as Date).getTime());
-
+    
     }, [employees, absenceTypes]);
 
     const welcomeName = useMemo(() => {
@@ -198,12 +205,12 @@ export default function HomePage() {
                                                 <div className="text-center w-20 shrink-0">
                                                     <p className="font-bold text-sm capitalize">{format(startDate, 'dd MMM', { locale: es })}</p>
                                                     {!isSingleDay && endDate && (
-                                                        <p className="text-xs text-muted-foreground">al {format(endDate, 'dd MMM', { locale: es })}</p>
+                                                        <p className="text-xs">al {format(endDate, 'dd MMM', { locale: es })}</p>
                                                     )}
                                                 </div>
                                                 <div>
                                                     <p className="font-semibold text-sm">{event.employee.name}</p>
-                                                    <p className="text-xs font-medium" style={{color: event.absenceType.color ? event.absenceType.color : 'inherit'}}>{event.absenceType.name}</p>
+                                                    <p className="text-xs font-medium">{event.absenceType.name}</p>
                                                 </div>
                                             </div>
                                         )
