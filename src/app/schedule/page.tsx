@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -147,7 +148,7 @@ export default function SchedulePage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="sticky left-0 bg-card z-10 w-[150px] sm:w-[200px] min-w-[150px] sm:min-w-[200px] p-2"><Skeleton className="h-6 w-full" /></TableHead>
+                                <TableHead className="sticky left-0 bg-card z-10 w-[200px] min-w-[200px] p-2"><Skeleton className="h-6 w-full" /></TableHead>
                                 {Array.from({length: 7}).map((_, i) => <TableHead key={i}><Skeleton className="h-6 w-full" /></TableHead>)}
                             </TableRow>
                         </TableHeader>
@@ -254,12 +255,12 @@ export default function SchedulePage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="sticky left-0 bg-gradient-to-br from-primary/10 to-transparent z-20 p-2 text-xs w-[150px] sm:w-[170px] min-w-[150px] sm:min-w-[170px]">Empleado</TableHead>
+                                <TableHead className="sticky left-0 bg-gradient-to-br from-primary/10 to-transparent z-20 p-2 text-xs w-[200px] min-w-[200px]">Empleado</TableHead>
                                 {weekDays.map(d => {
                                     const isHoliday = holidays.some(h => isSameDay(h.date, d));
                                     return (
                                         <TableHead key={d.toISOString()} className={cn(
-                                            "text-center p-2 text-xs", 
+                                            "text-center p-2 text-xs min-w-[120px]", 
                                             isHoliday 
                                             ? "bg-gradient-to-br from-green-100 to-transparent" 
                                             : "bg-gradient-to-br from-gray-50 to-transparent"

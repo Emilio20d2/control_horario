@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -342,7 +343,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
 
     return (
         <TableRow className="align-top">
-            <TableCell className="font-medium sticky left-0 z-10 p-2 text-xs w-[150px] sm:w-[170px] min-w-[150px] sm:min-w-[170px] bg-gradient-to-br from-primary/5 to-transparent">
+            <TableCell className="font-medium sticky left-0 z-10 p-2 text-xs w-[200px] min-w-[200px] bg-gradient-to-br from-primary/5 to-transparent">
                 <div className="flex flex-col gap-2 h-full">
                     <div className="flex justify-between items-baseline">
                         <p className="font-bold text-sm flex items-center gap-1.5">
@@ -414,60 +415,48 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     (contractType?.computesOffDayBag ?? false) &&
                     dayData.absence === 'ninguna';
                 
-                const cellStyle: React.CSSProperties = {
-                    backgroundColor: absenceType?.color ? `${absenceType.color}40` : 'transparent',
-                };
+                 const cellStyle: React.CSSProperties = isHoliday
+                    ? { background: 'linear-gradient(to bottom right, #e0f2f1, transparent)'}
+                    : { background: 'linear-gradient(to bottom right, #fafafa, transparent)' };
+
+                if (absenceType?.color) {
+                    cellStyle.backgroundColor = `${absenceType.color}40`;
+                }
 
                 return (
-                    <TableCell key={day.toISOString()} className={cn(
-                        "p-1 align-top text-xs",
-                        isHoliday ? 'bg-gradient-to-br from-green-100/50 to-transparent' : 'bg-gradient-to-br from-gray-50/50 to-transparent'
-                    )} style={cellStyle}>
-                        <div className="flex flex-col items-center gap-1 h-full">
-                            <div className='w-full space-y-1 flex-grow'>
-                                <p className="text-muted-foreground text-xs h-4 text-center">
-                                    {(dayData.theoreticalHours ?? 0).toFixed(2)}h
-                                </p>
-                                
+                    <TableCell key={day.toISOString()} className="p-1 align-top text-xs" style={cellStyle}>
+                        <div className="flex flex-col items-center justify-start gap-2 h-full py-2">
+                             <div className='w-full space-y-1 flex-grow'>
+                                <div className="text-muted-foreground text-xs h-4 text-center font-semibold">
+                                    Teóricas: {(dayData.theoreticalHours ?? 0).toFixed(2)}h
+                                </div>
                                 <InputStepper
                                     value={dayData.workedHours}
                                     onChange={(v) => handleDailyDataChange(day, 'workedHours', v)}
-                                    inputClassName="text-xs"
                                     disabled={isConfirmed}
-                                    className='w-[85px]'
                                 />
-
-
                                 {absenceType && !absenceType.isAbsenceSplittable && (
                                      <InputStepper
                                         label={absenceType.name}
                                         value={dayData.absenceHours}
                                         onChange={(v) => handleDailyDataChange(day, 'absenceHours', v)}
                                         disabled={isConfirmed}
-                                        inputClassName="text-xs"
-                                        className='w-[85px]'
                                     />
                                 )}
-                                
                                 {absenceType && absenceType.computesFullDay && (
                                      <InputStepper
                                         label={absenceType.name}
                                         value={dayData.absenceHours}
                                         onChange={(v) => handleDailyDataChange(day, 'absenceHours', v)}
                                         disabled={isConfirmed}
-                                        inputClassName="text-xs"
-                                        className='w-[85px]'
                                     />
                                 )}
-                                
                                 {showLeaveHours && (
                                     <InputStepper
                                         label="H. Libranza"
                                         value={dayData.leaveHours}
                                         onChange={(v) => handleDailyDataChange(day, 'leaveHours', v)}
                                         disabled={isConfirmed}
-                                        inputClassName="text-xs"
-                                        className='w-[85px]'
                                     />
                                 )}
                             </div>
