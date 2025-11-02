@@ -61,6 +61,7 @@ import { db } from '@/lib/firebase';
 import { Input } from '@/components/ui/input';
 import { DayPicker } from 'react-day-picker';
 import { useIsMobile } from '@/hooks/use-is-mobile';
+import { AddAbsenceDialog } from '@/components/schedule/add-absence-dialog';
 
 interface CellAbsenceInfo {
     employee: Employee;
@@ -68,154 +69,6 @@ interface CellAbsenceInfo {
     absenceType: AbsenceType;
     substituteName?: string;
     periodId: string;
-}
-
-const AddAbsenceDialog = ({
-    isOpen,
-    onOpenChange,
-    activeEmployees,
-    absenceTypes,
-    holidays,
-    employees,
-    refreshData
-}: {
-    isOpen: boolean;
-    onOpenChange: (open: boolean) => void;
-    activeEmployees: Employee[];
-    absenceTypes: AbsenceType[];
-    holidays: any[];
-    employees: Employee[],
-    refreshData: () => void;
-}) => {
-    const { toast } = useToast();
-    const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
-    const [selectedAbsenceTypeId, setSelectedAbsenceTypeId] = useState<string>('');
-    const [selectedDays, setSelectedDays] = useState<Date[]>([]);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
-    const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
-    const dayPickerModifiers = { opening: openingHolidays, other: otherHolidays, selected: selectedDays };
-    const dayPickerModifiersStyles = { opening: { backgroundColor: '#a7f3d0' }, other: { backgroundColor: '#fecaca' }, selected: { backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' } };
-
-    const resetForm = () => {
-        setSelectedEmployeeId('');
-        setSelectedAbsenceTypeId('');
-        setSelectedDays([]);
-    }
-
-    const safeParseDate = useCallback((date: any): Date | null => {
-        if (!date) return null;
-        if (date instanceof Date) return date;
-        if (date.toDate && typeof date.toDate === 'function') return date.toDate();
-        if (typeof date === 'string') {
-            const parsed = parseISO(date);
-            return isValid(parsed) ? parsed : null;
-        }
-        return null;
-      }, []);
-
-    const handleAddAbsenceSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!selectedEmployeeId || !selectedAbsenceTypeId || selectedDays.length === 0) {
-            toast({ title: 'Datos incompletos', description: 'Debes seleccionar empleado, tipo de ausencia y al menos un día.', variant: 'destructive' });
-            return;
-        }
-
-        setIsSubmitting(true);
-        try {
-            const employee = employees.find(e => e.id === selectedEmployeeId);
-            const activePeriod = employee?.employmentPeriods.find(p => !p.endDate || isAfter(safeParseDate(p.endDate)!, new Date()));
-            if (!employee || !activePeriod) {
-                throw new Error('No se encontró un periodo de contrato activo para el empleado.');
-            }
-
-            for (const day of selectedDays) {
-                await addScheduledAbsence(employee.id, activePeriod.id, {
-                    absenceTypeId: selectedAbsenceTypeId,
-                    startDate: format(day, 'yyyy-MM-dd'),
-                    endDate: format(day, 'yyyy-MM-dd'),
-                }, employee, true);
-            }
-            
-            toast({ title: 'Ausencia Programada', description: `Se ha guardado la ausencia para ${employee.name}.` });
-            resetForm();
-            refreshData();
-            onOpenChange(false);
-
-        } catch (error) {
-            console.error("Error programming absence:", error);
-            toast({ title: 'Error', description: error instanceof Error ? error.message : "No se pudo guardar la ausencia.", variant: 'destructive' });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-    
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogTrigger asChild>
-                <Button>
-                    <CalendarPlus className="mr-2 h-4 w-4" />
-                    Agendar Ausencia
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-fit">
-                <DialogHeader>
-                    <DialogTitle>Programar Nueva Ausencia</DialogTitle>
-                    <DialogDescription>
-                        Selecciona el empleado, tipo de ausencia y los días.
-                    </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleAddAbsenceSubmit} className="space-y-6 py-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                        <div className="space-y-2">
-                            <Label htmlFor="employee-select-dialog">Empleado</Label>
-                            <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-                                <SelectTrigger id="employee-select-dialog"><SelectValue placeholder="Seleccionar empleado..." /></SelectTrigger>
-                                <SelectContent>
-                                    {activeEmployees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="absence-select-dialog">Tipo de Ausencia</Label>
-                            <Select value={selectedAbsenceTypeId} onValueChange={setSelectedAbsenceTypeId}>
-                                <SelectTrigger id="absence-select-dialog"><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
-                                <SelectContent>
-                                    {absenceTypes.sort((a,b) => a.name.localeCompare(b.name)).map(at => <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Días de la Ausencia</Label>
-                        <div className="rounded-md border flex justify-center">
-                            <DayPicker
-                                mode="multiple"
-                                min={0}
-                                selected={selectedDays}
-                                onSelect={(days) => setSelectedDays(days || [])}
-                                locale={es}
-                                modifiers={dayPickerModifiers}
-                                modifiersStyles={dayPickerModifiersStyles}
-                            />
-                        </div>
-                    </div>
-                    
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button type="button" variant="secondary">Cancelar</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarPlus className="mr-2 h-4 w-4" />}
-                            Guardar Ausencia
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-    );
 }
 
 export default function CalendarPage() {
@@ -714,17 +567,3 @@ export default function CalendarPage() {
     </>
   );
 }
-
-    
-
-
-    
-
-
-
-
-
-
-
-
-

@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { format, eachDayOfInterval, getYear, isBefore, addWeeks, startOfWeek, endOfWeek, isSameDay, addDays, isAfter, parseISO, startOfDay, getISODay, differenceInWeeks, isWithinInterval, getISOWeek, subWeeks, endOfDay, getISOWeekYear } from 'date-fns';
+import { format, eachDayOfInterval, getYear, isBefore, addWeeks, startOfWeek, endOfWeek, isSameDay, addDays, isAfter, parseISO, startOfDay, getISODay, differenceInWeeks, isWithinInterval, getISOWeek, subWeeks, endOfDay, getISOWeekYear, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,6 +17,7 @@ import { CompletionDialog } from '@/components/schedule/completion-dialog';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquareWarning } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import { AddAbsenceDialog } from '@/components/schedule/add-absence-dialog';
 
 export default function SchedulePage() {
     const dataProvider = useDataProvider();
@@ -31,7 +32,8 @@ export default function SchedulePage() {
         findNextUnconfirmedWeek,
         correctionRequests,
         availableYears,
-        unconfirmedWeeksDetails
+        unconfirmedWeeksDetails,
+        absenceTypes
     } = dataProvider;
     const searchParams = useSearchParams();
 
@@ -57,6 +59,7 @@ export default function SchedulePage() {
     const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
     const [processedWeeklyViewData, setProcessedWeeklyViewData] = useState<Record<string, DailyEmployeeData | null>>({});
     const [completionInfo, setCompletionInfo] = useState<{ weekId: string; nextWeekId: string | null } | null>(null);
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
     useEffect(() => {
         if (!loading) {
@@ -185,8 +188,17 @@ export default function SchedulePage() {
     
         return (
             <Card className="rounded-none border-0 border-t bg-card">
-                <CardHeader>
+                <CardHeader className="flex flex-row justify-between items-center">
                     <h2 className="text-xl font-bold text-center">Vista Anual de {employee.name} - {selectedYear}</h2>
+                    <AddAbsenceDialog
+                        isOpen={isAddDialogOpen}
+                        onOpenChange={setIsAddDialogOpen}
+                        activeEmployees={employees}
+                        absenceTypes={absenceTypes}
+                        holidays={holidays}
+                        employees={employees}
+                        refreshData={dataProvider.refreshData}
+                    />
                 </CardHeader>
                 <CardContent className="overflow-x-auto p-0">
                     <Table>
@@ -229,16 +241,31 @@ export default function SchedulePage() {
     
     const renderWeeklyView = () => (
         <Card className="rounded-none border-0 border-t bg-card">
-            <CardHeader>
-                <div className="flex flex-col gap-2 items-center">
-                    <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
-                    {pendingRequestsForWeek.length > 0 && (
-                        <Badge variant="destructive" className="mt-2 animate-pulse">
-                            <MessageSquareWarning className="mr-2 h-4 w-4" />
-                            {pendingRequestsForWeek.length} solicitud(es) de corrección para esta semana.
-                        </Badge>
-                    )}
+            <CardHeader className="flex flex-col gap-2 items-center">
+                <div className="flex w-full justify-center items-center gap-4">
+                    <div className="flex-1 flex justify-end">
+                         <AddAbsenceDialog
+                            isOpen={isAddDialogOpen}
+                            onOpenChange={setIsAddDialogOpen}
+                            activeEmployees={activeEmployeesForSchedule}
+                            absenceTypes={absenceTypes}
+                            holidays={holidays}
+                            employees={employees}
+                            refreshData={dataProvider.refreshData}
+                        />
+                    </div>
+                    <div className="flex-grow-0">
+                        <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
+                    </div>
+                    <div className="flex-1"></div>
                 </div>
+
+                {pendingRequestsForWeek.length > 0 && (
+                    <Badge variant="destructive" className="mt-2 animate-pulse">
+                        <MessageSquareWarning className="mr-2 h-4 w-4" />
+                        {pendingRequestsForWeek.length} solicitud(es) de corrección para esta semana.
+                    </Badge>
+                )}
             </CardHeader>
             <CardContent className="p-0">
                 <div className="overflow-x-auto">
