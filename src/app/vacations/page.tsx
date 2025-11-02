@@ -671,30 +671,35 @@ export default function VacationsPage() {
     const uniqueAbsencesForYear = useMemo(() => {
         if (!selectedEmployeeId) return [];
         const year = Number(selectedYear);
+        if (isNaN(year)) return [];
     
-        const allDaysWithAbsenceType = (employeesWithAbsences[selectedEmployeeId] || [])
-            .flatMap(absence => {
-                const startDate = safeParseDate(absence.startDate);
-                if (!startDate || getYear(startDate) !== year) return [];
-                
-                const endDate = absence.endDate ? safeParseDate(absence.endDate) : startDate;
-                if (!endDate) return [];
+        const dayMap = new Map<string, any>();
+        const allAbsences = employeesWithAbsences[selectedEmployeeId] || [];
+        
+        allAbsences.forEach(absence => {
+            const startDate = safeParseDate(absence.startDate);
+            if (!startDate || getYear(startDate) !== year) return;
+            const dayKey = format(startDate, 'yyyy-MM-dd');
     
-                return eachDayOfInterval({ start: startDate, end: endDate }).map(day => ({
-                    date: day,
+            if (!dayMap.has(dayKey) || absence.isDefinitive) {
+                dayMap.set(dayKey, {
+                    date: startDate,
                     absenceTypeId: absence.absenceTypeId,
                     absenceAbbreviation: absence.absenceAbbreviation,
                     originalAbsenceId: absence.id,
                     originalPeriodId: absence.periodId,
                     isDefinitive: absence.isDefinitive,
                     originalRequest: absence.originalRequest
-                }));
-            })
+                });
+            }
+        });
+    
+        const allDaysWithAbsenceType = Array.from(dayMap.values())
             .sort((a, b) => a.date.getTime() - b.date.getTime());
     
         if (allDaysWithAbsenceType.length === 0) return [];
     
-        const periods: (FormattedAbsence & { startDate: Date; endDate: Date})[] = [];
+        const periods: (FormattedAbsence & { startDate: Date; endDate: Date })[] = [];
         let currentPeriod = {
             ...allDaysWithAbsenceType[0],
             startDate: allDaysWithAbsenceType[0].date,
@@ -705,10 +710,15 @@ export default function VacationsPage() {
     
         for (let i = 1; i < allDaysWithAbsenceType.length; i++) {
             const dayInfo = allDaysWithAbsenceType[i];
-            const prevDayInfo = allDaysWithAbsenceType[i-1];
+            const prevDayInfo = allDaysWithAbsenceType[i - 1];
     
             if (isSameDay(dayInfo.date, addDays(prevDayInfo.date, 1)) && dayInfo.absenceTypeId === currentPeriod.absenceTypeId) {
                 currentPeriod.endDate = dayInfo.date;
+                // If any day in the period is definitive, the whole grouped period should point to its ID for editing.
+                if (dayInfo.isDefinitive) {
+                    currentPeriod.id = dayInfo.originalAbsenceId;
+                    currentPeriod.periodId = dayInfo.originalPeriodId;
+                }
             } else {
                 periods.push(currentPeriod);
                 currentPeriod = {
