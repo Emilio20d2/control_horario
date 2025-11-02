@@ -417,7 +417,7 @@ export default function DashboardPage() {
                                     <CardDescription>
                                         Total semana: <span className="font-bold text-primary">+{complementaryHours.toFixed(2)}h</span>
                                     </CardDescription>
-                                    <Button onClick={handleGenerateComplementaryReport} size="sm" disabled={isGeneratingComplementaryReport || !selectedGeneralReportWeek}>
+                                    <Button onClick={handleGenerateComplementaryReport} size="sm" disabled={isGeneratingComplementaryReport || !selectedGeneralReportWeek} className="w-full">
                                         {isGeneratingComplementaryReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                                         H. Complem.
                                     </Button>
@@ -429,7 +429,7 @@ export default function DashboardPage() {
                                     <CardDescription>
                                         Balances de plantilla para la semana.
                                     </CardDescription>
-                                    <Button onClick={handleGenerateBalanceReport} size="sm" disabled={isGeneratingBalanceReport || !selectedGeneralReportWeek}>
+                                    <Button onClick={handleGenerateBalanceReport} size="sm" disabled={isGeneratingBalanceReport || !selectedGeneralReportWeek} className="w-full">
                                         {isGeneratingBalanceReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                                         Balances
                                     </Button>
