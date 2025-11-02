@@ -74,7 +74,10 @@ export function AbsenceTypeForm({ absenceType }: AbsenceTypeFormProps) {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: defaultValues,
+    defaultValues: {
+        ...defaultValues,
+        color: defaultValues.color || generateRandomPastelColor(), // Ensure existing items without color get one on edit
+    },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
