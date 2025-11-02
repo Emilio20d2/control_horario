@@ -82,11 +82,12 @@ export function AbsenceTypeForm({ absenceType }: AbsenceTypeFormProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      const dataToSave = { ...values, annualHourLimit: values.annualHourLimit ?? null, color: values.color || generateRandomPastelColor() };
       if (absenceType?.id) {
+        const dataToSave = { ...values, annualHourLimit: values.annualHourLimit ?? null, color: generateRandomPastelColor() };
         await updateAbsenceType(absenceType.id, dataToSave);
         toast({ title: 'Tipo de Ausencia Actualizado', description: `Se ha guardado "${values.name}".` });
       } else {
+        const dataToSave = { ...values, annualHourLimit: values.annualHourLimit ?? null, color: values.color || generateRandomPastelColor() };
         await createAbsenceType(dataToSave as Omit<AbsenceType, 'id'>);
         toast({ title: 'Tipo de Ausencia Creado', description: `Se ha creado "${values.name}".` });
       }
@@ -279,7 +280,3 @@ export function AbsenceTypeForm({ absenceType }: AbsenceTypeFormProps) {
     </Form>
   );
 }
-
-    
-
-    
