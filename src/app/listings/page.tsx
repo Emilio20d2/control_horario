@@ -47,7 +47,7 @@ export default function ListingsPage() {
       .filter(emp => {
         const holidayInfo = holidayEmployeesMap.get(emp.id);
         const isActiveForReport = holidayInfo ? holidayInfo.active : false; // Default to false if not in the list
-        const hasActiveContract = emp.employmentPeriods.some(p => !p.endDate || isAfter(parseISO(p.endDate as string), new Date()));
+        const hasActiveContract = emp.employmentPeriods.some(p => !p.endDate || isAfter(p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string), new Date()));
         return isActiveForReport && hasActiveContract;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
