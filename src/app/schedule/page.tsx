@@ -254,14 +254,15 @@ export default function SchedulePage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="sticky left-0 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-950 z-20 p-2 text-xs w-[170px] sm:w-[200px] min-w-[170px] sm:min-w-[200px]">Empleado</TableHead>
+                                <TableHead className="sticky left-0 bg-gradient-to-br from-primary/20 to-transparent z-20 p-2 text-xs w-[170px] sm:w-[200px] min-w-[170px] sm:min-w-[200px]">Empleado</TableHead>
                                 {weekDays.map(d => {
                                     const isHoliday = holidays.some(h => isSameDay(h.date, d));
                                     return (
-                                        <TableHead key={d.toISOString()} className={cn("text-left p-2 text-xs", 
+                                        <TableHead key={d.toISOString()} className={cn(
+                                            "text-left p-2 text-xs", 
                                             isHoliday 
-                                            ? "bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-950" 
-                                            : "bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900"
+                                            ? "bg-gradient-to-br from-green-100 to-transparent" 
+                                            : "bg-gradient-to-br from-gray-50 to-transparent"
                                         )}>
                                             <span className="sm:hidden">{format(d, 'E', {locale:es})}</span>
                                             <span className="hidden sm:inline">{format(d, 'E dd/MM', {locale:es})}</span>
@@ -324,5 +325,3 @@ export default function SchedulePage() {
     </>
   );
 }
-
-    

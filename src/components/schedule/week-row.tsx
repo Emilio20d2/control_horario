@@ -342,7 +342,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
 
     return (
         <TableRow className="align-top">
-            <TableCell className="font-medium sticky left-0 z-10 p-2 text-xs w-[170px] sm:w-[200px] min-w-[170px] sm:min-w-[200px] bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-950">
+            <TableCell className="font-medium sticky left-0 z-10 p-2 text-xs w-[170px] sm:w-[200px] min-w-[170px] sm:min-w-[200px] bg-gradient-to-br from-primary/10 to-transparent">
                 <div className="flex flex-col gap-2 h-full">
                     <div className="flex justify-between items-baseline">
                         <p className="font-bold text-sm flex items-center gap-1.5">
