@@ -7,7 +7,7 @@ import { TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { format, isSameDay, getISODay, isBefore, parseISO, isAfter, eachDayOfInterval, subDays, addDays, startOfDay, isValid } from 'date-fns';
+import { format, isSameDay, getISODay, isBefore, parseISO, isAfter, eachDayOfInterval, subDays, addDays, startOfDay, isValid, isWithinInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
@@ -141,14 +141,18 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         });
     }, []);
 
-    const syncVacationsWithScheduledAbsences = async (): Promise<Employee> => {
-        if (!initialWeekData || !localWeekData || !employee) return employee;
+    const syncVacationsWithScheduledAbsences = async (): Promise<void> => {
+        if (!initialWeekData || !localWeekData || !employee) return;
     
         const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
-        if (!vacationType) return employee;
+        if (!vacationType) return;
     
-        // Make a deep copy to avoid direct state mutation
         const employeeCopy: Employee = JSON.parse(JSON.stringify(employee));
+        const activePeriod = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => 
+             isWithinInterval(weekDays[0], { start: startOfDay(parseISO(p.startDate as string)), end: p.endDate ? endOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31') })
+        );
+        if (!activePeriod) return;
+        if (!activePeriod.scheduledAbsences) activePeriod.scheduledAbsences = [];
     
         for (const day of weekDays) {
             const dayKey = format(day, 'yyyy-MM-dd');
@@ -158,45 +162,44 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             const wasVacation = originalDay?.absence === vacationType.abbreviation;
             const isNowVacation = newDay?.absence === vacationType.abbreviation;
     
-            // If vacation status hasn't changed for this day, do nothing.
             if (wasVacation === isNowVacation) continue;
     
-            const activePeriod = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => 
-                p.startDate && p.endDate && isWithinInterval(day, { start: startOfDay(parseISO(p.startDate as string)), end: endOfDay(parseISO(p.endDate as string)) })
-            );
-            if (!activePeriod) continue;
-    
-            if (isNowVacation) {
-                // This logic is for adding a new absence if needed, but usually handled by the planner.
-                // For simplicity, we assume additions are done via the planner.
+            if (isNowVacation && !wasVacation) {
+                // ADDING a vacation day
+                const newAbsence: ScheduledAbsence = {
+                    id: `abs_${Date.now()}_${Math.random()}`,
+                    absenceTypeId: vacationType.id,
+                    startDate: day,
+                    endDate: day,
+                    isDefinitive: true,
+                };
+                activePeriod.scheduledAbsences.push(newAbsence);
             } else if (wasVacation && !isNowVacation) {
-                // A vacation day was REMOVED
-                const absenceIndex = (activePeriod.scheduledAbsences || []).findIndex((a: ScheduledAbsence) =>
+                // REMOVING a vacation day
+                const absenceIndex = activePeriod.scheduledAbsences.findIndex((a: ScheduledAbsence) =>
                     a.absenceTypeId === vacationType.id &&
                     a.startDate && a.endDate &&
                     isWithinInterval(day, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) })
                 );
     
                 if (absenceIndex > -1) {
-                    const absenceToRemove = activePeriod.scheduledAbsences![absenceIndex];
+                    const absenceToRemove = activePeriod.scheduledAbsences[absenceIndex];
                     const originalStartDate = startOfDay(absenceToRemove.startDate);
                     const originalEndDate = startOfDay(absenceToRemove.endDate!);
                     const dayToRemove = startOfDay(day);
     
-                    // Remove the old absence period
-                    activePeriod.scheduledAbsences!.splice(absenceIndex, 1);
+                    activePeriod.scheduledAbsences.splice(absenceIndex, 1);
     
-                    // If the removed day was in the middle, split the absence into two new ones
                     if (isAfter(dayToRemove, originalStartDate)) {
-                        activePeriod.scheduledAbsences!.push({ ...absenceToRemove, id: `abs_${Date.now()}`, endDate: subDays(dayToRemove, 1) });
+                        activePeriod.scheduledAbsences.push({ ...absenceToRemove, id: `abs_${Date.now()}_${Math.random()}`, endDate: subDays(dayToRemove, 1) });
                     }
                     if (isBefore(dayToRemove, originalEndDate)) {
-                        activePeriod.scheduledAbsences!.push({ ...absenceToRemove, id: `abs_${Date.now() + 1}`, startDate: addDays(dayToRemove, 1) });
+                        activePeriod.scheduledAbsences.push({ ...absenceToRemove, id: `abs_${Date.now()}_${Math.random() + 1}`, startDate: addDays(dayToRemove, 1) });
                     }
                 }
             }
         }
-        return employeeCopy;
+        await updateDocument('employees', employee.id, { employmentPeriods: employeeCopy.employmentPeriods });
     };
 
 
@@ -205,7 +208,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         setIsSaving(true);
     
         try {
-            const updatedEmployeeData = await syncVacationsWithScheduledAbsences();
+            await syncVacationsWithScheduledAbsences();
     
             const activePeriod = getActivePeriod(employee.id, weekDays[0]);
             if (!activePeriod) throw new Error("No active period found");
@@ -214,7 +217,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             const formHours = localWeekData.weeklyHoursOverride ?? currentDbHours;
     
             if (formHours !== currentDbHours && localWeekData.weeklyHoursOverride !== null) {
-                await updateEmployeeWorkHours(employee.id, updatedEmployeeData, formHours, format(weekDays[0], 'yyyy-MM-dd'));
+                await updateEmployeeWorkHours(employee.id, employee, formHours, format(weekDays[0], 'yyyy-MM-dd'));
                 toast({ title: `Jornada Actualizada para ${employee.name}`, description: `Nueva jornada: ${formHours}h/semana.` });
             }
     
