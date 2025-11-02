@@ -7,7 +7,7 @@ import { TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { format, isSameDay, getISODay, isBefore, parseISO, isAfter, eachDayOfInterval, subDays, addDays, startOfDay, isValid, isWithinInterval } from 'date-fns';
+import { format, isSameDay, getISODay, isBefore, parseISO, isAfter, eachDayOfInterval, subDays, addDays, startOfDay, isValid, isWithinInterval, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
