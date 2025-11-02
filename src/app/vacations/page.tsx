@@ -678,7 +678,7 @@ export default function VacationsPage() {
                 if (!startDate || getYear(startDate) !== year) return [];
                 
                 const endDate = absence.endDate ? safeParseDate(absence.endDate) : startDate;
-                if(!endDate) return [];
+                if (!endDate) return [];
     
                 return eachDayOfInterval({ start: startDate, end: endDate }).map(day => ({
                     date: day,
@@ -692,34 +692,35 @@ export default function VacationsPage() {
             })
             .sort((a, b) => a.date.getTime() - b.date.getTime());
     
+        if (allDaysWithAbsenceType.length === 0) return [];
+    
         const periods: (FormattedAbsence & { startDate: Date; endDate: Date})[] = [];
-        if (allDaysWithAbsenceType.length === 0) return periods;
+        let currentPeriod = {
+            ...allDaysWithAbsenceType[0],
+            startDate: allDaysWithAbsenceType[0].date,
+            endDate: allDaysWithAbsenceType[0].date,
+            id: allDaysWithAbsenceType[0].originalAbsenceId,
+            periodId: allDaysWithAbsenceType[0].originalPeriodId,
+        };
     
-        let currentPeriod: FormattedAbsence & { startDate: Date; endDate: Date} | null = null;
+        for (let i = 1; i < allDaysWithAbsenceType.length; i++) {
+            const dayInfo = allDaysWithAbsenceType[i];
+            const prevDayInfo = allDaysWithAbsenceType[i-1];
     
-        allDaysWithAbsenceType.forEach(dayInfo => {
-            if (currentPeriod && isSameDay(dayInfo.date, addDays(currentPeriod.endDate, 1)) && dayInfo.absenceTypeId === currentPeriod.absenceTypeId) {
+            if (isSameDay(dayInfo.date, addDays(prevDayInfo.date, 1)) && dayInfo.absenceTypeId === currentPeriod.absenceTypeId) {
                 currentPeriod.endDate = dayInfo.date;
             } else {
-                if (currentPeriod) {
-                    periods.push(currentPeriod);
-                }
+                periods.push(currentPeriod);
                 currentPeriod = {
-                    id: dayInfo.originalAbsenceId,
-                    periodId: dayInfo.originalPeriodId,
-                    absenceTypeId: dayInfo.absenceTypeId,
-                    absenceAbbreviation: dayInfo.absenceAbbreviation,
+                    ...dayInfo,
                     startDate: dayInfo.date,
                     endDate: dayInfo.date,
-                    isDefinitive: dayInfo.isDefinitive,
-                    originalRequest: dayInfo.originalRequest
+                    id: dayInfo.originalAbsenceId,
+                    periodId: dayInfo.originalPeriodId,
                 };
             }
-        });
-    
-        if (currentPeriod) {
-            periods.push(currentPeriod);
         }
+        periods.push(currentPeriod);
     
         return periods;
     }, [selectedEmployeeId, selectedYear, employeesWithAbsences, safeParseDate]);
