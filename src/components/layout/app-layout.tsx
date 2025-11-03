@@ -60,7 +60,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, appUser, viewMode, setViewMode, loading: authLoading } = useAuth();
-  const { unconfirmedWeeksDetails, employeeRecord, loading: dataLoading, unreadMessageCount, pendingCorrectionRequestCount } = useDataProvider();
+  const { employeeRecord, loading: dataLoading, unreadMessageCount, pendingCorrectionRequestCount } = useDataProvider();
   const isMobile = useIsMobile();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   
@@ -223,53 +223,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                             </span>
                         )}
                     </Link>
-                  {!isMobile && (
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="relative">
-                                    <Bell className="h-5 w-5 text-foreground" />
-                                    {unconfirmedWeeksDetails.length > 0 && (
-                                        <span className="absolute top-1.5 right-1.5 flex h-3 w-3">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
-                                        </span>
-                                    )}
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-80">
-                                <DropdownMenuLabel>Semanas Anteriores Sin Confirmar</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                {unconfirmedWeeksDetails.length > 0 ? (
-                                    unconfirmedWeeksDetails.map(detail => (
-                                        <TooltipProvider key={detail.weekId}>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Link href={`/schedule?week=${detail.weekId}`} passHref>
-                                                        <DropdownMenuItem>
-                                                            Semana del {format(parseISO(detail.weekId), 'd MMM, yyyy', { locale: es })}
-                                                        </DropdownMenuItem>
-                                                    </Link>
-                                                </TooltipTrigger>
-                                                <TooltipContent side="left">
-                                                    <p className='font-medium'>Empleados pendientes:</p>
-                                                    <ul className="list-disc pl-4 text-muted-foreground">
-                                                        {detail.employeeNames.map(name => <li key={name}>{name}</li>)}
-                                                    </ul>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    ))
-                                ) : (
-                                    <DropdownMenuItem disabled>No hay semanas pendientes.</DropdownMenuItem>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        </TooltipTrigger>
-                        <TooltipContent>Notificaciones</TooltipContent>
-                    </Tooltip>
-                  )}
+                  
                 </div>
               </TooltipProvider>
             )}

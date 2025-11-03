@@ -21,7 +21,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 export default function HomePage() {
     const { 
         loading, 
-        unconfirmedWeeksDetails, 
         conversations, 
         employees, 
         absenceTypes,
@@ -124,40 +123,7 @@ export default function HomePage() {
                     </p>
                 </div>
                 <div className="grid gap-6 auto-rows-fr sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                    <Card className="flex flex-col bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-background">
-                        <CardHeader className="p-3">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-destructive/10 p-3 rounded-full">
-                                    <AlertTriangle className="h-6 w-6 text-destructive" />
-                                </div>
-                                <CardTitle>Semanas Pendientes</CardTitle>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="flex-grow p-3 space-y-2">
-                            {unconfirmedWeeksDetails.length > 0 ? (
-                                <ScrollArea className="h-48">
-                                    <div className="space-y-2">
-                                        {unconfirmedWeeksDetails.map(detail => (
-                                            <div key={detail.weekId} className="flex items-center justify-between p-2 rounded-md border bg-background/50">
-                                                <div>
-                                                    <p className="font-semibold text-sm">Semana del {format(parseISO(detail.weekId), 'dd/MM/yyyy', { locale: es })}</p>
-                                                    <p className="text-xs text-muted-foreground">{detail.employeeNames.length} empleado(s) pendiente(s)</p>
-                                                </div>
-                                                <Button asChild variant="secondary" size="sm">
-                                                    <Link href={`/schedule?week=${detail.weekId}`}>Revisar</Link>
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </ScrollArea>
-                            ) : (
-                                <div className="flex items-center justify-center h-full text-muted-foreground">
-                                    <p>¡Ninguna semana pendiente!</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
+                    
                     <Card className="flex flex-col bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
                         <CardHeader className="p-3">
                             <div className="flex items-center gap-3">

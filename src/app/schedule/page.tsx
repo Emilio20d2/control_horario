@@ -33,7 +33,6 @@ export default function SchedulePage() {
         findNextUnconfirmedWeek,
         correctionRequests,
         availableYears,
-        unconfirmedWeeksDetails,
         absenceTypes
     } = dataProvider;
     const searchParams = useSearchParams();
@@ -45,15 +44,10 @@ export default function SchedulePage() {
             if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
         }
         
-        if (unconfirmedWeeksDetails.length > 0) {
-            // The first item is the most recent unconfirmed week
-            return parseISO(unconfirmedWeeksDetails[0].weekId);
-        }
-    
         // If no unconfirmed weeks, default to the current week
         return startOfWeek(new Date(), { weekStartsOn: 1 });
     
-    }, [unconfirmedWeeksDetails, searchParams]);
+    }, [searchParams]);
     
     const [currentDate, setCurrentDate] = useState(getInitialDate);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
