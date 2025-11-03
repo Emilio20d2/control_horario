@@ -266,7 +266,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   
     const confirmedAbsenceDays = new Set<string>();
     
-    // First, populate the set with all confirmed absence days for this employee from weeklyRecords
     Object.values(weeklyRecords).forEach(record => {
       const empWeekData = record.weekData?.[employeeId];
       if (empWeekData?.confirmed && empWeekData.days) {
@@ -278,34 +277,27 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       }
     });
   
-    // Now, process the scheduled absences, filtering out any day that has already been confirmed
     const processedAbsences: ScheduledAbsence[] = [];
     absences.forEach(a => {
       const startDate = safeParseDate(a.startDate);
-      if (!startDate) return; // Skip invalid absences
+      if (!startDate) return;
   
       const endDate = a.endDate ? safeParseDate(a.endDate) : startDate;
       if (!endDate) return;
   
-      eachDayOfInterval({ start: startDate, end: endDate }).forEach(day => {
-        const dayStr = format(day, 'yyyy-MM-dd');
-        // Only include this day from the scheduled absence if it hasn't been confirmed in weekly records
-        if (!confirmedAbsenceDays.has(dayStr)) {
-          const processedAbsence: any = {
-              ...a,
-              startDate: day, // We process day by day now
-              endDate: day,
-          };
-          if (a.originalRequest) {
-              processedAbsence.originalRequest = {
-                  ...a.originalRequest,
-                  startDate: a.originalRequest.startDate instanceof Timestamp ? a.originalRequest.startDate.toDate().toISOString() : a.originalRequest.startDate,
-                  endDate: a.originalRequest.endDate instanceof Timestamp ? a.originalRequest.endDate.toDate().toISOString() : a.originalRequest.endDate,
-              };
-          }
-          processedAbsences.push(processedAbsence);
+      const absenceDayStr = format(startDate, 'yyyy-MM-dd');
+      
+      if (!confirmedAbsenceDays.has(absenceDayStr)) {
+        const processedAbsence: any = { ...a, startDate, endDate };
+        if (a.originalRequest) {
+            processedAbsence.originalRequest = {
+                ...a.originalRequest,
+                startDate: a.originalRequest.startDate instanceof Timestamp ? a.originalRequest.startDate.toDate().toISOString() : a.originalRequest.startDate,
+                endDate: a.originalRequest.endDate instanceof Timestamp ? a.originalRequest.endDate.toDate().toISOString() : a.originalRequest.endDate,
+            };
         }
-      });
+        processedAbsences.push(processedAbsence);
+      }
     });
   
     return processedAbsences;
@@ -369,6 +361,26 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [authLoading, user, appUser, safeParseDate]);
 
+  // Effect for weekly records and other dynamic data
+  useEffect(() => {
+    if (!loadingSteps.static) return;
+
+    let active = true;
+    const unsubWeekly = onCollectionUpdate<WeeklyRecord>('weeklyRecords', (data) => {
+      if (active) {
+        setWeeklyRecords(data.reduce((acc, record) => ({ ...acc, [record.id]: record }), {}));
+        setLoadingSteps(prev => ({...prev, weeklyRecords: true}));
+      }
+    }).unsubscribe;
+
+    setLoadingSteps(prev => ({...prev, other: true}));
+
+    return () => {
+      active = false;
+      unsubWeekly();
+    }
+  }, [loadingSteps.static]);
+
   // Effect for employees (depends on static data and weeklyRecords)
   useEffect(() => {
     if (!loadingSteps.static || !loadingSteps.weeklyRecords) return;
@@ -397,27 +409,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       unsub();
     }
   }, [loadingSteps.static, loadingSteps.weeklyRecords, absenceTypes, processScheduledAbsences, safeParseDate]);
-
-  // Effect for weekly records and other dynamic data
-  useEffect(() => {
-    if (!loadingSteps.static) return;
-
-    let active = true;
-    const unsubWeekly = onCollectionUpdate<WeeklyRecord>('weeklyRecords', (data) => {
-      if (active) {
-        setWeeklyRecords(data.reduce((acc, record) => ({ ...acc, [record.id]: record }), {}));
-        setLoadingSteps(prev => ({...prev, weeklyRecords: true}));
-      }
-    }).unsubscribe;
-
-    // other subscriptions can go here
-    setLoadingSteps(prev => ({...prev, other: true}));
-
-    return () => {
-      active = false;
-      unsubWeekly();
-    }
-  }, [loadingSteps.static]);
 
   // Final loading state
   useEffect(() => {
@@ -454,18 +445,18 @@ useEffect(() => {
         setUnconfirmedWeeksDetails([]);
         return;
     }
-    
+
     const today = startOfWeek(new Date(), { weekStartsOn: 1 });
     const details: UnconfirmedWeekDetail[] = [];
 
-    const currentlyActiveEmployees = employees.filter(emp => 
+    const currentlyActiveEmployees = employees.filter(emp =>
         emp.employmentPeriods.some(p => !p.endDate || isAfter(p.endDate as Date, new Date()))
     );
 
     const pastWeekIds = Object.keys(weeklyRecords)
         .filter(weekId => {
             const weekDate = parseISO(weekId);
-            return isBefore(weekDate, today) && getISOWeekYear(weekDate) >= 2025;
+            return isBefore(startOfDay(weekDate), startOfDay(today)) && getISOWeekYear(weekDate) >= 2025;
         })
         .sort((a, b) => b.localeCompare(a));
     
@@ -473,7 +464,6 @@ useEffect(() => {
         const unconfirmedEmployeeNames = currentlyActiveEmployees
             .filter(emp => {
                 const empRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
-                // La notificación salta si hay un registro para un empleado activo y NO está confirmado.
                 return empRecord && empRecord.confirmed === false;
             })
             .map(emp => emp.name);
@@ -514,14 +504,13 @@ const getActivePeriod = useCallback((employeeId: string, date: Date): Employment
     const employee = getEmployeeById(employeeId);
     if (!employee?.employmentPeriods) return null;
 
-    const weekStart = startOfDay(startOfWeek(date, { weekStartsOn: 1 }));
-    const weekEnd = endOfDay(endOfWeek(date, { weekStartsOn: 1 }));
+    const checkDate = startOfDay(date);
 
     return employee.employmentPeriods.find(p => {
         const periodStart = startOfDay(p.startDate as Date);
         const periodEnd = p.endDate ? startOfDay(p.endDate as Date) : new Date('9999-12-31');
         
-        return periodStart <= weekEnd && periodEnd >= weekStart;
+        return !isAfter(periodStart, checkDate) && isAfter(periodEnd, checkDate);
     }) || null;
 }, [getEmployeeById]);
 
@@ -1073,26 +1062,27 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const theoreticalDay = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
             const theoreticalHours = theoreticalDay?.theoreticalHours ?? 0;
             
-            const confirmedRecordForDay = Object.values(weeklyRecords).find(rec => rec.weekData[emp.id]?.confirmed && rec.weekData[emp.id]?.days[dayKey]);
-            const confirmedAbsence = confirmedRecordForDay ? confirmedRecordForDay.weekData[emp.id].days[dayKey].absence : undefined;
-            
             let absenceTypeAbbr = 'ninguna';
             let scheduledAbsence: ScheduledAbsence | undefined;
 
-            // Start with confirmed records as the source of truth
-            if (confirmedAbsence && confirmedAbsence !== 'ninguna') {
-                absenceTypeAbbr = confirmedAbsence;
+            const confirmedAbsenceDay = Object.values(weeklyRecords).map(r => r.weekData?.[emp.id]?.days?.[dayKey]).find(d => d && weeklyRecords[getWeekId(parseISO(dayKey))]?.weekData?.[emp.id]?.confirmed);
+
+            if (confirmedAbsenceDay?.absence && confirmedAbsenceDay.absence !== 'ninguna') {
+                absenceTypeAbbr = confirmedAbsenceDay.absence;
             } else {
-                // If not confirmed, fall back to scheduled absences
                 scheduledAbsence = (emp.employmentPeriods || [])
                     .flatMap(p => p.scheduledAbsences || [])
-                    .find(a => a.startDate && a.endDate && isValid(a.startDate) && isValid(a.endDate) && isWithinInterval(day, { start: startOfDay(a.startDate), end: endOfDay(a.endDate) }));
+                    .find(a => {
+                        const startDate = safeParseDate(a.startDate);
+                        const endDate = safeParseDate(a.endDate) || startDate;
+                        return startDate && endDate && isWithinInterval(day, { start: startOfDay(startDate), end: endOfDay(endDate) });
+                    });
                 if (scheduledAbsence) {
                     const foundType = absenceTypes.find(at => at.id === scheduledAbsence!.absenceTypeId);
                     if (foundType) absenceTypeAbbr = foundType.abbreviation;
                 }
             }
-    
+
             const absenceType = absenceTypes.find(at => at.abbreviation === absenceTypeAbbr);
     
             let leaveHours = 0;
@@ -1134,7 +1124,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             expectedLeaveImpact: prefilledEmployeeData?.expectedLeaveImpact,
         };
     
-    }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, contractTypes, holidays, absenceTypes, getEffectiveWeeklyHours]);
+    }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, contractTypes, holidays, absenceTypes, getEffectiveWeeklyHours, safeParseDate, getWeekId]);
 
     const calculateEmployeeVacations = useCallback((emp: Employee, year: number = getYear(new Date()), mode: 'confirmed' | 'programmed' = 'programmed'): {
         vacationDaysTaken: number;
