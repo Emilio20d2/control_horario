@@ -445,43 +445,56 @@ const getActiveEmployeesForDate = useCallback((date: Date): Employee[] => {
 
 useEffect(() => {
     if (loading || !appUser || appUser.role !== 'admin') {
-        setUnconfirmedWeeksDetails([]);
-        return;
+      setUnconfirmedWeeksDetails([]);
+      return;
     }
-
-    const currentWeekId = getWeekId(new Date());
+  
     const detailsMap = new Map<string, UnconfirmedWeekDetail>();
-
-    const earliestRecordDate = Object.keys(weeklyRecords).length > 0
-        ? parseISO(Object.keys(weeklyRecords).sort()[0])
-        : subWeeks(new Date(), 4); // Fallback to 4 weeks ago if no records
-
-    let dateToCheck = startOfWeek(earliestRecordDate, { weekStartsOn: 1 });
-
+    const currentWeekId = getWeekId(new Date());
+  
+    const earliestDate = employees.reduce((earliest, emp) => {
+      if (emp.employmentPeriods && emp.employmentPeriods.length > 0) {
+        const firstStartDate = emp.employmentPeriods.reduce((e, p) => {
+          const pDate = p.startDate instanceof Date ? p.startDate : parseISO(p.startDate as string);
+          return pDate < e ? pDate : e;
+        }, new Date());
+        return firstStartDate < earliest ? firstStartDate : earliest;
+      }
+      return earliest;
+    }, new Date());
+  
+    let dateToCheck = startOfWeek(earliestDate, { weekStartsOn: 1 });
+  
     while (isBefore(dateToCheck, startOfWeek(new Date(), { weekStartsOn: 1 }))) {
         const weekId = getWeekId(dateToCheck);
+        
+        // Skip any weeks from 2024
+        if (getISOWeekYear(dateToCheck) === 2024) {
+            dateToCheck = addWeeks(dateToCheck, 1);
+            continue;
+        }
+
         const activeEmployeesForThisWeek = getActiveEmployeesForDate(dateToCheck);
         const unconfirmedEmployees: string[] = [];
-
+  
         for (const emp of activeEmployeesForThisWeek) {
             const isConfirmed = weeklyRecords[weekId]?.weekData?.[emp.id]?.confirmed ?? false;
             if (!isConfirmed) {
                 unconfirmedEmployees.push(emp.name);
             }
         }
-        
+      
         if (unconfirmedEmployees.length > 0) {
             detailsMap.set(weekId, { weekId, employeeNames: unconfirmedEmployees });
         }
-
+  
         dateToCheck = addWeeks(dateToCheck, 1);
     }
-
-
+  
     const details = Array.from(detailsMap.values()).sort((a, b) => b.weekId.localeCompare(a.weekId));
     setUnconfirmedWeeksDetails(details);
-
-}, [loading, appUser, weeklyRecords, employees, getActiveEmployeesForDate, getWeekId]);
+  
+  }, [loading, appUser, employees, weeklyRecords, getActiveEmployeesForDate, getWeekId]);
 
 
 // Memoized values and functions that depend on state
