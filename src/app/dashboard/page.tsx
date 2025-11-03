@@ -53,7 +53,7 @@ export default function DashboardPage() {
     
     // Default to a date from data if available, otherwise today
     const [referenceDate, setReferenceDate] = useState(new Date());
-    const [selectedGeneralReportWeek, setSelectedGeneralReportWeek] = useState(getWeekId(subWeeks(new Date(), 1)));
+    const [selectedGeneralReportWeek, setSelectedGeneralReportWeek] = useState('');
 
     // For annual report
     const [reportEmployeeId, setReportEmployeeId] = useState('');
@@ -124,6 +124,18 @@ export default function DashboardPage() {
                 return { value: weekId, label: `${startDay} - ${endDay}`};
             });
     }, [weeklyRecords]);
+
+    useEffect(() => {
+        if (availableWeeks.length > 0 && !selectedGeneralReportWeek) {
+            const lastWeekId = getWeekId(subWeeks(new Date(), 1));
+            const lastWeekExists = availableWeeks.some(w => w.value === lastWeekId);
+            if (lastWeekExists) {
+                setSelectedGeneralReportWeek(lastWeekId);
+            } else {
+                setSelectedGeneralReportWeek(availableWeeks[0]?.value || '');
+            }
+        }
+    }, [availableWeeks, selectedGeneralReportWeek, getWeekId]);
 
     const complementaryHoursRecord = useMemo(() => {
         if (loading || !selectedGeneralReportWeek) return null;
@@ -498,4 +510,5 @@ export default function DashboardPage() {
     
 
     
+
 
