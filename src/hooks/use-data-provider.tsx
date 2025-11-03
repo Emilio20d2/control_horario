@@ -235,11 +235,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   });
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<{ weekId: string; employeeNames: string[] }[]>([]);
 
-
   const allLoadingStepsComplete = useMemo(() => {
     return Object.values(loadingSteps).every(Boolean);
   }, [loadingSteps]);
 
+  // Pure utility functions
   const safeParseDate = useCallback((date: any): Date | null => {
     if (!date) return null;
     if (date instanceof Date) return date;
@@ -249,6 +249,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         return isValid(parsed) ? parsed : null;
     }
     return null;
+  }, []);
+  
+  const getWeekId = useCallback((d: Date): string => {
+    const monday = startOfWeek(d, { weekStartsOn: 1 });
+    return format(monday, 'yyyy-MM-dd');
   }, []);
 
   const processScheduledAbsences = useCallback((absences: any[], loadedAbsenceTypes: AbsenceType[]): ScheduledAbsence[] => {
@@ -382,12 +387,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [loadingSteps.static]);
 
+  // Final loading state
   useEffect(() => {
     if (allLoadingStepsComplete) {
       setLoading(false);
     }
   }, [allLoadingStepsComplete]);
 
+  // Set employee record for the logged-in user
   useEffect(() => {
     if (appUser && employees.length > 0) {
         const foundEmployee = employees.find(e => e.email === appUser.email);
@@ -398,6 +405,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 }, [appUser, employees]);
 
 
+// Memoized values and functions that depend on state
 const unreadMessageCount = useMemo(() => {
     if (!appUser) return 0;
     if (appUser.role === 'admin') {
@@ -415,55 +423,9 @@ const pendingCorrectionRequestCount = useMemo(() => {
     return correctionRequests.filter(r => r.status === 'pending').length;
 }, [correctionRequests, appUser]);
 
-  const getActiveEmployeesForDate = useCallback((date: Date, employees: Employee[]): Employee[] => {
-    const weekStart = startOfDay(startOfWeek(date, { weekStartsOn: 1 }));
-    const weekEnd = endOfDay(endOfWeek(date, { weekStartsOn: 1 }));
+const getEmployeeById = useCallback((id: string) => employees.find(e => e.id === id), [employees]);
 
-    return employees.filter(emp => 
-        emp.employmentPeriods.some(p => {
-            const periodStart = startOfDay(p.startDate as Date);
-            const periodEnd = p.endDate ? endOfDay(p.endDate as Date) : new Date('9999-12-31');
-            
-            return isAfter(periodEnd, weekStart) && isBefore(periodStart, weekEnd);
-        })
-    );
-}, []);
-
-  useEffect(() => {
-    if (loading) return;
-
-    const details: { weekId: string; employeeNames: string[] }[] = [];
-    const today = new Date();
-    const startOfThisWeek = startOfWeek(today, { weekStartsOn: 1 });
-
-    const pastWeekRecords = Object.keys(weeklyRecords).filter(weekId => {
-        const weekDate = parseISO(weekId);
-        return isBefore(weekDate, startOfThisWeek);
-    });
-
-    for (const weekId of pastWeekRecords) {
-        const activeEmployeesThisWeek = getActiveEmployeesForDate(parseISO(weekId), employees);
-        if (activeEmployeesThisWeek.length === 0) continue;
-
-        const weekRecord = weeklyRecords[weekId];
-        const unconfirmedEmployees = activeEmployeesThisWeek.filter(emp => !(weekRecord?.weekData?.[emp.id]?.confirmed ?? false));
-        
-        if (unconfirmedEmployees.length > 0) {
-            details.push({
-                weekId,
-                employeeNames: unconfirmedEmployees.map(e => e.name)
-            });
-        }
-    }
-    
-    setUnconfirmedWeeksDetails(details.sort((a, b) => b.weekId.localeCompare(a.weekId)));
-
-}, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
-
-
-  const getEmployeeById = (id: string) => employees.find(e => e.id === id);
-
-  const getActivePeriod = (employeeId: string, date: Date): EmploymentPeriod | null => {
+const getActivePeriod = useCallback((employeeId: string, date: Date): EmploymentPeriod | null => {
     const employee = getEmployeeById(employeeId);
     if (!employee?.employmentPeriods) return null;
 
@@ -476,12 +438,9 @@ const pendingCorrectionRequestCount = useMemo(() => {
         
         return periodStart <= weekEnd && periodEnd >= weekStart;
     }) || null;
-};
+}, [getEmployeeById]);
 
-  
-  
-
-const getEffectiveWeeklyHours = (period: EmploymentPeriod | null, date: Date): number => {
+const getEffectiveWeeklyHours = useCallback((period: EmploymentPeriod | null, date: Date): number => {
     if (!period?.workHoursHistory || period.workHoursHistory.length === 0) {
       return 0;
     }
@@ -501,7 +460,68 @@ const getEffectiveWeeklyHours = (period: EmploymentPeriod | null, date: Date): n
     });
     
     return effectiveRecord?.weeklyHours || 0;
-};
+}, [safeParseDate]);
+
+const getActiveEmployeesForDate = useCallback((date: Date) => {
+    const weekStart = startOfDay(startOfWeek(date, { weekStartsOn: 1 }));
+    const weekEnd = endOfDay(endOfWeek(date, { weekStartsOn: 1 }));
+
+    return employees.filter(emp => 
+        emp.employmentPeriods.some(p => {
+            const periodStart = startOfDay(p.startDate as Date);
+            const periodEnd = p.endDate ? endOfDay(p.endDate as Date) : new Date('9999-12-31');
+            
+            return isAfter(periodEnd, weekStart) && isBefore(periodStart, weekEnd);
+        })
+    );
+}, [employees]);
+
+
+// This effect calculates unconfirmed week details
+useEffect(() => {
+    if (loading) return;
+
+    const details: { weekId: string; employeeNames: string[] }[] = [];
+    const today = new Date();
+    const startOfThisWeek = startOfWeek(today, { weekStartsOn: 1 });
+
+    const pastWeekRecords = Object.keys(weeklyRecords).filter(weekId => {
+        const weekDate = parseISO(weekId);
+        return isBefore(weekDate, startOfThisWeek);
+    });
+
+    for (const weekId of pastWeekRecords) {
+        const weekDate = parseISO(weekId);
+        const activeEmployeesThisWeek = getActiveEmployeesForDate(weekDate);
+        
+        if (activeEmployeesThisWeek.length === 0) continue;
+
+        const weekRecord = weeklyRecords[weekId];
+        
+        if (!weekRecord) {
+             details.push({
+                weekId,
+                employeeNames: activeEmployeesThisWeek.map(e => e.name)
+            });
+            continue;
+        }
+
+        const unconfirmedEmployees = activeEmployeesThisWeek.filter(emp => 
+            !(weekRecord.weekData?.[emp.id]?.confirmed ?? false)
+        );
+        
+        if (unconfirmedEmployees.length > 0) {
+            details.push({
+                weekId,
+                employeeNames: unconfirmedEmployees.map(e => e.name)
+            });
+        }
+    }
+    
+    setUnconfirmedWeeksDetails(details.sort((a, b) => b.weekId.localeCompare(a.weekId)));
+
+}, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
+
 
 const calculateBalancePreviewCallback = useCallback((employeeId: string, weekData: Record<string, DailyData>, initialBalances: { ordinary: number, holiday: number, leave: number }, weeklyHoursOverride?: number | null, totalComplementaryHours?: number | null) => {
     const employee = getEmployeeById(employeeId);
@@ -517,7 +537,7 @@ const calculateBalancePreviewCallback = useCallback((employeeId: string, weekDat
         weeklyHoursOverride,
         totalComplementaryHours
     );
-  }, [employees, absenceTypes, contractTypes]);
+  }, [getEmployeeById, absenceTypes, contractTypes]);
   
 const getEmployeeBalancesForWeek = useCallback((employeeId: string, weekId: string): { ordinary: number, holiday: number, leave: number, total: number } => {
     const employee = employees.find(e => e.id === employeeId);
@@ -615,7 +635,7 @@ const getEmployeeFinalBalances = useCallback((employeeId: string): { ordinary: n
 }, [employees, weeklyRecords, getEmployeeBalancesForWeek, getWeekId]);
 
 
-const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { turnId: string | null; weekDaysWithTheoreticalHours: { dateKey: string; theoreticalHours: number }[] } => {
+const getTheoreticalHoursAndTurn = useCallback((employeeId: string, dateInWeek: Date): { turnId: string | null; weekDaysWithTheoreticalHours: { dateKey: string; theoreticalHours: number }[] } => {
     const employee = getEmployeeById(employeeId);
     const weekDays = eachDayOfInterval({ start: startOfWeek(dateInWeek, { weekStartsOn: 1 }), end: endOfWeek(dateInWeek, { weekStartsOn: 1 }) });
     const defaultReturn = { turnId: null, weekDaysWithTheoreticalHours: weekDays.map(d => ({ dateKey: format(d, 'yyyy-MM-dd'), theoreticalHours: 0 })) };
@@ -655,10 +675,10 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
     });
 
     return { turnId: `turn${turnIndex + 1}`, weekDaysWithTheoreticalHours: results };
-};
+}, [getEmployeeById, getActivePeriod]);
 
   
-    const calculateCurrentAnnualComputedHours = (employeeId: string, year: number): number => {
+    const calculateCurrentAnnualComputedHours = useCallback((employeeId: string, year: number): number => {
         const employee = getEmployeeById(employeeId);
         if (!employee) return 0;
 
@@ -705,7 +725,7 @@ const getTheoreticalHoursAndTurn = (employeeId: string, dateInWeek: Date): { tur
         }
 
         return totalComputedHours;
-    };
+    }, [getEmployeeById, weeklyRecords, absenceTypes, getActivePeriod]);
 
     const calculateTheoreticalAnnualWorkHours = useCallback((employeeId: string, year: number): { theoreticalHours: number, baseTheoreticalHours: number, suspensionDetails: any[], workHoursChangeDetails: any[] } => {
         const employee = employees.find(e => e.id === employeeId);
@@ -1090,7 +1110,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     
         while (isBefore(dateToCheck, limit)) {
             const weekId = getWeekId(dateToCheck);
-            const activeEmployeesThisWeek = getActiveEmployeesForDate(dateToCheck, employees);
+            const activeEmployeesThisWeek = getActiveEmployeesForDate(dateToCheck);
     
             if (activeEmployeesThisWeek.length > 0) {
                 const isUnconfirmed = activeEmployeesThisWeek.some(emp =>
@@ -1119,11 +1139,6 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         years.add(currentYear + 2); // Add two future years for planning
         return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
     }, [weeklyRecords]);
-
-  const getWeekId = (d: Date): string => {
-    const monday = startOfWeek(d, { weekStartsOn: 1 });
-    return format(monday, 'yyyy-MM-dd');
-  };
   
   const refreshData = useCallback(() => {
     // This is now just a placeholder. The onSnapshot listeners handle live updates.
@@ -1133,6 +1148,78 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     const freshUsers = await getCollection<AppUser>('users');
     setUsers(freshUsers);
   };
+
+  const calculateEmployeeVacations = useCallback((emp: Employee, year: number = getYear(new Date()), mode: 'confirmed' | 'programmed' = 'confirmed'): { vacationDaysTaken: number, suspensionDays: number, vacationDaysAvailable: number, baseDays: number, carryOverDays: number, suspensionDeduction: number, proratedDays: number } => {
+    if (!emp) return { vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31, baseDays: 31, carryOverDays: 0, suspensionDeduction: 0, proratedDays: 31 };
+
+    const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
+    const suspensionTypeIds = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.id));
+    if (!vacationType) return { vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31, baseDays: 31, carryOverDays: 0, suspensionDeduction: 0, proratedDays: 31 };
+
+    const yearStart = startOfYear(new Date(year, 0, 1));
+    const yearEnd = endOfYear(new Date(year, 11, 31));
+
+    let vacationDaysTaken = 0;
+    let suspensionDays = 0;
+    const vacationDaysSet = new Set<string>();
+
+    if (mode === 'confirmed') {
+        Object.values(weeklyRecords).forEach(record => {
+            const empWeekData = record.weekData[emp.id];
+            const weekYear = getYear(parseISO(record.id));
+
+            if (empWeekData?.confirmed && weekYear === year && empWeekData.days) {
+                Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                    if (dayData.absence === vacationType.abbreviation) {
+                        vacationDaysSet.add(dayStr);
+                    }
+                    if (suspensionTypeIds.has(absenceTypes.find(at => at.abbreviation === dayData.absence)?.id || '')) {
+                        suspensionDays++;
+                    }
+                });
+            }
+        });
+        vacationDaysTaken = vacationDaysSet.size;
+    } else { // 'programmed' mode
+        (emp.employmentPeriods || []).forEach(p => {
+            (p.scheduledAbsences || []).forEach(a => {
+                if (a.endDate) {
+                    eachDayOfInterval({ start: startOfDay(a.startDate), end: startOfDay(a.endDate) }).forEach(day => {
+                        if (getYear(day) === year) {
+                            if (a.absenceTypeId === vacationType.id) {
+                                vacationDaysTaken++;
+                            }
+                            if (suspensionTypeIds.has(a.absenceTypeId)) {
+                                suspensionDays++;
+                            }
+                        }
+                    });
+                }
+            });
+        });
+    }
+
+    const firstPeriodOfYear = emp.employmentPeriods.find(p => isWithinInterval(yearStart, { start: startOfDay(p.startDate as Date), end: p.endDate ? endOfDay(p.endDate as Date) : yearEnd }));
+    const carryOverDays = firstPeriodOfYear?.vacationDays2024 || 0;
+    
+    let proratedDays = 31;
+    let isTransfer = false;
+    
+    const periodInYear = emp.employmentPeriods.find(p => getYear(p.startDate as Date) === year);
+    if(periodInYear && !periodInYear.isTransfer) {
+        const contractDaysInYear = differenceInDays(yearEnd, startOfDay(periodInYear.startDate as Date)) + 1;
+        proratedDays = (31 / 365) * contractDaysInYear;
+    } else if (periodInYear?.isTransfer) {
+        isTransfer = true;
+    }
+    
+    const baseDays = periodInYear?.isTransfer ? 31 - (periodInYear.vacationDaysUsedInAnotherCenter ?? 0) : proratedDays;
+
+    const suspensionDeduction = (suspensionDays / 30) * 2.5;
+    const vacationDaysAvailable = Math.round(baseDays + carryOverDays - suspensionDeduction);
+
+    return { vacationDaysTaken, suspensionDays, vacationDaysAvailable, baseDays, carryOverDays, suspensionDeduction, proratedDays };
+}, [absenceTypes, weeklyRecords]);
 
   const value: DataContextType = {
     employees,
@@ -1158,7 +1245,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     getEmployeeById,
     getActivePeriod,
     getEffectiveWeeklyHours,
-    getActiveEmployeesForDate: (date: Date) => getActiveEmployeesForDate(date, employees),
+    getActiveEmployeesForDate,
     getEmployeeBalancesForWeek,
     getEmployeeFinalBalances,
     getTheoreticalHoursAndTurn,
@@ -1209,35 +1296,3 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 };
 
 export const useDataProvider = () => useContext(DataContext);
-
-  
-
-    
-
-    
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
