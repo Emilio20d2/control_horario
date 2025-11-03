@@ -1093,7 +1093,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             if (holidayDetails && theoreticalHours === 0 && getISODay(day) !== 7) {
                 const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
                 if (contractType?.computesOffDayBag) {
-                    leaveHours = weeklyWorkHours / 5;
+                    leaveHours = roundToNearestQuarter(weeklyWorkHours / 5);
                 }
             }
     
@@ -1373,4 +1373,5 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
