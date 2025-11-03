@@ -439,7 +439,7 @@ export default function MyMessagesPage() {
                     <div>
                         <h2 className="text-lg font-bold">Dirección</h2>
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            Canal para solicitudes y comunicación general con la dirección.
+                            Este es un canal para registrar solicitudes ya habladas en persona. Las cuestiones importantes se tratan siempre cara a cara.
                         </p>
                     </div>
                 </div>
@@ -561,10 +561,10 @@ export default function MyMessagesPage() {
              <Dialog open={isOtherRequestDialogOpen} onOpenChange={setIsOtherRequestDialogOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Solicitar Permiso</DialogTitle>
+                        <DialogTitle>Registrar Permiso (Comunicado Verbalmente)</DialogTitle>
                         <DialogDescription>
                             {otherRequestStep === 1
-                                ? "Confirma que has comunicado tu petición antes de continuar."
+                                ? "Importante: Esta herramienta es solo para registrar un permiso que ya has comunicado verbalmente a la dirección. No es para iniciar una nueva petición."
                                 : "Selecciona un tipo de permiso y la fecha para enviar tu solicitud."}
                         </DialogDescription>
                     </DialogHeader>
@@ -572,7 +572,7 @@ export default function MyMessagesPage() {
                     {otherRequestStep === 1 ? (
                         <div className="py-4 space-y-6">
                             <div className="space-y-4">
-                                <Label className="font-semibold">Antes de hacer una petición, has tenido que comunicarlo a la dirección de la tienda. Indica a quien se lo has comunicado sino lo has hecho antes no puedes comunicarlo por este medio.</Label>
+                                <Label className="font-semibold">¿A quién de la dirección se lo has comunicado?</Label>
                                 <RadioGroup onValueChange={setCommunicatedTo} value={communicatedTo}>
                                     <div className="flex items-center space-x-2">
                                         <RadioGroupItem value="Arantxa Villacampa" id="r1" />
