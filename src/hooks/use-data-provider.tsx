@@ -437,29 +437,27 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 }, [appUser, employees]);
 
 const getActiveEmployeesForDate = useCallback((date: Date): Employee[] => {
-    const checkDateStart = startOfDay(date);
-    const checkDateEnd = endOfDay(date);
+    const checkDate = startOfDay(date);
     return employees.filter(emp => {
         if (!emp.employmentPeriods) return false;
         return emp.employmentPeriods.some(p => {
             const periodStart = startOfDay(p.startDate as Date);
-            const periodEnd = p.endDate ? endOfDay(p.endDate as Date) : new Date('9999-12-31');
-            // An employee is active if their contract period overlaps with the date in question.
-            return isAfter(periodEnd, checkDateStart) && isBefore(periodStart, checkDateEnd);
+            const periodEnd = p.endDate ? startOfDay(p.endDate as Date) : new Date('9999-12-31');
+            return !isAfter(periodStart, checkDate) && isAfter(periodEnd, checkDate);
         });
     });
 }, [employees]);
+
 
 useEffect(() => {
     if (loading || !appUser || appUser.role !== 'admin' || Object.keys(weeklyRecords).length === 0) {
         setUnconfirmedWeeksDetails([]);
         return;
     }
-
+    
     const today = startOfWeek(new Date(), { weekStartsOn: 1 });
     const details: UnconfirmedWeekDetail[] = [];
 
-    // Rule: Only consider employees active TODAY for checking past weeks.
     const currentlyActiveEmployees = employees.filter(emp => 
         emp.employmentPeriods.some(p => !p.endDate || isAfter(p.endDate as Date, new Date()))
     );
@@ -469,25 +467,17 @@ useEffect(() => {
             const weekDate = parseISO(weekId);
             return isBefore(weekDate, today) && getISOWeekYear(weekDate) >= 2025;
         })
-        .sort((a, b) => b.localeCompare(a)); 
-
+        .sort((a, b) => b.localeCompare(a));
+    
     for (const weekId of pastWeekIds) {
-        const weekDate = parseISO(weekId);
-        
         const unconfirmedEmployeeNames = currentlyActiveEmployees
             .filter(emp => {
-                // Employee must have been active in the past week being checked
-                const isActiveInPastWeek = emp.employmentPeriods.some(p => 
-                    isWithinInterval(weekDate, { start: p.startDate as Date, end: p.endDate as Date || new Date('9999-12-31') })
-                );
-
-                if (!isActiveInPastWeek) return false;
-
                 const empRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
-                return !empRecord || !empRecord.confirmed;
+                // La notificación salta si hay un registro para un empleado activo y NO está confirmado.
+                return empRecord && empRecord.confirmed === false;
             })
             .map(emp => emp.name);
-        
+
         if (unconfirmedEmployeeNames.length > 0) {
             details.push({
                 weekId: weekId,
@@ -497,7 +487,6 @@ useEffect(() => {
     }
 
     setUnconfirmedWeeksDetails(details);
-
 }, [loading, appUser, weeklyRecords, employees, getWeekId]);
 
 
@@ -1387,3 +1376,6 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 };
 
 export const useDataProvider = () => useContext(DataContext);
+
+
+    
