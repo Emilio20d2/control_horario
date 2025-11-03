@@ -126,21 +126,14 @@ export async function processAndSeedData() {
 
     for (const docId in originalEmployeesData) {
         const employee: Employee = originalEmployeesData[docId];
-        const employeeNameUpper = employee.name.toUpperCase();
-        let employeeNumber: string | undefined = undefined;
-
-        for (const fullName in employeeNumberMapping) {
-            if (fullName.toUpperCase().includes(employeeNameUpper)) {
-                employeeNumber = employeeNumberMapping[fullName];
-                employeesFoundInMapping.add(fullName);
-                break; 
-            }
-        }
+        const employeeNameUpper = employee.name.toUpperCase().trim();
+        const employeeNumber: string | undefined = employeeNumberMapping[employeeNameUpper as keyof typeof employeeNumberMapping];
 
         if (employeeNumber) {
             employee.employeeNumber = employeeNumber;
             // Use employeeNumber as the key for the new data structure
             newEmployeesData[employeeNumber] = employee;
+            employeesFoundInMapping.add(employeeNameUpper);
         } else {
             console.warn(`Warning: Employee number not found for ${employee.name}. This employee will be skipped.`);
         }
@@ -150,7 +143,7 @@ export async function processAndSeedData() {
     dataToImport.employees = newEmployeesData;
 
     const employeesToAddToEventual = Object.entries(employeeNumberMapping)
-        .filter(([fullName]) => !employeesFoundInMapping.has(fullName))
+        .filter(([fullName]) => !employeesFoundInMapping.has(fullName.toUpperCase().trim()))
         .map(([fullName, number]) => ({
             name: fullName.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' '),
             employeeNumber: number,
