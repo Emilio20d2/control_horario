@@ -415,144 +415,7 @@ const pendingCorrectionRequestCount = useMemo(() => {
     return correctionRequests.filter(r => r.status === 'pending').length;
 }, [correctionRequests, appUser]);
 
-
-  const getWeekId = (d: Date): string => {
-    const monday = startOfWeek(d, { weekStartsOn: 1 });
-    return format(monday, 'yyyy-MM-dd');
-  };
-  
-  const refreshData = useCallback(() => {
-    // This is now just a placeholder. The onSnapshot listeners handle live updates.
-  }, []);
-
-  const refreshUsers = async () => {
-    const freshUsers = await getCollection<AppUser>('users');
-    setUsers(freshUsers);
-  };
-
-  const calculateEmployeeVacations = useCallback((emp: Employee, calculationYear?: number, mode: 'confirmed' | 'programmed' = 'confirmed') => {
-    const year = calculationYear ?? getYear(new Date());
-    const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
-    const suspensionTypeIds = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.id));
-    const suspensionAbbrs = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.abbreviation));
-
-    const defaultReturn = { vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31, baseDays: 31, carryOverDays: 0, suspensionDeduction: 0, proratedDays: 31 };
-    if (!vacationType) return defaultReturn;
-
-    // --- Create a definitive map of the employee's year ---
-    const currentYearDayMap = new Map<string, 'V' | 'S' | 'W'>(); // Vacation, Suspension, Work
-
-    // 1. Base layer: Programmed Absences from Employee record.
-    emp.employmentPeriods?.forEach(period => {
-      (period.scheduledAbsences || []).forEach(absence => {
-          if (!absence.endDate || !absence.startDate || !isValid(absence.startDate) || !isValid(absence.endDate)) return;
-          const absenceCode = suspensionTypeIds.has(absence.absenceTypeId) ? 'S' : (absence.absenceTypeId === vacationType.id ? 'V' : null);
-          if (!absenceCode) return;
-          eachDayOfInterval({ start: startOfDay(absence.startDate), end: endOfDay(absence.endDate) }).forEach(day => {
-              if (getYear(day) === year) {
-                  currentYearDayMap.set(format(day, 'yyyy-MM-dd'), absenceCode);
-              }
-          });
-      });
-    });
-    
-    // 2. Override layer: Confirmed Absences from Weekly Records. This is the source of truth.
-    Object.values(weeklyRecords).forEach(record => {
-      const empWeekData = record.weekData[emp.id];
-      if (!empWeekData?.days || !empWeekData.confirmed) return;
-      
-      Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
-          if (getYear(parseISO(dayStr)) !== year) return;
-          const dayKey = format(parseISO(dayStr), 'yyyy-MM-dd');
-          
-          if (suspensionAbbrs.has(dayData.absence)) {
-              currentYearDayMap.set(dayKey, 'S');
-          } else if (dayData.absence === vacationType.abbreviation) {
-              currentYearDayMap.set(dayKey, 'V');
-          } else if (dayData.absence !== 'ninguna') {
-              // If the day was programmed as a vacation/suspension but is confirmed as something else, mark as worked/other.
-              currentYearDayMap.set(dayKey, 'W');
-          } else if (dayData.workedHours > 0 || dayData.theoreticalHours > 0) {
-              // Also mark as worked if it was programmed but is now a workday.
-              currentYearDayMap.set(dayKey, 'W');
-          }
-      });
-    });
-    
-    // 3. Count from the final map
-    let vacationDaysTakenInCurrentYear = 0;
-    let suspensionDaysInCurrentYear = 0;
-    currentYearDayMap.forEach(value => {
-        if (value === 'S') suspensionDaysInCurrentYear++;
-        else if (value === 'V') vacationDaysTakenInCurrentYear++;
-    });
-
-    // --- Calculate Carry Over from PREVIOUS YEAR ---
-    let carryOverDays = 0;
-    const previousYear = year - 1;
-
-    if (year === 2025) {
-      const firstPeriod = emp.employmentPeriods?.[0];
-      carryOverDays = firstPeriod?.vacationDays2024 ?? 0;
-    } else {
-      const { vacationDaysAvailable: prevYearAvailable, vacationDaysTaken: prevYearTaken } = calculateEmployeeVacations(emp, previousYear, 'confirmed');
-      carryOverDays = prevYearAvailable - prevYearTaken;
-    }
-    
-    // --- Calculate Prorated Days for CURRENT YEAR ---
-    let proratedDays = 0;
-    const firstPeriod = emp.employmentPeriods?.[0];
-    if (!firstPeriod) return defaultReturn;
-    
-    const startDateYear = getYear(firstPeriod.startDate as Date);
-    const isTransferInCurrentYear = firstPeriod.isTransfer && year === startDateYear;
-    
-    if (isTransferInCurrentYear) {
-        proratedDays = 31;
-    } else {
-        const currentYearStart = startOfYear(new Date(year, 0, 1));
-        const currentYearEnd = endOfYear(new Date(year, 11, 31));
-        let contractDaysInCurrentYear = 0;
-        emp.employmentPeriods?.filter(p => {
-            const pStart = p.startDate as Date;
-            const pEnd = p.endDate ? (p.endDate as Date) : currentYearEnd;
-            return getYear(pStart) <= year && getYear(pEnd) >= year;
-        }).forEach(p => {
-            const pStart = p.startDate as Date;
-            const pEnd = p.endDate ? (p.endDate as Date) : currentYearEnd;
-            const effectiveStart = isAfter(pStart, currentYearStart) ? pStart : currentYearStart;
-            const effectiveEnd = isBefore(pEnd, currentYearEnd) ? pEnd : currentYearEnd;
-            if (isAfter(effectiveStart, effectiveEnd)) return;
-            contractDaysInCurrentYear += differenceInDays(effectiveEnd, effectiveStart) + 1;
-        });
-
-        const daysInYear = differenceInDays(currentYearEnd, currentYearStart) + 1;
-        proratedDays = (31 / daysInYear) * contractDaysInCurrentYear;
-    }
-    
-    // --- Calculate Final Available Days ---
-    const suspensionDeduction = (suspensionDaysInCurrentYear / 30) * 2.5;
-    let totalAvailable = proratedDays + carryOverDays - suspensionDeduction;
-
-    if (isTransferInCurrentYear) {
-      const vacationDaysUsedInAnotherCenter = firstPeriod.vacationDaysUsedInAnotherCenter ?? 0;
-      totalAvailable -= vacationDaysUsedInAnotherCenter;
-    }
-
-    return {
-        vacationDaysTaken: vacationDaysTakenInCurrentYear,
-        suspensionDays: suspensionDaysInCurrentYear,
-        vacationDaysAvailable: Math.round(totalAvailable),
-        baseDays: 31,
-        carryOverDays: carryOverDays,
-        suspensionDeduction: suspensionDeduction,
-        proratedDays: proratedDays,
-    };
-}, [absenceTypes, weeklyRecords]);
-
-
-
-  const getActiveEmployeesForDate = useCallback((date: Date): Employee[] => {
+  const getActiveEmployeesForDate = useCallback((date: Date, employees: Employee[]): Employee[] => {
     const weekStart = startOfDay(startOfWeek(date, { weekStartsOn: 1 }));
     const weekEnd = endOfDay(endOfWeek(date, { weekStartsOn: 1 }));
 
@@ -564,41 +427,38 @@ const pendingCorrectionRequestCount = useMemo(() => {
             return isAfter(periodEnd, weekStart) && isBefore(periodStart, weekEnd);
         })
     );
-}, [employees]);
+}, []);
 
-
-useEffect(() => {
+  useEffect(() => {
     if (loading) return;
 
     const details: { weekId: string; employeeNames: string[] }[] = [];
-    const auditStartDate = startOfDay(new Date('2025-01-27'));
+    const today = new Date();
+    const startOfThisWeek = startOfWeek(today, { weekStartsOn: 1 });
 
-    const sortedWeekIds = Object.keys(weeklyRecords).sort((a,b) => b.localeCompare(a)); // Sort descending
-
-    for (const weekId of sortedWeekIds) {
+    const pastWeekRecords = Object.keys(weeklyRecords).filter(weekId => {
         const weekDate = parseISO(weekId);
-        if (getYear(weekDate) < 2025) continue;
-        
-        if (isAfter(weekDate, auditStartDate) || isSameDay(weekDate, auditStartDate)) {
-            const activeEmployeesThisWeek = getActiveEmployeesForDate(weekDate);
-            if (activeEmployeesThisWeek.length === 0) continue;
+        return isBefore(weekDate, startOfThisWeek);
+    });
 
-            const weekRecord = weeklyRecords[weekId];
-            const isUnconfirmed = activeEmployeesThisWeek.some(emp => !(weekRecord?.weekData?.[emp.id]?.confirmed ?? false));
-            
-            if (isUnconfirmed) {
-                details.push({
-                    weekId,
-                    employeeNames: activeEmployeesThisWeek.filter(emp => !(weekRecord?.weekData?.[emp.id]?.confirmed ?? false)).map(e => e.name)
-                });
-            }
+    for (const weekId of pastWeekRecords) {
+        const activeEmployeesThisWeek = getActiveEmployeesForDate(parseISO(weekId), employees);
+        if (activeEmployeesThisWeek.length === 0) continue;
+
+        const weekRecord = weeklyRecords[weekId];
+        const unconfirmedEmployees = activeEmployeesThisWeek.filter(emp => !(weekRecord?.weekData?.[emp.id]?.confirmed ?? false));
+        
+        if (unconfirmedEmployees.length > 0) {
+            details.push({
+                weekId,
+                employeeNames: unconfirmedEmployees.map(e => e.name)
+            });
         }
     }
     
-    setUnconfirmedWeeksDetails(details);
+    setUnconfirmedWeeksDetails(details.sort((a, b) => b.weekId.localeCompare(a.weekId)));
 
 }, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
-
 
 
   const getEmployeeById = (id: string) => employees.find(e => e.id === id);
@@ -1225,17 +1085,12 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, contractTypes, holidays, absenceTypes, getEffectiveWeeklyHours]);
 
     const findNextUnconfirmedWeek = (startDate: Date): string | null => {
-        const auditStartDate = startOfDay(new Date('2025-01-27'));
         let dateToCheck = startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
-        if (isBefore(dateToCheck, auditStartDate)) {
-            dateToCheck = auditStartDate;
-        }
-
         const limit = addWeeks(new Date(), 104);
     
         while (isBefore(dateToCheck, limit)) {
             const weekId = getWeekId(dateToCheck);
-            const activeEmployeesThisWeek = getActiveEmployeesForDate(dateToCheck);
+            const activeEmployeesThisWeek = getActiveEmployeesForDate(dateToCheck, employees);
     
             if (activeEmployeesThisWeek.length > 0) {
                 const isUnconfirmed = activeEmployeesThisWeek.some(emp =>
@@ -1265,6 +1120,20 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         return Array.from(years).filter(y => y >= 2025).sort((a,b) => b - a);
     }, [weeklyRecords]);
 
+  const getWeekId = (d: Date): string => {
+    const monday = startOfWeek(d, { weekStartsOn: 1 });
+    return format(monday, 'yyyy-MM-dd');
+  };
+  
+  const refreshData = useCallback(() => {
+    // This is now just a placeholder. The onSnapshot listeners handle live updates.
+  }, []);
+
+  const refreshUsers = async () => {
+    const freshUsers = await getCollection<AppUser>('users');
+    setUsers(freshUsers);
+  };
+
   const value: DataContextType = {
     employees,
     holidays,
@@ -1289,7 +1158,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     getEmployeeById,
     getActivePeriod,
     getEffectiveWeeklyHours,
-    getActiveEmployeesForDate,
+    getActiveEmployeesForDate: (date: Date) => getActiveEmployeesForDate(date, employees),
     getEmployeeBalancesForWeek,
     getEmployeeFinalBalances,
     getTheoreticalHoursAndTurn,
@@ -1366,3 +1235,9 @@ export const useDataProvider = () => useContext(DataContext);
 
 
 
+
+
+
+
+
+    
