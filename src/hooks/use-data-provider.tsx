@@ -450,19 +450,18 @@ useEffect(() => {
         return;
     }
 
-    const currentWeekId = getWeekId(new Date());
-    const detailsMap = new Map<string, UnconfirmedWeekDetail>();
-
     const currentlyActiveEmployees = employees.filter(emp =>
         emp.employmentPeriods.some(p => !p.endDate || isAfter(p.endDate as Date, new Date()))
     );
-
     const activeEmployeeIds = new Set(currentlyActiveEmployees.map(e => e.id));
+
+    const currentWeekId = getWeekId(new Date());
+    const detailsMap = new Map<string, UnconfirmedWeekDetail>();
 
     // Iterate over all historical weekly records
     for (const weekId in weeklyRecords) {
-        // Skip current week and future weeks
-        if (weekId === currentWeekId || isAfter(parseISO(weekId), new Date())) {
+        // Skip current week and future weeks using string comparison
+        if (weekId >= currentWeekId) {
             continue;
         }
 
@@ -1045,14 +1044,13 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     const processEmployeeWeekData = useCallback((emp: Employee, weekDays: Date[], weekId: string): DailyEmployeeData | null => {
       const dbRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
   
-      // If the record is confirmed, return it as is.
-      if (dbRecord?.confirmed) {
-          return dbRecord;
-      }
-  
       const activePeriod = getActivePeriod(emp.id, weekDays[0]);
       if (!activePeriod) {
           return null; // Don't create data for inactive employees
+      }
+  
+      if (dbRecord?.confirmed) {
+          return dbRecord;
       }
   
       const baseDays = dbRecord?.days;
