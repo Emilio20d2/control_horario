@@ -54,6 +54,7 @@ import {
     deleteHolidayReport,
 } from '@/lib/services/settingsService';
 import { addDays, addWeeks, differenceInCalendarISOWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, getISOWeekYear, isValid } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp, collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
@@ -1396,6 +1397,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
