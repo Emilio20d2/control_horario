@@ -439,7 +439,7 @@ export default function MyMessagesPage() {
                     <div>
                         <h2 className="text-lg font-bold">Dirección</h2>
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            Canal para comunicar incidencias sobre tus horas o la aplicación.
+                            Canal para solicitudes y comunicación general con la dirección.
                         </p>
                     </div>
                 </div>
@@ -466,7 +466,7 @@ export default function MyMessagesPage() {
                     <h1 className="text-2xl font-bold tracking-tight font-headline">
                         Mis Mensajes
                     </h1>
-                     <Button size="sm" variant="secondary" onClick={handleOpenOtherRequestDialog}><CalendarClock className="mr-2 h-4 w-4"/>Otras Solicitudes</Button>
+                     <Button size="sm" onClick={handleOpenOtherRequestDialog}><CalendarClock className="mr-2 h-4 w-4"/>Solicitudes</Button>
                 </div>
                 
                 <Card className="flex flex-col flex-grow h-[calc(100vh-12rem)] bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background">
