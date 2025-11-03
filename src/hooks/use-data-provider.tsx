@@ -410,7 +410,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
 const getActiveEmployeesForDate = useCallback((date: Date): Employee[] => {
     const checkDate = startOfDay(date);
-
     return employees.filter(emp => {
         if (!emp.employmentPeriods) return false;
         return emp.employmentPeriods.some(p => {
@@ -421,6 +420,31 @@ const getActiveEmployeesForDate = useCallback((date: Date): Employee[] => {
     });
 }, [employees]);
 
+const findNextUnconfirmedWeek = useCallback((startDate: Date): string | null => {
+    let dateToCheck = startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
+    const limit = addWeeks(new Date(), 104); // Search limit of 2 years
+
+    while (isBefore(dateToCheck, limit)) {
+        const currentWeekId = getWeekId(dateToCheck);
+        const activeEmployeesThisWeek = getActiveEmployeesForDate(dateToCheck);
+
+        if (activeEmployeesThisWeek.length > 0) {
+            const isUnconfirmed = activeEmployeesThisWeek.some(emp =>
+                !(weeklyRecords[currentWeekId]?.weekData?.[emp.id]?.confirmed ?? false)
+            );
+
+            if (isUnconfirmed) {
+                return currentWeekId;
+            }
+        }
+
+        dateToCheck = addWeeks(dateToCheck, 1);
+    }
+
+    return null;
+}, [weeklyRecords, getActiveEmployeesForDate, getWeekId]);
+
+
 useEffect(() => {
     if (loading || !appUser || appUser.role !== 'admin' || Object.keys(weeklyRecords).length === 0) {
         setUnconfirmedWeeksDetails([]);
@@ -430,20 +454,17 @@ useEffect(() => {
     const today = startOfWeek(new Date(), { weekStartsOn: 1 });
     const details: UnconfirmedWeekDetail[] = [];
 
-    // 1. Get all past weeks that have records and are from 2025 onwards.
     const pastWeekIds = Object.keys(weeklyRecords)
         .filter(weekId => {
             const weekDate = parseISO(weekId);
             return isBefore(weekDate, today) && getISOWeekYear(weekDate) >= 2025;
         })
-        .sort((a, b) => b.localeCompare(a)); // Process more recent weeks first.
+        .sort((a, b) => b.localeCompare(a)); 
 
-    // 2. For each of these weeks, check if it's fully confirmed.
     for (const weekId of pastWeekIds) {
         const weekDate = parseISO(weekId);
         const activeEmployeesForWeek = getActiveEmployeesForDate(weekDate);
 
-        // If there were no employees active that week, skip it.
         if (activeEmployeesForWeek.length === 0) {
             continue;
         }
@@ -451,13 +472,10 @@ useEffect(() => {
         const unconfirmedEmployeeNames = activeEmployeesForWeek
             .filter(emp => {
                 const empRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
-                // A week is unconfirmed for an employee if their record doesn't exist or is explicitly not confirmed.
-                // This directly checks the condition for the "Confirmar" button being active.
                 return !empRecord || !empRecord.confirmed;
             })
             .map(emp => emp.name);
         
-        // 3. If any employee is unconfirmed, add to notifications and stop checking this week.
         if (unconfirmedEmployeeNames.length > 0) {
             details.push({
                 weekId: weekId,
@@ -612,29 +630,6 @@ const getEmployeeBalancesForWeek = useCallback((employeeId: string, weekId: stri
     return { ...currentBalances, total: currentBalances.ordinary + currentBalances.holiday + currentBalances.leave };
 }, [employees, weeklyRecords, calculateBalancePreviewCallback]);
 
-const findNextUnconfirmedWeek = useCallback((startDate: Date): string | null => {
-    let dateToCheck = startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
-    const limit = addWeeks(new Date(), 104); // Search limit of 2 years
-
-    while (isBefore(dateToCheck, limit)) {
-        const currentWeekId = getWeekId(dateToCheck);
-        const activeEmployeesThisWeek = getActiveEmployeesForDate(dateToCheck);
-
-        if (activeEmployeesThisWeek.length > 0) {
-            const isUnconfirmed = activeEmployeesThisWeek.some(emp =>
-                !(weeklyRecords[currentWeekId]?.weekData?.[emp.id]?.confirmed ?? false)
-            );
-
-            if (isUnconfirmed) {
-                return currentWeekId;
-            }
-        }
-
-        dateToCheck = addWeeks(dateToCheck, 1);
-    }
-
-    return null;
-}, [weeklyRecords, getActiveEmployeesForDate, getWeekId]);
   
 const getEmployeeFinalBalances = useCallback((employeeId: string): { ordinary: number, holiday: number, leave: number, total: number } => {
     const employee = employees.find(e => e.id === employeeId);
@@ -1132,6 +1127,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             weeklyHoursOverride: dbRecord?.weeklyHoursOverride ?? null,
             isDifference: dbRecord?.isDifference ?? false,
             hasPreregistration: !!prefilledEmployeeData,
+            // Campos para auditoría desde Excel
             expectedOrdinaryImpact: prefilledEmployeeData?.expectedOrdinaryImpact,
             expectedHolidayImpact: prefilledEmployeeData?.expectedHolidayImpact,
             expectedLeaveImpact: prefilledEmployeeData?.expectedLeaveImpact,
