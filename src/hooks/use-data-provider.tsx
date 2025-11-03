@@ -437,13 +437,15 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 }, [appUser, employees]);
 
 const getActiveEmployeesForDate = useCallback((date: Date): Employee[] => {
-    const checkDate = startOfDay(date);
+    const checkDateStart = startOfDay(date);
+    const checkDateEnd = endOfDay(date);
     return employees.filter(emp => {
         if (!emp.employmentPeriods) return false;
         return emp.employmentPeriods.some(p => {
             const periodStart = startOfDay(p.startDate as Date);
             const periodEnd = p.endDate ? endOfDay(p.endDate as Date) : new Date('9999-12-31');
-            return isWithinInterval(checkDate, { start: periodStart, end: periodEnd });
+            // An employee is active if their contract period overlaps with the date in question.
+            return isAfter(periodEnd, checkDateStart) && isBefore(periodStart, checkDateEnd);
         });
     });
 }, [employees]);
