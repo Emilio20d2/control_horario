@@ -62,6 +62,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { db } from '@/lib/firebase';
 import { getFinalBalancesForEmployee, getVacationSummaryForEmployee } from '@/lib/services/employee-data-service';
 
+interface UnconfirmedWeekDetail {
+    weekId: string;
+    employeeNames: string[];
+}
+
 interface DataContextType {
   employees: Employee[];
   holidays: Holiday[];
@@ -77,6 +82,7 @@ interface DataContextType {
   conversations: Conversation[];
   vacationCampaigns: VacationCampaign[];
   correctionRequests: CorrectionRequest[];
+  unconfirmedWeeksDetails: UnconfirmedWeekDetail[];
   loading: boolean;
   unreadMessageCount: number;
   pendingCorrectionRequestCount: number;
@@ -151,6 +157,7 @@ const DataContext = createContext<DataContextType>({
   conversations: [],
   vacationCampaigns: [],
   correctionRequests: [],
+  unconfirmedWeeksDetails: [],
   loading: true,
   unreadMessageCount: 0,
   pendingCorrectionRequestCount: 0,
@@ -223,6 +230,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [vacationCampaigns, setVacationCampaigns] = useState<VacationCampaign[]>([]);
   const [correctionRequests, setCorrectionRequests] = useState<CorrectionRequest[]>([]);
+  const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<UnconfirmedWeekDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSteps, setLoadingSteps] = useState<Record<string, boolean>>({
     static: false,
@@ -414,6 +422,44 @@ const getActiveEmployeesForDate = useCallback((date: Date) => {
         })
     );
 }, [employees]);
+
+useEffect(() => {
+    if (loading || !appUser || appUser.role !== 'admin') {
+        setUnconfirmedWeeksDetails([]);
+        return;
+    }
+
+    const today = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const details: UnconfirmedWeekDetail[] = [];
+
+    const pastWeekIds = Object.keys(weeklyRecords)
+        .filter(weekId => {
+            const weekDate = parseISO(weekId);
+            return isBefore(weekDate, today) && getYear(weekDate) >= 2025;
+        })
+        .sort((a,b) => b.localeCompare(a));
+    
+    pastWeekIds.forEach(weekId => {
+        const weekDate = parseISO(weekId);
+        const activeEmployeesForWeek = getActiveEmployeesForDate(weekDate);
+
+        if (activeEmployeesForWeek.length > 0) {
+            const unconfirmedEmployees = activeEmployeesForWeek
+                .filter(emp => !weeklyRecords[weekId]?.weekData?.[emp.id]?.confirmed)
+                .map(emp => emp.name);
+
+            if (unconfirmedEmployees.length > 0) {
+                details.push({
+                    weekId: weekId,
+                    employeeNames: unconfirmedEmployees,
+                });
+            }
+        }
+    });
+
+    setUnconfirmedWeeksDetails(details);
+
+}, [loading, weeklyRecords, employees, appUser, getActiveEmployeesForDate]);
 
 
 // Memoized values and functions that depend on state
@@ -1236,6 +1282,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     conversations,
     vacationCampaigns,
     correctionRequests,
+    unconfirmedWeeksDetails,
     loading,
     unreadMessageCount,
     pendingCorrectionRequestCount,

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useDataProvider } from '@/hooks/use-data-provider';
@@ -8,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { format, parseISO, addWeeks, startOfWeek, endOfWeek, isAfter, isSameDay, isBefore, isValid, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
-import { AlertTriangle, ArrowRight, CalendarClock, Mail, User, Info, CalendarRange, UserCheck, MessageCircle } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarClock, Mail, User, Info, CalendarRange, UserCheck, MessageCircle, Bell } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo, useState, useCallback } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -25,6 +24,7 @@ export default function HomePage() {
         employees, 
         absenceTypes,
         employeeRecord,
+        unconfirmedWeeksDetails
     } = useDataProvider();
     const { appUser } = useAuth();
     
@@ -124,6 +124,38 @@ export default function HomePage() {
                 </div>
                 <div className="grid gap-6 auto-rows-fr sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     
+                    {unconfirmedWeeksDetails.length > 0 && (
+                        <Card className="flex flex-col bg-gradient-to-br from-yellow-50 to-white dark:from-yellow-950/30 dark:to-background">
+                            <CardHeader className="p-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-destructive/10 p-3 rounded-full">
+                                        <Bell className="h-6 w-6 text-destructive" />
+                                    </div>
+                                    <CardTitle>Semanas Pendientes</CardTitle>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="flex-grow p-3 space-y-2">
+                                <ScrollArea className="h-48">
+                                    <div className="space-y-2">
+                                        {unconfirmedWeeksDetails.map(week => (
+                                            <Link key={week.weekId} href={`/schedule?week=${week.weekId}`}>
+                                                <div className="flex items-center justify-between p-3 rounded-md border bg-background/50 hover:bg-muted">
+                                                    <div>
+                                                        <p className="font-semibold text-sm">Semana del {format(parseISO(week.weekId), 'dd/MM/yyyy')}</p>
+                                                        <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                                            Pendiente: {week.employeeNames.join(', ')}
+                                                        </p>
+                                                    </div>
+                                                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     <Card className="flex flex-col bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
                         <CardHeader className="p-3">
                             <div className="flex items-center gap-3">
