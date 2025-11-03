@@ -120,18 +120,18 @@ export default function HelpPage() {
                <div className="flex items-start gap-3">
                 <CalendarClock className="h-5 w-5 mt-1 text-muted-foreground" />
                 <div>
-                  <h4 className="font-semibold">¿Cómo pido permisos cortos (Asuntos Propios, Horas Médicas, etc.)?</h4>
+                  <h4 className="font-semibold">¿Cómo registro permisos cortos (Asuntos Propios, Horas Médicas, etc.)?</h4>
                    <p className="text-sm text-muted-foreground mb-2">
-                    Para permisos de corta duración que ya has comunicado verbalmente, utiliza la función de "Otras Solicitudes".
+                    Para registrar un permiso de corta duración que ya has comunicado verbalmente a la dirección, utiliza la función de "Solicitudes".
                   </p>
                   <ol className="list-decimal list-inside space-y-2 text-sm">
                     <li>Ve a la página <Badge variant="outline">Mis Mensajes</Badge>.</li>
-                    <li>Pulsa el botón <Badge variant="secondary">Otras Solicitudes</Badge> en la esquina superior derecha.</li>
-                    <li>Primero, confirma a quién de la dirección se lo has comunicado.</li>
+                    <li>Pulsa el botón <Badge variant="secondary">Solicitudes</Badge> en la esquina superior derecha.</li>
+                    <li>**Importante:** Primero, confirma a quién de la dirección se lo has comunicado verbalmente.</li>
                     <li>Selecciona el tipo de permiso (Asuntos Propios, Horas Médicas, etc.).</li>
                     <li>Elige el/los día(s) en el calendario.</li>
                     <li>Añade el motivo o justificación (y la hora si es una consulta médica).</li>
-                    <li>Envía la solicitud para que quede registrada.</li>
+                    <li>Envía la solicitud para que quede registrada formalmente.</li>
                   </ol>
                 </div>
               </div>
