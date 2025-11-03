@@ -446,6 +446,7 @@ useEffect(() => {
         return;
     }
     
+    // 1. Get employees currently active
     const currentlyActiveEmployees = employees.filter(emp =>
         emp.employmentPeriods.some(p => !p.endDate || isAfter(p.endDate as Date, new Date()))
     );
@@ -453,17 +454,19 @@ useEffect(() => {
     const currentWeekId = getWeekId(new Date());
     const details: UnconfirmedWeekDetail[] = [];
 
+    // 2. Iterate over all recorded weeks
     const pastWeekIds = Object.keys(weeklyRecords)
         .filter(weekId => {
-            return weekId !== currentWeekId && getISOWeekYear(parseISO(weekId)) >= 2025;
+             const weekDate = parseISO(weekId);
+             return weekId !== currentWeekId && getISOWeekYear(weekDate) >= 2025;
         })
-        .sort((a, b) => b.localeCompare(a)); // Sort descending to show recent weeks first
+        .sort((a, b) => b.localeCompare(a)); // Sort descending
     
     for (const weekId of pastWeekIds) {
         const unconfirmedEmployeeNames = currentlyActiveEmployees
             .filter(emp => {
                 const empRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
-                // A week is pending if there is a record for an active employee and it's not confirmed
+                // A week is pending if there is a record for a currently active employee and it's not confirmed.
                 return empRecord && empRecord.confirmed === false;
             })
             .map(emp => emp.name);
