@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { ReactNode } from 'react';
@@ -26,7 +25,8 @@ import {
   Mail,
   MessageSquareWarning,
   CalendarClock,
-  Home
+  Home,
+  BookUser
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -68,7 +68,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     if (authLoading || !appUser) return;
   
     const employeePages = ['/my-profile', '/my-schedule', '/my-messages', '/help'];
-    const adminPages = ['/home', '/dashboard', '/schedule', '/employees', '/listings', '/vacations', '/calendar', '/messages', '/settings'];
+    const adminPages = ['/home', '/dashboard', '/schedule', '/employees', '/listings', '/vacations', '/calendar', '/messages', '/settings', '/guide'];
   
     if (appUser.trueRole === 'admin') {
       if (viewMode === 'employee' && adminPages.some(p => pathname.startsWith(p))) {
@@ -119,6 +119,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const mobileAdminNavItems = [
     { href: '/home', label: 'Inicio', icon: Home, notification: unconfirmedWeeksDetails.length > 0 },
     ...adminNavItems,
+    { href: '/guide', label: 'Guía', icon: BookUser },
   ];
 
   const menuItems = viewMode === 'admin' ? adminNavItems : employeeMenuItems;
@@ -229,7 +230,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
                             </span>
                         )}
                     </Link>
-                  
+                    <Link
+                        href="/guide"
+                        className={cn(
+                            'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative flex-col text-center h-16 w-16 sm:h-auto sm:w-auto',
+                            pathname.startsWith('/guide')
+                                ? 'bg-primary text-primary-foreground font-semibold'
+                                : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+                        )}
+                    >
+                        <BookUser className="h-5 w-5" />
+                        <span className="text-xs font-medium">Guía</span>
+                    </Link>
                 </div>
               </TooltipProvider>
             )}
