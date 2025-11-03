@@ -1,5 +1,4 @@
 
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -462,11 +461,11 @@ const getEffectiveWeeklyHours = useCallback((period: EmploymentPeriod | null, da
     return effectiveRecord?.weeklyHours || 0;
 }, [safeParseDate]);
 
-const getActiveEmployeesForDate = useCallback((date: Date) => {
+const getActiveEmployeesForDate = useCallback((date: Date, employeeList: Employee[]) => {
     const weekStart = startOfDay(startOfWeek(date, { weekStartsOn: 1 }));
     const weekEnd = endOfDay(endOfWeek(date, { weekStartsOn: 1 }));
 
-    return employees.filter(emp => 
+    return employeeList.filter(emp => 
         emp.employmentPeriods.some(p => {
             const periodStart = startOfDay(p.startDate as Date);
             const periodEnd = p.endDate ? endOfDay(p.endDate as Date) : new Date('9999-12-31');
@@ -474,7 +473,7 @@ const getActiveEmployeesForDate = useCallback((date: Date) => {
             return isAfter(periodEnd, weekStart) && isBefore(periodStart, weekEnd);
         })
     );
-}, [employees]);
+}, []);
 
 
 // This effect calculates unconfirmed week details
@@ -485,29 +484,21 @@ useEffect(() => {
     const today = new Date();
     const startOfThisWeek = startOfWeek(today, { weekStartsOn: 1 });
 
-    const pastWeekRecords = Object.keys(weeklyRecords).filter(weekId => {
+    const pastWeekRecordsIds = Object.keys(weeklyRecords).filter(weekId => {
         const weekDate = parseISO(weekId);
         return isBefore(weekDate, startOfThisWeek);
     });
 
-    for (const weekId of pastWeekRecords) {
+    for (const weekId of pastWeekRecordsIds) {
         const weekDate = parseISO(weekId);
-        const activeEmployeesThisWeek = getActiveEmployeesForDate(weekDate);
+        const activeEmployeesThisWeek = getActiveEmployeesForDate(weekDate, employees);
         
         if (activeEmployeesThisWeek.length === 0) continue;
 
         const weekRecord = weeklyRecords[weekId];
         
-        if (!weekRecord) {
-             details.push({
-                weekId,
-                employeeNames: activeEmployeesThisWeek.map(e => e.name)
-            });
-            continue;
-        }
-
         const unconfirmedEmployees = activeEmployeesThisWeek.filter(emp => 
-            !(weekRecord.weekData?.[emp.id]?.confirmed ?? false)
+            !(weekRecord?.weekData?.[emp.id]?.confirmed ?? false)
         );
         
         if (unconfirmedEmployees.length > 0) {
@@ -1110,7 +1101,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     
         while (isBefore(dateToCheck, limit)) {
             const weekId = getWeekId(dateToCheck);
-            const activeEmployeesThisWeek = getActiveEmployeesForDate(dateToCheck);
+            const activeEmployeesThisWeek = getActiveEmployeesForDate(dateToCheck, employees);
     
             if (activeEmployeesThisWeek.length > 0) {
                 const isUnconfirmed = activeEmployeesThisWeek.some(emp =>
@@ -1245,7 +1236,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     getEmployeeById,
     getActivePeriod,
     getEffectiveWeeklyHours,
-    getActiveEmployeesForDate,
+    getActiveEmployeesForDate: (date: Date) => getActiveEmployeesForDate(date, employees),
     getEmployeeBalancesForWeek,
     getEmployeeFinalBalances,
     getTheoreticalHoursAndTurn,
