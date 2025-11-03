@@ -445,25 +445,25 @@ useEffect(() => {
         setUnconfirmedWeeksDetails([]);
         return;
     }
-
-    const today = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const details: UnconfirmedWeekDetail[] = [];
-
+    
     const currentlyActiveEmployees = employees.filter(emp =>
         emp.employmentPeriods.some(p => !p.endDate || isAfter(p.endDate as Date, new Date()))
     );
 
+    const currentWeekId = getWeekId(new Date());
+    const details: UnconfirmedWeekDetail[] = [];
+
     const pastWeekIds = Object.keys(weeklyRecords)
         .filter(weekId => {
-            const weekDate = parseISO(weekId);
-            return isBefore(startOfDay(weekDate), startOfDay(today)) && getISOWeekYear(weekDate) >= 2025;
+            return weekId !== currentWeekId && getISOWeekYear(parseISO(weekId)) >= 2025;
         })
-        .sort((a, b) => b.localeCompare(a));
+        .sort((a, b) => b.localeCompare(a)); // Sort descending to show recent weeks first
     
     for (const weekId of pastWeekIds) {
         const unconfirmedEmployeeNames = currentlyActiveEmployees
             .filter(emp => {
                 const empRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
+                // A week is pending if there is a record for an active employee and it's not confirmed
                 return empRecord && empRecord.confirmed === false;
             })
             .map(emp => emp.name);
