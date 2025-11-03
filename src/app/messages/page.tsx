@@ -11,14 +11,16 @@ import { SendHorizonal, ArrowLeft, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, onSnapshot, arrayUnion } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Conversation, Message } from '@/lib/types';
 import { format } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function MessagesPage() {
     const { employees, conversations, loading: dataLoading, refreshData } = useDataProvider();
+    const { appUser } = useAuth();
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
     const [newMessage, setNewMessage] = useState('');
     const isMobile = useIsMobile();
@@ -62,16 +64,17 @@ export default function MessagesPage() {
         }
     }, [messages, messagesLoading]);
 
-    // Effect to mark conversation as read
+    // Effect to mark conversation as read for the current admin
     useEffect(() => {
-        if (selectedConversationId && selectedConversation?.unreadByAdmin) {
+        if (selectedConversationId && appUser?.id && !selectedConversation?.readBy?.includes(appUser.id)) {
             const convRef = doc(db, 'conversations', selectedConversationId);
-            updateDoc(convRef, { unreadByAdmin: false }).then(() => {
-                // Manually trigger a data refresh to update UI state in the data provider
+            updateDoc(convRef, {
+                readBy: arrayUnion(appUser.id)
+            }).then(() => {
                 refreshData();
             });
         }
-    }, [selectedConversationId, selectedConversation, refreshData]);
+    }, [selectedConversationId, selectedConversation, appUser, refreshData]);
 
     useEffect(() => {
         if (textareaRef.current) {
@@ -83,7 +86,7 @@ export default function MessagesPage() {
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newMessage.trim() || !selectedConversationId) return;
+        if (!newMessage.trim() || !selectedConversationId || !appUser) return;
 
         const messageText = newMessage;
         setNewMessage('');
@@ -100,7 +103,7 @@ export default function MessagesPage() {
             lastMessageText: messageText,
             lastMessageTimestamp: serverTimestamp(),
             unreadByEmployee: true,
-            unreadByAdmin: false, 
+            readBy: [appUser.id], // The sender (admin) has read it. Reset for others.
         });
     };
 
@@ -126,6 +129,8 @@ export default function MessagesPage() {
                         {conversations.map((conv) => {
                             const employee = employees.find(e => e.id === conv.employeeId);
                             const fallback = employee?.name.split(' ').map(n => n[0]).join('') || 'U';
+                            const isUnread = appUser?.id ? !conv.readBy?.includes(appUser.id) : false;
+                            
                             return (
                                 <button
                                     key={conv.id}
@@ -142,7 +147,7 @@ export default function MessagesPage() {
                                         <p className="font-semibold">{conv.employeeName}</p>
                                         <p className="text-sm text-muted-foreground truncate">{conv.lastMessageText}</p>
                                     </div>
-                                    {conv.unreadByAdmin && (
+                                    {isUnread && (
                                         <div className="bg-primary text-primary-foreground text-xs rounded-full h-2.5 w-2.5" />
                                     )}
                                 </button>

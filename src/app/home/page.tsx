@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useDataProvider } from '@/hooks/use-data-provider';
@@ -43,8 +44,9 @@ export default function HomePage() {
     }, []);
     
     const unreadConversations = useMemo(() => {
-        return conversations.filter(c => c.unreadByAdmin).slice(0, 5);
-    }, [conversations]);
+        if (!appUser || appUser.role !== 'admin') return [];
+        return conversations.filter(c => !c.readBy?.includes(appUser.id)).slice(0, 5);
+    }, [conversations, appUser]);
     
     const upcomingEvents = useMemo(() => {
         const now = new Date();

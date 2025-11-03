@@ -290,7 +290,7 @@ export interface Conversation {
     employeeName: string;
     lastMessageText: string;
     lastMessageTimestamp: Timestamp;
-    unreadByAdmin: boolean;
+    readBy: string[]; // List of admin UIDs who have read the conversation
     unreadByEmployee: boolean;
 }
 

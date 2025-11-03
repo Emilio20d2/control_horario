@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -59,7 +60,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, appUser, viewMode, setViewMode, loading: authLoading } = useAuth();
-  const { employeeRecord, loading: dataLoading, unreadMessageCount, pendingCorrectionRequestCount, unconfirmedWeeksDetails } = useDataProvider();
+  const { employeeRecord, loading: dataLoading, unreadMessageCount, pendingCorrectionRequestCount, unconfirmedWeeksDetails, conversations } = useDataProvider();
   const isMobile = useIsMobile();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   
@@ -94,6 +95,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
     }
     return 'U';
   }
+
+  const unreadConversationsForAdmin = (conversations || []).filter(c => appUser && !c.readBy?.includes(appUser.id)).length;
 
 
   const adminNavItems = [
@@ -258,7 +261,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     >
                         <Mail className="h-5 w-5" />
                         <span className="text-xs font-medium">Mensajes</span>
-                        {unreadMessageCount > 0 && (
+                        {unreadConversationsForAdmin > 0 && (
                             <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
