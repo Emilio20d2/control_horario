@@ -115,7 +115,7 @@ export default function HomePage() {
 
     return (
         <>
-            <div className="flex flex-col gap-6 p-4 md:p-8">
+            <div className="flex flex-col gap-6 p-4 md:p-8 h-full">
                 <div className="space-y-1">
                     <h1 className="text-3xl font-bold tracking-tight font-headline">
                         ¡Hola, {welcomeName}!
@@ -124,7 +124,7 @@ export default function HomePage() {
                         Aquí tienes un resumen de tus tareas pendientes.
                     </p>
                 </div>
-                <div className="grid gap-6 auto-rows-fr sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-6 auto-rows-fr sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 flex-grow">
                     
                     <Card className="flex flex-col bg-gradient-to-br from-yellow-50 to-white dark:from-yellow-950/30 dark:to-background">
                         <CardHeader className="p-3">
@@ -137,7 +137,7 @@ export default function HomePage() {
                         </CardHeader>
                         <CardContent className="flex-grow p-3 space-y-2">
                             {unconfirmedWeeksDetails.length > 0 ? (
-                                <ScrollArea className="h-48">
+                                <ScrollArea className="h-full">
                                     <div className="space-y-2">
                                         {unconfirmedWeeksDetails.map(week => (
                                             <Link key={week.weekId} href={`/schedule?week=${week.weekId}`}>
@@ -175,7 +175,7 @@ export default function HomePage() {
                         </CardHeader>
                         <CardContent className="flex-grow p-3 space-y-2">
                             {unreadConversations.length > 0 ? (
-                                <ScrollArea className="h-48">
+                                <ScrollArea className="h-full">
                                     <div className="space-y-2">
                                         {unreadConversations.map(conv => (
                                             <Link key={conv.id} href="/messages">
@@ -216,7 +216,7 @@ export default function HomePage() {
                         </CardHeader>
                         <CardContent className="flex-grow p-3 space-y-2">
                             {upcomingEvents.length > 0 ? (
-                                <ScrollArea className="h-48">
+                                <ScrollArea className="h-full">
                                     <div className="space-y-2">
                                         {upcomingEvents.map((event, index) => {
                                             const startDate = event.absence.startDate as Date;
