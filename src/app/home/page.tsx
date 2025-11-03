@@ -3,7 +3,7 @@
 'use client';
 
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { format, parseISO, addWeeks, startOfWeek, endOfWeek, isAfter, isSameDay, isBefore, isValid, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -112,6 +112,8 @@ export default function HomePage() {
             </div>
         )
     }
+    
+    const oldestUnconfirmedWeek = unconfirmedWeeksDetails.length > 0 ? unconfirmedWeeksDetails[unconfirmedWeeksDetails.length - 1] : null;
 
     return (
         <>
@@ -127,7 +129,7 @@ export default function HomePage() {
                 <div className="grid gap-6 auto-rows-fr sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 flex-grow">
                     
                     <Card className="flex flex-col bg-gradient-to-br from-yellow-50 to-white dark:from-yellow-950/30 dark:to-background">
-                        <CardHeader className="p-3">
+                        <CardHeader className="p-4">
                             <div className="flex items-center gap-3">
                                 <div className="bg-destructive/10 p-3 rounded-full">
                                     <Bell className="h-6 w-6 text-destructive" />
@@ -135,33 +137,41 @@ export default function HomePage() {
                                 <CardTitle>Semanas Pendientes</CardTitle>
                             </div>
                         </CardHeader>
-                        <CardContent className="flex-grow p-3 space-y-2">
-                            {unconfirmedWeeksDetails.length > 0 ? (
-                                <ScrollArea className="h-full">
-                                    <div className="space-y-2">
-                                        {unconfirmedWeeksDetails.map(week => (
-                                            <Link key={week.weekId} href={`/schedule?week=${week.weekId}`}>
-                                                <div className="flex items-center justify-between p-3 rounded-md border bg-background/50 hover:bg-muted">
-                                                    <div>
-                                                        <p className="font-semibold text-sm">Semana del {format(parseISO(week.weekId), 'dd/MM/yyyy')}</p>
-                                                        <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                                            Pendiente: {week.employeeNames.join(', ')}
-                                                        </p>
-                                                    </div>
-                                                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                                </div>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                </ScrollArea>
+                        <CardContent className="flex-grow flex flex-col items-center justify-center text-center p-4">
+                             {oldestUnconfirmedWeek ? (
+                                <div className="flex flex-col items-center gap-2">
+                                     <p className="text-sm text-muted-foreground font-semibold">Semana del {format(parseISO(oldestUnconfirmedWeek.weekId), 'dd/MM/yyyy')}</p>
+                                     <div className="text-7xl font-bold text-destructive">
+                                        {oldestUnconfirmedWeek.employeeNames.length}
+                                     </div>
+                                     <p className="text-muted-foreground">empleados sin confirmar</p>
+                                </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                                    <CheckCircle className="h-10 w-10 text-green-500 mb-2"/>
-                                    <p className="font-semibold">¡Todo al día!</p>
-                                    <p className="text-sm">No hay semanas pendientes de confirmar.</p>
+                                    <CheckCircle className="h-12 w-12 text-green-500 mb-2"/>
+                                    <p className="font-semibold text-lg">¡Todo al día!</p>
+                                    <p className="text-sm">No hay semanas pendientes.</p>
                                 </div>
                             )}
                         </CardContent>
+                        <CardFooter className="flex-col gap-2 border-t p-4">
+                            {oldestUnconfirmedWeek ? (
+                                <>
+                                    <Button asChild className="w-full">
+                                        <Link href={`/schedule?week=${oldestUnconfirmedWeek.weekId}`}>
+                                            Revisar
+                                        </Link>
+                                    </Button>
+                                    {unconfirmedWeeksDetails.length > 1 && (
+                                        <p className="text-xs text-muted-foreground">
+                                            y {unconfirmedWeeksDetails.length - 1} otra(s) semana(s) pendiente(s).
+                                        </p>
+                                    )}
+                                </>
+                            ) : (
+                                <p className="text-xs text-muted-foreground text-center">Buen trabajo manteniendo los registros actualizados.</p>
+                            )}
+                        </CardFooter>
                     </Card>
 
                     <Card className="flex flex-col bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
