@@ -76,12 +76,13 @@ export default function GuidePage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <div className="space-y-4">
                     <p className="text-muted-foreground">
-                        La herramienta principal para la gestión diaria.
+                        La herramienta principal para la gestión diaria. Aquí se registran las horas y ausencias de cada empleado.
                     </p>
                      <ul className="list-disc list-inside space-y-2 text-sm">
                         <li><strong>Vista Semanal y Anual:</strong> Alterna entre una vista de todos los empleados para una semana o el calendario completo de un año para un solo empleado.</li>
-                        <li><strong>Registro Detallado:</strong> Introduce horas trabajadas, ausencias, horas de libranza y complementarias para cada empleado y día.</li>
-                        <li><strong>Impacto en Tiempo Real:</strong> El sistema calcula y muestra al instante cómo afectará cada cambio a las bolsas de horas.</li>
+                        <li><strong>Registro de Horas:</strong> Para cada día, puedes introducir las horas trabajadas, horas de libranza y horas complementarias usando los campos numéricos.</li>
+                        <li><strong>Gestión de Ausencias:</strong> Haz clic en el icono <code className="font-bold">+</code> de una celda para abrir un menú y seleccionar un tipo de ausencia. Si una ausencia permite horas parciales (como una visita médica), aparecerá un campo para que introduzcas las horas exactas.</li>
+                        <li><strong>Impacto en Tiempo Real:</strong> Debajo de cada empleado, verás cómo cada cambio afecta en tiempo real a las bolsas de horas antes de confirmar.</li>
                         <li><strong>Confirmación:</strong> Al pulsar "Confirmar", los datos de la semana se guardan de forma permanente y los balances se actualizan.</li>
                     </ul>
                 </div>
