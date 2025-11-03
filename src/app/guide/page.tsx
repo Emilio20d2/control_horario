@@ -39,7 +39,7 @@ export default function GuidePage() {
       
       <Accordion type="single" collapsible className="w-full">
         
-        <AdminGuideItem icon={Home} title="a. Inicio">
+        <AdminGuideItem icon={Home} title="Inicio">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <div className="space-y-4">
                     <p className="text-muted-foreground">
@@ -55,7 +55,7 @@ export default function GuidePage() {
             </div>
         </AdminGuideItem>
 
-        <AdminGuideItem icon={LayoutDashboard} title="b. Panel de Control">
+        <AdminGuideItem icon={LayoutDashboard} title="Panel de Control">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <div className="space-y-4">
                     <p className="text-muted-foreground">
@@ -72,7 +72,7 @@ export default function GuidePage() {
             </div>
         </AdminGuideItem>
 
-        <AdminGuideItem icon={CalendarDays} title="c. Registro Horario">
+        <AdminGuideItem icon={CalendarDays} title="Registro Horario">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <div className="space-y-4">
                     <p className="text-muted-foreground">
@@ -89,7 +89,7 @@ export default function GuidePage() {
             </div>
         </AdminGuideItem>
         
-        <AdminGuideItem icon={Users} title="d. Empleados">
+        <AdminGuideItem icon={Users} title="Empleados">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <div className="space-y-4">
                     <p className="text-muted-foreground">
@@ -105,7 +105,7 @@ export default function GuidePage() {
             </div>
         </AdminGuideItem>
 
-        <AdminGuideItem icon={UserSquare} title="e. Ficha de Empleado">
+        <AdminGuideItem icon={UserSquare} title="Ficha de Empleado">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <div className="space-y-4">
                     <p className="text-muted-foreground">
@@ -122,7 +122,7 @@ export default function GuidePage() {
             </div>
         </AdminGuideItem>
 
-        <AdminGuideItem icon={ListChecks} title="f. Formularios Personalizados">
+        <AdminGuideItem icon={ListChecks} title="Formularios Personalizados">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <div className="space-y-4">
                     <p className="text-muted-foreground">
@@ -138,7 +138,7 @@ export default function GuidePage() {
             </div>
         </AdminGuideItem>
 
-        <AdminGuideItem icon={Plane} title="g. Programador de Vacaciones">
+        <AdminGuideItem icon={Plane} title="Programador de Vacaciones">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <div className="space-y-4">
                      <p className="text-muted-foreground">
@@ -153,7 +153,7 @@ export default function GuidePage() {
             </div>
         </AdminGuideItem>
         
-        <AdminGuideItem icon={CalendarClock} title="h. Calendario">
+        <AdminGuideItem icon={CalendarClock} title="Calendario">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <div className="space-y-4">
                      <p className="text-muted-foreground">
@@ -168,7 +168,7 @@ export default function GuidePage() {
             </div>
         </AdminGuideItem>
         
-        <AdminGuideItem icon={MessageSquare} title="i. Mensajes">
+        <AdminGuideItem icon={MessageSquare} title="Mensajes">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <div className="space-y-4">
                      <p className="text-muted-foreground">
@@ -183,7 +183,7 @@ export default function GuidePage() {
             </div>
         </AdminGuideItem>
         
-        <AdminGuideItem icon={Settings2} title="j. Ajustes">
+        <AdminGuideItem icon={Settings2} title="Ajustes">
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <div className="space-y-4">
                     <p className="text-muted-foreground">
@@ -202,7 +202,7 @@ export default function GuidePage() {
             </div>
         </AdminGuideItem>
 
-        <AdminGuideItem icon={BookUser} title="k. Guía">
+        <AdminGuideItem icon={BookUser} title="Guía">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <div className="space-y-4">
                     <p className="text-muted-foreground">
