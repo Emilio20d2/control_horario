@@ -106,7 +106,8 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                         updatedDayData.absenceHours = currentDayData.theoreticalHours;
                         updatedDayData.workedHours = 0;
                     } else if (selectedAbsenceType.isAbsenceSplittable) {
-                         updatedDayData.absenceHours = 0;
+                         // When isAbsenceSplittable is true, we should NOT reset absenceHours
+                         // It should be manually set by the user
                     }
                 } else if (value === 'ninguna') {
                     updatedDayData.absenceHours = 0;
@@ -435,15 +436,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                                     onChange={(v) => handleDailyDataChange(day, 'workedHours', v)}
                                     disabled={isConfirmed}
                                 />
-                                {absenceType && !absenceType.isAbsenceSplittable && (
-                                     <InputStepper
-                                        label={absenceType.name}
-                                        value={dayData.absenceHours}
-                                        onChange={(v) => handleDailyDataChange(day, 'absenceHours', v)}
-                                        disabled={isConfirmed}
-                                    />
-                                )}
-                                {absenceType && absenceType.computesFullDay && (
+                                {absenceType && (absenceType.isAbsenceSplittable || absenceType.computesFullDay) && (
                                      <InputStepper
                                         label={absenceType.name}
                                         value={dayData.absenceHours}

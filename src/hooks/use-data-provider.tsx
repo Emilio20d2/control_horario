@@ -1,4 +1,5 @@
 
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -260,27 +261,54 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     return format(monday, 'yyyy-MM-dd');
   }, []);
 
-  const processScheduledAbsences = useCallback((absences: any[], loadedAbsenceTypes: AbsenceType[]): ScheduledAbsence[] => {
+  const processScheduledAbsences = useCallback((absences: any[], loadedAbsenceTypes: AbsenceType[], weeklyRecords: Record<string, WeeklyRecord>, employeeId: string): ScheduledAbsence[] => {
     if (!absences || !loadedAbsenceTypes.length) return [];
-    return absences.map(a => {
-        const startDate = safeParseDate(a.startDate);
-        if (!startDate) return null; // Skip invalid absences
-        
-        const processedAbsence: any = {
-            ...a,
-            startDate: startDate,
-            endDate: safeParseDate(a.endDate),
-        };
-
-        if (a.originalRequest) {
-            processedAbsence.originalRequest = {
-                ...a.originalRequest,
-                startDate: a.originalRequest.startDate instanceof Timestamp ? a.originalRequest.startDate.toDate().toISOString() : a.originalRequest.startDate,
-                endDate: a.originalRequest.endDate instanceof Timestamp ? a.originalRequest.endDate.toDate().toISOString() : a.originalRequest.endDate,
-            };
+  
+    const confirmedAbsenceDays = new Set<string>();
+    
+    // First, populate the set with all confirmed absence days for this employee from weeklyRecords
+    Object.values(weeklyRecords).forEach(record => {
+      const empWeekData = record.weekData?.[employeeId];
+      if (empWeekData?.confirmed && empWeekData.days) {
+        Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+          if (dayData.absence !== 'ninguna') {
+            confirmedAbsenceDays.add(dayStr);
+          }
+        });
+      }
+    });
+  
+    // Now, process the scheduled absences, filtering out any day that has already been confirmed
+    const processedAbsences: ScheduledAbsence[] = [];
+    absences.forEach(a => {
+      const startDate = safeParseDate(a.startDate);
+      if (!startDate) return; // Skip invalid absences
+  
+      const endDate = a.endDate ? safeParseDate(a.endDate) : startDate;
+      if (!endDate) return;
+  
+      eachDayOfInterval({ start: startDate, end: endDate }).forEach(day => {
+        const dayStr = format(day, 'yyyy-MM-dd');
+        // Only include this day from the scheduled absence if it hasn't been confirmed in weekly records
+        if (!confirmedAbsenceDays.has(dayStr)) {
+          const processedAbsence: any = {
+              ...a,
+              startDate: day, // We process day by day now
+              endDate: day,
+          };
+          if (a.originalRequest) {
+              processedAbsence.originalRequest = {
+                  ...a.originalRequest,
+                  startDate: a.originalRequest.startDate instanceof Timestamp ? a.originalRequest.startDate.toDate().toISOString() : a.originalRequest.startDate,
+                  endDate: a.originalRequest.endDate instanceof Timestamp ? a.originalRequest.endDate.toDate().toISOString() : a.originalRequest.endDate,
+              };
+          }
+          processedAbsences.push(processedAbsence);
         }
-        return processedAbsence;
-    }).filter((a): a is ScheduledAbsence => a !== null);
+      });
+    });
+  
+    return processedAbsences;
   }, [safeParseDate]);
 
   // Effect for static data that employees depend on
@@ -341,9 +369,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [authLoading, user, appUser, safeParseDate]);
 
-  // Effect for employees (depends on static data)
+  // Effect for employees (depends on static data and weeklyRecords)
   useEffect(() => {
-    if (!loadingSteps.static) return;
+    if (!loadingSteps.static || !loadingSteps.weeklyRecords) return;
     
     let active = true;
     const unsub = onCollectionUpdate<Employee>('employees', (data) => {
@@ -354,7 +382,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             ...p, 
             startDate: safeParseDate(p.startDate), 
             endDate: safeParseDate(p.endDate), 
-            scheduledAbsences: processScheduledAbsences(p.scheduledAbsences, absenceTypes),
+            scheduledAbsences: processScheduledAbsences(p.scheduledAbsences, absenceTypes, weeklyRecords, emp.id),
             workHoursHistory: (p.workHoursHistory || []).map((wh: any) => ({ ...wh, effectiveDate: safeParseDate(wh.effectiveDate) })),
             weeklySchedulesHistory: (p.weeklySchedulesHistory || []).map((ws: any) => ({ ...ws, effectiveDate: safeParseDate(ws.effectiveDate) }))
           }))
@@ -368,7 +396,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       active = false;
       unsub();
     }
-  }, [loadingSteps.static, absenceTypes, processScheduledAbsences, safeParseDate]);
+  }, [loadingSteps.static, loadingSteps.weeklyRecords, absenceTypes, processScheduledAbsences, safeParseDate]);
 
   // Effect for weekly records and other dynamic data
   useEffect(() => {
@@ -433,7 +461,6 @@ useEffect(() => {
     const currentlyActiveEmployees = employees.filter(emp => 
         emp.employmentPeriods.some(p => !p.endDate || isAfter(p.endDate as Date, new Date()))
     );
-    const currentlyActiveEmployeeIds = new Set(currentlyActiveEmployees.map(e => e.id));
 
     const pastWeekIds = Object.keys(weeklyRecords)
         .filter(weekId => {
@@ -445,9 +472,9 @@ useEffect(() => {
     for (const weekId of pastWeekIds) {
         const weekDate = parseISO(weekId);
         
-        // Check only against employees active today who were ALSO active in that past week
         const unconfirmedEmployeeNames = currentlyActiveEmployees
             .filter(emp => {
+                // Employee must have been active in the past week being checked
                 const isActiveInPastWeek = emp.employmentPeriods.some(p => 
                     isWithinInterval(weekDate, { start: p.startDate as Date, end: p.endDate as Date || new Date('9999-12-31') })
                 );
