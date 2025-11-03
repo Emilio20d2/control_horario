@@ -76,14 +76,46 @@ export default function GuidePage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <div className="space-y-4">
                     <p className="text-muted-foreground">
-                        La herramienta principal para la gestión diaria. Aquí se registran las horas y ausencias de cada empleado.
+                        Esta es la herramienta principal para la gestión diaria del tiempo. Aquí se registran las horas trabajadas, ausencias y otros eventos de cada empleado para cada semana.
                     </p>
-                     <ul className="list-disc list-inside space-y-2 text-sm">
-                        <li><strong>Vista Semanal y Anual:</strong> Alterna entre una vista de todos los empleados para una semana o el calendario completo de un año para un solo empleado.</li>
-                        <li><strong>Registro de Horas:</strong> Para cada día, puedes introducir las horas trabajadas, horas de libranza y horas complementarias usando los campos numéricos.</li>
-                        <li><strong>Gestión de Ausencias:</strong> Haz clic en el icono <code className="font-bold">+</code> de una celda para abrir un menú y seleccionar un tipo de ausencia. Si una ausencia permite horas parciales (como una visita médica), aparecerá un campo para que introduzcas las horas exactas.</li>
-                        <li><strong>Impacto en Tiempo Real:</strong> Debajo de cada empleado, verás cómo cada cambio afecta en tiempo real a las bolsas de horas antes de confirmar.</li>
-                        <li><strong>Confirmación:</strong> Al pulsar "Confirmar", los datos de la semana se guardan de forma permanente y los balances se actualizan.</li>
+                    <ul className="list-disc list-inside space-y-3 text-sm">
+                        <li>
+                            <strong>Navegación y Vistas:</strong>
+                            <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
+                                <li>Usa las flechas y el calendario en la parte superior para moverte entre semanas.</li>
+                                <li>Para cambiar a una vista anual de un solo empleado, selecciónalo en el menú desplegable de la cabecera.</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <strong>Fila de Empleado:</strong> Cada fila representa a un empleado para la semana seleccionada.
+                            <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
+                                <li>A la izquierda, verás el nombre, el tipo de turno asignado (T1, T2, etc.) y campos para modificar la <strong>Jornada Semanal</strong> (si necesitas ajustar las horas teóricas para esa semana específica) y para añadir <strong>H. Complementarias</strong>.</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <strong>Celdas de Día:</strong> Cada celda diaria contiene varios campos:
+                            <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
+                                <li><strong>Teóricas:</strong> Muestra las horas que le corresponden trabajar ese día según su calendario. No es editable.</li>
+                                <li><strong>Campo numérico principal:</strong> Aquí introduces las <strong>horas trabajadas</strong>.</li>
+                                <li><strong>Campo H. Libranza:</strong> Solo aparece en festivos si el empleado libra. Aquí puedes registrar las horas que acumula por librar en festivo. Es editable.</li>
+                            </ul>
+                        </li>
+                         <li>
+                            <strong>Gestión de Ausencias:</strong>
+                            <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
+                                <li>Haz clic en el icono <code className="font-bold">+</code> en una celda para abrir el menú de ausencias.</li>
+                                <li>Selecciona un tipo de ausencia de la lista (Baja, Asuntos Propios, etc.).</li>
+                                <li>Si la ausencia permite horas parciales (ej. "Horas Médicas"), aparecerá un nuevo campo para que introduzcas las horas exactas de ausencia. El sistema calculará las horas trabajadas restantes.</li>
+                                <li>Para quitar una ausencia, vuelve a abrir el menú y selecciona "Sin ausencia".</li>
+                            </ul>
+                        </li>
+                         <li>
+                            <strong>Impacto Semanal y Confirmación:</strong>
+                            <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
+                                <li>Debajo de cada empleado, una tabla muestra el <strong>impacto en tiempo real</strong> de tus cambios sobre las bolsas de horas (Ordinaria, Festivos, Libranza).</li>
+                                <li>Una vez que todos los datos de la semana para ese empleado son correctos, pulsa el botón <strong>"Confirmar"</strong>. Los datos se guardarán de forma permanente y sus balances de horas se actualizarán oficialmente.</li>
+                            </ul>
+                        </li>
                     </ul>
                 </div>
                 <Image src="https://picsum.photos/seed/schedule/600/400" alt="Captura de pantalla del Registro Horario" width={600} height={400} className="rounded-lg shadow-md w-full" data-ai-hint="schedule calendar" />
