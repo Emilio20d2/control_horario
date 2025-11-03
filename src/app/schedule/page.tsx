@@ -77,7 +77,7 @@ export default function SchedulePage() {
             const periodEndObj = p.endDate ? (typeof p.endDate === 'string' ? parseISO(p.endDate) : p.endDate) : null;
             const periodEnd = periodEndObj ? endOfDay(periodEndObj) : new Date('9999-12-31');
             
-            return periodStart <= weekEnd && periodEnd >= weekStart;
+            return isWithinInterval(weekStart, { start: periodStart, end: periodEnd });
         });
     }, []);
 

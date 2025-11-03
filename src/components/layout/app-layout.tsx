@@ -114,7 +114,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   // The mobile nav will contain all items for that view
   const mobileAdminNavItems = [
-    { href: '/home', label: 'Inicio', icon: Home },
+    { href: '/home', label: 'Inicio', icon: Home, notification: unconfirmedWeeksDetails.length > 0 },
     ...adminNavItems,
   ];
 
@@ -135,7 +135,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 isActive ? 'bg-muted font-semibold' : 'hover:bg-muted'
               )}
             >
-              <span>{item.label}</span>
+              <div className="flex items-center gap-3">
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.label}</span>
+              </div>
               {item.notification && (
                 <span className="flex h-2.5 w-2.5 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
@@ -305,7 +308,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="flex flex-col">
-                    <Link href="/home" className="flex items-center gap-2 font-semibold mb-4">
+                    <Link href="/home" className="flex items-center gap-2 font-semibold mb-4" onClick={() => setMobileNavOpen(false)}>
                         <Image src="/logo.png" alt="Logo" width={60} height={60} className="h-14 w-14" />
                         <span className="text-xl">Control Horario</span>
                     </Link>
