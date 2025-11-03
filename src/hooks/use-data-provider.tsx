@@ -436,9 +436,8 @@ const getActiveEmployeesForDate = useCallback((date: Date): Employee[] => {
         if (!emp.employmentPeriods) return false;
         return emp.employmentPeriods.some(p => {
             const periodStart = startOfDay(p.startDate as Date);
-            const periodEnd = p.endDate ? startOfDay(p.endDate as Date) : new Date('9999-12-31');
+            const periodEnd = p.endDate ? endOfDay(p.endDate as Date) : new Date('9999-12-31');
             
-            // The period must overlap with the week in question.
             return isBefore(periodStart, weekEnd) && isAfter(periodEnd, weekStart);
         });
     });
@@ -450,61 +449,52 @@ useEffect(() => {
         setUnconfirmedWeeksDetails([]);
         return;
     }
-    
+
+    const currentWeekId = getWeekId(new Date());
+    const detailsMap = new Map<string, UnconfirmedWeekDetail>();
+
     const currentlyActiveEmployees = employees.filter(emp =>
         emp.employmentPeriods.some(p => !p.endDate || isAfter(p.endDate as Date, new Date()))
     );
 
-    const currentWeekId = getWeekId(new Date());
-    const details: UnconfirmedWeekDetail[] = [];
+    const activeEmployeeIds = new Set(currentlyActiveEmployees.map(e => e.id));
 
-    const weekIdsToProcess = new Set<string>();
-    
-    // Add all weeks from records
-    Object.keys(weeklyRecords).forEach(weekId => weekIdsToProcess.add(weekId));
-    
-    // Also add weeks for active employees if they don't have a record yet
-    currentlyActiveEmployees.forEach(emp => {
-        emp.employmentPeriods.forEach(p => {
-            if (!p.endDate || isAfter(p.endDate as Date, new Date('2025-01-01'))) {
-                let checkDate = startOfWeek(new Date('2025-01-06'), { weekStartsOn: 1 });
-                 while (isBefore(checkDate, new Date())) {
-                    weekIdsToProcess.add(getWeekId(checkDate));
-                    checkDate = addWeeks(checkDate, 1);
+    // Iterate over all historical weekly records
+    for (const weekId in weeklyRecords) {
+        // Skip current week and future weeks
+        if (weekId === currentWeekId || isAfter(parseISO(weekId), new Date())) {
+            continue;
+        }
+
+        const weekRecord = weeklyRecords[weekId];
+        const unconfirmedForWeek: string[] = [];
+
+        // Check each employee with data in that week
+        for (const employeeId in weekRecord.weekData) {
+            // Only consider employees that are currently active
+            if (activeEmployeeIds.has(employeeId)) {
+                const employeeRecord = weekRecord.weekData[employeeId];
+                if (!employeeRecord.confirmed) {
+                    const employee = employees.find(e => e.id === employeeId);
+                    if (employee) {
+                        unconfirmedForWeek.push(employee.name);
+                    }
                 }
             }
-        });
-    });
+        }
 
-    const sortedWeekIds = Array.from(weekIdsToProcess).sort((a, b) => b.localeCompare(a));
-    
-    for (const weekId of sortedWeekIds) {
-        if (weekId === currentWeekId) continue;
-        
-        const weekDate = parseISO(weekId);
-        if (getISOWeekYear(weekDate) < 2025) continue;
-        if (isAfter(weekDate, new Date())) continue;
-
-        const activeEmployeesForThisWeek = getActiveEmployeesForDate(weekDate);
-
-        const unconfirmedEmployeeNames = activeEmployeesForThisWeek
-            .filter(emp => {
-                const empRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
-                // A week is unconfirmed if the record doesn't exist or if it exists and `confirmed` is false.
-                return !empRecord || empRecord.confirmed === false;
-            })
-            .map(emp => emp.name);
-
-        if (unconfirmedEmployeeNames.length > 0) {
-            details.push({
-                weekId: weekId,
-                employeeNames: unconfirmedEmployeeNames,
-            });
+        if (unconfirmedForWeek.length > 0) {
+            if (!detailsMap.has(weekId)) {
+                detailsMap.set(weekId, { weekId, employeeNames: [] });
+            }
+            detailsMap.get(weekId)!.employeeNames.push(...unconfirmedForWeek);
         }
     }
-    
+
+    const details = Array.from(detailsMap.values()).sort((a, b) => b.weekId.localeCompare(a.weekId));
     setUnconfirmedWeeksDetails(details);
-}, [loading, appUser, weeklyRecords, employees, getWeekId, getActiveEmployeesForDate]);
+
+}, [loading, appUser, weeklyRecords, employees, getWeekId]);
 
 
 // Memoized values and functions that depend on state
