@@ -32,7 +32,8 @@ export default function SchedulePage() {
         findNextUnconfirmedWeek,
         correctionRequests,
         availableYears,
-        absenceTypes
+        absenceTypes,
+        unconfirmedWeeksDetails
     } = dataProvider;
     const searchParams = useSearchParams();
 
@@ -43,10 +44,17 @@ export default function SchedulePage() {
             if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
         }
         
-        // If no unconfirmed weeks, default to the current week
+        // If there are unconfirmed weeks, default to the oldest one.
+        if (unconfirmedWeeksDetails && unconfirmedWeeksDetails.length > 0) {
+            const oldestWeekId = unconfirmedWeeksDetails[unconfirmedWeeksDetails.length - 1].weekId;
+            const date = parseISO(oldestWeekId);
+            if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
+        }
+        
+        // Otherwise, default to the current week
         return startOfWeek(new Date(), { weekStartsOn: 1 });
     
-    }, [searchParams]);
+    }, [searchParams, unconfirmedWeeksDetails]);
     
     const [currentDate, setCurrentDate] = useState(getInitialDate);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
@@ -71,13 +79,10 @@ export default function SchedulePage() {
         const weekEnd = endOfDay(endOfWeek(weekStart, { weekStartsOn: 1 }));
 
         return employee.employmentPeriods.some(p => {
-            const periodStartObj = typeof p.startDate === 'string' ? parseISO(p.startDate) : p.startDate;
-            const periodStart = startOfDay(periodStartObj as Date);
-
-            const periodEndObj = p.endDate ? (typeof p.endDate === 'string' ? parseISO(p.endDate) : p.endDate) : null;
-            const periodEnd = periodEndObj ? endOfDay(periodEndObj) : new Date('9999-12-31');
+            const periodStart = startOfDay(p.startDate as Date);
+            const periodEnd = p.endDate ? endOfDay(p.endDate as Date) : new Date('9999-12-31');
             
-            return isWithinInterval(weekStart, { start: periodStart, end: periodEnd });
+            return isBefore(periodStart, weekEnd) && isAfter(periodEnd, weekStart);
         });
     }, []);
 
