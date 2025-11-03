@@ -348,7 +348,30 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setHolidayEmployees(holEmps.sort((a,b) => a.name.localeCompare(b.name)));
         setHolidayReports(holReps);
         setEmployeeGroups(empGrps.sort((a,b) => a.order - b.order));
-        setConversations(convs.sort((a, b) => (b.lastMessageTimestamp as any).toDate().getTime() - (a.lastMessageTimestamp as any).toDate().getTime()));
+        
+        // Merge conversations and correction requests
+        const convMap = new Map(convs.map(c => [c.id, c]));
+        corReqs.forEach(req => {
+            if (req.status === 'pending') {
+                const existingConv = convMap.get(req.employeeId);
+                const weekStartDateFormatted = format(parseISO(req.weekId), 'dd/MM/yyyy', { locale: es });
+                const messageText = `SOLICITUD DE CORRECCIÓN - Semana: ${weekStartDateFormatted}`;
+                
+                if (!existingConv || (req.requestedAt.toDate() > (existingConv.lastMessageTimestamp as any).toDate())) {
+                    convMap.set(req.employeeId, {
+                        id: req.employeeId,
+                        employeeId: req.employeeId,
+                        employeeName: req.employeeName,
+                        lastMessageText: messageText,
+                        lastMessageTimestamp: req.requestedAt,
+                        readBy: existingConv?.readBy || [],
+                        unreadByEmployee: existingConv?.unreadByEmployee || false,
+                    });
+                }
+            }
+        });
+        setConversations(Array.from(convMap.values()).sort((a, b) => (b.lastMessageTimestamp as any).toDate().getTime() - (a.lastMessageTimestamp as any).toDate().getTime()));
+        
         setVacationCampaigns(vacCamps.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime()));
         setCorrectionRequests(corReqs);
         setLoadingSteps(prev => ({...prev, static: true}));
@@ -1373,5 +1396,6 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
