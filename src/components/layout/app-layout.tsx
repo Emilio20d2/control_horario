@@ -198,46 +198,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
              {viewMode === 'admin' && (
               <TooltipProvider>
                 <div className="flex items-center gap-1">
-                  <DropdownMenu>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                          <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="relative">
-                                  <Bell className="h-5 w-5" />
-                                  {unconfirmedWeeksDetails.length > 0 && <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span></span>}
-                              </Button>
-                          </DropdownMenuTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent><p>Notificaciones</p></TooltipContent>
-                    </Tooltip>
-                    <DropdownMenuContent align="end" className="w-80">
-                        <DropdownMenuLabel>Semanas Pendientes de Confirmar</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        {unconfirmedWeeksDetails.length > 0 ? (
-                            unconfirmedWeeksDetails.slice(0, 5).map(week => (
-                                <DropdownMenuItem key={week.weekId} asChild>
-                                    <Link href={`/schedule?week=${week.weekId}`} className="flex flex-col items-start gap-1">
-                                        <p className="font-semibold">Semana del {format(parseISO(week.weekId), 'dd/MM/yyyy')}</p>
-                                        <p className="text-xs text-muted-foreground truncate w-full">Pendiente: {week.employeeNames.join(', ')}</p>
-                                    </Link>
-                                </DropdownMenuItem>
-                            ))
-                        ) : (
-                           <DropdownMenuItem disabled>No hay semanas pendientes.</DropdownMenuItem>
-                        )}
-                         {unconfirmedWeeksDetails.length > 5 && (
-                            <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild>
-                                    <Link href="/home">
-                                        <p className="text-center text-sm w-full">Ver todas</p>
-                                    </Link>
-                                </DropdownMenuItem>
-                            </>
-                         )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
+                  
                    <Link
                         href="/calendar"
                         className={cn(
