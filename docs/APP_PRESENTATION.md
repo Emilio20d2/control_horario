@@ -20,7 +20,7 @@ Con "Control Horario", decimos adiós a la incertidumbre y damos la bienvenida a
 
 Para el equipo de gestión, "Control Horario" es un centro de mando integral que ofrece una visión de 360 grados sobre la fuerza laboral.
 
-### **1. Panel de Control (`/dashboard`): Inteligencia de Negocio al Instante**
+### **1. Panel de Control: Inteligencia de Negocio al Instante**
 
 El panel de control es el cerebro de la operación. Olvídense de recopilar datos manualmente para auditorías o informes. Con un solo clic, pueden generar PDFs profesionales y detallados sobre cualquier aspecto clave:
 
@@ -30,7 +30,7 @@ El panel de control es el cerebro de la operación. Olvídense de recopilar dato
 
 **Beneficio Clave:** Ahorro de cientos de horas administrativas, eliminación de errores humanos y una capacidad sin precedentes para realizar auditorías internas y externas con total confianza.
 
-### **2. Registro Horario (`/schedule`): El Corazón Operativo**
+### **2. Registro Horario: El Corazón Operativo**
 
 Aquí es donde la magia ocurre en el día a día. Una interfaz visual e intuitiva para gestionar la semana laboral:
 
@@ -40,7 +40,7 @@ Aquí es donde la magia ocurre en el día a día. Una interfaz visual e intuitiv
 
 **Beneficio Clave:** Agilidad operativa, planificación sin errores y una visión clara del impacto financiero y de recursos de cada decisión.
 
-### **3. Gestión de Empleados y Ausencias (`/employees`, `/vacations`)**
+### **3. Gestión de Empleados y Ausencias**
 
 Centralicen toda la información de su equipo:
 
@@ -50,7 +50,7 @@ Centralicen toda la información de su equipo:
 
 **Beneficio Clave:** Una gestión de personal proactiva, no reactiva. Planificación a largo plazo y una fuente única de verdad para cada empleado.
 
-### **4. Ajustes y Personalización (`/settings`, `/listings`)**
+### **4. Ajustes y Personalización**
 
 Adapten la aplicación a las reglas de su negocio, no al revés:
 
@@ -65,7 +65,7 @@ Adapten la aplicación a las reglas de su negocio, no al revés:
 
 Para el empleado, "Control Horario" es sinónimo de **transparencia, autonomía y confianza**.
 
-### **1. Mi Ficha (`/my-profile`): Su Propio Panel de Control**
+### **1. Mi Ficha: Su Propio Panel de Control**
 
 Cada empleado tiene acceso a su información personal, siempre actualizada:
 
@@ -74,13 +74,13 @@ Cada empleado tiene acceso a su información personal, siempre actualizada:
 
 **Beneficio Clave:** Fomenta la confianza y la responsabilidad. Reduce las consultas repetitivas al departamento de RRHH y empodera al empleado con información clara y precisa.
 
-### **2. Mis Presencias (`/my-schedule`): Historial Transparente**
+### **2. Mis Presencias: Historial Transparente**
 
 Un registro de solo lectura de todas sus semanas laborales ya confirmadas por la administración. Pueden revisar el detalle de horas, ausencias y el impacto exacto que tuvo cada semana en sus balances.
 
 **Beneficio Clave:** Transparencia total. Se eliminan las dudas y los malentendidos sobre el cómputo de horas pasadas.
 
-### **3. Mis Mensajes (`/my-messages`): Comunicación Directa y Eficaz**
+### **3. Mis Mensajes: Comunicación Directa y Eficaz**
 
 Un canal de comunicación directo y seguro con la dirección:
 

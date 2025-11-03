@@ -1,4 +1,3 @@
-
 # Control Horario - Manual de Usuario
 
 ## 1. Introducción
@@ -24,7 +23,7 @@ El sistema está diseñado para manejar calendarios rotativos complejos, calcula
 
 A continuación, se detalla el propósito y uso de cada una de las secciones principales de la aplicación.
 
-### a. Panel de Control (`/dashboard`)
+### a. Panel de Control
 
 Es la página principal y el centro de operaciones para la generación de informes. Desde aquí puedes exportar en PDF toda la información clave para la gestión y auditoría.
 
@@ -41,7 +40,7 @@ Es la página principal y el centro de operaciones para la generación de inform
 - **Gráfico de Balances**:
   - Muestra un gráfico de barras con los 10 empleados que tienen el mayor balance total de horas, permitiendo una rápida visualización de quién tiene más horas a favor.
 
-### b. Registro Horario (`/schedule`)
+### b. Registro Horario
 
 Esta es la sección más importante para el trabajo diario. Permite registrar las horas trabajadas, ausencias y otros eventos de los empleados.
 
@@ -60,7 +59,7 @@ Esta es la sección más importante para el trabajo diario. Permite registrar la
   - Muestra el calendario completo de un solo empleado para todo un año.
   - Permite tener una visión global de la planificación y realizar modificaciones de la misma forma que en la vista semanal.
 
-### c. Empleados (`/employees`)
+### c. Empleados
 
 Centro de gestión de la plantilla. Aquí puedes ver, crear y modificar la información de tus empleados.
 
@@ -76,7 +75,7 @@ Centro de gestión de la plantilla. Aquí puedes ver, crear y modificar la infor
     - **Calendario Laboral**: Un sistema de 4 turnos rotativos donde defines las horas teóricas para cada día en cada una de las 4 semanas del ciclo.
   - En un empleado existente, puedes **programar modificaciones de contrato**, como un cambio de jornada o de tipo de contrato a futuro.
 
-### d. Ficha de Empleado (`/employees/[id]`)
+### d. Ficha de Empleado
 
 Muestra toda la información relevante de un empleado en un solo lugar.
 
@@ -86,7 +85,7 @@ Muestra toda la información relevante de un empleado en un solo lugar.
 - **Ausencias Programadas**: Permite registrar ausencias de larga duración (como bajas o excedencias) que se aplicarán automáticamente en el calendario.
 - **Calendarios Laborales**: Muestra el historial de calendarios rotativos que ha tenido el empleado.
 
-### e. Formularios Personalizados (`/listings`)
+### e. Formularios Personalizados
 
 Herramienta flexible para crear e imprimir formularios en PDF para cualquier necesidad.
 
@@ -96,7 +95,7 @@ Herramienta flexible para crear e imprimir formularios en PDF para cualquier nec
   3.  **Elige el Tipo de Contenido**: Cada columna puede ser un campo de texto libre o casillas de verificación (checkboxes), que a su vez pueden tener etiquetas personalizadas (ej: "Entregado, Devuelto").
   4.  **Genera el PDF**: La aplicación creará un documento con todos los empleados activos listados, listos para que rellenes el formulario.
 
-### f. Programador de Vacaciones (`/vacations`)
+### f. Programador de Vacaciones
 
 Sección visual para planificar y gestionar las vacaciones y otras ausencias largas.
 
@@ -108,7 +107,7 @@ Sección visual para planificar y gestionar las vacaciones y otras ausencias lar
     - **Imprimir Cuadrante**: Exporta la vista del cuadrante a un PDF.
     - **Listado para Firmas**: Genera un documento donde cada empleado tiene un espacio para firmar la conformidad de sus periodos vacacionales.
 
-### g. Ajustes (`/settings`)
+### g. Ajustes
 
 Aquí se configuran las reglas de negocio que rigen toda la aplicación.
 
