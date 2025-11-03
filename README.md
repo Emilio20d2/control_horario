@@ -19,107 +19,150 @@ El sistema está diseñado para manejar calendarios rotativos complejos, calcula
 
 ---
 
-## 3. Guía de Páginas y Funcionalidades
+## 3. Guía para Administradores
 
-A continuación, se detalla el propósito y uso de cada una de las secciones principales de la aplicación.
+A continuación, se detalla el propósito y uso de cada una de las secciones principales para los administradores.
 
-### a. Panel de Control
+### a. Inicio
 
-Es la página principal y el centro de operaciones para la generación de informes. Desde aquí puedes exportar en PDF toda la información clave para la gestión y auditoría.
+Es la primera página que ves al iniciar sesión y actúa como un centro de notificaciones y tareas pendientes.
 
-- **Informes Anuales por Empleado**:
-  - **Resumen Anual**: Genera un PDF detallado con el registro semanal de un empleado para un año específico. Muestra el desglose de horas, ausencias y el impacto en las bolsas de horas semana a semana.
-  - **Jornada Anual**: Crea un informe PDF que compara las horas teóricas que un empleado debía trabajar en un año (según convenio y ajustes de contrato) contra las horas realmente computadas. Ideal para balances anuales.
+- **Semanas Pendientes**: Muestra la semana más antigua que tiene empleados sin confirmar. Indica el número de empleados pendientes y un botón para ir directamente a esa semana en el "Registro Horario".
+- **Mensajes Sin Leer**: Presenta una lista de las últimas conversaciones con mensajes de empleados que aún no has leído.
+- **Próximos Eventos**: Ofrece una vista rápida de las próximas ausencias programadas (bajas, excedencias, etc.) en las siguientes semanas.
 
-- **Informes Generales**:
-  - **Informe de Ausencias**: Exporta un resumen de todas las ausencias de un empleado para un año, agrupadas por tipo, mostrando totales y excesos sobre los límites del convenio.
-  - **Informe de Festivos**: Permite generar un listado de empleados para planificar quién trabajará en los festivos de apertura seleccionados.
-  - **Informe de Horas Complementarias**: Genera un PDF con el listado de empleados que han realizado horas complementarias en una semana específica.
-  - **Informe Semanal de Balances**: Crea un informe con el estado de las tres bolsas de horas (ordinaria, festivos, libranza) de todos los empleados al inicio de una semana seleccionada.
+### b. Panel de Control
 
-- **Gráfico de Balances**:
-  - Muestra un gráfico de barras con los 10 empleados que tienen el mayor balance total de horas, permitiendo una rápida visualización de quién tiene más horas a favor.
+Centro de operaciones para la generación de informes en PDF.
 
-### b. Registro Horario
+- **Informes por Empleado**:
+  - **Resumen Anual**: Genera un PDF con el registro semanal de un empleado para un año específico, mostrando el desglose de horas y el impacto en las bolsas semana a semana.
+  - **Jornada Anual**: Crea un informe que compara las horas teóricas vs. las realmente computadas para un empleado en un año.
+  - **Ausencias**: Exporta un resumen de todas las ausencias de un empleado para un año, agrupadas por tipo.
 
-Esta es la sección más importante para el trabajo diario. Permite registrar las horas trabajadas, ausencias y otros eventos de los empleados.
+- **Informe de Festivos**: Permite generar un listado de empleados para planificar quién trabajará en los festivos de apertura seleccionados.
+
+- **Informes Generales (Semanales)**:
+  - **H. Complem.**: Genera un PDF con los empleados que han realizado horas complementarias en una semana específica.
+  - **Balances**: Crea un informe con el estado de las bolsas de horas de toda la plantilla al final de una semana seleccionada.
+
+- **Top 10 Empleados por Balance**: Un gráfico de barras que muestra los empleados con el mayor balance total de horas, permitiendo una gestión proactiva.
+
+### c. Registro Horario
+
+La herramienta principal para la gestión diaria.
 
 - **Vista Semanal (por defecto)**:
-  - Muestra a todos los empleados activos para una semana concreta.
-  - Puedes navegar entre semanas con las flechas o seleccionar una fecha en el calendario.
-  - Para cada empleado y día, puedes registrar:
-    - **Horas Trabajadas**: Las horas efectivamente trabajadas.
-    - **Ausencias**: Seleccionando un tipo de ausencia del desplegable (baja, vacaciones, etc.).
-    - **Horas de Libranza**: Horas que se devuelven al trabajador en un día festivo que le tocaba trabajar.
-    - **Horas Complementarias**: Total de horas extra en la semana.
-  - El sistema calcula en tiempo real el **impacto** que los cambios tendrán en las bolsas de horas del empleado.
-  - Una vez los datos son correctos, debes **Confirmar** la semana para que los balances se actualicen de forma permanente.
+  - Muestra a todos los empleados activos para la semana seleccionada.
+  - **Registro de Horas**: Puedes introducir horas trabajadas, tipos de ausencia, horas de libranza y complementarias para cada empleado y día.
+  - **Impacto en Tiempo Real**: La aplicación calcula al instante cómo cada cambio afectará a las bolsas de horas del empleado.
+  - **Confirmación**: Al pulsar "Confirmar", los datos de la semana se guardan de forma permanente y los balances se actualizan.
 
 - **Vista Anual (seleccionando un empleado)**:
-  - Muestra el calendario completo de un solo empleado para todo un año.
-  - Permite tener una visión global de la planificación y realizar modificaciones de la misma forma que en la vista semanal.
+  - Muestra el calendario completo de un solo empleado para todo un año, permitiendo una visión y planificación a largo plazo.
 
-### c. Empleados
+### d. Empleados
 
-Centro de gestión de la plantilla. Aquí puedes ver, crear y modificar la información de tus empleados.
+Centro de gestión de la plantilla.
 
 - **Listado de Empleados**:
-  - Se divide en **Activos** e **Inactivos**.
-  - La tabla de activos muestra un resumen en tiempo real de los balances de horas y los días de vacaciones consumidos.
-  - Desde aquí puedes acceder a la ficha de cada empleado o crear uno nuevo.
+  - **Activos**: Muestra empleados con contrato en vigor, con un resumen en tiempo real de sus balances y días de vacaciones consumidos.
+  - **Inactivos**: Empleados cuyo contrato ha finalizado.
 
 - **Crear/Editar Ficha de Empleado**:
-  - El formulario permite definir:
-    - **Datos Personales**: Nombre.
-    - **Contrato Inicial**: Fecha de inicio, tipo de contrato, jornada semanal y saldos iniciales de las bolsas.
-    - **Calendario Laboral**: Un sistema de 4 turnos rotativos donde defines las horas teóricas para cada día en cada una de las 4 semanas del ciclo.
-  - En un empleado existente, puedes **programar modificaciones de contrato**, como un cambio de jornada o de tipo de contrato a futuro.
+  - **Datos Personales y de Contrato**: Define el nombre, DNI, email, tipo de contrato, jornada semanal, etc.
+  - **Calendario Laboral**: Configura el sistema de 4 turnos rotativos para las horas teóricas.
+  - **Modificaciones de Contrato**: Puedes programar cambios de jornada o de tipo de contrato a futuro sin necesidad de crear una nueva ficha.
 
-### d. Ficha de Empleado
+### e. Ficha de Empleado
 
-Muestra toda la información relevante de un empleado en un solo lugar.
+Visión de 360 grados de un trabajador.
 
-- **Balances Actuales**: Visualización en tiempo real de las tres bolsas de horas y el balance total.
-- **Datos del Contrato**: Muestra el tipo de contrato, la jornada semanal vigente y el historial de cambios de jornada o de contrato.
-- **Cómputo Anual**: Un resumen año por año que compara las horas teóricas vs. las computadas y muestra el balance anual final.
-- **Ausencias Programadas**: Permite registrar ausencias de larga duración (como bajas o excedencias) que se aplicarán automáticamente en el calendario.
-- **Calendarios Laborales**: Muestra el historial de calendarios rotativos que ha tenido el empleado.
+- **Balances y Vacaciones**: Muestra las bolsas de horas, el total acumulado y los días de vacaciones disfrutados vs. disponibles.
+- **Datos del Contrato**: Detalla el contrato vigente y el historial de cambios de jornada o de contrato.
+- **Cómputo Anual**: Un resumen año por año que compara horas teóricas vs. computadas.
+- **Gestión de Ausencias Programadas**: Permite registrar ausencias de larga duración (bajas, excedencias) que se aplicarán automáticamente en el calendario.
 
-### e. Formularios Personalizados
+### f. Formularios Personalizados
 
-Herramienta flexible para crear e imprimir formularios en PDF para cualquier necesidad.
+Herramienta para crear PDFs a medida.
 
-- **Funcionamiento**:
-  1.  **Define un Título y Descripción** para tu formulario (ej: "Control de Entrega de EPIs").
-  2.  **Añade Columnas**: Puedes crear las columnas que necesites (ej: "Casco", "Botas", "Firma").
-  3.  **Elige el Tipo de Contenido**: Cada columna puede ser un campo de texto libre o casillas de verificación (checkboxes), que a su vez pueden tener etiquetas personalizadas (ej: "Entregado, Devuelto").
-  4.  **Genera el PDF**: La aplicación creará un documento con todos los empleados activos listados, listos para que rellenes el formulario.
+- **Formularios Personalizados**: Crea formularios con las columnas que necesites (texto, checkboxes) para generar un PDF con la lista de empleados activos, listo para imprimir y rellenar.
+- **Datos Personales**: Genera un informe en PDF con los datos personales de la plantilla (DNI, teléfono, email, etc.) que elijas.
+- **Empleados para Informes**: Gestiona una lista de empleados "eventuales" que no están en la plantilla principal pero que deben aparecer en ciertos informes, como el de planificación de festivos.
 
-### f. Programador de Vacaciones
+### g. Programador de Vacaciones
 
-Sección visual para planificar y gestionar las vacaciones y otras ausencias largas.
+Vista de cuadrante anual para la planificación de ausencias largas.
 
-- **Cuadrante Anual**:
-  - Muestra una vista de todo el año con los empleados agrupados por categorías.
-  - Cada celda representa una semana, y dentro de ella aparecen los empleados que tienen una ausencia programada.
-  - Permite identificar rápidamente solapamientos y semanas con alta o baja ocupación.
-  - Desde aquí puedes generar dos informes:
-    - **Imprimir Cuadrante**: Exporta la vista del cuadrante a un PDF.
-    - **Listado para Firmas**: Genera un documento donde cada empleado tiene un espacio para firmar la conformidad de sus periodos vacacionales.
+- **Cuadrante Anual**: Muestra una vista de todo el año con los empleados (agrupados por categorías) que tienen ausencias largas, permitiendo identificar solapamientos.
+- **Informes**: Desde aquí puedes imprimir el cuadrante o generar un listado para la firma de vacaciones.
 
-### g. Ajustes
+### h. Calendario
 
-Aquí se configuran las reglas de negocio que rigen toda la aplicación.
+Visión global de todas las ausencias programadas en el sistema.
 
-- **Días Festivos**: Añade, edita o elimina los festivos nacionales, regionales, locales y las aperturas comerciales.
-- **Conf. Anual**: Define las horas máximas de convenio para cada año.
-- **Tipos de Ausencia**: Crea o modifica los tipos de ausencia (baja, vacaciones, asuntos propios, etc.) y define sus reglas: si computan para la jornada, si descuentan horas, si tienen un límite anual, etc.
-- **Tipos de Contrato**: Gestiona los tipos de contrato y define qué bolsas de horas se aplican a cada uno.
-- **Utilidades**: Herramientas para administradores, como la auditoría retroactiva de comentarios.
+- **Vista Semanal o Mensual**: Muestra en un calendario quién está ausente cada día y por qué motivo.
+- **Gestión de Ausencias**: Permite añadir, modificar o eliminar ausencias de larga duración directamente desde el calendario.
+
+### i. Mensajes
+
+Canal de comunicación centralizado con los empleados.
+
+- **Chat Individual**: Cada empleado tiene su propio chat para comunicar incidencias o recibir notificaciones.
+- **Solicitudes de Corrección**: Aquí recibirás las peticiones de los empleados para corregir errores en semanas ya confirmadas.
+
+### j. Ajustes
+
+El cerebro de la aplicación, donde se definen las reglas de negocio.
+
+- **Días Festivos**: Gestiona los festivos y aperturas comerciales.
+- **Conf. Anual**: Define las horas de convenio para cada año.
+- **Tipos de Ausencia**: Crea y configura los tipos de ausencia y sus reglas de cómputo.
+- **Tipos de Contrato**: Gestiona los tipos de contrato.
+- **Campañas de Solicitud**: Abre periodos específicos para que los empleados puedan solicitar sus vacaciones.
+- **Utilidades**: Herramientas de administrador para limpieza o auditoría de datos.
+
+### k. Guía
+
+Acceso a este mismo manual de usuario directamente desde la aplicación.
 
 ---
 
-## 4. Conceptos Clave
+## 4. Guía para Empleados
+
+### a. Mi Ficha
+
+Tu panel de control personal donde puedes consultar toda tu información laboral.
+
+- **Balances de Horas**: Muestra en tiempo real el estado de tus bolsas de horas (Ordinaria, Festivos, Libranza) y tu balance total.
+- **Vacaciones**: Indica los días de vacaciones que has disfrutado frente a los que tienes disponibles para el año en curso. Puedes hacer clic en la tarjeta para ver un desglose detallado.
+- **Resumen de Ausencias**: Una tabla con el total de horas o días que has consumido por cada tipo de ausencia durante el año.
+- **Mis Vacaciones Programadas**: Un listado de tus próximos periodos de vacaciones confirmados.
+- **Datos del Contrato**: Información sobre tu contrato actual y tu jornada semanal.
+
+### b. Mis Presencias
+
+Tu historial de trabajo.
+
+- **Resumen Semanal**: Muestra un desglose detallado de cada semana laboral que ya ha sido confirmada por la administración.
+- **Solicitar Corrección**: Si detectas un error en una semana, puedes usar el botón "Solicitar Corrección". Se abrirá un formulario para que expliques la incidencia, y tu petición se enviará al administrador a través del chat de "Mis Mensajes".
+
+### c. Mis Mensajes
+
+Tu canal de comunicación directo con la administración.
+
+- **Chat**: Un espacio para registrar formalmente tus solicitudes y recibir notificaciones.
+- **Hacer Solicitud (Campañas)**: Cuando la empresa abra un periodo para solicitar vacaciones, verás un aviso y un botón para iniciar tu petición.
+- **Solicitudes (Permisos Cortos)**: Usa el botón "Solicitudes" para registrar formalmente permisos que ya has comunicado verbalmente, como una visita médica o un día de asuntos propios.
+
+### d. Ayuda
+
+Una guía rápida para resolver las dudas más comunes, como el significado de las bolsas de horas o cómo añadir la aplicación a la pantalla de inicio de tu móvil.
+
+---
+
+## 5. Conceptos Clave
 
 - **Bolsas de Horas**:
   - **B. Ordinaria**: Acumula la diferencia entre las horas computadas y las teóricas de cada semana.
