@@ -25,7 +25,7 @@ export const WeekNavigator: React.FC<WeekNavigatorProps> = ({ currentDate, onWee
     }
  
     return (
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-1">
         <Button variant="outline" size="icon" onClick={() => onWeekChange(subWeeks(currentDate, 1))}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
