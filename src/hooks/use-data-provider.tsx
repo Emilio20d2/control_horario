@@ -255,20 +255,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     return format(monday, 'yyyy-MM-dd');
   }, []);
 
-  const getActiveEmployeesForDate = useCallback((date: Date, employeeList: Employee[]) => {
-    const weekStart = startOfDay(startOfWeek(date, { weekStartsOn: 1 }));
-    const weekEnd = endOfDay(endOfWeek(date, { weekStartsOn: 1 }));
-
-    return employeeList.filter(emp => 
-        emp.employmentPeriods.some(p => {
-            const periodStart = startOfDay(p.startDate as Date);
-            const periodEnd = p.endDate ? endOfDay(p.endDate as Date) : new Date('9999-12-31');
-            
-            return isAfter(periodEnd, weekStart) && isBefore(periodStart, weekEnd);
-        })
-    );
-}, []);
-
   const processScheduledAbsences = useCallback((absences: any[], loadedAbsenceTypes: AbsenceType[]): ScheduledAbsence[] => {
     if (!absences || !loadedAbsenceTypes.length) return [];
     return absences.map(a => {
@@ -417,6 +403,20 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
 }, [appUser, employees]);
 
+const getActiveEmployeesForDate = useCallback((date: Date, employeeList: Employee[]) => {
+    const weekStart = startOfDay(date);
+    const weekEnd = endOfDay(endOfWeek(date, { weekStartsOn: 1 }));
+
+    return employeeList.filter(emp => 
+        emp.employmentPeriods.some(p => {
+            const periodStart = startOfDay(p.startDate as Date);
+            const periodEnd = p.endDate ? endOfDay(p.endDate as Date) : new Date('9999-12-31');
+            
+            // The period must start before the week ends, AND the period must end after the week starts.
+            return isBefore(periodStart, weekEnd) && isAfter(periodEnd, weekStart);
+        })
+    );
+}, []);
 
 // This effect calculates unconfirmed week details
 useEffect(() => {
@@ -429,7 +429,7 @@ useEffect(() => {
     const pastWeekRecordIds = Object.keys(weeklyRecords)
         .filter(weekId => {
             const weekDate = parseISO(weekId);
-            return isBefore(weekDate, startOfThisWeek) && getYear(weekDate) >= 2025;
+            return isBefore(weekDate, startOfThisWeek) && getISOWeekYear(weekDate) >= 2025;
         });
 
     for (const weekId of pastWeekRecordIds) {
@@ -441,7 +441,6 @@ useEffect(() => {
         const weekRecord = weeklyRecords[weekId];
         
         const unconfirmedEmployees = activeEmployeesForThisWeek.filter(emp => {
-            // An employee is unconfirmed if there is no record for them, or the record is not marked as confirmed.
             return !(weekRecord?.weekData?.[emp.id]?.confirmed ?? false);
         });
         
