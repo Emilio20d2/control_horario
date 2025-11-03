@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { format, parseISO, addWeeks, startOfWeek, endOfWeek, isAfter, isSameDay, isBefore, isValid, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
-import { AlertTriangle, ArrowRight, CalendarClock, Mail, User, Info, CalendarRange, UserCheck, MessageCircle, Bell } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarClock, Mail, User, Info, CalendarRange, UserCheck, MessageCircle, Bell, CheckCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo, useState, useCallback } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -124,17 +124,17 @@ export default function HomePage() {
                 </div>
                 <div className="grid gap-6 auto-rows-fr sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     
-                    {unconfirmedWeeksDetails.length > 0 && (
-                        <Card className="flex flex-col bg-gradient-to-br from-yellow-50 to-white dark:from-yellow-950/30 dark:to-background">
-                            <CardHeader className="p-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-destructive/10 p-3 rounded-full">
-                                        <Bell className="h-6 w-6 text-destructive" />
-                                    </div>
-                                    <CardTitle>Semanas Pendientes</CardTitle>
+                    <Card className="flex flex-col bg-gradient-to-br from-yellow-50 to-white dark:from-yellow-950/30 dark:to-background">
+                        <CardHeader className="p-3">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-destructive/10 p-3 rounded-full">
+                                    <Bell className="h-6 w-6 text-destructive" />
                                 </div>
-                            </CardHeader>
-                            <CardContent className="flex-grow p-3 space-y-2">
+                                <CardTitle>Semanas Pendientes</CardTitle>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="flex-grow p-3 space-y-2">
+                            {unconfirmedWeeksDetails.length > 0 ? (
                                 <ScrollArea className="h-48">
                                     <div className="space-y-2">
                                         {unconfirmedWeeksDetails.map(week => (
@@ -152,9 +152,15 @@ export default function HomePage() {
                                         ))}
                                     </div>
                                 </ScrollArea>
-                            </CardContent>
-                        </Card>
-                    )}
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                                    <CheckCircle className="h-10 w-10 text-green-500 mb-2"/>
+                                    <p className="font-semibold">¡Todo al día!</p>
+                                    <p className="text-sm">No hay semanas pendientes de confirmar.</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
 
                     <Card className="flex flex-col bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
                         <CardHeader className="p-3">
