@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FileDown, Loader2 } from 'lucide-react';
 import type { Employee } from '@/lib/types';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { getYear } from 'date-fns';
+import { getYear, getISOWeekYear, parseISO } from 'date-fns';
 import { generateAnnualReportPDF, generateAnnualDetailedReportPDF, generateAbsenceReportPDF } from '@/lib/report-generators';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,7 +28,7 @@ export function EmployeeReportGenerator({ employee }: { employee: Employee }) {
 
     const availableYears = useMemo(() => {
         if (!weeklyRecords) return [new Date().getFullYear()];
-        const years = new Set(Object.keys(weeklyRecords).map(id => parseInt(id.split('-')[0])));
+        const years = new Set(Object.keys(weeklyRecords).map(id => getISOWeekYear(parseISO(id))));
         const currentYear = new Date().getFullYear();
         if (!years.has(currentYear)) {
             years.add(currentYear);

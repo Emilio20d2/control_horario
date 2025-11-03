@@ -169,7 +169,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                 name: '', employeeNumber: '', dni: '', phone: '', email: '', role: 'employee', groupId: 'ninguno',
                 startDate: new Date().toISOString().split('T')[0], endDate: null, isTransfer: false, vacationDaysUsedInAnotherCenter: undefined,
                 contractType: '', initialWeeklyWorkHours: 40, annualComputedHours: 0,
-                initialOrdinaryHours: undefined, initialHolidayHours: undefined, initialLeaveHours: undefined, vacationDays2024: undefined,
+                initialOrdinaryHours: undefined, initialHolidayHours: undefined, initialLeaveHours: undefined, vacationDays2024: 0,
                 weeklySchedules: [], newWeeklyWorkHours: undefined, newWeeklyWorkHoursDate: undefined,
                 newContractType: undefined, newContractTypeDate: undefined, newWeeklySchedule: undefined,
             };
@@ -198,7 +198,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
             initialOrdinaryHours: period.initialOrdinaryHours,
             initialHolidayHours: period.initialHolidayHours,
             initialLeaveHours: period.initialLeaveHours,
-            vacationDays2024: period.vacationDays2024,
+            vacationDays2024: period.vacationDays2024 ?? 0,
             weeklySchedules: weeklySchedulesHistoryFormatted.length > 0 
                 ? [...weeklySchedulesHistoryFormatted].sort((a, b) => new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime())
                 : [],
@@ -227,7 +227,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         initialOrdinaryHours: undefined,
         initialHolidayHours: undefined,
         initialLeaveHours: undefined,
-        vacationDays2024: undefined,
+        vacationDays2024: 0,
         weeklySchedules: [{
             effectiveDate: new Date().toISOString().split('T')[0],
             shifts: {
@@ -584,7 +584,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                             <FormItem>
                                 <FormLabel>Vacaciones Pendientes 2024</FormLabel>
                                 <FormControl>
-                                    <InputStepper {...field} value={field.value} step={1} disabled={!isFirstPeriod} />
+                                    <InputStepper {...field} value={field.value ?? 0} step={1} disabled={!isFirstPeriod} />
                                 </FormControl>
                                 <FormDescription>Días de 2024 que se suman a 2025.</FormDescription>
                                 <FormMessage />
