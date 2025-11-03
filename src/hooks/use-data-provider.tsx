@@ -420,31 +420,6 @@ const getActiveEmployeesForDate = useCallback((date: Date): Employee[] => {
     });
 }, [employees]);
 
-const findNextUnconfirmedWeek = useCallback((startDate: Date): string | null => {
-    let dateToCheck = startOfWeek(new Date('2024-12-30'), { weekStartsOn: 1 });
-    const limit = addWeeks(new Date(), 104); // Search limit of 2 years
-
-    while (isBefore(dateToCheck, limit)) {
-        const currentWeekId = getWeekId(dateToCheck);
-        const activeEmployeesThisWeek = getActiveEmployeesForDate(dateToCheck);
-
-        if (activeEmployeesThisWeek.length > 0) {
-            const isUnconfirmed = activeEmployeesThisWeek.some(emp =>
-                !(weeklyRecords[currentWeekId]?.weekData?.[emp.id]?.confirmed ?? false)
-            );
-
-            if (isUnconfirmed) {
-                return currentWeekId;
-            }
-        }
-
-        dateToCheck = addWeeks(dateToCheck, 1);
-    }
-
-    return null;
-}, [weeklyRecords, getActiveEmployeesForDate, getWeekId]);
-
-
 useEffect(() => {
     if (loading || !appUser || appUser.role !== 'admin' || Object.keys(weeklyRecords).length === 0) {
         setUnconfirmedWeeksDetails([]);
@@ -453,6 +428,12 @@ useEffect(() => {
 
     const today = startOfWeek(new Date(), { weekStartsOn: 1 });
     const details: UnconfirmedWeekDetail[] = [];
+
+    // Rule: Only consider employees active TODAY for checking past weeks.
+    const currentlyActiveEmployees = employees.filter(emp => 
+        emp.employmentPeriods.some(p => !p.endDate || isAfter(p.endDate as Date, new Date()))
+    );
+    const currentlyActiveEmployeeIds = new Set(currentlyActiveEmployees.map(e => e.id));
 
     const pastWeekIds = Object.keys(weeklyRecords)
         .filter(weekId => {
@@ -463,14 +444,16 @@ useEffect(() => {
 
     for (const weekId of pastWeekIds) {
         const weekDate = parseISO(weekId);
-        const activeEmployeesForWeek = getActiveEmployeesForDate(weekDate);
-
-        if (activeEmployeesForWeek.length === 0) {
-            continue;
-        }
-
-        const unconfirmedEmployeeNames = activeEmployeesForWeek
+        
+        // Check only against employees active today who were ALSO active in that past week
+        const unconfirmedEmployeeNames = currentlyActiveEmployees
             .filter(emp => {
+                const isActiveInPastWeek = emp.employmentPeriods.some(p => 
+                    isWithinInterval(weekDate, { start: p.startDate as Date, end: p.endDate as Date || new Date('9999-12-31') })
+                );
+
+                if (!isActiveInPastWeek) return false;
+
                 const empRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
                 return !empRecord || !empRecord.confirmed;
             })
@@ -486,7 +469,7 @@ useEffect(() => {
 
     setUnconfirmedWeeksDetails(details);
 
-}, [loading, appUser, weeklyRecords, employees, getActiveEmployeesForDate]);
+}, [loading, appUser, weeklyRecords, employees, getWeekId]);
 
 
 // Memoized values and functions that depend on state
@@ -1275,6 +1258,30 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     const freshUsers = await getCollection<AppUser>('users');
     setUsers(freshUsers);
   };
+  
+  const findNextUnconfirmedWeek = useCallback((startDate: Date): string | null => {
+    let dateToCheck = startOfWeek(addWeeks(startDate, 1), { weekStartsOn: 1 });
+    const limit = addWeeks(new Date(), 104); // Search limit of 2 years
+
+    while (isBefore(dateToCheck, limit)) {
+        const currentWeekId = getWeekId(dateToCheck);
+        const activeEmployeesThisWeek = getActiveEmployeesForDate(dateToCheck);
+
+        if (activeEmployeesThisWeek.length > 0) {
+            const isUnconfirmed = activeEmployeesThisWeek.some(emp =>
+                !(weeklyRecords[currentWeekId]?.weekData?.[emp.id]?.confirmed ?? false)
+            );
+
+            if (isUnconfirmed) {
+                return currentWeekId;
+            }
+        }
+
+        dateToCheck = addWeeks(dateToCheck, 1);
+    }
+
+    return null;
+  }, [weeklyRecords, getActiveEmployeesForDate, getWeekId]);
 
   const value: DataContextType = {
     employees,
