@@ -429,23 +429,28 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
 const getActiveEmployeesForDate = useCallback((date: Date): Employee[] => {
     const checkDate = startOfDay(date);
+    const weekStart = startOfWeek(checkDate, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(checkDate, { weekStartsOn: 1 });
+
     return employees.filter(emp => {
         if (!emp.employmentPeriods) return false;
         return emp.employmentPeriods.some(p => {
             const periodStart = startOfDay(p.startDate as Date);
             const periodEnd = p.endDate ? startOfDay(p.endDate as Date) : new Date('9999-12-31');
-            return !isAfter(periodStart, checkDate) && isAfter(periodEnd, checkDate);
+            
+            // The period must overlap with the week in question.
+            return isBefore(periodStart, weekEnd) && isAfter(periodEnd, weekStart);
         });
     });
 }, [employees]);
 
 
 useEffect(() => {
-    if (loading || !appUser || appUser.role !== 'admin' || Object.keys(weeklyRecords).length === 0) {
+    if (loading || !appUser || appUser.role !== 'admin') {
         setUnconfirmedWeeksDetails([]);
         return;
     }
-
+    
     const currentlyActiveEmployees = employees.filter(emp =>
         emp.employmentPeriods.some(p => !p.endDate || isAfter(p.endDate as Date, new Date()))
     );
@@ -453,18 +458,40 @@ useEffect(() => {
     const currentWeekId = getWeekId(new Date());
     const details: UnconfirmedWeekDetail[] = [];
 
-    const sortedWeekIds = Object.keys(weeklyRecords).sort((a, b) => b.localeCompare(a));
+    const weekIdsToProcess = new Set<string>();
+    
+    // Add all weeks from records
+    Object.keys(weeklyRecords).forEach(weekId => weekIdsToProcess.add(weekId));
+    
+    // Also add weeks for active employees if they don't have a record yet
+    currentlyActiveEmployees.forEach(emp => {
+        emp.employmentPeriods.forEach(p => {
+            if (!p.endDate || isAfter(p.endDate as Date, new Date('2025-01-01'))) {
+                let checkDate = startOfWeek(new Date('2025-01-06'), { weekStartsOn: 1 });
+                 while (isBefore(checkDate, new Date())) {
+                    weekIdsToProcess.add(getWeekId(checkDate));
+                    checkDate = addWeeks(checkDate, 1);
+                }
+            }
+        });
+    });
 
+    const sortedWeekIds = Array.from(weekIdsToProcess).sort((a, b) => b.localeCompare(a));
+    
     for (const weekId of sortedWeekIds) {
         if (weekId === currentWeekId) continue;
         
         const weekDate = parseISO(weekId);
         if (getISOWeekYear(weekDate) < 2025) continue;
+        if (isAfter(weekDate, new Date())) continue;
 
-        const unconfirmedEmployeeNames = currentlyActiveEmployees
+        const activeEmployeesForThisWeek = getActiveEmployeesForDate(weekDate);
+
+        const unconfirmedEmployeeNames = activeEmployeesForThisWeek
             .filter(emp => {
                 const empRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
-                return empRecord && empRecord.confirmed === false;
+                // A week is unconfirmed if the record doesn't exist or if it exists and `confirmed` is false.
+                return !empRecord || empRecord.confirmed === false;
             })
             .map(emp => emp.name);
 
@@ -475,9 +502,9 @@ useEffect(() => {
             });
         }
     }
-
+    
     setUnconfirmedWeeksDetails(details);
-}, [loading, appUser, weeklyRecords, employees, getWeekId]);
+}, [loading, appUser, weeklyRecords, employees, getWeekId, getActiveEmployeesForDate]);
 
 
 // Memoized values and functions that depend on state
@@ -1026,105 +1053,92 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     const prefilledRecords: Record<string, PrefilledWeeklyRecord> = prefilledData as any;
 
     const processEmployeeWeekData = useCallback((emp: Employee, weekDays: Date[], weekId: string): DailyEmployeeData | null => {
-        const dbRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
-        
-        // If the record is confirmed, return it as is.
-        if (dbRecord?.confirmed) {
-            return dbRecord;
-        }
-    
-        const activePeriod = getActivePeriod(emp.id, weekDays[0]);
-        if (!activePeriod) {
-            return null;
-        }
-    
-        // If there's an unconfirmed record in DB, use its days as a base
-        const baseDays = dbRecord?.days;
-    
-        const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(emp.id, weekDays[0]);
-        const weeklyWorkHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
-    
-        const newDays: Record<string, DailyData> = {};
-        
-        for (const day of weekDays) {
-            const dayKey = format(day, 'yyyy-MM-dd');
-            
-            // Start with the existing data if it exists, otherwise create from scratch
-            const existingDayData = baseDays?.[dayKey];
-    
-            if (existingDayData) {
-                 newDays[dayKey] = { ...existingDayData };
-                 continue; // Use existing unconfirmed data and move to next day
-            }
-            
-            // Logic to build from scratch if no unconfirmed data exists
-            const holidayDetails = holidays.find(h => isSameDay(h.date, day));
-            const theoreticalDay = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
-            const theoreticalHours = theoreticalDay?.theoreticalHours ?? 0;
-            
-            let absenceTypeAbbr = 'ninguna';
-            let scheduledAbsence: ScheduledAbsence | undefined;
-
-            const confirmedAbsenceDay = Object.values(weeklyRecords).map(r => r.weekData?.[emp.id]?.days?.[dayKey]).find(d => d && weeklyRecords[getWeekId(parseISO(dayKey))]?.weekData?.[emp.id]?.confirmed);
-
-            if (confirmedAbsenceDay?.absence && confirmedAbsenceDay.absence !== 'ninguna') {
-                absenceTypeAbbr = confirmedAbsenceDay.absence;
-            } else {
-                scheduledAbsence = (emp.employmentPeriods || [])
-                    .flatMap(p => p.scheduledAbsences || [])
-                    .find(a => {
-                        const startDate = safeParseDate(a.startDate);
-                        const endDate = safeParseDate(a.endDate) || startDate;
-                        return startDate && endDate && isWithinInterval(day, { start: startOfDay(startDate), end: endOfDay(endDate) });
-                    });
-                if (scheduledAbsence) {
-                    const foundType = absenceTypes.find(at => at.id === scheduledAbsence!.absenceTypeId);
-                    if (foundType) absenceTypeAbbr = foundType.abbreviation;
-                }
-            }
-
-            const absenceType = absenceTypes.find(at => at.abbreviation === absenceTypeAbbr);
-    
-            let leaveHours = 0;
-            if (holidayDetails && theoreticalHours === 0 && getISODay(day) !== 7) {
-                 const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
-                 if (contractType?.computesOffDayBag) {
-                    leaveHours = weeklyWorkHours / 5;
-                 }
-            }
-
-            newDays[dayKey] = {
-                theoreticalHours: theoreticalHours,
-                workedHours: absenceType && !absenceType.isAbsenceSplittable ? 0 : theoreticalHours,
-                absence: absenceType ? absenceType.abbreviation : 'ninguna',
-                absenceHours: absenceType && !absenceType.isAbsenceSplittable ? theoreticalHours : 0,
-                leaveHours: leaveHours,
-                doublePay: false,
-                isHoliday: !!holidayDetails,
-                holidayType: holidayDetails?.type ?? null,
-            };
-        }
-    
-        const prefilledWeek = prefilledRecords[weekId];
-        const prefilledEmployeeData = prefilledWeek?.weekData?.[emp.name];
-    
-        // Return a combined object, prioritizing existing dbRecord fields
-        return {
-            ...dbRecord, // Spread existing unconfirmed data first
-            days: newDays,
-            confirmed: false, // Always false as we are processing an unconfirmed week
-            totalComplementaryHours: dbRecord?.totalComplementaryHours ?? null,
-            generalComment: dbRecord?.generalComment ?? null,
-            weeklyHoursOverride: dbRecord?.weeklyHoursOverride ?? null,
-            isDifference: dbRecord?.isDifference ?? false,
-            hasPreregistration: !!prefilledEmployeeData,
-            // Campos para auditoría desde Excel
-            expectedOrdinaryImpact: prefilledEmployeeData?.expectedOrdinaryImpact,
-            expectedHolidayImpact: prefilledEmployeeData?.expectedHolidayImpact,
-            expectedLeaveImpact: prefilledEmployeeData?.expectedLeaveImpact,
-        };
-    
-    }, [weeklyRecords, getActivePeriod, getTheoreticalHoursAndTurn, contractTypes, holidays, absenceTypes, getEffectiveWeeklyHours, safeParseDate, getWeekId]);
+      const dbRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
+  
+      // If the record is confirmed, return it as is.
+      if (dbRecord?.confirmed) {
+          return dbRecord;
+      }
+  
+      const activePeriod = getActivePeriod(emp.id, weekDays[0]);
+      if (!activePeriod) {
+          return null; // Don't create data for inactive employees
+      }
+  
+      const baseDays = dbRecord?.days;
+      const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(emp.id, weekDays[0]);
+      const weeklyWorkHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
+      const newDays: Record<string, DailyData> = {};
+  
+      for (const day of weekDays) {
+          const dayKey = format(day, 'yyyy-MM-dd');
+          const existingDayData = baseDays?.[dayKey];
+  
+          if (existingDayData) {
+              newDays[dayKey] = { ...existingDayData };
+              continue;
+          }
+  
+          const holidayDetails = holidays.find(h => isSameDay(h.date, day));
+          const theoreticalDay = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
+          const theoreticalHours = theoreticalDay?.theoreticalHours ?? 0;
+  
+          const scheduledAbsence = (emp.employmentPeriods || [])
+              .flatMap(p => p.scheduledAbsences || [])
+              .find(a => {
+                  const startDate = safeParseDate(a.startDate);
+                  const endDate = safeParseDate(a.endDate) || startDate;
+                  return startDate && endDate && isWithinInterval(day, { start: startOfDay(startDate), end: endOfDay(endDate) });
+              });
+  
+          const absenceType = scheduledAbsence ? absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId) : undefined;
+          
+          let leaveHours = 0;
+          if (holidayDetails && theoreticalHours === 0 && getISODay(day) !== 7) {
+              const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
+              if (contractType?.computesOffDayBag) {
+                  leaveHours = weeklyWorkHours / 5;
+              }
+          }
+  
+          newDays[dayKey] = {
+              theoreticalHours,
+              workedHours: absenceType && !absenceType.isAbsenceSplittable ? 0 : theoreticalHours,
+              absence: absenceType ? absenceType.abbreviation : 'ninguna',
+              absenceHours: absenceType && !absenceType.isAbsenceSplittable ? theoreticalHours : 0,
+              leaveHours,
+              doublePay: false,
+              isHoliday: !!holidayDetails,
+              holidayType: holidayDetails?.type ?? null,
+          };
+      }
+  
+      const prefilledWeek = prefilledRecords[weekId];
+      const prefilledEmployeeData = prefilledWeek?.weekData?.[emp.name];
+  
+      return {
+          ...dbRecord,
+          days: newDays,
+          confirmed: false,
+          totalComplementaryHours: dbRecord?.totalComplementaryHours ?? null,
+          generalComment: dbRecord?.generalComment ?? null,
+          weeklyHoursOverride: dbRecord?.weeklyHoursOverride ?? null,
+          isDifference: dbRecord?.isDifference ?? false,
+          hasPreregistration: !!prefilledEmployeeData,
+          expectedOrdinaryImpact: prefilledEmployeeData?.expectedOrdinaryImpact,
+          expectedHolidayImpact: prefilledEmployeeData?.expectedHolidayImpact,
+          expectedLeaveImpact: prefilledEmployeeData?.expectedLeaveImpact,
+      };
+  }, [
+      weeklyRecords, 
+      getActivePeriod, 
+      getTheoreticalHoursAndTurn, 
+      holidays, 
+      absenceTypes, 
+      contractTypes, 
+      getEffectiveWeeklyHours, 
+      safeParseDate
+  ]);
 
     const calculateEmployeeVacations = useCallback((emp: Employee, year: number = getYear(new Date()), mode: 'confirmed' | 'programmed' = 'programmed'): {
         vacationDaysTaken: number;
