@@ -8,9 +8,10 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { User, Wallet, Gift, Briefcase, Scale, HelpCircle, FileQuestion, PlaneTakeoff, MessageSquareWarning, Smartphone, Info, CalendarClock } from 'lucide-react';
+import { User, Wallet, Gift, Briefcase, Scale, HelpCircle, FileQuestion, PlaneTakeoff, MessageSquareWarning, Smartphone, Info, CalendarClock, Hourglass } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function HelpPage() {
   return (
@@ -138,6 +139,49 @@ export default function HelpPage() {
             </div>
           </AccordionContent>
         </AccordionItem>
+
+        <AccordionItem value="item-senior">
+          <AccordionTrigger className="text-lg font-semibold">
+            <div className="flex items-center gap-3">
+              <Hourglass className="h-5 w-5 text-primary" />
+              <span>Reducción de Jornada Senior (Gestión de la Madurez)</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pt-2">
+            <p className="text-muted-foreground">
+              Según el "Acuerdo Gestión de la Madurez" del Grupo Inditex, los empleados a partir de los 55 años tienen derecho a un banco de horas anuales para reducir su jornada. Las horas disponibles varían según la edad y el tipo de jornada contratada.
+            </p>
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-bold">EDAD</TableHead>
+                    <TableHead className="font-bold text-center">IGUAL Y SUPERIOR A 20 HORAS DE JORNADA</TableHead>
+                    <TableHead className="font-bold text-center">MENOS DE 20 HORAS DE JORNADA</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow><TableCell>55 años</TableCell><TableCell className="text-center">60 h</TableCell><TableCell className="text-center">30 h</TableCell></TableRow>
+                  <TableRow><TableCell>56 años</TableCell><TableCell className="text-center">76 h</TableCell><TableCell className="text-center">38 h</TableCell></TableRow>
+                  <TableRow><TableCell>57 años</TableCell><TableCell className="text-center">92 h</TableCell><TableCell className="text-center">46 h</TableCell></TableRow>
+                  <TableRow><TableCell>58 años</TableCell><TableCell className="text-center">108 h</TableCell><TableCell className="text-center">54 h</TableCell></TableRow>
+                  <TableRow><TableCell>59 años</TableCell><TableCell className="text-center">124 h</TableCell><TableCell className="text-center">62 h</TableCell></TableRow>
+                  <TableRow><TableCell>60 años</TableCell><TableCell className="text-center">156 h</TableCell><TableCell className="text-center">78 h</TableCell></TableRow>
+                  <TableRow><TableCell>61 años</TableCell><TableCell className="text-center">172 h</TableCell><TableCell className="text-center">86 h</TableCell></TableRow>
+                  <TableRow><TableCell>62 años</TableCell><TableCell className="text-center">188 h</TableCell><TableCell className="text-center">94 h</TableCell></TableRow>
+                  <TableRow><TableCell>63 años</TableCell><TableCell className="text-center">204 h</TableCell><TableCell className="text-center">102 h</TableCell></TableRow>
+                  <TableRow><TableCell>64 años</TableCell><TableCell className="text-center">220 h</TableCell><TableCell className="text-center">110 h</TableCell></TableRow>
+                  <TableRow><TableCell>65 años</TableCell><TableCell className="text-center">252 h</TableCell><TableCell className="text-center">126 h</TableCell></TableRow>
+                  <TableRow><TableCell>66 años</TableCell><TableCell className="text-center">268 h</TableCell><TableCell className="text-center">134 h</TableCell></TableRow>
+                  <TableRow><TableCell>67 años</TableCell><TableCell className="text-center">284 h</TableCell><TableCell className="text-center">142 h</TableCell></TableRow>
+                </TableBody>
+              </Table>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Puedes solicitar estas horas a través del formulario de "Solicitudes" en la página de "Mis Mensajes", seleccionando el tipo de ausencia "Reducción Jornada Senior".
+            </p>
+          </AccordionContent>
+        </AccordionItem>
         
         <AccordionItem value="item-3">
           <AccordionTrigger className="text-lg font-semibold">
@@ -193,5 +237,3 @@ export default function HelpPage() {
     </div>
   );
 }
-
-    
