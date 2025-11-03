@@ -53,7 +53,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
         <CardHeader className="text-center">
             <div className="mb-4 flex justify-center">
-                <Image src="/logo.png" alt="Logo de la aplicación" width={112} height={112} className="h-28 w-28" />
+                <Image src="/logo.png" alt="Logo de la aplicación" width={112} height={112} />
             </div>
           <CardTitle className="text-2xl font-bold font-headline">Iniciar Sesión</CardTitle>
           <CardDescription>Accede a tu panel de Control Horario</CardDescription>
