@@ -426,11 +426,10 @@ useEffect(() => {
     const today = new Date();
     const startOfThisWeek = startOfWeek(today, { weekStartsOn: 1 });
 
-    const pastWeekRecordIds = Object.keys(weeklyRecords)
-        .filter(weekId => {
-            const weekDate = parseISO(weekId);
-            return isBefore(weekDate, startOfThisWeek) && getISOWeekYear(weekDate) >= 2025;
-        });
+    const pastWeekRecordIds = Object.keys(weeklyRecords).filter(weekId => {
+        const weekDate = parseISO(weekId);
+        return isBefore(weekDate, startOfThisWeek) && getISOWeekYear(weekDate) >= 2025;
+    });
 
     for (const weekId of pastWeekRecordIds) {
         const weekDate = parseISO(weekId);
@@ -453,7 +452,6 @@ useEffect(() => {
     }
     
     setUnconfirmedWeeksDetails(details.sort((a, b) => b.weekId.localeCompare(a.weekId)));
-
 }, [loading, weeklyRecords, employees, getActiveEmployeesForDate]);
 
 
