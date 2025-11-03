@@ -194,8 +194,10 @@ export default function HomePage() {
                                     </div>
                                 </ScrollArea>
                             ) : (
-                                <div className="flex items-center justify-center h-full text-muted-foreground">
-                                    <p>Bandeja de entrada al día.</p>
+                                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                                    <CheckCircle className="h-10 w-10 text-green-500 mb-2"/>
+                                    <p className="font-semibold">¡Bandeja de entrada al día!</p>
+                                    <p className="text-sm">No hay mensajes nuevos.</p>
                                 </div>
                             )}
                         </CardContent>
@@ -242,8 +244,10 @@ export default function HomePage() {
                                     </div>
                                 </ScrollArea>
                             ) : (
-                                <div className="flex items-center justify-center h-full text-muted-foreground">
-                                    <p>No hay ausencias programadas.</p>
+                                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                                    <CheckCircle className="h-10 w-10 text-green-500 mb-2"/>
+                                    <p className="font-semibold">¡Todo tranquilo!</p>
+                                    <p className="text-sm">No hay ausencias programadas.</p>
                                 </div>
                             )}
                         </CardContent>
