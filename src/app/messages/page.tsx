@@ -33,12 +33,15 @@ import Link from 'next/link';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 
 function ChatView({ conversation }: { conversation: Conversation }) {
-    const { appUser } = useAuth();
+    const { appUser, reauthenticateWithPassword } = useAuth();
     const { refreshData, correctionRequests } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
     const viewportRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const { toast } = useToast();
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [password, setPassword] = useState('');
+    const [messageToDelete, setMessageToDelete] = useState<Message | null>(null);
 
     const [messagesSnapshot, messagesLoading] = useCollectionData(
         conversation ? query(collection(db, 'conversations', conversation.id, 'messages'), orderBy('timestamp', 'asc')) : null
@@ -127,25 +130,71 @@ function ChatView({ conversation }: { conversation: Conversation }) {
         }
     };
 
+    const handleDeleteMessage = async () => {
+        if (!messageToDelete || !conversation) return;
+        if (!password) {
+            toast({ title: 'Contraseña requerida', description: 'Por favor, introduce tu contraseña.', variant: 'destructive' });
+            return;
+        }
+
+        setIsDeleting(true);
+        try {
+            const isAuthenticated = await reauthenticateWithPassword(password);
+            if (!isAuthenticated) {
+                toast({ title: 'Error de autenticación', description: 'La contraseña no es correcta.', variant: 'destructive' });
+                return;
+            }
+
+            await deleteSubcollectionDocument('conversations', conversation.id, 'messages', messageToDelete.id);
+
+            // If the deleted message was the last one, update the conversation summary
+            if (formattedMessages[formattedMessages.length - 1].id === messageToDelete.id) {
+                const newLastMessage = formattedMessages[formattedMessages.length - 2];
+                if (newLastMessage) {
+                     await updateDoc(doc(db, 'conversations', conversation.id), {
+                        lastMessageText: newLastMessage.text,
+                        lastMessageTimestamp: newLastMessage.timestamp,
+                    });
+                } else {
+                    // If no messages left, you might want to delete the conversation or clear the summary
+                    await updateDoc(doc(db, 'conversations', conversation.id), {
+                        lastMessageText: "No hay mensajes.",
+                        lastMessageTimestamp: serverTimestamp(),
+                    });
+                }
+            }
+
+            toast({ title: 'Mensaje eliminado', variant: 'destructive'});
+            setMessageToDelete(null);
+
+        } catch (error) {
+            console.error("Error deleting message:", error);
+            toast({ title: 'Error', description: "No se pudo eliminar el mensaje.", variant: 'destructive' });
+        } finally {
+            setIsDeleting(false);
+            setPassword('');
+        }
+    };
+
 
     const RenderMessage = ({ message }: { message: Message }) => {
         const isCorrectionRequest = message.text.startsWith('SOLICITUD DE CORRECCIÓN');
         let weekId = '';
         if (isCorrectionRequest) {
-            const match = message.text.match(/Semana: (\d{2}\/\d{2}\/\d{4})/);
-            if (match && match[1]) {
-                 try {
-                    // This parse is just to convert dd/MM/yyyy to a Date object
-                    const parsedDate = parse(match[1], 'dd/MM/yyyy', new Date());
-                    // Re-format to yyyy-MM-dd for the ID
-                    weekId = format(parsedDate, 'yyyy-MM-dd');
-                } catch(e) {
-                    console.error("Error parsing date from message:", e);
+            const dateMatch = message.text.match(/Semana: (\d{2}\/\d{2}\/\d{4})/);
+            if (dateMatch && dateMatch[1]) {
+                try {
+                    const parsedDate = parse(dateMatch[1], 'dd/MM/yyyy', new Date());
+                    if (isValid(parsedDate)) {
+                        weekId = format(parsedDate, 'yyyy-MM-dd');
+                    }
+                } catch (e) {
+                    console.error("Error parsing date from correction request message:", e);
                 }
             }
         }
 
-        const request = isCorrectionRequest 
+        const request = isCorrectionRequest && weekId
             ? correctionRequests.find(r => r.id === `${weekId}_${conversation.employeeId}`) 
             : null;
 
@@ -167,7 +216,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
                             {format(message.timestamp, 'dd/MM/yy HH:mm')}
                         </p>
                     )}
-                     {isCorrectionRequest && !isResolved && (
+                     {isCorrectionRequest && !isResolved && weekId && (
                         <Button 
                             size="sm" 
                             variant="secondary" 
@@ -183,6 +232,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
     };
 
     return (
+        <>
         <Card className="flex flex-col h-full bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background">
             <CardHeader className="p-4 border-b">
                 <div className="flex items-center gap-4">
@@ -228,6 +278,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
                 </form>
             </CardFooter>
         </Card>
+        </>
     );
 }
 
@@ -287,7 +338,7 @@ export default function AdminMessagesPage() {
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 h-[calc(100vh-5rem)]">
+        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 h-[calc(100vh-5rem)]">
             <div className="col-span-1 border-r bg-background/50 flex flex-col">
                  <h2 className="text-xl font-bold p-4 border-b">Conversaciones</h2>
                  <ScrollArea className="flex-1">
@@ -316,7 +367,7 @@ export default function AdminMessagesPage() {
                      </div>
                  </ScrollArea>
             </div>
-            <div className="col-span-1 md:col-span-2 lg:col-span-2 p-4">
+            <div className="col-span-1 md:col-span-3 lg:col-span-3 p-4">
                 {selectedConversation ? (
                     <ChatView conversation={selectedConversation} />
                 ) : (
