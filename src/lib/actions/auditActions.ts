@@ -3,9 +3,10 @@
 
 import { getDbAdmin } from '../firebase-admin';
 import prefilledData from '@/lib/prefilled_data.json';
-import type { PrefilledWeeklyRecord, WeeklyRecord, Employee, AbsenceType, EmploymentPeriod, ContractType } from '../types';
-import { parseISO, isAfter, startOfDay } from 'date-fns';
+import type { PrefilledWeeklyRecord, WeeklyRecord, Employee, AbsenceType, EmploymentPeriod, ContractType, CorrectionRequest } from '../types';
+import { parseISO, isAfter, startOfDay, format } from 'date-fns';
 import { calculateBalancePreview } from '../calculators/balance-calculator';
+import { es } from 'date-fns/locale';
 
 interface RecordUpdate {
   weekId: string;
@@ -25,18 +26,18 @@ const getActivePeriodForAudit = (employee: Employee, date: Date): EmploymentPeri
 
 
 /**
- * Runs a retroactive audit on all confirmed weekly records.
- * It now uses the centralized balance calculation logic.
+ * Runs a retroactive audit on all confirmed weekly records and syncs correction requests to messages.
  */
 export async function runRetroactiveAudit() {
     'use server';
     try {
         const db = getDbAdmin();
-        const [weeklyRecordsSnapshot, employeesSnapshot, absenceTypesSnapshot, contractTypesSnapshot] = await Promise.all([
+        const [weeklyRecordsSnapshot, employeesSnapshot, absenceTypesSnapshot, contractTypesSnapshot, correctionRequestsSnapshot] = await Promise.all([
             db.collection('weeklyRecords').get(),
             db.collection('employees').get(),
             db.collection('absenceTypes').get(),
             db.collection('contractTypes').get(),
+            db.collection('correctionRequests').where('status', '==', 'pending').get(),
         ]);
         
         const employeesMap = new Map(employeesSnapshot.docs.map(doc => [doc.id, doc.data() as Employee]));
@@ -46,6 +47,7 @@ export async function runRetroactiveAudit() {
         
         const updates: RecordUpdate[] = [];
 
+        // Part 1: Audit comments based on Excel differences
         for (const doc of weeklyRecordsSnapshot.docs) {
             const weekId = doc.id;
             const weeklyRecord = doc.data() as WeeklyRecord;
@@ -65,11 +67,10 @@ export async function runRetroactiveAudit() {
 
                 if (!activePeriod) continue;
 
-                // Use the centralized calculation function
                 const dbImpact = calculateBalancePreview(
                     employee.id,
                     record.days,
-                    { ordinary: 0, holiday: 0, leave: 0 }, // Initial balances don't matter for impact calculation
+                    { ordinary: 0, holiday: 0, leave: 0 }, 
                     absenceTypes,
                     contractTypes,
                     employee.employmentPeriods,
@@ -79,7 +80,6 @@ export async function runRetroactiveAudit() {
 
                 if (!dbImpact) continue;
                  
-                // Get Excel Impact
                 const prefilledWeekData = auditFile[weekId]?.weekData;
                 let prefilledEmpData;
                 if (prefilledWeekData) {
@@ -97,7 +97,6 @@ export async function runRetroactiveAudit() {
                     leave: prefilledEmpData?.expectedLeaveImpact ?? 0,
                 };
 
-                // Compare and Generate Update
                 const ordinaryDiff = dbImpact.ordinary - expectedImpact.ordinary;
                 const holidayDiff = dbImpact.holiday - expectedImpact.holiday;
                 const leaveDiff = dbImpact.leave - expectedImpact.leave;
@@ -123,13 +122,52 @@ export async function runRetroactiveAudit() {
                 }
             }
         }
-
+        
+        let commentUpdateMessage = '';
         if (updates.length > 0) {
             const updateResult = await updateAuditComments(updates);
-            return { success: true, message: updateResult.message };
+            commentUpdateMessage = updateResult.message;
         } else {
-            return { success: true, message: 'Auditoría completada. No se encontraron nuevas diferencias.' };
+            commentUpdateMessage = 'No se encontraron nuevas diferencias de auditoría.';
         }
+
+        // Part 2: Sync pending correction requests to messages
+        let messagesSynced = 0;
+        if (!correctionRequestsSnapshot.empty) {
+            const batch = db.batch();
+            for (const doc of correctionRequestsSnapshot.docs) {
+                const request = doc.data() as CorrectionRequest;
+                const employee = employeesMap.get(request.employeeId);
+                if (employee) {
+                    const conversationRef = db.collection('conversations').doc(request.employeeId);
+                    const weekStartDateFormatted = format(parseISO(request.weekId), 'dd/MM/yyyy', { locale: es });
+                    const messageText = `SOLICITUD DE CORRECCIÓN\n\nSemana: ${weekStartDateFormatted}\nMotivo: ${request.reason}`;
+                    
+                    batch.set(conversationRef, {
+                        employeeId: request.employeeId,
+                        employeeName: employee.name,
+                        lastMessageText: messageText,
+                        lastMessageTimestamp: request.requestedAt,
+                        unreadByAdmin: true,
+                        unreadByEmployee: false
+                    }, { merge: true });
+
+                    const messageRef = conversationRef.collection('messages').doc();
+                    batch.set(messageRef, {
+                        text: messageText,
+                        senderId: request.employeeId,
+                        timestamp: request.requestedAt
+                    });
+                    messagesSynced++;
+                }
+            }
+            await batch.commit();
+        }
+        
+        const syncMessage = messagesSynced > 0 ? `Se han recuperado y sincronizado ${messagesSynced} solicitudes de corrección en la mensajería.` : 'No había solicitudes de corrección pendientes por sincronizar.';
+        
+        return { success: true, message: `${commentUpdateMessage} ${syncMessage}` };
+
     } catch (error) {
         console.error("Error running retroactive audit:", error);
         const errorMessage = error instanceof Error ? error.message : 'Error desconocido al ejecutar la auditoría.';

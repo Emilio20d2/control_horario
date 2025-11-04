@@ -55,18 +55,18 @@ export function RetroactiveAuditManager() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Auditoría Retroactiva de Comentarios</CardTitle>
+                <CardTitle>Auditoría y Recuperación</CardTitle>
                 <CardDescription>
-                    Esta herramienta audita todas las semanas ya confirmadas y añade un comentario si detecta una diferencia con los datos de Excel.
+                    Esta herramienta audita las semanas confirmadas en busca de diferencias y recupera solicitudes de corrección que no se hayan mostrado como mensajes.
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4 rounded-lg border border-primary/50 p-4">
                      <div className='flex flex-col md:flex-row items-start md:items-center justify-between gap-4'>
                         <div>
-                             <h4 className="font-semibold">Ejecutar Auditoría y Actualizar Comentarios</h4>
+                             <h4 className="font-semibold">Ejecutar Auditoría y Sincronizar Mensajes</h4>
                             <p className="text-sm text-muted-foreground mt-1">
-                                El proceso recorrerá todos los registros confirmados de la base de datos. Esta acción es segura y solo añade comentarios.
+                                El proceso escaneará todos los registros y solicitudes pendientes. Es una acción segura que solo añade o actualiza información.
                             </p>
                         </div>
                         <AlertDialog>
@@ -89,7 +89,7 @@ export function RetroactiveAuditManager() {
                                 <AlertDialogHeader>
                                 <AlertDialogTitle>¿Confirmar Auditoría Retroactiva?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    Esta acción escaneará toda la base de datos para añadir comentarios de auditoría en las semanas confirmadas que tengan diferencias. Puede tardar unos minutos.
+                                    Esta acción escaneará toda la base de datos para añadir comentarios y recuperar mensajes de solicitudes pendientes. Puede tardar unos minutos.
                                 </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
