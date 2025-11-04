@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -18,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { setDocument } from '@/lib/services/firestoreService';
-import { Timestamp, collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'firebase/firestore';
+import { Timestamp, collection, addDoc, serverTimestamp, getDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -420,5 +419,6 @@ export default function MySchedulePage() {
         </div>
     );
 }
+    
 
     
