@@ -14,7 +14,7 @@ import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDo
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
 import type { Message, Conversation, CorrectionRequest } from '@/lib/types';
-import { format, parse } from 'date-fns';
+import { format, parse, isAfter } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
@@ -72,14 +72,39 @@ function ChatView({ conversation }: { conversation: Conversation }) {
 
     const formattedMessages = useMemo(() => {
         if (!messagesSnapshot) return [];
-        return messagesSnapshot.map(docData => {
+
+        const realMessages = messagesSnapshot.map(docData => {
             return {
                 id: docData.id,
                 ...docData,
                 timestamp: docData.timestamp?.toDate()
             } as Message;
         });
-    }, [messagesSnapshot]);
+
+        // If messages are loading or already exist, return them
+        if (messagesLoading || realMessages.length > 0) {
+            return realMessages;
+        }
+        
+        // If there are no real messages, check for pending correction requests
+        const pendingRequest = correctionRequests.find(req => 
+            req.employeeId === conversation.employeeId && req.status === 'pending'
+        );
+
+        if (pendingRequest) {
+            const weekStartDateFormatted = format(parse(pendingRequest.weekId, 'yyyy-MM-dd', new Date()), 'dd/MM/yyyy', { locale: es });
+            const virtualMessage: Message = {
+                id: `virtual_${pendingRequest.id}`,
+                text: `SOLICITUD DE CORRECCIÓN\n\nSemana: ${weekStartDateFormatted}\nMotivo: ${pendingRequest.reason}`,
+                senderId: pendingRequest.employeeId,
+                timestamp: pendingRequest.requestedAt.toDate(),
+            };
+            return [virtualMessage];
+        }
+
+        return [];
+
+    }, [messagesSnapshot, messagesLoading, correctionRequests, conversation.employeeId, es]);
 
     const handleSendMessage = async (e: React.FormEvent, customMessage?: string) => {
         e.preventDefault();
