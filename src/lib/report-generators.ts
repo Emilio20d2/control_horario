@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use client';
 import jsPDF from 'jspdf';
@@ -619,6 +620,7 @@ export const generateRequestStatusReportPDF = (
     doc.text(campaign.title, pageMargin, 22);
 
     const campaignAbsenceTypeIds = new Set(campaign.allowedAbsenceTypeIds);
+    const campaignAbsencePeriod = { start: toDate(campaign.absenceStartDate), end: toDate(campaign.absenceEndDate) };
     
     const toDate = (date: any): Date => {
         if (date instanceof Timestamp) return date.toDate();
@@ -631,43 +633,42 @@ export const generateRequestStatusReportPDF = (
         const emp = allEmployees.find(e => e.id === quadrantEmp.id);
         if (!emp) return null;
 
-        const originalRequests = (emp.employmentPeriods || [])
+        const allAbsencesInCampaign = (emp.employmentPeriods || [])
             .flatMap(p => p.scheduledAbsences || [])
-            .filter(a => !a.isDefinitive && a.originalRequest?.startDate && campaignAbsenceTypeIds.has(a.absenceTypeId));
+            .filter(a => {
+                if (!a.startDate || !campaignAbsenceTypeIds.has(a.absenceTypeId)) return false;
+                const absenceDate = toDate(a.startDate);
+                return isWithinInterval(absenceDate, campaignAbsencePeriod);
+            });
             
         let originalRequestText = 'PENDIENTE DE SOLICITUD';
         let modifiedRequestText = '';
         let hasData = false;
 
-        if (originalRequests.length > 0) {
+        if (allAbsencesInCampaign.length > 0) {
             const originalRequestStrings: string[] = [];
             const modifiedRequestStrings: string[] = [];
             
-            originalRequests.forEach(absence => {
+            allAbsencesInCampaign.forEach(absence => {
                 hasData = true;
                 const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
                 const typeAbbr = absenceType?.abbreviation || '??';
-
-                const originalStartDate = toDate(absence.originalRequest!.startDate);
-                const originalEndDate = absence.originalRequest!.endDate ? toDate(absence.originalRequest!.endDate) : null;
                 
-                // Find the corresponding definitive record
-                const definitiveAbsence = (emp.employmentPeriods || [])
-                    .flatMap(p => p.scheduledAbsences || [])
-                    .find(def => def.isDefinitive && def.originalRequest?.startDate === absence.originalRequest?.startDate);
-                
-                const definitiveStartDate = definitiveAbsence ? toDate(definitiveAbsence.startDate) : originalStartDate;
-                const definitiveEndDate = definitiveAbsence ? (definitiveAbsence.endDate ? toDate(definitiveAbsence.endDate) : null) : originalEndDate;
+                const originalRequest = absence.originalRequest;
+                const originalStartDate = originalRequest ? toDate(originalRequest.startDate) : toDate(absence.startDate);
+                const originalEndDate = originalRequest ? (originalRequest.endDate ? toDate(originalRequest.endDate) : null) : (absence.endDate ? toDate(absence.endDate) : null);
 
                 originalRequestStrings.push(`${typeAbbr}: ${format(originalStartDate, 'dd/MM/yy')} - ${originalEndDate ? format(originalEndDate, 'dd/MM/yy') : ''}`);
                 
-                const isModified = definitiveAbsence && (!isEqual(definitiveStartDate, originalStartDate) || (originalEndDate && definitiveEndDate && !isEqual(definitiveEndDate, originalEndDate)));
+                const isModified = originalRequest && 
+                                   (!isEqual(toDate(absence.startDate), originalStartDate) || 
+                                    (originalEndDate && absence.endDate && !isEqual(toDate(absence.endDate), originalEndDate)));
 
                 if (isModified) {
-                    modifiedRequestStrings.push(`${typeAbbr}: ${format(definitiveStartDate, 'dd/MM/yy')} - ${definitiveEndDate ? format(definitiveEndDate, 'dd/MM/yy') : ''}`);
+                    modifiedRequestStrings.push(`${typeAbbr}: ${format(toDate(absence.startDate), 'dd/MM/yy')} - ${absence.endDate ? format(toDate(absence.endDate), 'dd/MM/yy') : ''}`);
                 }
             });
-
+            
             if (hasData) {
                 originalRequestText = originalRequestStrings.join('\n');
                 modifiedRequestText = modifiedRequestStrings.join('\n');
@@ -711,6 +712,7 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
 
