@@ -414,7 +414,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
             // 2. Iterate through correction requests to update or create conversations
             corReqs.forEach(req => {
-                const employeeName = req.employeeName || employeesMap.get(req.employeeId) || 'Desconocido';
+                const employeeName = employeesMap.get(req.employeeId) || 'Desconocido';
                 const existingConv = convMap.get(req.employeeId);
                 const requestTimestamp = req.requestedAt;
                 

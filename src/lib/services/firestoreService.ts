@@ -105,3 +105,15 @@ export const deleteSubcollectionDocument = async (collectionName: string, docId:
 export const setDocument = async (collectionName: string, docId: string, data: any, options: { merge?: boolean } = {}): Promise<void> => {
     await setDoc(doc(db, collectionName, docId), data, { merge: true, ...options });
 }
+
+export const createConversation = async (employeeId: string, employeeName: string): Promise<void> => {
+    const conversationRef = doc(db, 'conversations', employeeId);
+    await setDoc(conversationRef, {
+        employeeId,
+        employeeName,
+        lastMessageText: 'Conversación iniciada por un administrador.',
+        lastMessageTimestamp: Timestamp.now(),
+        readBy: [],
+        unreadByEmployee: true,
+    }, { merge: true });
+};
