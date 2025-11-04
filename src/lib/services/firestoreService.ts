@@ -89,7 +89,8 @@ export const addDocument = async (collectionName: string, data: any): Promise<Do
 }
 
 export const updateDocument = async (collectionName: string, docId: string, data: any): Promise<void> => {
-    await updateDoc(doc(db, collectionName, docId), data);
+    const docRef = doc(db, collectionName, docId);
+    await updateDoc(docRef, data);
 }
 
 export const deleteDocument = async (collectionName: string, docId: string): Promise<void> => {

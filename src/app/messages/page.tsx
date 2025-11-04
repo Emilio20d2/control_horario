@@ -3,91 +3,179 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardFooter, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizonal, ArrowLeft, Loader2, Trash2 } from 'lucide-react';
+import { SendHorizonal, Loader2, PlaneTakeoff, Info, CalendarClock, Hourglass, Calendar as CalendarIcon, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-is-mobile';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, onSnapshot, arrayUnion, deleteDoc, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
-import type { Conversation, Message } from '@/lib/types';
-import { format } from 'date-fns';
+import type { Message, VacationCampaign, AbsenceType, Holiday, CorrectionRequest } from '@/lib/types';
+import { format, isWithinInterval, parseISO, isValid, getYear } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { addScheduledAbsence, updateDocument } from '@/lib/services/employeeService';
+import { DateRange, DayPicker } from 'react-day-picker';
+import { es } from 'date-fns/locale';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
-import { useAuth } from '@/hooks/useAuth';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { deleteSubcollectionDocument } from '@/lib/services/firestoreService';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
-export default function MessagesPage() {
-    const { employees, conversations, loading: dataLoading, refreshData } = useDataProvider();
-    const { appUser } = useAuth();
-    const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+export default function MyMessagesPage() {
+    const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, getTheoreticalHoursAndTurn, holidays, weeklyRecords, correctionRequests, refreshData } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
-    const isMobile = useIsMobile();
+    const conversationId = employeeRecord?.id;
     const viewportRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [messagesLoading, setMessagesLoading] = useState(true);
-    const [isDeleting, setIsDeleting] = useState(false);
+    const { toast } = useToast();
 
-    const selectedConversation = conversations.find(c => c.id === selectedConversationId);
+    // State for vacation request dialog
+    const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+    const [selectedCampaign, setSelectedCampaign] = useState<VacationCampaign | null>(null);
+    const [requestDateRange, setRequestDateRange] = useState<DateRange | undefined>(undefined);
+    const [requestAbsenceTypeId, setRequestAbsenceTypeId] = useState<string>('');
+    const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
     
-    const predefinedResponses = [
-        "Se ha revisado y corregido tu solicitud.",
-        "Recibido, lo revisaremos.",
-        "De acuerdo, gracias por avisar.",
-        "La solicitud no procede."
-    ];
+    // State for other requests
+    const [isOtherRequestDialogOpen, setIsOtherRequestDialogOpen] = useState(false);
+    const [isCalendarDialogOpen, setIsCalendarDialogOpen] = useState(false);
+    const [otherRequestStep, setOtherRequestStep] = useState(1);
+    const [communicatedTo, setCommunicatedTo] = useState('');
+    const [otherRequestAbsenceTypeId, setOtherRequestAbsenceTypeId] = useState('');
+    const [otherRequestMultipleDates, setOtherRequestMultipleDates] = useState<Date[]>([]);
+    const [otherRequestNotes, setOtherRequestNotes] = useState('');
+    const [appointmentHour, setAppointmentHour] = useState<string | null>(null);
+    const [appointmentMinute, setAppointmentMinute] = useState<string | null>(null);
+    const [isSubmittingOtherRequest, setIsSubmittingOtherRequest] = useState(false);
+    const [seniorHoursTotal, setSeniorHoursTotal] = useState(0);
 
-    // Effect to fetch messages for the selected conversation
+    const safeParseDate = (date: any): Date | null => {
+        if (!date) return null;
+        if (date instanceof Date) return date;
+        if (date instanceof Timestamp) return date.toDate();
+        if (typeof date === 'string') {
+            const parsed = parseISO(date);
+            return isValid(parsed) ? parsed : null;
+        }
+        return null;
+    };
+    
+    const openingHolidays = useMemo(() => holidays.filter(h => h.type === 'Apertura').map(h => h.date as Date), [holidays]);
+    const otherHolidays = useMemo(() => holidays.filter(h => h.type !== 'Apertura').map(h => h.date as Date), [holidays]);
+    
+    const dayPickerModifiers = {
+        opening: openingHolidays,
+        other: otherHolidays,
+        selected: otherRequestMultipleDates,
+    };
+    const dayPickerModifiersStyles = { 
+        opening: { backgroundColor: '#a7f3d0' }, 
+        other: { backgroundColor: '#fecaca' },
+        selected: { backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }
+    };
+
+    const conversation = useMemo(() => {
+        if (!conversationId) return null;
+        return conversations.find(c => c.id === conversationId);
+    }, [conversations, conversationId]);
+
+    const activeCampaign = useMemo(() => {
+        const now = new Date();
+        return vacationCampaigns.find(c => {
+            const startDate = c.submissionStartDate instanceof Timestamp ? c.submissionStartDate.toDate() : c.submissionStartDate;
+            const endDate = c.submissionEndDate instanceof Timestamp ? c.submissionEndDate.toDate() : c.submissionEndDate;
+            return c.isActive && isWithinInterval(now, { start: startDate, end: endDate });
+        });
+    }, [vacationCampaigns]);
+
+    const otherRequestAbsenceTypes = useMemo(() => {
+        const allowedAbbreviations = new Set([
+            'AP',
+            'B/C',
+            'DH',
+            'DF',
+            'DL',
+            'HS',
+            'RJS',
+            'HM',
+            'LF'
+        ]);
+        return absenceTypes.filter(at => allowedAbbreviations.has(at.abbreviation));
+    }, [absenceTypes]);
+
+    const [messagesSnapshot, messagesLoading] = useCollectionData(
+        conversationId ? query(collection(db, 'conversations', conversationId, 'messages'), orderBy('timestamp', 'asc')) : null
+    );
+    
+    // Effect to calculate senior hours total, now including previously confirmed hours from the current year
     useEffect(() => {
-        if (!selectedConversationId) {
-            setMessages([]);
+        const selectedAbsenceType = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId);
+        if (selectedAbsenceType?.name !== 'Reducción Jornada Senior' || !employeeRecord) {
+            setSeniorHoursTotal(0);
             return;
         }
 
-        setMessagesLoading(true);
-        const messagesQuery = query(collection(db, 'conversations', selectedConversationId, 'messages'), orderBy('timestamp', 'asc'));
-        
-        const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-            const fetchedMessages = snapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    id: doc.id, // Make sure to include the document ID
-                    ...data,
-                    timestamp: data.timestamp?.toDate()
-                } as Message;
-            });
-            setMessages(fetchedMessages);
-            setMessagesLoading(false);
+        let total = 0;
+        const currentYear = getYear(new Date());
+
+        // 1. Calculate hours from the current, unsubmitted request
+        otherRequestMultipleDates.forEach(date => {
+            const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(employeeRecord.id, date);
+            const dayData = weekDaysWithTheoreticalHours.find(d => d.dateKey === format(date, 'yyyy-MM-dd'));
+            if (dayData) {
+                total += dayData.theoreticalHours;
+            }
         });
 
-        return () => unsubscribe();
-    }, [selectedConversationId]);
+        // 2. Add hours from previously confirmed records in the current year
+        if (weeklyRecords && selectedAbsenceType) {
+            Object.values(weeklyRecords).forEach(record => {
+                const empWeekData = record.weekData[employeeRecord.id];
+                if (empWeekData?.confirmed && empWeekData.days) {
+                    Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                        if (getYear(parseISO(dayStr)) === currentYear && dayData.absence === selectedAbsenceType.abbreviation) {
+                            total += dayData.absenceHours;
+                        }
+                    });
+                }
+            });
+        }
+        
+        setSeniorHoursTotal(total);
+    }, [otherRequestMultipleDates, otherRequestAbsenceTypeId, employeeRecord, getTheoreticalHoursAndTurn, absenceTypes, weeklyRecords]);
 
+     // Effect to mark conversation as read
+    useEffect(() => {
+        if (conversationId && conversation?.unreadByEmployee) {
+            const convRef = doc(db, 'conversations', conversationId);
+            updateDoc(convRef, { unreadByEmployee: false });
+        }
+    }, [conversationId, conversation]);
 
-    // Effect to scroll to the bottom of the chat
+    const formattedMessages = useMemo(() => {
+        if (!messagesSnapshot) return [];
+        return messagesSnapshot.map(doc => {
+            const data = doc;
+            return {
+                id: doc.id,
+                ...data,
+                timestamp: data.timestamp?.toDate() // Convert Firestore Timestamp to Date
+            } as Message;
+        });
+    }, [messagesSnapshot]);
+
     useEffect(() => {
         if (viewportRef.current) {
             viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
         }
-    }, [messages, messagesLoading]);
+    }, [formattedMessages, messagesLoading]);
 
-    // Effect to mark conversation as read for the current admin
-    useEffect(() => {
-        if (selectedConversationId && appUser?.id && !selectedConversation?.readBy?.includes(appUser.id)) {
-            const convRef = doc(db, 'conversations', selectedConversationId);
-            updateDoc(convRef, {
-                readBy: arrayUnion(appUser.id)
-            }).then(() => {
-                refreshData();
-            });
-        }
-    }, [selectedConversationId, selectedConversation, appUser, refreshData]);
-
-    useEffect(() => {
+     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto'; // Reset height
             textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 128)}px`; // Set new height, max 128px (8rem)
@@ -97,188 +185,367 @@ export default function MessagesPage() {
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newMessage.trim() || !selectedConversationId || !appUser) return;
-
+        if (newMessage.trim() === '' || !conversationId || !employeeRecord) return;
+        
         const messageText = newMessage;
         setNewMessage('');
 
-        const messagesColRef = collection(db, 'conversations', selectedConversationId, 'messages');
-        await addDoc(messagesColRef, {
-            text: messageText,
-            senderId: 'admin',
-            timestamp: serverTimestamp()
-        });
-
-        const conversationDocRef = doc(db, 'conversations', selectedConversationId);
-        await updateDoc(conversationDocRef, {
-            lastMessageText: messageText,
-            lastMessageTimestamp: serverTimestamp(),
-            unreadByEmployee: true,
-            readBy: [appUser.id], // The sender (admin) has read it. Reset for others.
-        });
+        await sendMessage(messageText, true); // true for unreadByAdmin
     };
 
-    const handleDeleteMessage = async (messageId: string) => {
-        if (!selectedConversationId) return;
-        setIsDeleting(true);
-        try {
-            await deleteSubcollectionDocument('conversations', selectedConversationId, 'messages', messageId);
-            
-            // After deleting, check if we need to update the conversation summary
-            const remainingMessagesQuery = query(collection(db, 'conversations', selectedConversationId, 'messages'), orderBy('timestamp', 'desc'));
-            const remainingMessagesSnapshot = await getDocs(remainingMessagesQuery);
+    const sendMessage = async (text: string, unreadByAdmin: boolean) => {
+        if (!conversationId || !employeeRecord) return;
+    
+        const convDocRef = doc(db, 'conversations', conversationId);
+        
+        // Use setDoc with merge:true to create or update the document safely
+        await setDoc(convDocRef, {
+            employeeId: employeeRecord.id,
+            employeeName: employeeRecord.name,
+            lastMessageText: text,
+            lastMessageTimestamp: serverTimestamp(),
+            unreadByAdmin: unreadByAdmin,
+            unreadByEmployee: false,
+        }, { merge: true });
+        
+        const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
+        const userMessageData = {
+            text: text,
+            senderId: employeeRecord.id,
+            timestamp: serverTimestamp()
+        };
+    
+        await addDoc(messagesColRef, userMessageData);
+    };
+    
+    const handleOpenRequestDialog = (campaign: VacationCampaign) => {
+        setSelectedCampaign(campaign);
+        const defaultAbsenceType = absenceTypes.find(at => at.name === 'Vacaciones');
+        setRequestAbsenceTypeId(defaultAbsenceType?.id || '');
+        setRequestDateRange(undefined);
+        setIsRequestDialogOpen(true);
+    };
 
-            if (remainingMessagesSnapshot.empty) {
-                // If no messages left, delete the conversation
-                await deleteDoc(doc(db, 'conversations', selectedConversationId));
-                setSelectedConversationId(null);
-            } else {
-                // Update conversation with the new last message
-                const newLastMessage = remainingMessagesSnapshot.docs[0].data();
-                await updateDoc(doc(db, 'conversations', selectedConversationId), {
-                    lastMessageText: newLastMessage.text,
-                    lastMessageTimestamp: newLastMessage.timestamp
-                });
+    const handleOpenOtherRequestDialog = () => {
+        setOtherRequestStep(1);
+        setCommunicatedTo('');
+        setOtherRequestAbsenceTypeId('');
+        setOtherRequestMultipleDates([]);
+        setOtherRequestNotes('');
+        setSeniorHoursTotal(0);
+        setAppointmentHour(null);
+        setAppointmentMinute(null);
+        setIsOtherRequestDialogOpen(true);
+    }
+    
+    const handleSubmitRequest = async () => {
+        if (!selectedCampaign || !requestAbsenceTypeId || !requestDateRange?.from || !requestDateRange?.to || !employeeRecord) {
+            toast({ title: 'Datos incompletos', description: 'Selecciona tipo de ausencia y rango de fechas.', variant: 'destructive' });
+            return;
+        }
+    
+        const activePeriod = employeeRecord.employmentPeriods.find(p => !p.endDate || isWithinInterval(new Date(), { start: safeParseDate(p.startDate)!, end: safeParseDate(p.endDate) || new Date('9999-12-31') }));
+        if (!activePeriod) {
+            toast({ title: 'Error', description: 'No tienes un periodo laboral activo.', variant: 'destructive' });
+            return;
+        }
+    
+        setIsSubmittingRequest(true);
+        try {
+            await addScheduledAbsence(
+                employeeRecord.id,
+                activePeriod.id,
+                {
+                    absenceTypeId: requestAbsenceTypeId,
+                    startDate: format(requestDateRange.from, 'yyyy-MM-dd'),
+                    endDate: format(requestDateRange.to, 'yyyy-MM-dd'),
+                    notes: null,
+                }, 
+                employeeRecord, 
+                true // isEmployeeRequest
+            );
+    
+            toast({ title: 'Solicitud Enviada', description: 'Tu solicitud de ausencia ha sido registrada.' });
+    
+            const absenceName = absenceTypes.find(at => at.id === requestAbsenceTypeId)?.name || 'Ausencia';
+            const requestMessage = `Hola,\n\nQuiero solicitar una ausencia dentro de la campaña "${selectedCampaign.title}".\n\nTipo: ${absenceName}\nDesde: ${format(requestDateRange.from, 'dd/MM/yyyy')}\nHasta: ${format(requestDateRange.to, 'dd/MM/yyyy')}\n\nLa solicitud ha sido enviada para su revisión.\n\nGracias.`;
+    
+            await sendMessage(requestMessage, false);
+    
+            setIsRequestDialogOpen(false);
+        } catch (error) {
+            console.error('Error submitting request:', error);
+            toast({ title: 'Error al enviar', description: error instanceof Error ? error.message : 'No se pudo enviar la solicitud.', variant: 'destructive' });
+        } finally {
+            setIsSubmittingRequest(false);
+        }
+    };
+    
+    const handleSubmitOtherRequest = async () => {
+        const selectedAbsenceType = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId);
+        
+        if (!employeeRecord) {
+            toast({ title: 'Error', description: 'No se pudo identificar tu ficha de empleado.', variant: 'destructive' });
+            return;
+        }
+    
+        const activePeriod = employeeRecord.employmentPeriods.find(p => !p.endDate || isWithinInterval(new Date(), { start: safeParseDate(p.startDate)!, end: safeParseDate(p.endDate) || new Date('9999-12-31') }));
+        if (!activePeriod) {
+            toast({ title: 'Error', description: 'No tienes un periodo laboral activo.', variant: 'destructive' });
+            return;
+        }
+    
+        if (otherRequestMultipleDates.length === 0) {
+            toast({ title: 'Datos incompletos', description: 'Selecciona al menos un día para el permiso.', variant: 'destructive' });
+            return;
+        }
+
+        const medicalAppointmentTime = appointmentHour && appointmentMinute ? `${appointmentHour}:${appointmentMinute}` : '';
+        if (selectedAbsenceType?.abbreviation === 'HM' && !medicalAppointmentTime) {
+            toast({ title: 'Hora requerida', description: 'Por favor, especifica la hora de la consulta médica.', variant: 'destructive' });
+            return;
+        }
+        
+        if (selectedAbsenceType?.abbreviation !== 'RJS' && !otherRequestNotes.trim()) {
+            toast({ title: 'Motivo Requerido', description: 'Por favor, explica el motivo de tu solicitud en las notas.', variant: 'destructive' });
+            return;
+        }
+
+        if (!otherRequestAbsenceTypeId || !communicatedTo) {
+            toast({ title: 'Datos incompletos', description: 'Completa todos los campos requeridos.', variant: 'destructive' });
+            return;
+        }
+    
+        setIsSubmittingOtherRequest(true);
+        try {
+            let finalNotes = otherRequestNotes;
+            let extraInfoForMessage = '';
+
+            if (selectedAbsenceType?.abbreviation === 'RJS') {
+                finalNotes = `Petición de ${seniorHoursTotal.toFixed(2)} horas por reducción de jornada senior.`;
+            } else if (selectedAbsenceType?.abbreviation === 'HM') {
+                extraInfoForMessage = `\n- Hora Consulta: ${medicalAppointmentTime}`;
+                finalNotes = `Hora Consulta: ${medicalAppointmentTime}\n${otherRequestNotes}`;
             }
 
+            for (const day of otherRequestMultipleDates) {
+                await addScheduledAbsence(
+                    employeeRecord.id,
+                    activePeriod.id,
+                    {
+                        absenceTypeId: otherRequestAbsenceTypeId,
+                        startDate: format(day, 'yyyy-MM-dd'),
+                        endDate: format(day, 'yyyy-MM-dd'),
+                        notes: finalNotes,
+                        communicatedTo: communicatedTo,
+                    },
+                    employeeRecord,
+                    true // It's an employee request
+                );
+            }
+    
+            const absenceName = selectedAbsenceType?.name || 'Ausencia';
+            const datesForMessage = otherRequestMultipleDates.map(d => format(d, 'dd/MM/yyyy')).sort().join(', ');
+            
+            const requestMessage = `Hola,\n\nHe solicitado un permiso que he comunicado verbalmente a ${communicatedTo}.\n\n- Tipo: ${absenceName}\n- Fecha(s): ${datesForMessage}${extraInfoForMessage}\n- Motivo: ${otherRequestNotes}\n\nGracias.`;
+    
+            await sendMessage(requestMessage, true);
+            
+            toast({ title: 'Solicitud Enviada', description: 'Tu petición ha sido registrada y enviada al administrador.' });
+            setIsOtherRequestDialogOpen(false);
+    
         } catch (error) {
-            console.error("Error deleting message:", error);
+            console.error('Error submitting other request:', error);
+            toast({ title: 'Error al enviar', description: error instanceof Error ? error.message : 'No se pudo enviar la solicitud.', variant: 'destructive' });
         } finally {
-            setIsDeleting(false);
+            setIsSubmittingOtherRequest(false);
         }
-    }
-
-
+    };
+    
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSendMessage(e as unknown as React.FormEvent);
         }
     }
-
-    const ConversationList = () => (
-        <Card className="flex flex-col h-full bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
-            <div className="p-4 border-b">
-                <h2 className="text-xl font-bold font-headline">Bandeja de Entrada</h2>
-            </div>
-             {dataLoading ? (
-                <div className="flex items-center justify-center flex-1">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-             ) : (
-                <ScrollArea className="flex-1">
-                    <div className="flex flex-col">
-                        {conversations.map((conv) => {
-                            const employee = employees.find(e => e.id === conv.employeeId);
-                            const fallback = employee?.name.split(' ').map(n => n[0]).join('') || 'U';
-                            const isUnread = appUser?.id ? !conv.readBy?.includes(appUser.id) : false;
-                            
-                            return (
-                                <button
-                                    key={conv.id}
-                                    className={cn(
-                                        'flex items-center gap-4 p-4 text-left w-full border-b transition-colors',
-                                        selectedConversationId === conv.id ? 'bg-primary/10' : 'hover:bg-primary/5'
-                                    )}
-                                    onClick={() => setSelectedConversationId(conv.id)}
-                                >
-                                    <Avatar>
-                                        <AvatarFallback>{fallback}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1 truncate">
-                                        <p className="font-semibold">{conv.employeeName}</p>
-                                        <p className="text-sm text-muted-foreground truncate">{conv.lastMessageText}</p>
-                                    </div>
-                                    {isUnread && (
-                                        <div className="bg-primary text-primary-foreground text-xs rounded-full h-2.5 w-2.5" />
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </ScrollArea>
-             )}
-        </Card>
-    );
     
-    const ChatView = () => (
-         <Card className="flex flex-col h-full bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
-            {selectedConversation ? (
-                <>
-                    <div className="flex items-center gap-4 p-4 border-b">
-                        {isMobile && (
-                             <Button variant="ghost" size="icon" onClick={() => setSelectedConversationId(null)}>
-                                <ArrowLeft className="h-5 w-5" />
-                            </Button>
-                        )}
-                        <Avatar>
-                             <AvatarFallback>{selectedConversation.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                        </Avatar>
-                        <h2 className="text-xl font-bold font-headline">{selectedConversation.employeeName}</h2>
+    const isSubmitOtherRequestDisabled = useMemo(() => {
+        const selectedAbsenceType = absenceTypes.find(at => at.id === otherRequestAbsenceTypeId);
+        const medicalAppointmentTime = appointmentHour && appointmentMinute ? `${appointmentHour}:${appointmentMinute}` : '';
+
+        if (isSubmittingOtherRequest || !otherRequestAbsenceTypeId || !communicatedTo || otherRequestMultipleDates.length === 0) {
+            return true;
+        }
+        
+        if (selectedAbsenceType?.abbreviation === 'RJS') {
+            return false; // Only needs dates
+        }
+
+        if (selectedAbsenceType?.abbreviation === 'HM') {
+             return !otherRequestNotes.trim() || !medicalAppointmentTime;
+        }
+
+        // For all other types
+        return !otherRequestNotes.trim();
+
+    }, [
+        isSubmittingOtherRequest, 
+        otherRequestAbsenceTypeId, 
+        communicatedTo,
+        otherRequestMultipleDates,
+        otherRequestNotes,
+        appointmentHour,
+        appointmentMinute,
+        absenceTypes
+    ]);
+
+    const handleResolveRequest = async (weekId: string) => {
+        if (!employeeRecord) return;
+        
+        const requestId = `${weekId}_${employeeRecord.id}`;
+        
+        try {
+            await updateDocument('correctionRequests', requestId, { status: 'resolved' });
+            refreshData(); // To update the local state of correctionRequests
+            toast({ title: 'Solicitud marcada como realizada.' });
+        } catch (error) {
+            console.error("Error resolving request:", error);
+            toast({ title: "Error", description: "No se pudo actualizar el estado de la solicitud.", variant: "destructive" });
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        )
+    }
+
+    if (!employeeRecord) {
+        return (
+            <div className="flex flex-col gap-6 p-4 md:p-6 h-full">
+                 <h1 className="text-2xl font-bold tracking-tight font-headline">
+                    Mis Mensajes
+                </h1>
+                <Card className="flex flex-col flex-grow items-center justify-center">
+                    <p className="text-muted-foreground">No se ha podido encontrar tu ficha de empleado.</p>
+                </Card>
+            </div>
+        )
+    }
+
+    const campaignAbsenceTypes = absenceTypes.filter(at => selectedCampaign?.allowedAbsenceTypeIds.includes(at.id));
+
+    const renderChatHeader = () => {
+        return (
+            <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-4">
+                    <Avatar className="border-2 border-foreground"><AvatarFallback>D</AvatarFallback></Avatar>
+                    <div>
+                        <h2 className="text-lg font-bold">Dirección</h2>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            Este es un canal para registrar solicitudes ya habladas en persona. Las cuestiones importantes se tratan siempre cara a cara.
+                        </p>
                     </div>
+                </div>
+                 {activeCampaign && (
+                    <Alert>
+                        <PlaneTakeoff className="h-4 w-4" />
+                        <AlertTitle>{activeCampaign.title}</AlertTitle>
+                        <AlertDescription className="flex items-center justify-between">
+                            Periodo de solicitud abierto. ¡Puedes enviar tus peticiones!
+                             <div className="flex gap-2">
+                                <Button size="sm" onClick={() => handleOpenRequestDialog(activeCampaign)}>Hacer Solicitud</Button>
+                            </div>
+                        </AlertDescription>
+                    </Alert>
+                )}
+            </div>
+        )
+    }
+
+    const RenderMessage = ({ message }: { message: Message }) => {
+        const isCorrectionRequest = message.text.startsWith('SOLICITUD DE CORRECCIÓN');
+        let weekId = '';
+        if (isCorrectionRequest) {
+            const match = message.text.match(/Semana: (\d{2}\/\d{2}\/\d{4})/);
+            if (match && match[1]) {
+                const [day, month, year] = match[1].split('/');
+                weekId = format(new Date(`${year}-${month}-${day}`), 'yyyy-MM-dd');
+            }
+        }
+
+        const request = isCorrectionRequest 
+            ? correctionRequests.find(r => r.id === `${weekId}_${employeeRecord.id}`) 
+            : null;
+
+        const isResolved = request?.status === 'resolved';
+
+        return (
+            <div className={cn('flex items-end gap-2', message.senderId === employeeRecord.id ? 'justify-end' : 'justify-start')}>
+                {message.senderId !== employeeRecord.id && <Avatar className="h-8 w-8 border-2 border-foreground"><AvatarFallback>D</AvatarFallback></Avatar>}
+                <div className={cn(
+                    'max-w-[90%] p-3 rounded-lg shadow-sm',
+                    message.senderId === employeeRecord.id ? 'bg-gradient-to-br from-primary to-blue-400 text-primary-foreground' : 'bg-gradient-to-br from-muted to-transparent'
+                )}>
+                    {isCorrectionRequest && isResolved && (
+                        <p className="text-xs font-bold text-green-300">[REALIZADA]</p>
+                    )}
+                    <p className="whitespace-pre-wrap break-words">{message.text}</p>
+                    {message.timestamp && (
+                        <p className="text-xs opacity-70 mt-1 text-right">
+                            {format(message.timestamp, 'dd/MM/yy HH:mm')}
+                        </p>
+                    )}
+                     {isCorrectionRequest && !isResolved && employeeRecord.role === 'admin' && (
+                        <Button 
+                            size="sm" 
+                            variant="secondary" 
+                            className="mt-2 h-7 text-xs bg-green-200 text-green-900 hover:bg-green-300"
+                            onClick={() => handleResolveRequest(weekId)}
+                        >
+                           <CheckCircle className="mr-2 h-4 w-4" /> Marcar como Realizada
+                        </Button>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <>
+            <div className="flex flex-col gap-6 p-4 md:p-6 h-full">
+                 <div className="flex justify-between items-center">
+                    <h1 className="text-2xl font-bold tracking-tight font-headline">
+                        Mis Mensajes
+                    </h1>
+                     <Button size="sm" onClick={handleOpenOtherRequestDialog}><CalendarClock className="mr-2 h-4 w-4"/>Solicitudes</Button>
+                </div>
+                
+                <Card className="flex flex-col flex-grow h-[calc(100vh-12rem)] bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background">
+                    <CardHeader className="p-4 border-b">
+                        {renderChatHeader()}
+                    </CardHeader>
                     <ScrollArea className="flex-1 p-4 space-y-4" viewportRef={viewportRef}>
                         {messagesLoading ? (
-                             <div className="flex items-center justify-center flex-1 h-full">
-                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                            <div className="flex h-full items-center justify-center">
+                                <Loader2 className="h-8 w-8 animate-spin" />
                             </div>
                         ) : (
-                            messages.map((message) => (
-                                <div key={message.id} className={cn('group flex items-end gap-2', message.senderId === 'admin' ? 'justify-end' : 'justify-start')}>
-                                    <div className={cn(
-                                        'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg shadow-sm',
-                                        message.senderId === 'admin' ? 'bg-gradient-to-br from-primary to-blue-400 text-primary-foreground' : 'bg-gradient-to-br from-muted to-transparent'
-                                    )}>
-                                        <p className="whitespace-pre-wrap break-words">{message.text}</p>
-                                        {message.timestamp && (
-                                            <p className="text-xs opacity-70 mt-1 text-right">
-                                                {format(message.timestamp, 'dd/MM/yy HH:mm')}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Trash2 className="h-3 w-3 text-destructive" />
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>¿Eliminar este mensaje?</AlertDialogTitle>
-                                                <AlertDialogDescription>Esta acción no se puede deshacer y el mensaje se borrará permanentemente.</AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteMessage(message.id)} disabled={isDeleting}>
-                                                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Eliminar'}
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </div>
+                            formattedMessages.map((message, index) => (
+                                <RenderMessage key={index} message={message} />
                             ))
                         )}
                     </ScrollArea>
-                    <div className="p-4 border-t bg-background/50">
-                        <div className="mb-2 flex flex-wrap gap-2">
-                            {predefinedResponses.map((text, index) => (
-                                <Button
-                                    key={index}
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setNewMessage(text)}
-                                    className="text-xs h-7"
-                                >
-                                    {text}
-                                </Button>
-                            ))}
-                        </div>
-                        <form onSubmit={handleSendMessage} className="relative flex items-end w-full">
-                           <Textarea
+                    <CardFooter className="p-4 border-t bg-background">
+                         <form onSubmit={handleSendMessage} className="relative flex items-end w-full">
+                             <Textarea
                                 ref={textareaRef}
                                 placeholder="Escribe tu mensaje..."
                                 className="pr-12 resize-none flex-grow"
                                 value={newMessage}
-                                onChange={e => setNewMessage(e.target.value)}
+                                onChange={(e) => setNewMessage(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 rows={1}
                             />
@@ -286,36 +553,189 @@ export default function MessagesPage() {
                                 <SendHorizonal className="h-4 w-4" />
                             </Button>
                         </form>
+                    </CardFooter>
+                </Card>
+            </div>
+             <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{selectedCampaign?.title}</DialogTitle>
+                        <DialogDescription>{selectedCampaign?.description}</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                             <label className="text-sm font-medium">Tipo de Ausencia</label>
+                            <Select value={requestAbsenceTypeId} onValueChange={setRequestAbsenceTypeId}>
+                                <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                                <SelectContent>
+                                    {campaignAbsenceTypes.map(at => (
+                                        <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                         <div className="space-y-2">
+                            <label className="text-sm font-medium">Periodo de la Ausencia</label>
+                            <DayPicker
+                                mode="range"
+                                selected={requestDateRange}
+                                onSelect={setRequestDateRange}
+                                locale={es}
+                                disabled={isSubmittingRequest}
+                                fromDate={selectedCampaign ? (selectedCampaign.absenceStartDate as Timestamp).toDate() : undefined}
+                                toDate={selectedCampaign ? (selectedCampaign.absenceEndDate as Timestamp).toDate() : undefined}
+                            />
+                        </div>
                     </div>
-                </>
-            ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                     {dataLoading ? (
-                         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                     ) : (
-                        <p className="text-muted-foreground">Selecciona una conversación para ver los mensajes.</p>
-                     )}
-                </div>
-            )}
-        </Card>
-    );
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="secondary">Cancelar</Button>
+                        </DialogClose>
+                        <Button onClick={handleSubmitRequest} disabled={isSubmittingRequest || !requestDateRange?.from}>
+                            {isSubmittingRequest ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Enviar Solicitud
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
-    if (isMobile) {
-        return (
-            <div className="p-2 md:p-4 h-full">
-                {selectedConversationId ? <ChatView /> : <ConversationList />}
-            </div>
-        );
-    }
-    
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 h-full">
-            <div className="md:col-span-2 h-full">
-                 <ConversationList />
-            </div>
-            <div className="md:col-span-3 h-full">
-                <ChatView />
-            </div>
-        </div>
+             <Dialog open={isOtherRequestDialogOpen} onOpenChange={setIsOtherRequestDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Registrar Permiso (Comunicado Verbalmente)</DialogTitle>
+                        <DialogDescription>
+                            {otherRequestStep === 1
+                                ? "Importante: Esta herramienta es solo para registrar un permiso que ya has comunicado verbalmente a la dirección. No es para iniciar una nueva petición."
+                                : "Selecciona un tipo de permiso y la fecha para enviar tu solicitud."}
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    {otherRequestStep === 1 ? (
+                        <div className="py-4 space-y-6">
+                            <div className="space-y-4">
+                                <Label className="font-semibold">¿A quién de la dirección se lo has comunicado?</Label>
+                                <RadioGroup onValueChange={setCommunicatedTo} value={communicatedTo}>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="Arantxa Villacampa" id="r1" />
+                                        <Label htmlFor="r1">Arantxa Villacampa</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="Rebeca Pascual" id="r2" />
+                                        <Label htmlFor="r2">Rebeca Pascual</Label>
+                                    </div>
+                                </RadioGroup>
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild><Button type="button" variant="secondary">Cancelar</Button></DialogClose>
+                                <Button onClick={() => setOtherRequestStep(2)} disabled={!communicatedTo}>Siguiente</Button>
+                            </DialogFooter>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 py-4">
+                             <div className="space-y-2">
+                                <Label className="text-sm font-medium">Tipo de Permiso</Label>
+                                <Select value={otherRequestAbsenceTypeId} onValueChange={setOtherRequestAbsenceTypeId}>
+                                    <SelectTrigger><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {otherRequestAbsenceTypes.map(at => (
+                                            <SelectItem key={at.id} value={at.id}>{at.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.abbreviation === 'HM' && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="appointment-time" className="text-sm font-medium">
+                                        Hora de la Consulta <span className="text-destructive">*</span>
+                                    </Label>
+                                    <div className="flex gap-2">
+                                        <Select value={appointmentHour || undefined} onValueChange={setAppointmentHour}>
+                                            <SelectTrigger><SelectValue placeholder="Hora" /></SelectTrigger>
+                                            <SelectContent>
+                                                {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(hour => (
+                                                    <SelectItem key={hour} value={hour}>{hour}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Select value={appointmentMinute || undefined} onValueChange={setAppointmentMinute}>
+                                            <SelectTrigger><SelectValue placeholder="Min" /></SelectTrigger>
+                                            <SelectContent>
+                                                {['00', '15', '30', '45'].map(minute => (
+                                                    <SelectItem key={minute} value={minute}>{minute}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Días del Permiso</Label>
+                                <Button variant="outline" className="w-full justify-start text-left font-normal" onClick={() => setIsCalendarDialogOpen(true)}>
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {otherRequestMultipleDates.length > 0 ? `${otherRequestMultipleDates.length} día(s) seleccionado(s)` : "Seleccionar días..."}
+                                </Button>
+                            </div>
+                            {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.abbreviation === 'RJS' && (
+                                <Card className="mt-2 p-3 bg-muted/20">
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                        <CardTitle className="text-sm font-medium">Total de Horas Solicitadas (Acumulado Anual)</CardTitle>
+                                        <Hourglass className="h-4 w-4 text-muted-foreground" />
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="text-2xl font-bold">{seniorHoursTotal.toFixed(2)}h</div>
+                                    </CardContent>
+                                </Card>
+                            )}
+                            {absenceTypes.find(at => at.id === otherRequestAbsenceTypeId)?.abbreviation !== 'RJS' && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="notes" className="text-sm font-medium">
+                                        Motivo <span className="text-destructive">*</span>
+                                    </Label>
+                                    <Textarea
+                                        id="notes"
+                                        placeholder="Añade aquí cualquier justificación o comentario necesario..."
+                                        value={otherRequestNotes}
+                                        onChange={(e) => setOtherRequestNotes(e.target.value)}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        <span className="text-destructive">*</span> Obligatorio para este tipo de permiso.
+                                    </p>
+                                </div>
+                            )}
+                             <DialogFooter>
+                                <Button type="button" variant="ghost" onClick={() => setOtherRequestStep(1)}>Atrás</Button>
+                                <Button onClick={handleSubmitOtherRequest} disabled={isSubmitOtherRequestDisabled}>
+                                    {isSubmittingOtherRequest ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    Enviar Solicitud
+                                </Button>
+                            </DialogFooter>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isCalendarDialogOpen} onOpenChange={setIsCalendarDialogOpen}>
+                <DialogContent className="sm:max-w-fit">
+                    <DialogHeader>
+                        <DialogTitle>Seleccionar Días</DialogTitle>
+                        <DialogDescription>Elige uno o varios días para tu solicitud.</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 flex justify-center">
+                        <DayPicker
+                            mode="multiple"
+                            min={0}
+                            selected={otherRequestMultipleDates}
+                            onSelect={(days) => setOtherRequestMultipleDates(days || [])}
+                            locale={es}
+                            modifiers={dayPickerModifiers}
+                            modifiersStyles={dayPickerModifiersStyles}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => setIsCalendarDialogOpen(false)}>Aceptar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
