@@ -66,6 +66,8 @@ import { Input } from '@/components/ui/input';
 import { AddAbsenceDialog } from '@/components/schedule/add-absence-dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import React from 'react';
+
 
 interface CellAbsenceInfo {
     employee: Employee;
@@ -112,56 +114,40 @@ export default function CalendarPage() {
 
   const getAbsencesForDay = useCallback((day: Date) => {
     const dayStart = startOfDay(day);
-    const dayEnd = endOfDay(day);
-    const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-    const activeEmployeesForDay = getActiveEmployeesForDate(day);
-    
-    const substitutesMap: Record<string, string> = {};
-    holidayReports.forEach((report: HolidayReport) => {
-        if (report.weekId === weekId) {
-            substitutesMap[report.employeeId] = report.substituteName;
-        }
-    });
-
     const absences: CellAbsenceInfo[] = [];
 
-    activeEmployeesForDay.forEach(emp => {
-      let foundAbsence: ScheduledAbsence | null = null;
-      let foundPeriodId: string | null = null;
-      
-      for (const period of emp.employmentPeriods || []) {
-          for (const absence of period.scheduledAbsences || []) {
-              const absenceStart = safeParseDate(absence.startDate);
-              if (!absenceStart || !isValid(absenceStart)) continue;
-              
-              const absenceEnd = absence.endDate ? safeParseDate(absence.endDate) : absenceStart;
-              if (!absenceEnd || !isValid(absenceEnd)) continue;
+    const substitutesMap: Record<string, string> = {};
+    const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    holidayReports.forEach((report: HolidayReport) => {
+      if (report.weekId === weekId) {
+        substitutesMap[report.employeeId] = report.substituteName;
+      }
+    });
 
-              if (isWithinInterval(day, { start: startOfDay(absenceStart), end: endOfDay(absenceEnd) })) {
-                  foundAbsence = absence;
-                  foundPeriodId = period.id;
-                  break;
-              }
+    employees.forEach(emp => {
+      (emp.employmentPeriods || []).forEach(period => {
+        (period.scheduledAbsences || []).forEach(absence => {
+          const absenceStart = safeParseDate(absence.startDate);
+          const absenceEnd = absence.endDate ? safeParseDate(absence.endDate) : absenceStart;
+
+          if (absenceStart && absenceEnd && isWithinInterval(dayStart, { start: startOfDay(absenceStart), end: endOfDay(absenceEnd) })) {
+            const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
+            if (absenceType) {
+              absences.push({
+                employee: emp,
+                absence: absence,
+                absenceType: absenceType,
+                substituteName: substitutesMap[emp.id],
+                periodId: period.id,
+              });
+            }
           }
-          if (foundAbsence) break;
-      }
-
-      if (foundAbsence && foundPeriodId) {
-        const absenceType = absenceTypes.find(at => at.id === foundAbsence!.absenceTypeId);
-        if (absenceType) {
-          absences.push({
-            employee: emp,
-            absence: foundAbsence,
-            absenceType: absenceType,
-            substituteName: substitutesMap[emp.id],
-            periodId: foundPeriodId
-          });
-        }
-      }
+        });
+      });
     });
 
     return absences;
-  }, [getActiveEmployeesForDate, holidayReports, absenceTypes, safeParseDate]);
+  }, [employees, holidayReports, absenceTypes, safeParseDate]);
 
 
   const weeklyAbsenceData = useMemo(() => {
