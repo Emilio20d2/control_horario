@@ -130,53 +130,6 @@ function ChatView({ conversation }: { conversation: Conversation }) {
         }
     };
 
-    const handleDeleteMessage = async () => {
-        if (!messageToDelete || !conversation) return;
-        if (!password) {
-            toast({ title: 'Contraseña requerida', description: 'Por favor, introduce tu contraseña.', variant: 'destructive' });
-            return;
-        }
-
-        setIsDeleting(true);
-        try {
-            const isAuthenticated = await reauthenticateWithPassword(password);
-            if (!isAuthenticated) {
-                toast({ title: 'Error de autenticación', description: 'La contraseña no es correcta.', variant: 'destructive' });
-                return;
-            }
-
-            await deleteSubcollectionDocument('conversations', conversation.id, 'messages', messageToDelete.id);
-
-            // If the deleted message was the last one, update the conversation summary
-            if (formattedMessages[formattedMessages.length - 1].id === messageToDelete.id) {
-                const newLastMessage = formattedMessages[formattedMessages.length - 2];
-                if (newLastMessage) {
-                     await updateDoc(doc(db, 'conversations', conversation.id), {
-                        lastMessageText: newLastMessage.text,
-                        lastMessageTimestamp: newLastMessage.timestamp,
-                    });
-                } else {
-                    // If no messages left, you might want to delete the conversation or clear the summary
-                    await updateDoc(doc(db, 'conversations', conversation.id), {
-                        lastMessageText: "No hay mensajes.",
-                        lastMessageTimestamp: serverTimestamp(),
-                    });
-                }
-            }
-
-            toast({ title: 'Mensaje eliminado', variant: 'destructive'});
-            setMessageToDelete(null);
-
-        } catch (error) {
-            console.error("Error deleting message:", error);
-            toast({ title: 'Error', description: "No se pudo eliminar el mensaje.", variant: 'destructive' });
-        } finally {
-            setIsDeleting(false);
-            setPassword('');
-        }
-    };
-
-
     const RenderMessage = ({ message }: { message: Message }) => {
         const isCorrectionRequest = message.text.startsWith('SOLICITUD DE CORRECCIÓN');
         let weekId = '';
@@ -233,7 +186,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
 
     return (
         <>
-        <Card className="flex flex-col h-full bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background">
+        <Card className="flex flex-col h-full bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-background">
             <CardHeader className="p-4 border-b">
                 <div className="flex items-center gap-4">
                     <Avatar><AvatarFallback>{conversation.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
@@ -338,45 +291,52 @@ export default function AdminMessagesPage() {
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 h-[calc(100vh-5rem)]">
-            <div className="col-span-1 border-r bg-background/50 flex flex-col">
-                 <h2 className="text-xl font-bold p-4 border-b">Conversaciones</h2>
-                 <ScrollArea className="flex-1">
-                     <div className="p-2 space-y-1">
-                        {conversations.map(conv => (
-                            <button
-                                key={conv.id}
-                                onClick={() => handleSelectConversation(conv.id)}
-                                className={cn(
-                                    "flex items-center justify-between p-3 rounded-md text-left w-full",
-                                    selectedConversationId === conv.id ? "bg-muted" : "hover:bg-muted/50"
-                                )}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <Avatar><AvatarFallback>{conv.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
-                                    <div className="truncate">
-                                        <p className="font-semibold truncate">{conv.employeeName}</p>
-                                        <p className="text-sm text-muted-foreground truncate">{conv.lastMessageText}</p>
-                                    </div>
-                                </div>
-                                {appUser && !conv.readBy?.includes(appUser.id) && (
-                                     <div className="h-3 w-3 rounded-full bg-destructive flex-shrink-0" />
-                                )}
-                            </button>
-                        ))}
-                     </div>
-                 </ScrollArea>
-            </div>
-            <div className="col-span-1 md:col-span-3 lg:col-span-3 p-4">
-                {selectedConversation ? (
-                    <ChatView conversation={selectedConversation} />
-                ) : (
-                    <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
-                        <Users className="h-16 w-16 mb-4" />
-                        <h3 className="text-xl font-semibold">Selecciona una conversación</h3>
-                        <p>Elige una conversación de la lista para ver los mensajes.</p>
-                    </div>
-                )}
+        <div className="flex flex-col gap-6 p-4 md:p-6">
+            <h1 className="text-2xl font-bold tracking-tight font-headline">Mensajería</h1>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start h-[calc(100vh-10rem)]">
+                <Card className="lg:col-span-1 flex flex-col h-full bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background">
+                    <CardHeader className="border-b">
+                        <CardTitle className="text-lg">Conversaciones</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0 flex-grow">
+                        <ScrollArea className="h-full">
+                            <div className="p-2 space-y-1">
+                                {conversations.map(conv => (
+                                    <button
+                                        key={conv.id}
+                                        onClick={() => handleSelectConversation(conv.id)}
+                                        className={cn(
+                                            "flex items-center justify-between p-3 rounded-md text-left w-full",
+                                            selectedConversationId === conv.id ? "bg-muted" : "hover:bg-muted/50"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Avatar><AvatarFallback>{conv.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
+                                            <div className="truncate">
+                                                <p className="font-semibold truncate">{conv.employeeName}</p>
+                                                <p className="text-sm text-muted-foreground truncate">{conv.lastMessageText}</p>
+                                            </div>
+                                        </div>
+                                        {appUser && !conv.readBy?.includes(appUser.id) && (
+                                            <div className="h-3 w-3 rounded-full bg-destructive flex-shrink-0" />
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+                <div className="lg:col-span-2 h-full">
+                    {selectedConversation ? (
+                        <ChatView conversation={selectedConversation} />
+                    ) : (
+                        <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground bg-muted/30 rounded-lg">
+                            <Users className="h-16 w-16 mb-4" />
+                            <h3 className="text-xl font-semibold">Selecciona una conversación</h3>
+                            <p>Elige una conversación de la lista para ver los mensajes.</p>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
