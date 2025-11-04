@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Plane, Briefcase, Gift, Wallet, Scale } from 'lucide-react';
+import { Eye, Plane, Briefcase, Gift, Wallet, Scale, Mail } from 'lucide-react';
 import type { Employee, EmploymentPeriod } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
@@ -19,6 +19,7 @@ interface EmployeeCardProps {
     vacationInfo?: { vacationDaysTaken: number; suspensionDays: number; vacationDaysAvailable: number; };
     lastPeriod?: EmploymentPeriod;
     showBalances: boolean;
+    onStartConversation: (employee: Employee) => void;
 }
 
 const BalanceItem = ({ label, value, icon: Icon }: { label: string, value: number, icon: React.ElementType }) => (
@@ -33,7 +34,7 @@ const BalanceItem = ({ label, value, icon: Icon }: { label: string, value: numbe
     </div>
 );
 
-export function EmployeeCard({ employee, balances, vacationInfo, lastPeriod, showBalances }: EmployeeCardProps) {
+export function EmployeeCard({ employee, balances, vacationInfo, lastPeriod, showBalances, onStartConversation }: EmployeeCardProps) {
     return (
         <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
             <CardHeader>
@@ -82,16 +83,20 @@ export function EmployeeCard({ employee, balances, vacationInfo, lastPeriod, sho
                     </div>
                 </CardContent>
             )}
-            <CardFooter>
+            <CardFooter className="grid grid-cols-2 gap-2">
+                {showBalances && (
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => onStartConversation(employee)}>
+                        <Mail className="mr-2 h-4 w-4" />
+                        Mensaje
+                    </Button>
+                )}
                  <Button asChild variant="outline" size="sm" className="w-full">
                     <Link href={`/employees/${employee.id}`}>
                         <Eye className="mr-2 h-4 w-4" />
-                        Ver Ficha Completa
+                        Ver Ficha
                     </Link>
                 </Button>
             </CardFooter>
         </Card>
     );
 }
-
-    

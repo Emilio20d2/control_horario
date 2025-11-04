@@ -24,6 +24,7 @@ import { useIsMobile } from '@/hooks/use-is-mobile';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { resolveCorrectionRequest } from '@/lib/actions/dataCleanupActions';
+import { useSearchParams } from 'next/navigation';
 
 
 function ChatView({ conversation }: { conversation: Conversation }) {
@@ -279,8 +280,19 @@ const getShortName = (fullName?: string): string => {
 
 export default function AdminMessagesPage() {
     const { conversations, loading, appUser, correctionRequests } = useDataProvider();
+    const searchParams = useSearchParams();
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
     const isMobile = useIsMobile();
+
+    useEffect(() => {
+        const convIdFromUrl = searchParams.get('conversationId');
+        if (convIdFromUrl) {
+            setSelectedConversationId(convIdFromUrl);
+        } else if (!selectedConversationId && conversations.length > 0) {
+            // Default to first conversation if none is selected
+            setSelectedConversationId(conversations[0].id);
+        }
+    }, [searchParams, conversations, selectedConversationId]);
 
     const pendingRequestEmployeeIds = useMemo(() => {
         return new Set(correctionRequests.filter(r => r.status === 'pending').map(r => r.employeeId));

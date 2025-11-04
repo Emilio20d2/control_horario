@@ -18,7 +18,7 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table';
-import { PlusCircle, Eye, Plane, Loader2 } from 'lucide-react';
+import { PlusCircle, Eye, Plane, Loader2, Mail } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -31,13 +31,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { EmployeeCard } from '@/components/employees/employee-card';
+import { useRouter } from 'next/navigation';
 
 
 export default function EmployeesPage() {
-    const { employees, loading, weeklyRecords, calculateEmployeeVacations, getEmployeeFinalBalances } = useDataProvider();
+    const { employees, loading, weeklyRecords, calculateEmployeeVacations, getEmployeeFinalBalances, createConversation } = useDataProvider();
     const [balances, setBalances] = useState<Record<string, { ordinary: number; holiday: number; leave: number; total: number; }>>({});
     const [balancesLoading, setBalancesLoading] = useState(true);
     const isMobile = useIsMobile();
+    const router = useRouter();
 
     const { activeEmployees, inactiveEmployees } = useMemo(() => {
         const active: Employee[] = [];
@@ -81,6 +83,11 @@ export default function EmployeesPage() {
             )}
         </TableCell>
     );
+
+    const handleStartConversation = async (employee: Employee) => {
+        await createConversation(employee.id, employee.name);
+        router.push(`/messages?conversationId=${employee.id}`);
+    };
 
   const EmployeeTable = ({ employees, showBalances }: { employees: Employee[], showBalances: boolean }) => (
      <Table>
@@ -164,12 +171,18 @@ export default function EmployeesPage() {
 
 
                 <TableCell className="text-right">
-                <Button asChild variant="outline" size="sm">
-                    <Link href={`/employees/${employee.id}`}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Ver Ficha
-                    </Link>
-                </Button>
+                    <div className="flex gap-1 justify-end">
+                        {showBalances && (
+                            <Button variant="outline" size="icon" onClick={() => handleStartConversation(employee)}>
+                                <Mail className="h-4 w-4" />
+                            </Button>
+                        )}
+                        <Button asChild variant="outline" size="icon">
+                            <Link href={`/employees/${employee.id}`}>
+                                <Eye className="h-4 w-4" />
+                            </Link>
+                        </Button>
+                    </div>
                 </TableCell>
             </TableRow>
             )})}
@@ -203,6 +216,7 @@ export default function EmployeesPage() {
                                 vacationInfo={vacationInfo}
                                 lastPeriod={lastPeriod}
                                 showBalances={showBalances}
+                                onStartConversation={handleStartConversation}
                             />
                         )
                     })
@@ -253,9 +267,3 @@ export default function EmployeesPage() {
     </div>
   );
 }
-
-  
-
-    
-
-    
