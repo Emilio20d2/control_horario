@@ -492,8 +492,8 @@ export default function CalendarPage() {
                     />
                 </div>
             </CardHeader>
-            <CardContent>
-                <div className="grid grid-cols-[auto,1fr,1fr,1fr,1fr,1fr,1fr,1fr] border-t border-l">
+            <CardContent className="px-2 pb-2">
+                 <div className="grid grid-cols-[auto,repeat(7,minmax(0,1fr))] border-t border-l">
                     {['Turno', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => (
                         <div key={day} className="text-center font-bold p-2 border-r border-b bg-muted/50 text-xs sm:text-sm">
                             {day}
