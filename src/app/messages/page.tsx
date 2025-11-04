@@ -30,6 +30,13 @@ export default function MessagesPage() {
     const [messagesLoading, setMessagesLoading] = useState(true);
 
     const selectedConversation = conversations.find(c => c.id === selectedConversationId);
+    
+    const predefinedResponses = [
+        "Se ha revisado y corregido tu solicitud.",
+        "Recibido, lo revisaremos.",
+        "De acuerdo, gracias por avisar.",
+        "La solicitud no procede."
+    ];
 
     // Effect to fetch messages for the selected conversation
     useEffect(() => {
@@ -115,7 +122,7 @@ export default function MessagesPage() {
     }
 
     const ConversationList = () => (
-        <Card className="flex flex-col h-[calc(100vh-8rem)] bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
+        <Card className="flex flex-col h-full bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
             <div className="p-4 border-b">
                 <h2 className="text-xl font-bold font-headline">Bandeja de Entrada</h2>
             </div>
@@ -160,7 +167,7 @@ export default function MessagesPage() {
     );
     
     const ChatView = () => (
-         <Card className="flex flex-col h-[calc(100vh-8rem)] bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
+         <Card className="flex flex-col h-full bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
             {selectedConversation ? (
                 <>
                     <div className="flex items-center gap-4 p-4 border-b">
@@ -197,7 +204,20 @@ export default function MessagesPage() {
                             ))
                         )}
                     </ScrollArea>
-                    <div className="p-4 border-t">
+                    <div className="p-4 border-t bg-background/50">
+                        <div className="mb-2 flex flex-wrap gap-2">
+                            {predefinedResponses.map((text, index) => (
+                                <Button
+                                    key={index}
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setNewMessage(text)}
+                                    className="text-xs h-7"
+                                >
+                                    {text}
+                                </Button>
+                            ))}
+                        </div>
                         <form onSubmit={handleSendMessage} className="relative flex items-end w-full">
                            <Textarea
                                 ref={textareaRef}
@@ -228,7 +248,7 @@ export default function MessagesPage() {
 
     if (isMobile) {
         return (
-            <div className="p-2 md:p-4">
+            <div className="p-2 md:p-4 h-full">
                 {selectedConversationId ? <ChatView /> : <ConversationList />}
             </div>
         );
@@ -236,10 +256,10 @@ export default function MessagesPage() {
     
     return (
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 h-full">
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 h-full">
                  <ConversationList />
             </div>
-            <div className="md:col-span-3">
+            <div className="md:col-span-3 h-full">
                 <ChatView />
             </div>
         </div>
