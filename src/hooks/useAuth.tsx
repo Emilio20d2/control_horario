@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
           
-          const isSpecialAdmin = user.email === 'mariaavg@inditex.com';
+          const isSpecialAdmin = user.email === 'mariaavg@inditex.com' || user.email === 'rebecapa@inditex.com';
 
           if (userDoc.exists()) {
               const dbData = userDoc.data() as Omit<AppUser, 'id'>;
