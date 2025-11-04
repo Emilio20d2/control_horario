@@ -352,9 +352,9 @@ export default function AdminMessagesPage() {
                                                 selectedConversationId === conv.id ? "bg-muted" : "hover:bg-muted/50"
                                             )}
                                         >
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-3 overflow-hidden">
                                                 <Avatar><AvatarFallback>{conv.employeeName ? conv.employeeName.split(' ').map(n => n[0]).join('') : '--'}</AvatarFallback></Avatar>
-                                                <div className="truncate">
+                                                <div className="truncate max-w-[150px]">
                                                     <p className="font-semibold truncate">{conv.employeeName || 'Empleado Desconocido'}</p>
                                                     <p className="text-sm text-muted-foreground truncate">{conv.lastMessageText}</p>
                                                 </div>
