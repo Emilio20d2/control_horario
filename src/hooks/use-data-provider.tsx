@@ -103,7 +103,7 @@ interface DataContextType {
   getProcessedAnnualDataForEmployee: (employeeId: string, year: number) => Promise<{ annualData: WeeklyRecordWithBalances[] }>;
   getProcessedAnnualDataForAllYears: (employeeId: string) => Promise<Record<number, { annualData: WeeklyRecordWithBalances[], annualComputedHours: number, theoreticalAnnualWorkHours: number }>>;
   createAbsenceType: (data: Omit<AbsenceType, 'id'>) => Promise<string>;
-  updateAbsenceType: (id: string, data: Partial<AbsenceType>) => Promise<void>;
+  updateAbsenceType: (id: string, data: Partial<Omit<AbsenceType, 'id'>>) => Promise<void>;
   deleteAbsenceType: (id: string) => Promise<void>;
   createHoliday: (data: Omit<Holiday, 'id' | 'date'> & { date: string }) => Promise<string>;
   updateHoliday: (id: string, data: HolidayFormData) => Promise<void>;
@@ -1213,8 +1213,8 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const contractStartDate = startOfDay(activePeriodForYear.startDate as Date);
             let proratedDays = 31;
             if (isAfter(contractStartDate, yearStart) && !activePeriodForYear.isTransfer) {
-                const daysInYear = differenceInDays(yearEnd, yearStart) + 1;
-                const daysWorkedInYear = differenceInDays(yearEnd, contractStartDate) + 1;
+                const daysInYear = differenceInDays(yearEnd, yearStart);
+                const daysWorkedInYear = differenceInDays(yearEnd, contractStartDate);
                 proratedDays = Math.round((daysWorkedInYear / daysInYear) * 31);
             }
     
@@ -1426,6 +1426,9 @@ export const useDataProvider = () => useContext(DataContext);
 
 
 
+
+
+    
 
 
     
