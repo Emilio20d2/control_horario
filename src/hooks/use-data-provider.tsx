@@ -338,7 +338,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       getCollection<EmployeeGroup>('employeeGroups'),
       getCollection<Conversation>('conversations'),
       getCollection<VacationCampaign>('vacationCampaigns'),
-      getCollection<CorrectionRequest>('correctionRequests')
+      getCollection<CorrectionRequest>('correctionRequests') // Fetch all requests
     ]).then(([absTypes, conTypes, annConfigs, hols, usrs, holEmps, holReps, empGrps, convs, vacCamps, corReqs]) => {
       if (active) {
         setAbsenceTypes(absTypes.sort((a,b) => a.name.localeCompare(b.name)));
@@ -352,27 +352,27 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         
         // Merge conversations and correction requests
         const convMap = new Map(convs.map(c => [c.id, c]));
+
         corReqs.forEach(req => {
-            if (req.status === 'pending') {
-                const existingConv = convMap.get(req.employeeId);
-                const weekStartDateFormatted = format(parseISO(req.weekId), 'dd/MM/yyyy', { locale: es });
-                const messageText = `SOLICITUD DE CORRECCIÓN - Semana: ${weekStartDateFormatted}`;
-                
-                const newConvData = {
+            const weekStartDateFormatted = format(parseISO(req.weekId), 'dd/MM/yyyy', { locale: es });
+            const messageText = `SOLICITUD DE CORRECCIÓN - Semana: ${weekStartDateFormatted}`;
+            const existingConv = convMap.get(req.employeeId);
+            const requestTimestamp = req.requestedAt;
+
+            if (!existingConv || requestTimestamp.toDate() > (safeParseDate(existingConv.lastMessageTimestamp) ?? new Date(0))) {
+                const newConvData: Conversation = {
                     id: req.employeeId,
                     employeeId: req.employeeId,
                     employeeName: req.employeeName,
                     lastMessageText: messageText,
-                    lastMessageTimestamp: req.requestedAt,
+                    lastMessageTimestamp: requestTimestamp,
                     readBy: existingConv?.readBy || [],
                     unreadByEmployee: existingConv?.unreadByEmployee || false,
                 };
-                
-                if (!existingConv || (req.requestedAt.toDate() > (existingConv.lastMessageTimestamp as any).toDate())) {
-                    convMap.set(req.employeeId, newConvData);
-                }
+                convMap.set(req.employeeId, newConvData);
             }
         });
+        
         setConversations(Array.from(convMap.values()).sort((a, b) => (b.lastMessageTimestamp as any).toDate().getTime() - (a.lastMessageTimestamp as any).toDate().getTime()));
         
         setVacationCampaigns(vacCamps.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime()));
@@ -445,8 +445,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   // Set employee record for the logged-in user
   useEffect(() => {
-    if (appUser && employees.length > 0) {
-        const foundEmployee = employees.find(e => e.email === appUser.email);
+    if (appUser && appUser.employeeId && employees.length > 0) {
+        const foundEmployee = employees.find(e => e.id === appUser.employeeId);
         setEmployeeRecord(foundEmployee || null);
     } else if (!appUser) {
         setEmployeeRecord(null);
@@ -1399,6 +1399,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
