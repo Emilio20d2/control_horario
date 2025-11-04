@@ -65,6 +65,7 @@ import { db } from '@/lib/firebase';
 import { Input } from '@/components/ui/input';
 import { AddAbsenceDialog } from '@/components/schedule/add-absence-dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 
 interface CellAbsenceInfo {
     employee: Employee;
@@ -271,6 +272,13 @@ export default function CalendarPage() {
 
   }, [loading, currentDate, getActiveEmployeesForDate, holidayReports, absenceTypes, weekDays, getAbsencesForDay, getEmployeeBalancesForWeek, getTheoreticalHoursAndTurn, holidays, view]);
   
+  const { turnId: weekTurnId } = useMemo(() => {
+    if (activeEmployees.length > 0) {
+        return getTheoreticalHoursAndTurn(activeEmployees[0].id, currentDate);
+    }
+    return { turnId: null };
+  }, [activeEmployees, currentDate, getTheoreticalHoursAndTurn]);
+
   const handleOpenDetails = (cellInfo: CellAbsenceInfo) => {
     setSelectedCell(cellInfo);
     setIsDetailDialogOpen(true);
@@ -366,7 +374,14 @@ export default function CalendarPage() {
   const renderWeeklyView = () => (
     <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
         <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
+            <div className="flex items-center gap-2">
+                <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
+                 {weekTurnId && (
+                    <Badge variant="outline" className="text-sm">
+                        {`T.${weekTurnId.replace('turn', '')}`}
+                    </Badge>
+                )}
+            </div>
         </CardHeader>
         <CardContent>
             <div className="border rounded-lg overflow-auto">
@@ -440,9 +455,7 @@ export default function CalendarPage() {
   const MonthView = () => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-    const days = eachDayOfInterval({ start: startDate, end: endDate });
+    const weeksOfMonth = eachWeekOfInterval({ start: monthStart, end: monthEnd }, { weekStartsOn: 1 });
 
     return (
         <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
@@ -456,46 +469,62 @@ export default function CalendarPage() {
                 </Button>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-7 border-t border-l">
-                    {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => (
-                        <div key={day} className="text-center font-bold p-2 border-r border-b bg-muted/50">
+                <div className="grid grid-cols-[auto,1fr,1fr,1fr,1fr,1fr,1fr,1fr] border-t border-l">
+                    {['Turno', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => (
+                        <div key={day} className="text-center font-bold p-2 border-r border-b bg-muted/50 text-xs sm:text-sm">
                             {day}
                         </div>
                     ))}
-                    {days.map(day => {
-                        const isCurrentMonth = isSameMonth(day, currentMonth);
-                        const absences = getAbsencesForDay(day);
-                        const holiday = holidays.find(h => isSameDay(h.date, day));
+                    {weeksOfMonth.map(weekStart => {
+                        const daysOfWeek = eachDayOfInterval({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 1 }) });
+                        const { turnId: monthWeekTurnId } = activeEmployees.length > 0 ? getTheoreticalHoursAndTurn(activeEmployees[0].id, weekStart) : { turnId: null };
 
                         return (
-                            <div
-                                key={day.toString()}
-                                className={cn(
-                                    "p-2 border-r border-b min-h-[120px]",
-                                    !isCurrentMonth && 'bg-muted/30 text-muted-foreground'
-                                )}
-                            >
-                                <div className={cn("font-semibold", isSameDay(day, new Date()) && "text-primary font-bold")}>
-                                    {format(day, 'd')}
-                                </div>
-                                <div className="space-y-1 mt-1">
-                                    {holiday && (
-                                        <div className="text-xs p-1 rounded-md text-center" style={{backgroundColor: `${holiday.type === 'Apertura' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.1)'}`}}>
-                                            {holiday.name}
-                                        </div>
+                            <React.Fragment key={weekStart.toString()}>
+                                <div className="flex items-center justify-center p-2 border-r border-b bg-muted/50">
+                                     {monthWeekTurnId && (
+                                        <Badge variant="secondary" className="text-xs">
+                                            {`T.${monthWeekTurnId.replace('turn', '')}`}
+                                        </Badge>
                                     )}
-                                    {absences.map(absenceInfo => (
-                                        <div 
-                                            key={absenceInfo.employee.id} 
-                                            className="text-xs p-1 rounded-md cursor-pointer" 
-                                            style={{ backgroundColor: `${absenceInfo.absenceType.color}40` }}
-                                            onClick={() => handleOpenDetails(absenceInfo)}
-                                        >
-                                           <span className="font-bold">{absenceInfo.absenceType.abbreviation}:</span> {absenceInfo.employee.name}
-                                        </div>
-                                    ))}
                                 </div>
-                            </div>
+                                {daysOfWeek.map(day => {
+                                    const isCurrentMonth = isSameMonth(day, currentMonth);
+                                    const absences = getAbsencesForDay(day);
+                                    const holiday = holidays.find(h => isSameDay(h.date, day));
+
+                                    return (
+                                        <div
+                                            key={day.toString()}
+                                            className={cn(
+                                                "p-1 sm:p-2 border-r border-b min-h-[120px]",
+                                                !isCurrentMonth && 'bg-muted/30 text-muted-foreground'
+                                            )}
+                                        >
+                                            <div className={cn("font-semibold text-xs sm:text-sm", isSameDay(day, new Date()) && "text-primary font-bold")}>
+                                                {format(day, 'd')}
+                                            </div>
+                                            <div className="space-y-1 mt-1">
+                                                {holiday && isCurrentMonth && (
+                                                    <div className="text-[10px] sm:text-xs p-1 rounded-md text-center" style={{backgroundColor: `${holiday.type === 'Apertura' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.1)'}`}}>
+                                                        {holiday.name}
+                                                    </div>
+                                                )}
+                                                {absences.map(absenceInfo => (
+                                                    <div 
+                                                        key={absenceInfo.employee.id} 
+                                                        className="text-[10px] sm:text-xs p-1 rounded-md cursor-pointer truncate" 
+                                                        style={{ backgroundColor: `${absenceInfo.absenceType.color}40` }}
+                                                        onClick={() => handleOpenDetails(absenceInfo)}
+                                                    >
+                                                       <span className="font-bold">{absenceInfo.absenceType.abbreviation}:</span> {absenceInfo.employee.name}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </React.Fragment>
                         );
                     })}
                 </div>
