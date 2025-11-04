@@ -373,7 +373,7 @@ export default function CalendarPage() {
 
   const renderWeeklyView = () => (
     <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
-        <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-2 p-4">
             <div className="flex items-center gap-2">
                 <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
                  {weekTurnId && (
@@ -381,6 +381,23 @@ export default function CalendarPage() {
                         {`T.${weekTurnId.replace('turn', '')}`}
                     </Badge>
                 )}
+            </div>
+            <div className="flex items-center gap-4">
+                <Tabs value={view} onValueChange={(v) => setView(v as 'week' | 'month')} className="w-auto">
+                    <TabsList>
+                        <TabsTrigger value="week">Semana</TabsTrigger>
+                        <TabsTrigger value="month">Mes</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+                <AddAbsenceDialog 
+                    isOpen={isAddDialogOpen} 
+                    onOpenChange={setIsAddDialogOpen} 
+                    activeEmployees={activeEmployees} 
+                    absenceTypes={absenceTypes} 
+                    holidays={holidays}
+                    employees={employees}
+                    refreshData={refreshData}
+                />
             </div>
         </CardHeader>
         <CardContent>
@@ -420,7 +437,7 @@ export default function CalendarPage() {
                                                 cellInfo && "cursor-pointer hover:bg-muted/50",
                                                 holiday && !cellInfo && 'bg-primary/5'
                                             )}
-                                            style={{ backgroundColor: cellInfo ? `${cellInfo.absenceType.color}40` : undefined }}
+                                            style={cellInfo ? { background: `linear-gradient(to top, transparent, ${cellInfo.absenceType.color}40)`} : {}}
                                         >
                                             {cellInfo ? (
                                                 <div className="flex flex-col items-center justify-center gap-1">
@@ -459,14 +476,33 @@ export default function CalendarPage() {
 
     return (
         <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
-            <CardHeader className="flex flex-row items-center justify-between">
-                <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <h2 className="text-xl font-bold capitalize">{format(currentMonth, 'MMMM yyyy', { locale: es })}</h2>
-                <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
-                    <ChevronRight className="h-4 w-4" />
-                </Button>
+            <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-2 p-4">
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <h2 className="text-xl font-bold capitalize">{format(currentMonth, 'MMMM yyyy', { locale: es })}</h2>
+                    <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+                 <div className="flex items-center gap-4">
+                    <Tabs value={view} onValueChange={(v) => setView(v as 'week' | 'month')} className="w-auto">
+                        <TabsList>
+                            <TabsTrigger value="week">Semana</TabsTrigger>
+                            <TabsTrigger value="month">Mes</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                    <AddAbsenceDialog 
+                        isOpen={isAddDialogOpen} 
+                        onOpenChange={setIsAddDialogOpen} 
+                        activeEmployees={activeEmployees} 
+                        absenceTypes={absenceTypes} 
+                        holidays={holidays}
+                        employees={employees}
+                        refreshData={refreshData}
+                    />
+                </div>
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-[auto,1fr,1fr,1fr,1fr,1fr,1fr,1fr] border-t border-l">
@@ -514,7 +550,7 @@ export default function CalendarPage() {
                                                     <div 
                                                         key={absenceInfo.employee.id} 
                                                         className="text-[10px] sm:text-xs p-1 rounded-md cursor-pointer truncate" 
-                                                        style={{ backgroundColor: `${absenceInfo.absenceType.color}40` }}
+                                                        style={{ background: `linear-gradient(to top, transparent, ${absenceInfo.absenceType.color}40)`}}
                                                         onClick={() => handleOpenDetails(absenceInfo)}
                                                     >
                                                        <span className="font-bold">{absenceInfo.absenceType.abbreviation}:</span> {absenceInfo.employee.name}
@@ -536,26 +572,7 @@ export default function CalendarPage() {
   return (
     <>
     <div className="p-4 md:p-6 space-y-6">
-        <div className="flex justify-between items-center">
-            <Tabs value={view} onValueChange={(v) => setView(v as 'week' | 'month')} className="w-auto mx-auto">
-                <TabsList>
-                    <TabsTrigger value="week">Vista Semanal</TabsTrigger>
-                    <TabsTrigger value="month">Vista Mensual</TabsTrigger>
-                </TabsList>
-            </Tabs>
-             <AddAbsenceDialog 
-                isOpen={isAddDialogOpen} 
-                onOpenChange={setIsAddDialogOpen} 
-                activeEmployees={activeEmployees} 
-                absenceTypes={absenceTypes} 
-                holidays={holidays}
-                employees={employees}
-                refreshData={refreshData}
-            />
-        </div>
-        
         {view === 'week' ? renderWeeklyView() : <MonthView />}
-
     </div>
     
     <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
