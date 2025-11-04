@@ -413,19 +413,18 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             // 2. Iterate through correction requests to update or create conversations
             corReqs.forEach(req => {
                 const existingConv = convMap.get(req.employeeId);
-                const requestTimestamp = req.requestedAt instanceof Timestamp ? req.requestedAt.toDate() : new Date();
-
+                const requestTimestamp = req.requestedAt;
                 const employeeName = req.employeeName || employeesMap.get(req.employeeId) || 'Desconocido';
                 const weekStartDateFormatted = format(parseISO(req.weekId), 'dd/MM/yyyy', { locale: es });
                 const messageText = `SOLICITUD DE CORRECCIÓN - Semana: ${weekStartDateFormatted}`;
 
-                if (!existingConv || isAfter(requestTimestamp, safeParseDate(existingConv.lastMessageTimestamp) ?? new Date(0))) {
+                if (!existingConv || isAfter(safeParseDate(requestTimestamp)!, safeParseDate(existingConv.lastMessageTimestamp) ?? new Date(0))) {
                     const newOrUpdatedConvData: Conversation = {
                         id: req.employeeId,
                         employeeId: req.employeeId,
                         employeeName: employeeName,
                         lastMessageText: messageText,
-                        lastMessageTimestamp: req.requestedAt,
+                        lastMessageTimestamp: requestTimestamp,
                         readBy: existingConv?.readBy || [],
                         unreadByEmployee: existingConv?.unreadByEmployee || false,
                     };
@@ -1411,6 +1410,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
