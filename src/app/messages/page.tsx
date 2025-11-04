@@ -33,16 +33,12 @@ import Link from 'next/link';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 
 function ChatView({ conversation }: { conversation: Conversation }) {
-    const { appUser, reauthenticateWithPassword } = useAuth();
+    const { appUser } = useAuth();
     const { refreshData, correctionRequests } = useDataProvider();
     const [newMessage, setNewMessage] = useState('');
     const viewportRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const { toast } = useToast();
-
-    const [messageToDelete, setMessageToDelete] = useState<Message | null>(null);
-    const [isDeleting, setIsDeleting] = useState(false);
-    const [deletePassword, setDeletePassword] = useState('');
 
     const [messagesSnapshot, messagesLoading] = useCollectionData(
         conversation ? query(collection(db, 'conversations', conversation.id, 'messages'), orderBy('timestamp', 'asc')) : null
@@ -115,44 +111,6 @@ function ChatView({ conversation }: { conversation: Conversation }) {
         "De acuerdo, gracias por avisar.",
         "La solicitud no procede."
     ];
-
-    const handleDeleteMessage = async () => {
-        if (!messageToDelete || !conversation.id) return;
-        if (!deletePassword) {
-            toast({ title: 'Contraseña requerida', variant: 'destructive' });
-            return;
-        }
-
-        setIsDeleting(true);
-        try {
-            const isAuthenticated = await reauthenticateWithPassword(deletePassword);
-            if (!isAuthenticated) {
-                toast({ title: 'Error de autenticación', description: 'La contraseña no es correcta.', variant: 'destructive' });
-                setIsDeleting(false);
-                return;
-            }
-
-            await deleteSubcollectionDocument('conversations', conversation.id, 'messages', messageToDelete.id);
-
-            if (formattedMessages.length > 0 && formattedMessages[formattedMessages.length - 1].id === messageToDelete.id) {
-                const newLastMessage = formattedMessages.length > 1 ? formattedMessages[formattedMessages.length - 2] : null;
-                await updateDoc(doc(db, 'conversations', conversation.id), {
-                    lastMessageText: newLastMessage ? newLastMessage.text : 'Conversación vacía.',
-                    lastMessageTimestamp: newLastMessage ? newLastMessage.timestamp : serverTimestamp(),
-                });
-            }
-
-            toast({ title: 'Mensaje eliminado' });
-            setMessageToDelete(null);
-
-        } catch (error) {
-            console.error("Error deleting message:", error);
-            toast({ title: "Error al eliminar", variant: "destructive" });
-        } finally {
-            setIsDeleting(false);
-            setDeletePassword('');
-        }
-    };
     
      const handleResolveRequest = async (weekId: string) => {
         if (!conversation) return;
@@ -220,36 +178,6 @@ function ChatView({ conversation }: { conversation: Conversation }) {
                         </Button>
                     )}
                 </div>
-                 {appUser?.role === 'admin' && (
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive" onClick={() => setMessageToDelete(message)}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar este mensaje?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Esta acción eliminará el mensaje permanentemente. No se puede deshacer.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <div className="space-y-2 py-2">
-                                <Label htmlFor="password-delete-msg">Contraseña de Administrador</Label>
-                                <Input id="password-delete-msg" type="password" placeholder="Introduce tu contraseña" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
-                            </div>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel onClick={() => setDeletePassword('')}>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction 
-                                    onClick={handleDeleteMessage}
-                                    disabled={isDeleting || !deletePassword}
-                                >
-                                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Sí, eliminar'}
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                )}
             </div>
         );
     };
