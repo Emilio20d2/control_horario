@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -75,23 +74,25 @@ function ChatView({ conversation }: { conversation: Conversation }) {
         if (!messagesSnapshot) return [];
 
         const realMessages = messagesSnapshot.map(docData => {
+            const data = docData as Omit<Message, 'id'> & { timestamp: any };
             return {
                 id: docData.id,
-                ...docData,
-                timestamp: docData.timestamp?.toDate()
+                ...data,
+                timestamp: data.timestamp?.toDate()
             } as Message;
         });
 
-        // If messages are loading or already exist, return them
+        // Si los mensajes están cargando o ya existen mensajes reales, los devolvemos.
         if (messagesLoading || realMessages.length > 0) {
             return realMessages;
         }
         
-        // If there are no real messages, check for pending correction requests
+        // Si NO hay mensajes reales, comprobamos si hay una solicitud de corrección pendiente.
         const pendingRequest = correctionRequests.find(req => 
             req.employeeId === conversation.employeeId && req.status === 'pending'
         );
 
+        // Si hay una solicitud pendiente, creamos un "mensaje virtual" para mostrarlo.
         if (pendingRequest) {
             const weekStartDateFormatted = format(parse(pendingRequest.weekId, 'yyyy-MM-dd', new Date()), 'dd/MM/yyyy', { locale: es });
             const virtualMessage: Message = {
@@ -436,5 +437,7 @@ export default function AdminMessagesPage() {
         </div>
     );
 }
+
+    
 
     
