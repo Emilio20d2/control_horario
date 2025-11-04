@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -45,6 +44,7 @@ import { useAuth } from '@/hooks/useAuth';
 import type { EmployeeGroup } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { VacationCampaignManager } from '@/components/settings/vacation-campaign-manager';
+import { MessageSyncManager } from './message-sync-manager';
 
 
 export default function SettingsPageContent() {
@@ -74,7 +74,7 @@ export default function SettingsPageContent() {
         const currentYear = getYear(new Date());
         years.add(currentYear);
         years.add(currentYear + 1);
-        return Array.from(years).sort((a, b) => b - a);
+        return Array.from(years).filter(y => y >= 2025).sort((a, b) => b - a);
     }, [holidays]);
 
 
@@ -460,6 +460,7 @@ export default function SettingsPageContent() {
                 <div className='grid gap-6'>
                     <ImportManager />
                     <DataCleanupManager />
+                    <MessageSyncManager />
                     <RetroactiveAuditManager />
                 </div>
             </TabsContent>

@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, History } from 'lucide-react';
+import { Loader2, MessageSquareReply } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,33 +17,32 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { runRetroactiveAudit } from '@/lib/actions/auditActions';
+import { syncCorrectionRequestMessages } from '@/lib/actions/auditActions';
 
-
-export function RetroactiveAuditManager() {
+export function MessageSyncManager() {
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleAudit = async () => {
+    const handleSync = async () => {
         setIsSubmitting(true);
         try {
-            const result = await runRetroactiveAudit();
+            const result = await syncCorrectionRequestMessages();
 
             if (result.success) {
                  toast({
-                    title: '¡Auditoría Completada!',
+                    title: '¡Sincronización Completada!',
                     description: result.message,
                     className: 'bg-primary text-primary-foreground',
                 });
             } else {
-                throw new Error(result.error || 'Ocurrió un error desconocido durante la auditoría.');
+                throw new Error(result.error || 'Ocurrió un error desconocido durante la sincronización.');
             }
 
         } catch (error) {
-            console.error("Error running retroactive audit:", error);
-            const errorMessage = error instanceof Error ? error.message : 'Error desconocido durante la auditoría retroactiva.';
+            console.error("Error syncing messages:", error);
+            const errorMessage = error instanceof Error ? error.message : 'Error desconocido.';
             toast({
-                title: 'Error en la auditoría',
+                title: 'Error en la Sincronización',
                 description: errorMessage,
                 variant: 'destructive',
             });
@@ -55,18 +54,18 @@ export function RetroactiveAuditManager() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Auditoría de Comentarios</CardTitle>
+                <CardTitle>Sincronización de Mensajes</CardTitle>
                 <CardDescription>
-                    Compara los registros confirmados con los datos de auditoría para añadir comentarios sobre las diferencias.
+                    Recupera solicitudes de corrección pendientes y las muestra como mensajes en la bandeja de entrada.
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4 rounded-lg border border-primary/50 p-4">
                      <div className='flex flex-col md:flex-row items-start md:items-center justify-between gap-4'>
                         <div>
-                             <h4 className="font-semibold">Ejecutar Auditoría de Diferencias</h4>
+                             <h4 className="font-semibold">Recuperar Mensajes de Solicitudes</h4>
                             <p className="text-sm text-muted-foreground mt-1">
-                                El proceso escaneará todos los registros para añadir o actualizar comentarios de auditoría. Es una acción segura.
+                                Escanea las solicitudes de corrección y crea los mensajes correspondientes si no existen.
                             </p>
                         </div>
                         <AlertDialog>
@@ -75,26 +74,26 @@ export function RetroactiveAuditManager() {
                                      {isSubmitting ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Procesando...
+                                            Sincronizando...
                                         </>
                                     ) : (
                                         <>
-                                            <History className="mr-2 h-4 w-4" />
-                                            Ejecutar Auditoría
+                                            <MessageSquareReply className="mr-2 h-4 w-4" />
+                                            Sincronizar Mensajes
                                         </>
                                     )}
                                 </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
-                                <AlertDialogTitle>¿Confirmar Auditoría Retroactiva?</AlertDialogTitle>
+                                <AlertDialogTitle>¿Confirmar Sincronización?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    Esta acción escaneará toda la base de datos para añadir comentarios sobre diferencias con el fichero de auditoría. Puede tardar unos minutos.
+                                    Esta acción escaneará todas las solicitudes de corrección pendientes para asegurarse de que aparecen como mensajes.
                                 </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleAudit}>Sí, ejecutar ahora</AlertDialogAction>
+                                    <AlertDialogAction onClick={handleSync}>Sí, sincronizar</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>

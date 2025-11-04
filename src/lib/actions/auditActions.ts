@@ -26,18 +26,17 @@ const getActivePeriodForAudit = (employee: Employee, date: Date): EmploymentPeri
 
 
 /**
- * Runs a retroactive audit on all confirmed weekly records and syncs correction requests to messages.
+ * Runs a retroactive audit on all confirmed weekly records to find differences with the excel file.
  */
 export async function runRetroactiveAudit() {
     'use server';
     try {
         const db = getDbAdmin();
-        const [weeklyRecordsSnapshot, employeesSnapshot, absenceTypesSnapshot, contractTypesSnapshot, correctionRequestsSnapshot] = await Promise.all([
+        const [weeklyRecordsSnapshot, employeesSnapshot, absenceTypesSnapshot, contractTypesSnapshot] = await Promise.all([
             db.collection('weeklyRecords').get(),
             db.collection('employees').get(),
             db.collection('absenceTypes').get(),
             db.collection('contractTypes').get(),
-            db.collection('correctionRequests').where('status', '==', 'pending').get(),
         ]);
         
         const employeesMap = new Map(employeesSnapshot.docs.map(doc => [doc.id, doc.data() as Employee]));
@@ -47,7 +46,6 @@ export async function runRetroactiveAudit() {
         
         const updates: RecordUpdate[] = [];
 
-        // Part 1: Audit comments based on Excel differences
         for (const doc of weeklyRecordsSnapshot.docs) {
             const weekId = doc.id;
             const weeklyRecord = doc.data() as WeeklyRecord;
@@ -62,9 +60,7 @@ export async function runRetroactiveAudit() {
                 if (!employee) continue;
 
                 const weekStartDate = parseISO(weekId);
-                
                 const activePeriod = getActivePeriodForAudit(employee, weekStartDate);
-
                 if (!activePeriod) continue;
 
                 const dbImpact = calculateBalancePreview(
@@ -123,50 +119,12 @@ export async function runRetroactiveAudit() {
             }
         }
         
-        let commentUpdateMessage = '';
         if (updates.length > 0) {
             const updateResult = await updateAuditComments(updates);
-            commentUpdateMessage = updateResult.message;
-        } else {
-            commentUpdateMessage = 'No se encontraron nuevas diferencias de auditoría.';
-        }
-
-        // Part 2: Sync pending correction requests to messages
-        let messagesSynced = 0;
-        if (!correctionRequestsSnapshot.empty) {
-            const batch = db.batch();
-            for (const doc of correctionRequestsSnapshot.docs) {
-                const request = doc.data() as CorrectionRequest;
-                const employee = employeesMap.get(request.employeeId);
-                if (employee) {
-                    const conversationRef = db.collection('conversations').doc(request.employeeId);
-                    const weekStartDateFormatted = format(parseISO(request.weekId), 'dd/MM/yyyy', { locale: es });
-                    const messageText = `SOLICITUD DE CORRECCIÓN\n\nSemana: ${weekStartDateFormatted}\nMotivo: ${request.reason}`;
-                    
-                    batch.set(conversationRef, {
-                        employeeId: request.employeeId,
-                        employeeName: employee.name,
-                        lastMessageText: messageText,
-                        lastMessageTimestamp: request.requestedAt,
-                        unreadByAdmin: true,
-                        unreadByEmployee: false
-                    }, { merge: true });
-
-                    const messageRef = conversationRef.collection('messages').doc();
-                    batch.set(messageRef, {
-                        text: messageText,
-                        senderId: request.employeeId,
-                        timestamp: request.requestedAt
-                    });
-                    messagesSynced++;
-                }
-            }
-            await batch.commit();
+            return { success: true, message: updateResult.message };
         }
         
-        const syncMessage = messagesSynced > 0 ? `Se han recuperado y sincronizado ${messagesSynced} solicitudes de corrección en la mensajería.` : 'No había solicitudes de corrección pendientes por sincronizar.';
-        
-        return { success: true, message: `${commentUpdateMessage} ${syncMessage}` };
+        return { success: true, message: 'No se encontraron nuevas diferencias de auditoría.' };
 
     } catch (error) {
         console.error("Error running retroactive audit:", error);
@@ -198,4 +156,62 @@ async function updateAuditComments(updates: RecordUpdate[]) {
     const errorMessage = error instanceof Error ? error.message : 'Error desconocido al actualizar los comentarios.';
     return { success: false, error: errorMessage };
   }
+}
+
+export async function syncCorrectionRequestMessages() {
+    'use server';
+    try {
+        const db = getDbAdmin();
+        const [employeesSnapshot, correctionRequestsSnapshot] = await Promise.all([
+            db.collection('employees').get(),
+            db.collection('correctionRequests').where('status', '==', 'pending').get(),
+        ]);
+        
+        const employeesMap = new Map(employeesSnapshot.docs.map(doc => [doc.id, doc.data() as Employee]));
+        
+        let messagesSynced = 0;
+        if (!correctionRequestsSnapshot.empty) {
+            const batch = db.batch();
+            for (const doc of correctionRequestsSnapshot.docs) {
+                const request = doc.data() as CorrectionRequest;
+                const employee = employeesMap.get(request.employeeId);
+                if (employee) {
+                    const conversationRef = db.collection('conversations').doc(request.employeeId);
+                    const weekStartDateFormatted = format(parseISO(request.weekId), 'dd/MM/yyyy', { locale: es });
+                    const messageText = `SOLICITUD DE CORRECCIÓN\n\nSemana: ${weekStartDateFormatted}\nMotivo: ${request.reason}`;
+                    
+                    // Use set with merge to create or update the conversation summary
+                    batch.set(conversationRef, {
+                        employeeId: request.employeeId,
+                        employeeName: employee.name,
+                        lastMessageText: messageText,
+                        lastMessageTimestamp: request.requestedAt,
+                        unreadByAdmin: true,
+                        unreadByEmployee: false
+                    }, { merge: true });
+
+                    // Add the actual message to the subcollection
+                    const messageRef = conversationRef.collection('messages').doc();
+                    batch.set(messageRef, {
+                        text: messageText,
+                        senderId: request.employeeId,
+                        timestamp: request.requestedAt
+                    });
+                    messagesSynced++;
+                }
+            }
+            await batch.commit();
+        }
+        
+        if (messagesSynced > 0) {
+            return { success: true, message: `Se han recuperado y sincronizado ${messagesSynced} solicitudes de corrección en la mensajería.` };
+        }
+        
+        return { success: true, message: 'No había solicitudes de corrección pendientes por sincronizar.' };
+
+    } catch (error) {
+        console.error("Error syncing correction request messages:", error);
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido al sincronizar mensajes.';
+        return { success: false, error: errorMessage };
+    }
 }
