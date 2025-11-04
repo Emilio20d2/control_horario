@@ -1190,34 +1190,16 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         const suspensionAbbrs = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.abbreviation));
         const currentYear = year;
         
+        const defaultReturn = { vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31, baseDays: 31, carryOverDays: 0, suspensionDeduction: 0, proratedDays: 31 };
+
         if (!vacationType || !emp) {
-            return { vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31, baseDays: 31, carryOverDays: 0, suspensionDeduction: 0, proratedDays: 31 };
+            return defaultReturn;
         }
-    
+
         const getYearData = (targetYear: number) => {
-            let yearStart = startOfYear(new Date(targetYear, 0, 1));
-            const yearEnd = endOfYear(new Date(targetYear, 11, 31));
             let vacationDaysTaken = 0;
             let suspensionDays = 0;
-    
-            const activePeriodForYear = emp.employmentPeriods.find(p => {
-                const pStart = startOfDay(p.startDate as Date);
-                const pEnd = p.endDate ? startOfDay(p.endDate as Date) : yearEnd;
-                return isWithinInterval(yearStart, { start: pStart, end: pEnd }) || isWithinInterval(pStart, {start: yearStart, end: yearEnd});
-            });
-    
-            if (!activePeriodForYear) {
-                return { vacationDaysTaken, suspensionDays, baseDays: 31, proratedDays: 0 };
-            }
-    
-            const contractStartDate = startOfDay(activePeriodForYear.startDate as Date);
-            let proratedDays = 31;
-            if (isAfter(contractStartDate, yearStart) && !activePeriodForYear.isTransfer) {
-                const daysInYear = differenceInDays(yearEnd, yearStart);
-                const daysWorkedInYear = differenceInDays(yearEnd, contractStartDate);
-                proratedDays = Math.round((daysWorkedInYear / daysInYear) * 31);
-            }
-    
+            
             const vacationDaysSet = new Set<string>();
             const suspensionDaysSet = new Set<string>();
     
@@ -1250,28 +1232,46 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     
             vacationDaysTaken = vacationDaysSet.size;
             suspensionDays = suspensionDaysSet.size;
-    
-            if(activePeriodForYear.isTransfer && activePeriodForYear.vacationDaysUsedInAnotherCenter) {
-                vacationDaysTaken += activePeriodForYear.vacationDaysUsedInAnotherCenter;
+
+            const activePeriod = emp.employmentPeriods.find(p => {
+                const pStart = startOfDay(p.startDate as Date);
+                const pEnd = p.endDate ? startOfDay(p.endDate as Date) : new Date(targetYear, 11, 31);
+                return isWithinInterval(new Date(targetYear, 6, 1), { start: pStart, end: pEnd });
+            });
+            
+            if(activePeriod?.isTransfer && activePeriod?.vacationDaysUsedInAnotherCenter) {
+                vacationDaysTaken += activePeriod.vacationDaysUsedInAnotherCenter;
             }
-    
-            return { vacationDaysTaken, suspensionDays, baseDays: 31, proratedDays };
+
+            return { vacationDaysTaken, suspensionDays };
         };
+
+        const activePeriodForYear = emp.employmentPeriods.find(p => {
+            const pStart = startOfDay(p.startDate as Date);
+            const pEnd = p.endDate ? startOfDay(p.endDate as Date) : new Date(currentYear, 11, 31);
+            return isWithinInterval(new Date(currentYear, 6, 1), { start: pStart, end: pEnd });
+        });
+
+        if (!activePeriodForYear) {
+            return defaultReturn;
+        }
+
+        const contractStartDate = startOfDay(activePeriodForYear.startDate as Date);
+        const yearStart = startOfYear(new Date(currentYear, 0, 1));
+        const yearEnd = endOfYear(new Date(currentYear, 11, 31));
+
+        let proratedDays = 31;
+        if (isAfter(contractStartDate, yearStart) && !activePeriodForYear.isTransfer) {
+            const daysInYear = 365; // Simple approximation
+            const daysWorkedInYear = differenceInDays(yearEnd, contractStartDate);
+            proratedDays = Math.round((daysWorkedInYear / daysInYear) * 31);
+        }
     
-        const previousYear = currentYear - 1;
-        const prevYearData = getYearData(previousYear);
-        const currentYearData = getYearData(currentYear);
+        const carryOverDays = activePeriodForYear.vacationDays2024 ?? 0;
         
-        const prevYearActivePeriod = emp.employmentPeriods.find(p => getYear(p.startDate as Date) <= previousYear && (!p.endDate || getYear(p.endDate as Date) >= previousYear));
-        const prevYearInitialCarryOver = prevYearActivePeriod?.vacationDays2024 ?? 0;
-
-        const prevYearSuspensionDeduction = (prevYearData.suspensionDays / 30) * 2.5;
-        const prevYearAvailable = prevYearData.proratedDays + prevYearInitialCarryOver - prevYearSuspensionDeduction;
-
-        const carryOverDays = prevYearAvailable - prevYearData.vacationDaysTaken;
-    
+        const currentYearData = getYearData(currentYear);
         const suspensionDeduction = (currentYearData.suspensionDays / 30) * 2.5;
-        const vacationDaysAvailable = Math.round(currentYearData.proratedDays + carryOverDays - suspensionDeduction);
+        const vacationDaysAvailable = Math.round(proratedDays + carryOverDays - suspensionDeduction);
     
         return {
           vacationDaysTaken: currentYearData.vacationDaysTaken,
@@ -1280,7 +1280,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
           baseDays: 31,
           carryOverDays: carryOverDays,
           suspensionDeduction: suspensionDeduction,
-          proratedDays: currentYearData.proratedDays,
+          proratedDays: proratedDays,
         };
     }, [absenceTypes, weeklyRecords, employees]);
 
