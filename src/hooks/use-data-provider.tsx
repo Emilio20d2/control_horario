@@ -235,10 +235,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<UnconfirmedWeekDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSteps, setLoadingSteps] = useState<Record<string, boolean>>({
-    static: false,
     employees: false,
+    statics: false,
     weeklyRecords: false,
-    other: false,
+    conversations: false,
   });
   
   const allLoadingStepsComplete = useMemo(() => {
@@ -324,9 +324,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       unsubs.push(unsubscribe);
     };
 
-    setupSubscription<AbsenceType>('absenceTypes', setAbsenceTypes, data => data.sort((a,b) => a.name.localeCompare(b.name)));
-    setupSubscription<ContractType>('contractTypes', setContractTypes);
-    
     Promise.all([
       getCollection<AbsenceType>('absenceTypes'),
       getCollection<ContractType>('contractTypes'),
@@ -336,11 +333,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       getCollection<HolidayEmployee>('holidayEmployees'),
       getCollection<HolidayReport>('holidayReports'),
       getCollection<EmployeeGroup>('employeeGroups'),
-      getCollection<Conversation>('conversations'),
       getCollection<VacationCampaign>('vacationCampaigns'),
-      getCollection<CorrectionRequest>('correctionRequests'), // Fetch all requests
-      getCollection<Employee>('employees') // Fetch employees here
-    ]).then(([absTypes, conTypes, annConfigs, hols, usrs, holEmps, holReps, empGrps, convs, vacCamps, corReqs, emps]) => {
+    ]).then(([absTypes, conTypes, annConfigs, hols, usrs, holEmps, holReps, empGrps, vacCamps]) => {
       if (active) {
         setAbsenceTypes(absTypes.sort((a,b) => a.name.localeCompare(b.name)));
         setContractTypes(conTypes);
@@ -350,45 +344,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setHolidayEmployees(holEmps.sort((a,b) => a.name.localeCompare(b.name)));
         setHolidayReports(holReps);
         setEmployeeGroups(empGrps.sort((a,b) => a.order - b.order));
-        
-        // Merge conversations and correction requests
-        const employeesMap = new Map(emps.map(e => [e.id, e]));
-        const convMap = new Map<string, Conversation>();
-        
-        convs.forEach(c => {
-            if (!c.employeeName) {
-                const emp = employeesMap.get(c.employeeId);
-                c.employeeName = emp ? emp.name : 'Desconocido';
-            }
-            convMap.set(c.id, c);
-        });
-
-        corReqs.forEach(req => {
-            const weekStartDateFormatted = format(parseISO(req.weekId), 'dd/MM/yyyy', { locale: es });
-            const messageText = `SOLICITUD DE CORRECCIÓN - Semana: ${weekStartDateFormatted}`;
-            const requestTimestamp = req.requestedAt instanceof Timestamp ? req.requestedAt : Timestamp.fromDate(new Date());
-            const existingConv = convMap.get(req.employeeId);
-            const employeeName = req.employeeName || employeesMap.get(req.employeeId)?.name || 'Desconocido';
-
-            if (!existingConv || isAfter(requestTimestamp.toDate(), safeParseDate(existingConv.lastMessageTimestamp) ?? new Date(0))) {
-                const newOrUpdatedConvData: Conversation = {
-                    id: req.employeeId,
-                    employeeId: req.employeeId,
-                    employeeName: employeeName,
-                    lastMessageText: messageText,
-                    lastMessageTimestamp: requestTimestamp,
-                    readBy: existingConv?.readBy || [],
-                    unreadByEmployee: existingConv?.unreadByEmployee || false,
-                };
-                convMap.set(req.employeeId, newOrUpdatedConvData);
-            }
-        });
-        
-        setConversations(Array.from(convMap.values()).sort((a, b) => (safeParseDate(b.lastMessageTimestamp)?.getTime() ?? 0) - (safeParseDate(a.lastMessageTimestamp)?.getTime() ?? 0)));
-        
         setVacationCampaigns(vacCamps.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime()));
-        setCorrectionRequests(corReqs);
-        setLoadingSteps(prev => ({...prev, static: true}));
+        setLoadingSteps(prev => ({...prev, statics: true}));
       }
     });
 
@@ -400,7 +357,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   // Effect for weekly records and other dynamic data
   useEffect(() => {
-    if (!loadingSteps.static) return;
+    if (!loadingSteps.statics) return;
 
     let active = true;
     const unsubWeekly = onCollectionUpdate<WeeklyRecord>('weeklyRecords', (data) => {
@@ -410,17 +367,15 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       }
     }).unsubscribe;
 
-    setLoadingSteps(prev => ({...prev, other: true}));
-
     return () => {
       active = false;
       unsubWeekly();
     }
-  }, [loadingSteps.static]);
+  }, [loadingSteps.statics]);
 
   // Effect for employees (depends on static data and weeklyRecords)
   useEffect(() => {
-    if (!loadingSteps.static || !loadingSteps.weeklyRecords) return;
+    if (!loadingSteps.statics || !loadingSteps.weeklyRecords) return;
     
     let active = true;
     const unsub = onCollectionUpdate<Employee>('employees', (data) => {
@@ -445,7 +400,59 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       active = false;
       unsub();
     }
-  }, [loadingSteps.static, loadingSteps.weeklyRecords, absenceTypes, processScheduledAbsences, safeParseDate]);
+  }, [loadingSteps.statics, loadingSteps.weeklyRecords, absenceTypes, processScheduledAbsences, safeParseDate]);
+
+  // Load conversations and correction requests after employees are loaded
+  useEffect(() => {
+    if (!loadingSteps.employees) return;
+
+    let active = true;
+
+    Promise.all([
+        getCollection<Conversation>('conversations'),
+        getCollection<CorrectionRequest>('correctionRequests')
+    ]).then(([convs, corReqs]) => {
+        if (active) {
+            const employeesMap = new Map(employees.map(e => [e.id, e]));
+            const convMap = new Map<string, Conversation>();
+
+            convs.forEach(c => {
+                if (!c.employeeName) {
+                    c.employeeName = employeesMap.get(c.employeeId)?.name || 'Desconocido';
+                }
+                convMap.set(c.id, c);
+            });
+
+            corReqs.forEach(req => {
+                const existingConv = convMap.get(req.employeeId);
+                const requestTimestamp = req.requestedAt instanceof Timestamp ? req.requestedAt.toDate() : new Date();
+
+                if (!existingConv || isAfter(requestTimestamp, safeParseDate(existingConv.lastMessageTimestamp) ?? new Date(0))) {
+                    const employeeName = req.employeeName || employeesMap.get(req.employeeId)?.name || 'Desconocido';
+                    const weekStartDateFormatted = format(parseISO(req.weekId), 'dd/MM/yyyy', { locale: es });
+                    const messageText = `SOLICITUD DE CORRECCIÓN - Semana: ${weekStartDateFormatted}`;
+                    
+                    const newOrUpdatedConvData: Conversation = {
+                        id: req.employeeId,
+                        employeeId: req.employeeId,
+                        employeeName: employeeName,
+                        lastMessageText: messageText,
+                        lastMessageTimestamp: req.requestedAt,
+                        readBy: existingConv?.readBy || [],
+                        unreadByEmployee: existingConv?.unreadByEmployee || false,
+                    };
+                    convMap.set(req.employeeId, newOrUpdatedConvData);
+                }
+            });
+
+            setConversations(Array.from(convMap.values()).sort((a, b) => (safeParseDate(b.lastMessageTimestamp)?.getTime() ?? 0) - (safeParseDate(a.lastMessageTimestamp)?.getTime() ?? 0)));
+            setCorrectionRequests(corReqs);
+            setLoadingSteps(prev => ({...prev, conversations: true}));
+        }
+    });
+
+    return () => { active = false };
+  }, [loadingSteps.employees, employees, safeParseDate]);
 
   // Final loading state
   useEffect(() => {
@@ -1410,6 +1417,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
