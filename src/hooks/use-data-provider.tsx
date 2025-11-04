@@ -25,7 +25,7 @@ import type {
   CorrectionRequest,
   ScheduledAbsence,
 } from '../types';
-import { onCollectionUpdate, getDocumentById } from '@/lib/services/firestoreService';
+import { onCollectionUpdate, getDocumentById, createConversation as createConversationService } from '@/lib/services/firestoreService';
 import { 
     createAbsenceType as createAbsenceTypeService, 
     updateAbsenceType as updateAbsenceTypeService, 
@@ -127,6 +127,7 @@ interface DataContextType {
     proratedDays: number;
   };
   calculateSeasonalVacationStatus: (employeeId: string, year: number) => { employeeName: string; winterDaysTaken: number; summerDaysTaken: number; winterDaysRemaining: number; summerDaysRemaining: number; };
+  createConversation: (employeeId: string, employeeName: string) => Promise<void>;
   addHolidayEmployee: (data: Partial<Omit<HolidayEmployee, 'id'>>) => Promise<string>;
   updateHolidayEmployee: (id: string, data: Partial<Omit<HolidayEmployee, 'id'>>) => Promise<void>;
   deleteHolidayEmployee: (id: string) => Promise<void>;
@@ -194,6 +195,7 @@ const DataContext = createContext<DataContextType>({
   processEmployeeWeekData: () => null,
   calculateEmployeeVacations: () => ({ vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31, baseDays: 31, carryOverDays: 0, suspensionDeduction: 0, proratedDays: 31 }),
   calculateSeasonalVacationStatus: () => ({ employeeName: '', winterDaysTaken: 0, summerDaysTaken: 0, winterDaysRemaining: 10, summerDaysRemaining: 21 }),
+  createConversation: async () => {},
   addHolidayEmployee: async () => '',
   updateHolidayEmployee: async () => {},
   deleteHolidayEmployee: async () => {},
@@ -234,7 +236,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [vacationCampaigns, setVacationCampaigns] = useState<VacationCampaign[]>([]);
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<UnconfirmedWeekDetail[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingSteps, setLoadingSteps] = useState<Record<string, boolean>>({
+  const [loadingSteps, setLoadingSteps] = useState({
     statics: false,
     weeklyRecords: false,
     employees: false,
@@ -404,7 +406,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             const employeesMap = new Map(employees.map(e => [e.id, e.name]));
             const convMap = new Map<string, Conversation>();
 
-            // 1. Prime the map with existing conversations
+            // 1. Prime the map with existing conversations, ensuring name is present
             convs.forEach(c => {
                 c.employeeName = c.employeeName || employeesMap.get(c.employeeId) || 'Desconocido';
                 convMap.set(c.id, c);
@@ -412,9 +414,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
             // 2. Iterate through correction requests to update or create conversations
             corReqs.forEach(req => {
+                const employeeName = req.employeeName || employeesMap.get(req.employeeId) || 'Desconocido';
                 const existingConv = convMap.get(req.employeeId);
                 const requestTimestamp = req.requestedAt;
-                const employeeName = req.employeeName || employeesMap.get(req.employeeId) || 'Desconocido';
+                
                 const weekStartDateFormatted = format(parseISO(req.weekId), 'dd/MM/yyyy', { locale: es });
                 const messageText = `SOLICITUD DE CORRECCIÓN - Semana: ${weekStartDateFormatted}`;
 
@@ -431,7 +434,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
                     convMap.set(req.employeeId, newOrUpdatedConvData);
                 }
             });
-
+            
             const sortedConversations = Array.from(convMap.values()).sort((a, b) => {
               const dateA = safeParseDate(a.lastMessageTimestamp)?.getTime() ?? 0;
               const dateB = safeParseDate(b.lastMessageTimestamp)?.getTime() ?? 0;
@@ -1376,6 +1379,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     getWeekId,
     processEmployeeWeekData,
     calculateEmployeeVacations,
+    createConversation: createConversationService,
     addHolidayEmployee: addHolidayEmployee as (data: Partial<Omit<HolidayEmployee, 'id'>>) => Promise<string>,
     updateHolidayEmployee,
     deleteHolidayEmployee,
@@ -1410,6 +1414,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
