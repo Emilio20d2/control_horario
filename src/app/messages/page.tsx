@@ -265,6 +265,17 @@ function ChatView({ conversation }: { conversation: Conversation }) {
     );
 }
 
+const getShortName = (fullName?: string): string => {
+    if (!fullName) return 'Empleado Desconocido';
+    const parts = fullName.split(' ');
+    if (parts.length < 2) return fullName.charAt(0).toUpperCase() + fullName.slice(1).toLowerCase();
+    
+    const firstName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
+    const lastName = parts.length > 2 ? parts[parts.length - 2] : parts[1];
+    const formattedLastName = lastName.charAt(0).toUpperCase() + lastName.slice(1).toLowerCase();
+    
+    return `${firstName} ${formattedLastName}`;
+};
 
 export default function AdminMessagesPage() {
     const { conversations, loading, appUser, correctionRequests } = useDataProvider();
@@ -313,7 +324,7 @@ export default function AdminMessagesPage() {
                                     <div className="flex items-center gap-3">
                                         <Avatar><AvatarFallback>{conv.employeeName ? conv.employeeName.split(' ').map(n => n[0]).join('') : '--'}</AvatarFallback></Avatar>
                                         <div>
-                                            <p className="font-semibold">{conv.employeeName || 'Empleado Desconocido'}</p>
+                                            <p className="font-semibold">{getShortName(conv.employeeName)}</p>
                                             <p className="text-sm text-muted-foreground truncate max-w-[200px]">{conv.lastMessageText}</p>
                                         </div>
                                     </div>
@@ -354,8 +365,8 @@ export default function AdminMessagesPage() {
                                         >
                                             <div className="flex items-center gap-3 overflow-hidden">
                                                 <Avatar><AvatarFallback>{conv.employeeName ? conv.employeeName.split(' ').map(n => n[0]).join('') : '--'}</AvatarFallback></Avatar>
-                                                <div className="truncate max-w-[150px]">
-                                                    <p className="font-semibold truncate">{conv.employeeName || 'Empleado Desconocido'}</p>
+                                                <div className="truncate">
+                                                    <p className="font-semibold truncate">{getShortName(conv.employeeName)}</p>
                                                     <p className="text-sm text-muted-foreground truncate">{conv.lastMessageText}</p>
                                                 </div>
                                             </div>
