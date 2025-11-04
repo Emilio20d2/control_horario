@@ -356,11 +356,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         corReqs.forEach(req => {
             const weekStartDateFormatted = format(parseISO(req.weekId), 'dd/MM/yyyy', { locale: es });
             const messageText = `SOLICITUD DE CORRECCIÓN - Semana: ${weekStartDateFormatted}`;
-            const existingConv = convMap.get(req.employeeId);
             const requestTimestamp = req.requestedAt;
+            const existingConv = convMap.get(req.employeeId);
 
-            if (!existingConv || requestTimestamp.toDate() > (safeParseDate(existingConv.lastMessageTimestamp) ?? new Date(0))) {
-                const newConvData: Conversation = {
+            if (!existingConv || isAfter(requestTimestamp.toDate(), safeParseDate(existingConv.lastMessageTimestamp) ?? new Date(0))) {
+                const newOrUpdatedConvData: Conversation = {
                     id: req.employeeId,
                     employeeId: req.employeeId,
                     employeeName: req.employeeName,
@@ -369,7 +369,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
                     readBy: existingConv?.readBy || [],
                     unreadByEmployee: existingConv?.unreadByEmployee || false,
                 };
-                convMap.set(req.employeeId, newConvData);
+                convMap.set(req.employeeId, newOrUpdatedConvData);
             }
         });
         
@@ -1399,6 +1399,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
