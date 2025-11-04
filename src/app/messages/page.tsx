@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent, CardFooter, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizonal, Loader2, CheckCircle, Trash2, User, Users } from 'lucide-react';
+import { SendHorizonal, Loader2, CheckCircle, Trash2, User, Users, MessageSquareWarning } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useDataProvider } from '@/hooks/use-data-provider';
@@ -19,7 +19,6 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
-import { deleteSubcollectionDocument } from '@/lib/services/firestoreService';
 import Link from 'next/link';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { Textarea } from '@/components/ui/textarea';
@@ -119,18 +118,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
         }
 
         try {
-            await deleteSubcollectionDocument('conversations', conversation.id, 'messages', messageToDelete.id);
-
-            // If the deleted message was the last one, update the conversation summary
-            if (formattedMessages[formattedMessages.length - 1].id === messageToDelete.id) {
-                const newLastMessage = formattedMessages[formattedMessages.length - 2];
-                if (newLastMessage) {
-                    await updateDoc(doc(db, 'conversations', conversation.id), {
-                        lastMessageText: newLastMessage.text,
-                        lastMessageTimestamp: newLastMessage.timestamp,
-                    });
-                }
-            }
+            await updateDoc(doc(db, 'conversations', conversation.id, 'messages', messageToDelete.id), { text: '[Este mensaje ha sido eliminado]' });
             
             toast({ title: 'Mensaje eliminado', variant: 'destructive' });
             setMessageToDelete(null);
@@ -217,39 +205,6 @@ function ChatView({ conversation }: { conversation: Conversation }) {
                         </Button>
                     )}
                 </div>
-                 {message.senderId === 'admin' && (
-                     <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
-                                <Trash2 className="h-3 w-3 text-destructive" />
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar este mensaje?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Esta acción no se puede deshacer. El mensaje se eliminará permanentemente.
-                                </AlertDialogDescription>
-                                <div className="py-2 space-y-2">
-                                    <Label htmlFor="delete-password">Contraseña de Administrador</Label>
-                                    <Input id="delete-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-                                </div>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel onClick={() => setPassword('')}>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                    onClick={() => {
-                                        setMessageToDelete(message);
-                                        handleDeleteMessage();
-                                    }}
-                                    disabled={isDeleting || !password}
-                                >
-                                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Eliminar'}
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                )}
             </div>
         );
     };
@@ -305,9 +260,13 @@ function ChatView({ conversation }: { conversation: Conversation }) {
 
 
 export default function AdminMessagesPage() {
-    const { conversations, loading, appUser } = useDataProvider();
+    const { conversations, loading, appUser, correctionRequests } = useDataProvider();
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
     const isMobile = useIsMobile();
+
+    const pendingRequestEmployeeIds = useMemo(() => {
+        return new Set(correctionRequests.filter(r => r.status === 'pending').map(r => r.employeeId));
+    }, [correctionRequests]);
 
     const selectedConversation = useMemo(() => {
         if (!selectedConversationId) return null;
@@ -339,20 +298,26 @@ export default function AdminMessagesPage() {
             <div className="p-4">
                 <h1 className="text-2xl font-bold tracking-tight font-headline mb-4">Conversaciones</h1>
                 <div className="space-y-2">
-                    {conversations.map(conv => (
-                        <Card key={conv.id} onClick={() => handleSelectConversation(conv.id)} className="cursor-pointer">
-                            <CardHeader className="flex flex-row items-center justify-between p-4">
-                                <div className="flex items-center gap-3">
-                                    <Avatar><AvatarFallback>{conv.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
-                                    <div>
-                                        <p className="font-semibold">{conv.employeeName}</p>
-                                        <p className="text-sm text-muted-foreground truncate max-w-[200px]">{conv.lastMessageText}</p>
+                    {conversations.map(conv => {
+                         const hasPendingRequest = pendingRequestEmployeeIds.has(conv.id);
+                        return (
+                            <Card key={conv.id} onClick={() => handleSelectConversation(conv.id)} className="cursor-pointer">
+                                <CardHeader className="flex flex-row items-center justify-between p-4">
+                                    <div className="flex items-center gap-3">
+                                        <Avatar><AvatarFallback>{conv.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
+                                        <div>
+                                            <p className="font-semibold">{conv.employeeName}</p>
+                                            <p className="text-sm text-muted-foreground truncate max-w-[200px]">{conv.lastMessageText}</p>
+                                        </div>
                                     </div>
-                                </div>
-                                {appUser && !conv.readBy?.includes(appUser.id) && <div className="h-3 w-3 rounded-full bg-destructive" />}
-                            </CardHeader>
-                        </Card>
-                    ))}
+                                    <div className="flex items-center gap-2">
+                                        {hasPendingRequest && <MessageSquareWarning className="h-4 w-4 text-amber-500" />}
+                                        {appUser && !conv.readBy?.includes(appUser.id) && <div className="h-3 w-3 rounded-full bg-destructive" />}
+                                    </div>
+                                </CardHeader>
+                            </Card>
+                        )
+                    })}
                 </div>
             </div>
         );
@@ -369,27 +334,33 @@ export default function AdminMessagesPage() {
                         </div>
                         <ScrollArea className="flex-grow">
                             <div className="p-2 space-y-1">
-                                {conversations.map(conv => (
-                                    <button
-                                        key={conv.id}
-                                        onClick={() => handleSelectConversation(conv.id)}
-                                        className={cn(
-                                            "flex items-center justify-between p-3 rounded-md text-left w-full",
-                                            selectedConversationId === conv.id ? "bg-muted" : "hover:bg-muted/50"
-                                        )}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <Avatar><AvatarFallback>{conv.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
-                                            <div className="truncate">
-                                                <p className="font-semibold truncate">{conv.employeeName}</p>
-                                                <p className="text-sm text-muted-foreground truncate">{conv.lastMessageText}</p>
+                                {conversations.map(conv => {
+                                    const hasPendingRequest = pendingRequestEmployeeIds.has(conv.id);
+                                    return (
+                                        <button
+                                            key={conv.id}
+                                            onClick={() => handleSelectConversation(conv.id)}
+                                            className={cn(
+                                                "flex items-center justify-between p-3 rounded-md text-left w-full",
+                                                selectedConversationId === conv.id ? "bg-muted" : "hover:bg-muted/50"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <Avatar><AvatarFallback>{conv.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
+                                                <div className="truncate">
+                                                    <p className="font-semibold truncate">{conv.employeeName}</p>
+                                                    <p className="text-sm text-muted-foreground truncate">{conv.lastMessageText}</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                        {appUser && !conv.readBy?.includes(appUser.id) && (
-                                            <div className="h-3 w-3 rounded-full bg-destructive flex-shrink-0" />
-                                        )}
-                                    </button>
-                                ))}
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                {hasPendingRequest && <MessageSquareWarning className="h-4 w-4 text-amber-500" />}
+                                                {appUser && !conv.readBy?.includes(appUser.id) && (
+                                                    <div className="h-3 w-3 rounded-full bg-destructive" />
+                                                )}
+                                            </div>
+                                        </button>
+                                    )
+                                })}
                             </div>
                         </ScrollArea>
                     </div>
@@ -409,3 +380,4 @@ export default function AdminMessagesPage() {
         </div>
     );
 }
+
