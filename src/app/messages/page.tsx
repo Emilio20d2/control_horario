@@ -15,6 +15,7 @@ import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
 import type { Message, Conversation, CorrectionRequest } from '@/lib/types';
 import { format, parse, isAfter } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
@@ -104,7 +105,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
 
         return [];
 
-    }, [messagesSnapshot, messagesLoading, correctionRequests, conversation.employeeId, es]);
+    }, [messagesSnapshot, messagesLoading, correctionRequests, conversation.employeeId]);
 
     const handleSendMessage = async (e: React.FormEvent, customMessage?: string) => {
         e.preventDefault();
@@ -435,3 +436,5 @@ export default function AdminMessagesPage() {
         </div>
     );
 }
+
+    
