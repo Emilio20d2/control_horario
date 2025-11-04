@@ -351,7 +351,7 @@ export default function CalendarPage() {
 
   if (loading) {
     return (
-        <div className="p-4 md:p-6 space-y-4">
+        <div className="p-2 md:p-4 space-y-4">
             <Skeleton className="h-10 w-full max-w-lg mx-auto" />
             <Skeleton className="h-[600px] w-full" />
         </div>
@@ -364,7 +364,7 @@ export default function CalendarPage() {
             <div className="flex items-center gap-2">
                 <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
                  {weekTurnId && (
-                    <Badge variant="outline" className="text-sm">
+                    <Badge variant="secondary" className="text-xs">
                         {`T.${weekTurnId.replace('turn', '')}`}
                     </Badge>
                 )}
@@ -492,8 +492,8 @@ export default function CalendarPage() {
                 </div>
             </div>
             <div className="px-2 pb-2">
-                 <div className="grid grid-cols-[auto,repeat(7,minmax(0,1fr))] border-t border-l">
-                    {['Turno', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => (
+                 <div className="grid grid-cols-[repeat(7,minmax(0,1fr))] border-t border-l">
+                    {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => (
                         <div key={day} className="text-center font-bold p-2 border-r border-b bg-muted/50 text-xs sm:text-sm">
                             {day}
                         </div>
@@ -504,14 +504,7 @@ export default function CalendarPage() {
 
                         return (
                             <React.Fragment key={weekStart.toString()}>
-                                <div className="flex items-center justify-center p-2 border-r border-b bg-muted/50">
-                                     {monthWeekTurnId && (
-                                        <Badge variant="secondary" className="text-xs">
-                                            {`T.${monthWeekTurnId.replace('turn', '')}`}
-                                        </Badge>
-                                    )}
-                                </div>
-                                {daysOfWeek.map(day => {
+                                {daysOfWeek.map((day, dayIndex) => {
                                     const isCurrentMonth = isSameMonth(day, currentMonth);
                                     const absences = getAbsencesForDay(day);
                                     const holiday = holidays.find(h => isSameDay(h.date, day));
@@ -520,10 +513,15 @@ export default function CalendarPage() {
                                         <div
                                             key={day.toString()}
                                             className={cn(
-                                                "p-1 sm:p-2 border-r border-b min-h-[120px]",
+                                                "relative p-1 sm:p-2 border-r border-b min-h-[120px]",
                                                 !isCurrentMonth && 'bg-muted/30 text-muted-foreground'
                                             )}
                                         >
+                                            {dayIndex === 0 && monthWeekTurnId && (
+                                                <Badge variant="secondary" className="absolute top-1 right-1 text-[10px] h-4 px-1">
+                                                    {`T.${monthWeekTurnId.replace('turn', '')}`}
+                                                </Badge>
+                                            )}
                                             <div className={cn("font-semibold text-xs sm:text-sm", isSameDay(day, new Date()) && "text-primary font-bold")}>
                                                 {format(day, 'd')}
                                             </div>
@@ -640,5 +638,3 @@ export default function CalendarPage() {
     </>
   );
 }
-
-    
