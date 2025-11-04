@@ -117,7 +117,7 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
     const startDate = typeof period.startDate === 'string' ? parseISO(period.startDate) : period.startDate;
     const endDate = period.endDate ? (typeof period.endDate === 'string' ? parseISO(period.endDate) : period.endDate) : null;
     
-    const sortedPeriods = allPeriods.slice().sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime());
+    const sortedPeriods = allPeriods.slice().sort((a,b) => (b.startDate as Date).getTime() - (a.startDate as Date).getTime());
 
     const workHoursHistoryToShow = (period.workHoursHistory || [])
         .filter(record => isEmployeeView ? isAfter(new Date(record.effectiveDate), new Date('2025-01-01')) : true)
@@ -352,5 +352,3 @@ export function EmployeeDetails({ employee, period, allPeriods, isEmployeeView }
         </Card>
     );
 }
-
-    
