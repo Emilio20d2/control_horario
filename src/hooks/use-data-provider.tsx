@@ -358,16 +358,18 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
                 const weekStartDateFormatted = format(parseISO(req.weekId), 'dd/MM/yyyy', { locale: es });
                 const messageText = `SOLICITUD DE CORRECCIÓN - Semana: ${weekStartDateFormatted}`;
                 
+                const newConvData = {
+                    id: req.employeeId,
+                    employeeId: req.employeeId,
+                    employeeName: req.employeeName,
+                    lastMessageText: messageText,
+                    lastMessageTimestamp: req.requestedAt,
+                    readBy: existingConv?.readBy || [],
+                    unreadByEmployee: existingConv?.unreadByEmployee || false,
+                };
+                
                 if (!existingConv || (req.requestedAt.toDate() > (existingConv.lastMessageTimestamp as any).toDate())) {
-                    convMap.set(req.employeeId, {
-                        id: req.employeeId,
-                        employeeId: req.employeeId,
-                        employeeName: req.employeeName,
-                        lastMessageText: messageText,
-                        lastMessageTimestamp: req.requestedAt,
-                        readBy: existingConv?.readBy || [],
-                        unreadByEmployee: existingConv?.unreadByEmployee || false,
-                    });
+                    convMap.set(req.employeeId, newConvData);
                 }
             }
         });
@@ -1397,6 +1399,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
