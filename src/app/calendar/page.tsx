@@ -359,7 +359,7 @@ export default function CalendarPage() {
   }
 
   const renderWeeklyView = () => (
-    <div className="bg-background border rounded-lg">
+    <div className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background border rounded-lg">
         <div className="flex flex-col md:flex-row items-center justify-between gap-2 p-4 border-b">
             <div className="flex items-center gap-2">
                 <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
@@ -462,7 +462,7 @@ export default function CalendarPage() {
     const weeksOfMonth = eachWeekOfInterval({ start: monthStart, end: monthEnd }, { weekStartsOn: 1 });
 
     return (
-        <div className="bg-background border rounded-lg">
+        <div className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background border rounded-lg">
             <div className="flex flex-col md:flex-row items-center justify-between gap-2 p-4 border-b">
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
