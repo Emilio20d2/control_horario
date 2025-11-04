@@ -53,7 +53,7 @@ import {
     updateHolidayReport,
     deleteHolidayReport,
 } from '@/lib/services/settingsService';
-import { addDays, addWeeks, differenceInCalendarISOWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseFromISO, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, getISOWeekYear, isValid } from 'date-fns';
+import { addDays, addWeeks, differenceInCalendarISOWeeks, differenceInDays, endOfWeek, endOfYear, eachDayOfInterval, format, getISODay, getISOWeek, getWeeksInMonth, getYear, isAfter, isBefore, isSameDay, isSameWeek, isWithinInterval, max, min, parse, parseISO, startOfDay, startOfWeek, startOfYear, subDays, subWeeks, endOfDay, differenceInWeeks, setYear, getMonth, endOfMonth, startOfMonth, getISOWeekYear, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
@@ -338,8 +338,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       getCollection<EmployeeGroup>('employeeGroups'),
       getCollection<Conversation>('conversations'),
       getCollection<VacationCampaign>('vacationCampaigns'),
-      getCollection<CorrectionRequest>('correctionRequests') // Fetch all requests
-    ]).then(([absTypes, conTypes, annConfigs, hols, usrs, holEmps, holReps, empGrps, convs, vacCamps, corReqs]) => {
+      getCollection<CorrectionRequest>('correctionRequests'), // Fetch all requests
+      getCollection<Employee>('employees') // Fetch employees here
+    ]).then(([absTypes, conTypes, annConfigs, hols, usrs, holEmps, holReps, empGrps, convs, vacCamps, corReqs, emps]) => {
       if (active) {
         setAbsenceTypes(absTypes.sort((a,b) => a.name.localeCompare(b.name)));
         setContractTypes(conTypes);
@@ -351,19 +352,29 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setEmployeeGroups(empGrps.sort((a,b) => a.order - b.order));
         
         // Merge conversations and correction requests
-        const convMap = new Map(convs.map(c => [c.id, c]));
+        const employeesMap = new Map(emps.map(e => [e.id, e]));
+        const convMap = new Map<string, Conversation>();
+        
+        convs.forEach(c => {
+            if (!c.employeeName) {
+                const emp = employeesMap.get(c.employeeId);
+                c.employeeName = emp ? emp.name : 'Desconocido';
+            }
+            convMap.set(c.id, c);
+        });
 
         corReqs.forEach(req => {
             const weekStartDateFormatted = format(parseISO(req.weekId), 'dd/MM/yyyy', { locale: es });
             const messageText = `SOLICITUD DE CORRECCIÓN - Semana: ${weekStartDateFormatted}`;
-            const requestTimestamp = req.requestedAt;
+            const requestTimestamp = req.requestedAt instanceof Timestamp ? req.requestedAt : Timestamp.fromDate(new Date());
             const existingConv = convMap.get(req.employeeId);
+            const employeeName = req.employeeName || employeesMap.get(req.employeeId)?.name || 'Desconocido';
 
             if (!existingConv || isAfter(requestTimestamp.toDate(), safeParseDate(existingConv.lastMessageTimestamp) ?? new Date(0))) {
                 const newOrUpdatedConvData: Conversation = {
                     id: req.employeeId,
                     employeeId: req.employeeId,
-                    employeeName: req.employeeName,
+                    employeeName: employeeName,
                     lastMessageText: messageText,
                     lastMessageTimestamp: requestTimestamp,
                     readBy: existingConv?.readBy || [],
@@ -373,7 +384,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             }
         });
         
-        setConversations(Array.from(convMap.values()).sort((a, b) => (b.lastMessageTimestamp as any).toDate().getTime() - (a.lastMessageTimestamp as any).toDate().getTime()));
+        setConversations(Array.from(convMap.values()).sort((a, b) => (safeParseDate(b.lastMessageTimestamp)?.getTime() ?? 0) - (safeParseDate(a.lastMessageTimestamp)?.getTime() ?? 0)));
         
         setVacationCampaigns(vacCamps.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime()));
         setCorrectionRequests(corReqs);
@@ -1399,6 +1410,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
