@@ -416,12 +416,15 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     (contractType?.computesOffDayBag ?? false) &&
                     dayData.absence === 'ninguna';
                 
-                 const cellStyle: React.CSSProperties = isHoliday
-                    ? { background: 'linear-gradient(to bottom right, #e0f2f1, transparent)'}
-                    : { background: 'linear-gradient(to bottom right, rgba(240, 240, 240, 0.5), transparent)' };
+                const cellStyle: React.CSSProperties = {};
+                if (isHoliday) {
+                    cellStyle.background = 'linear-gradient(to bottom right, #e0f2f1, transparent)';
+                } else {
+                    cellStyle.background = 'linear-gradient(to bottom right, rgba(240, 240, 240, 0.5), transparent)';
+                }
 
                 if (absenceType?.color) {
-                    cellStyle.backgroundColor = `${absenceType.color}40`;
+                    cellStyle.background = `linear-gradient(to bottom right, ${absenceType.color}40, transparent)`;
                 }
 
                 return (
