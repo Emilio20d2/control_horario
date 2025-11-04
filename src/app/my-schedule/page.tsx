@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -46,25 +47,16 @@ const CorrectionRequestDialog = ({ open, onOpenChange, weekId, employee, onSubmi
         };
 
         const convDocRef = doc(db, 'conversations', conversationId);
-        const convDoc = await getDoc(convDocRef);
-
-        if (!convDoc.exists()) {
-            await setDoc(convDocRef, {
-                employeeId: employee.id,
-                employeeName: employee.name,
-                lastMessageText: text,
-                lastMessageTimestamp: serverTimestamp(),
-                unreadByAdmin: true,
-                unreadByEmployee: false,
-            });
-        } else {
-             await updateDoc(convDocRef, {
-                lastMessageText: text,
-                lastMessageTimestamp: serverTimestamp(),
-                unreadByAdmin: true,
-                unreadByEmployee: false,
-            });
-        }
+        
+        // Use setDoc with merge:true to create or update the document safely
+        await setDoc(convDocRef, {
+            employeeId: employee.id,
+            employeeName: employee.name,
+            lastMessageText: text,
+            lastMessageTimestamp: serverTimestamp(),
+            unreadByAdmin: true,
+            unreadByEmployee: false,
+        }, { merge: true });
 
         await addDoc(messagesColRef, userMessageData);
     };

@@ -204,25 +204,15 @@ export default function MyMessagesPage() {
         };
 
         const convDocRef = doc(db, 'conversations', conversationId);
-        const convDoc = await getDoc(convDocRef);
-
-        if (!convDoc.exists()) {
-            await setDoc(convDocRef, {
-                employeeId: employeeRecord.id,
-                employeeName: employeeRecord.name,
-                lastMessageText: text,
-                lastMessageTimestamp: serverTimestamp(),
-                unreadByAdmin: unreadByAdmin,
-                unreadByEmployee: false,
-            });
-        } else {
-             await updateDoc(convDocRef, {
-                lastMessageText: text,
-                lastMessageTimestamp: serverTimestamp(),
-                unreadByAdmin: unreadByAdmin,
-                unreadByEmployee: false,
-            });
-        }
+        
+        await setDoc(convDocRef, {
+            employeeId: employeeRecord.id,
+            employeeName: employeeRecord.name,
+            lastMessageText: text,
+            lastMessageTimestamp: serverTimestamp(),
+            unreadByAdmin: unreadByAdmin,
+            unreadByEmployee: false,
+        }, { merge: true });
 
         await addDoc(messagesColRef, userMessageData);
     };
