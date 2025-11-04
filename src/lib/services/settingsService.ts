@@ -85,7 +85,7 @@ export const createContractType = async (data: Omit<ContractType, 'id'>): Promis
 
 export const updateContractType = async (id: string, data: Partial<Omit<ContractType, 'id'>>): Promise<void> => {
     const docRef = doc(db, 'contractTypes', id);
-await updateDoc(docRef, data);
+    await updateDoc(docRef, data);
 }
 
 export const deleteContractType = async (id: string): Promise<void> => {
