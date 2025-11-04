@@ -6,31 +6,26 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent, CardFooter, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizonal, Loader2, PlaneTakeoff, Info, CalendarClock, Hourglass, Calendar as CalendarIcon, CheckCircle, Trash2, User, Users } from 'lucide-react';
+import { SendHorizonal, Loader2, CheckCircle, Trash2, User, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
-import type { Message, VacationCampaign, AbsenceType, Holiday, CorrectionRequest, Employee, Conversation } from '@/lib/types';
-import { format, isWithinInterval, parseISO, isValid, getYear, parse } from 'date-fns';
+import type { Message, Conversation, CorrectionRequest } from '@/lib/types';
+import { format, parse } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { addScheduledAbsence, updateDocument } from '@/lib/services/employeeService';
-import { DateRange, DayPicker } from 'react-day-picker';
-import { es } from 'date-fns/locale';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { deleteSubcollectionDocument } from '@/lib/services/firestoreService';
 import Link from 'next/link';
 import { useIsMobile } from '@/hooks/use-is-mobile';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { resolveCorrectionRequest } from '@/lib/actions/dataCleanupActions';
+
 
 function ChatView({ conversation }: { conversation: Conversation }) {
     const { appUser, reauthenticateWithPassword } = useAuth();
@@ -107,6 +102,46 @@ function ChatView({ conversation }: { conversation: Conversation }) {
             handleSendMessage(e as unknown as React.FormEvent);
         }
     }
+    
+    const handleDeleteMessage = async () => {
+        if (!messageToDelete || !password) {
+            toast({ title: 'Contraseña requerida', variant: 'destructive'});
+            return;
+        };
+
+        setIsDeleting(true);
+
+        const isAuthenticated = await reauthenticateWithPassword(password);
+        if(!isAuthenticated) {
+            toast({ title: 'Contraseña incorrecta', variant: 'destructive'});
+            setIsDeleting(false);
+            return;
+        }
+
+        try {
+            await deleteSubcollectionDocument('conversations', conversation.id, 'messages', messageToDelete.id);
+
+            // If the deleted message was the last one, update the conversation summary
+            if (formattedMessages[formattedMessages.length - 1].id === messageToDelete.id) {
+                const newLastMessage = formattedMessages[formattedMessages.length - 2];
+                if (newLastMessage) {
+                    await updateDoc(doc(db, 'conversations', conversation.id), {
+                        lastMessageText: newLastMessage.text,
+                        lastMessageTimestamp: newLastMessage.timestamp,
+                    });
+                }
+            }
+            
+            toast({ title: 'Mensaje eliminado', variant: 'destructive' });
+            setMessageToDelete(null);
+            setPassword('');
+        } catch (error) {
+            console.error("Error deleting message:", error);
+            toast({ title: 'Error al eliminar', description: 'No se pudo eliminar el mensaje.', variant: 'destructive' });
+        } finally {
+            setIsDeleting(false);
+        }
+    }
 
     const quickResponses = [
         "Se ha revisado y corregido tu solicitud.",
@@ -121,12 +156,16 @@ function ChatView({ conversation }: { conversation: Conversation }) {
         const requestId = `${weekId}_${conversation.employeeId}`;
         
         try {
-            await updateDocument('correctionRequests', requestId, { status: 'resolved' });
-            refreshData(); // To update the local state of correctionRequests
-            toast({ title: 'Solicitud marcada como realizada.' });
+            const result = await resolveCorrectionRequest(requestId);
+            if(result.success) {
+                refreshData(); 
+                toast({ title: 'Solicitud marcada como realizada.' });
+            } else {
+                throw new Error(result.error);
+            }
         } catch (error) {
             console.error("Error resolving request:", error);
-            toast({ title: "Error", description: "No se pudo actualizar el estado de la solicitud.", variant: "destructive" });
+            toast({ title: "Error", description: error instanceof Error ? error.message : "No se pudo actualizar el estado de la solicitud.", variant: "destructive" });
         }
     };
 
@@ -138,9 +177,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
             if (dateMatch && dateMatch[1]) {
                 try {
                     const parsedDate = parse(dateMatch[1], 'dd/MM/yyyy', new Date());
-                    if (isValid(parsedDate)) {
-                        weekId = format(parsedDate, 'yyyy-MM-dd');
-                    }
+                    weekId = format(parsedDate, 'yyyy-MM-dd');
                 } catch (e) {
                     console.error("Error parsing date from correction request message:", e);
                 }
@@ -180,12 +217,44 @@ function ChatView({ conversation }: { conversation: Conversation }) {
                         </Button>
                     )}
                 </div>
+                 {message.senderId === 'admin' && (
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar este mensaje?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta acción no se puede deshacer. El mensaje se eliminará permanentemente.
+                                </AlertDialogDescription>
+                                <div className="py-2 space-y-2">
+                                    <Label htmlFor="delete-password">Contraseña de Administrador</Label>
+                                    <Input id="delete-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                                </div>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setPassword('')}>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={() => {
+                                        setMessageToDelete(message);
+                                        handleDeleteMessage();
+                                    }}
+                                    disabled={isDeleting || !password}
+                                >
+                                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Eliminar'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
             </div>
         );
     };
 
     return (
-        <>
         <Card className="flex flex-col h-full bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-background">
             <CardHeader className="p-4 border-b">
                 <div className="flex items-center gap-4">
@@ -231,7 +300,6 @@ function ChatView({ conversation }: { conversation: Conversation }) {
                 </form>
             </CardFooter>
         </Card>
-        </>
     );
 }
 
@@ -293,13 +361,13 @@ export default function AdminMessagesPage() {
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6">
             <h1 className="text-2xl font-bold tracking-tight font-headline">Mensajería</h1>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start h-[calc(100vh-10rem)]">
-                <Card className="lg:col-span-1 flex flex-col h-full bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background">
-                    <CardHeader className="border-b">
-                        <CardTitle className="text-lg">Conversaciones</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0 flex-grow">
-                        <ScrollArea className="h-full">
+             <Card className="h-[calc(100vh-10rem)]">
+                <CardContent className="grid grid-cols-1 lg:grid-cols-3 gap-0 p-0 h-full">
+                    <div className="lg:col-span-1 flex flex-col h-full bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background rounded-l-lg">
+                        <div className="p-4 border-b">
+                            <h2 className="text-lg font-bold">Conversaciones</h2>
+                        </div>
+                        <ScrollArea className="flex-grow">
                             <div className="p-2 space-y-1">
                                 {conversations.map(conv => (
                                     <button
@@ -324,20 +392,20 @@ export default function AdminMessagesPage() {
                                 ))}
                             </div>
                         </ScrollArea>
-                    </CardContent>
-                </Card>
-                <div className="lg:col-span-2 h-full">
-                    {selectedConversation ? (
-                        <ChatView conversation={selectedConversation} />
-                    ) : (
-                        <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground bg-muted/30 rounded-lg">
-                            <Users className="h-16 w-16 mb-4" />
-                            <h3 className="text-xl font-semibold">Selecciona una conversación</h3>
-                            <p>Elige una conversación de la lista para ver los mensajes.</p>
-                        </div>
-                    )}
-                </div>
-            </div>
+                    </div>
+                    <div className="lg:col-span-2 h-full">
+                        {selectedConversation ? (
+                            <ChatView conversation={selectedConversation} />
+                        ) : (
+                            <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground bg-muted/30 rounded-r-lg">
+                                <Users className="h-16 w-16 mb-4" />
+                                <h3 className="text-xl font-semibold">Selecciona una conversación</h3>
+                                <p>Elige una conversación de la lista para ver los mensajes.</p>
+                            </div>
+                        )}
+                    </div>
+                 </CardContent>
+            </Card>
         </div>
     );
 }

@@ -117,3 +117,16 @@ export async function deleteSelectedConversations(conversationIds: string[]): Pr
         return { success: false, error: errorMessage };
     }
 }
+
+export async function resolveCorrectionRequest(requestId: string): Promise<{ success: boolean; error?: string; }> {
+    'use server';
+    try {
+        const db = getDbAdmin();
+        const requestRef = db.collection('correctionRequests').doc(requestId);
+        await requestRef.update({ status: 'resolved' });
+        return { success: true };
+    } catch (error) {
+        console.error("Error resolving correction request:", error);
+        return { success: false, error: error instanceof Error ? error.message : 'No se pudo actualizar la solicitud.' };
+    }
+}
