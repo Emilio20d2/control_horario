@@ -6,11 +6,11 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent, CardFooter, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizonal, Loader2, PlaneTakeoff, Info, CalendarClock, Hourglass, Calendar as CalendarIcon, CheckCircle } from 'lucide-react';
+import { SendHorizonal, Loader2, PlaneTakeoff, Info, CalendarClock, Hourglass, Calendar as CalendarIcon, CheckCircle, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDoc, updateDoc, Timestamp, deleteDoc } from 'firebase/firestore';
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
 import type { Message, VacationCampaign, AbsenceType, Holiday, CorrectionRequest } from '@/lib/types';
@@ -25,14 +25,24 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { useAuth } from '@/hooks/useAuth';
+import { deleteSubcollectionDocument } from '@/lib/services/firestoreService';
 
 export default function MyMessagesPage() {
     const { employeeRecord, loading, conversations, vacationCampaigns, absenceTypes, getTheoreticalHoursAndTurn, holidays, weeklyRecords, correctionRequests, refreshData } = useDataProvider();
+    const { appUser, reauthenticateWithPassword } = useAuth();
     const [newMessage, setNewMessage] = useState('');
     const conversationId = employeeRecord?.id;
     const viewportRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const { toast } = useToast();
+
+    // State for message deletion
+    const [messageToDelete, setMessageToDelete] = useState<Message | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deletePassword, setDeletePassword] = useState('');
 
     // State for vacation request dialog
     const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
@@ -183,12 +193,15 @@ export default function MyMessagesPage() {
     }, [newMessage]);
 
 
-    const handleSendMessage = async (e: React.FormEvent) => {
+    const handleSendMessage = async (e: React.FormEvent, customMessage?: string) => {
         e.preventDefault();
-        if (newMessage.trim() === '' || !conversationId || !employeeRecord) return;
+        const messageText = customMessage || newMessage;
+
+        if (messageText.trim() === '' || !conversationId || !employeeRecord) return;
         
-        const messageText = newMessage;
-        setNewMessage('');
+        if (!customMessage) {
+            setNewMessage('');
+        }
 
         await sendMessage(messageText, true); // true for unreadByAdmin
     };
@@ -414,6 +427,49 @@ export default function MyMessagesPage() {
         }
     };
 
+    const handleDeleteMessage = async () => {
+        if (!messageToDelete || !conversationId) return;
+        if (appUser?.role !== 'admin') {
+            toast({ title: 'Permiso denegado', variant: 'destructive' });
+            return;
+        }
+        if (!deletePassword) {
+            toast({ title: 'Contraseña requerida', description: 'Por favor, introduce tu contraseña.', variant: 'destructive' });
+            return;
+        }
+
+        setIsDeleting(true);
+        try {
+            const isAuthenticated = await reauthenticateWithPassword(deletePassword);
+            if (!isAuthenticated) {
+                toast({ title: 'Error de autenticación', description: 'La contraseña no es correcta.', variant: 'destructive' });
+                setIsDeleting(false);
+                return;
+            }
+
+            await deleteSubcollectionDocument('conversations', conversationId, 'messages', messageToDelete.id);
+
+            // If the deleted message was the last one, update the conversation summary
+            if (formattedMessages.length > 0 && formattedMessages[formattedMessages.length - 1].id === messageToDelete.id) {
+                const newLastMessage = formattedMessages.length > 1 ? formattedMessages[formattedMessages.length - 2] : null;
+                await updateDoc(doc(db, 'conversations', conversationId), {
+                    lastMessageText: newLastMessage ? newLastMessage.text : 'Conversación vacía.',
+                    lastMessageTimestamp: newLastMessage ? newLastMessage.timestamp : serverTimestamp(),
+                });
+            }
+
+            toast({ title: 'Mensaje eliminado' });
+            setMessageToDelete(null);
+
+        } catch (error) {
+            console.error("Error deleting message:", error);
+            toast({ title: "Error al eliminar", description: "No se pudo eliminar el mensaje.", variant: "destructive" });
+        } finally {
+            setIsDeleting(false);
+            setDeletePassword('');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
@@ -436,6 +492,12 @@ export default function MyMessagesPage() {
     }
 
     const campaignAbsenceTypes = absenceTypes.filter(at => selectedCampaign?.allowedAbsenceTypeIds.includes(at.id));
+    const quickResponses = [
+        "Se ha revisado y corregido tu solicitud.",
+        "Recibido, lo revisaremos.",
+        "De acuerdo, gracias por avisar.",
+        "La solicitud no procede."
+    ];
 
     const renderChatHeader = () => {
         return (
@@ -483,7 +545,7 @@ export default function MyMessagesPage() {
         const isResolved = request?.status === 'resolved';
 
         return (
-            <div className={cn('flex items-end gap-2', message.senderId === employeeRecord.id ? 'justify-end' : 'justify-start')}>
+            <div className={cn('flex items-end gap-2 group', message.senderId === employeeRecord.id ? 'justify-end' : 'justify-start')}>
                 {message.senderId !== employeeRecord.id && <Avatar className="h-8 w-8 border-2 border-foreground"><AvatarFallback>D</AvatarFallback></Avatar>}
                 <div className={cn(
                     'max-w-[90%] p-3 rounded-lg shadow-sm',
@@ -509,6 +571,39 @@ export default function MyMessagesPage() {
                         </Button>
                     )}
                 </div>
+                 {appUser?.role === 'admin' && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar este mensaje?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta acción eliminará el mensaje permanentemente. No se puede deshacer.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <div className="space-y-2 py-2">
+                                <Label htmlFor="password-delete-msg">Contraseña de Administrador</Label>
+                                <Input id="password-delete-msg" type="password" placeholder="Introduce tu contraseña" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
+                            </div>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setDeletePassword('')}>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction 
+                                    onClick={() => {
+                                        setMessageToDelete(message);
+                                        handleDeleteMessage();
+                                    }}
+                                    disabled={isDeleting || !deletePassword}
+                                >
+                                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Sí, eliminar'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
             </div>
         );
     };
@@ -527,18 +622,27 @@ export default function MyMessagesPage() {
                     <CardHeader className="p-4 border-b">
                         {renderChatHeader()}
                     </CardHeader>
-                    <ScrollArea className="flex-1 p-4 space-y-4" viewportRef={viewportRef}>
+                    <ScrollArea className="flex-1 p-4" viewportRef={viewportRef}>
+                        <div className="space-y-4">
                         {messagesLoading ? (
                             <div className="flex h-full items-center justify-center">
                                 <Loader2 className="h-8 w-8 animate-spin" />
                             </div>
                         ) : (
-                            formattedMessages.map((message, index) => (
-                                <RenderMessage key={index} message={message} />
+                            formattedMessages.map((message) => (
+                                <RenderMessage key={message.id} message={message} />
                             ))
                         )}
+                        </div>
                     </ScrollArea>
-                    <CardFooter className="p-4 border-t bg-background">
+                     <CardFooter className="p-4 border-t bg-background flex flex-col gap-2">
+                        {appUser?.role === 'admin' && (
+                            <div className="flex flex-wrap gap-2">
+                                {quickResponses.map(text => (
+                                    <Button key={text} variant="outline" size="sm" onClick={(e) => handleSendMessage(e, text)}>{text}</Button>
+                                ))}
+                            </div>
+                        )}
                          <form onSubmit={handleSendMessage} className="relative flex items-end w-full">
                              <Textarea
                                 ref={textareaRef}
