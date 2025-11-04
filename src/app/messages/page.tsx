@@ -187,7 +187,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
 
         return (
             <div className={cn('flex items-end gap-2 group', message.senderId === 'admin' ? 'justify-end' : 'justify-start')}>
-                {message.senderId !== 'admin' && <Avatar className="h-8 w-8 border-2 border-foreground"><AvatarFallback>{conversation.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>}
+                {message.senderId !== 'admin' && <Avatar className="h-8 w-8 border-2 border-foreground"><AvatarFallback>{conversation.employeeName ? conversation.employeeName.split(' ').map(n => n[0]).join('') : '--'}</AvatarFallback></Avatar>}
                 <div className={cn(
                     'max-w-[90%] p-3 rounded-lg shadow-sm',
                     message.senderId === 'admin' ? 'bg-gradient-to-br from-primary to-blue-400 text-primary-foreground' : 'bg-gradient-to-br from-muted to-transparent'
@@ -220,9 +220,9 @@ function ChatView({ conversation }: { conversation: Conversation }) {
         <Card className="flex flex-col h-full bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-background">
             <CardHeader className="p-4 border-b">
                 <div className="flex items-center gap-4">
-                    <Avatar><AvatarFallback>{conversation.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
+                    <Avatar><AvatarFallback>{conversation.employeeName ? conversation.employeeName.split(' ').map(n => n[0]).join('') : '--'}</AvatarFallback></Avatar>
                     <div>
-                        <h2 className="text-lg font-bold">{conversation.employeeName}</h2>
+                        <h2 className="text-lg font-bold">{conversation.employeeName || 'Empleado Desconocido'}</h2>
                         <Link href={`/employees/${conversation.employeeId}`} className="text-xs text-muted-foreground hover:underline">Ver ficha del empleado</Link>
                     </div>
                 </div>
@@ -311,9 +311,9 @@ export default function AdminMessagesPage() {
                             <Card key={conv.id} onClick={() => handleSelectConversation(conv.id)} className="cursor-pointer">
                                 <CardHeader className="flex flex-row items-center justify-between p-4">
                                     <div className="flex items-center gap-3">
-                                        <Avatar><AvatarFallback>{conv.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
+                                        <Avatar><AvatarFallback>{conv.employeeName ? conv.employeeName.split(' ').map(n => n[0]).join('') : '--'}</AvatarFallback></Avatar>
                                         <div>
-                                            <p className="font-semibold">{conv.employeeName}</p>
+                                            <p className="font-semibold">{conv.employeeName || 'Empleado Desconocido'}</p>
                                             <p className="text-sm text-muted-foreground truncate max-w-[200px]">{conv.lastMessageText}</p>
                                         </div>
                                     </div>
@@ -353,9 +353,9 @@ export default function AdminMessagesPage() {
                                             )}
                                         >
                                             <div className="flex items-center gap-3">
-                                                <Avatar><AvatarFallback>{conv.employeeName.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
+                                                <Avatar><AvatarFallback>{conv.employeeName ? conv.employeeName.split(' ').map(n => n[0]).join('') : '--'}</AvatarFallback></Avatar>
                                                 <div className="truncate">
-                                                    <p className="font-semibold truncate">{conv.employeeName}</p>
+                                                    <p className="font-semibold truncate">{conv.employeeName || 'Empleado Desconocido'}</p>
                                                     <p className="text-sm text-muted-foreground truncate">{conv.lastMessageText}</p>
                                                 </div>
                                             </div>
