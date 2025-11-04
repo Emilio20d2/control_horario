@@ -158,7 +158,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             href={item.href}
             className={cn(
               'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative',
-              'flex-col text-center h-16 w-16 sm:h-auto sm:w-auto',
+              'flex-col text-center h-auto w-16 sm:h-auto sm:w-auto',
               isActive
                 ? 'bg-primary text-primary-foreground font-semibold'
                 : 'text-foreground hover:bg-accent hover:text-accent-foreground'
@@ -203,7 +203,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                    <Link
                         href="/calendar"
                         className={cn(
-                            'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative flex-col text-center h-16 w-16 sm:h-auto sm:w-auto',
+                            'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative flex-col text-center h-auto w-16 sm:h-auto sm:w-auto',
                             pathname.startsWith('/calendar')
                                 ? 'bg-primary text-primary-foreground font-semibold'
                                 : 'text-foreground hover:bg-accent hover:text-accent-foreground'
@@ -215,7 +215,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   <Link
                         href="/messages"
                         className={cn(
-                            'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative flex-col text-center h-16 w-16 sm:h-auto sm:w-auto',
+                            'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative flex-col text-center h-auto w-16 sm:h-auto sm:w-auto',
                             pathname.startsWith('/messages')
                                 ? 'bg-primary text-primary-foreground font-semibold'
                                 : 'text-foreground hover:bg-accent hover:text-accent-foreground'
@@ -233,7 +233,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     <Link
                         href="/guide"
                         className={cn(
-                            'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative flex-col text-center h-16 w-16 sm:h-auto sm:w-auto',
+                            'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative flex-col text-center h-auto w-16 sm:h-auto sm:w-auto',
                             pathname.startsWith('/guide')
                                 ? 'bg-primary text-primary-foreground font-semibold'
                                 : 'text-foreground hover:bg-accent hover:text-accent-foreground'
