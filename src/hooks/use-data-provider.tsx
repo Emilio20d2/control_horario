@@ -230,14 +230,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [holidayReports, setHolidayReports] = useState<HolidayReport[]>([]);
   const [employeeGroups, setEmployeeGroups] = useState<EmployeeGroup[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [vacationCampaigns, setVacationCampaigns] = useState<VacationCampaign[]>([]);
   const [correctionRequests, setCorrectionRequests] = useState<CorrectionRequest[]>([]);
+  const [vacationCampaigns, setVacationCampaigns] = useState<VacationCampaign[]>([]);
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<UnconfirmedWeekDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSteps, setLoadingSteps] = useState<Record<string, boolean>>({
-    employees: false,
     statics: false,
     weeklyRecords: false,
+    employees: false,
     conversations: false,
   });
   
@@ -304,7 +304,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     return processedAbsences;
   }, [safeParseDate]);
 
-  // Effect for static data that employees depend on
+  // Effect for static data (does not depend on other collections)
   useEffect(() => {
     if (authLoading || !user || !appUser) {
         if (!user) setLoading(false);
@@ -313,17 +313,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     
     let active = true;
     
-    const unsubs: (() => void)[] = [];
-    const setupSubscription = <T extends { id: string }>(collectionName: string, setter: React.Dispatch<React.SetStateAction<T[]>>, processor?: (data: any[]) => T[]) => {
-      const { unsubscribe } = onCollectionUpdate<T>(collectionName, (data) => {
-        if (active) {
-          const processedData = processor ? processor(data) : data;
-          setter(processedData as T[]);
-        }
-      });
-      unsubs.push(unsubscribe);
-    };
-
     Promise.all([
       getCollection<AbsenceType>('absenceTypes'),
       getCollection<ContractType>('contractTypes'),
@@ -351,11 +340,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       active = false;
-      unsubs.forEach(unsub => unsub());
     }
   }, [authLoading, user, appUser, safeParseDate]);
 
-  // Effect for weekly records and other dynamic data
+  // Effect for weekly records (depends on statics being loaded)
   useEffect(() => {
     if (!loadingSteps.statics) return;
 
@@ -413,25 +401,25 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         getCollection<CorrectionRequest>('correctionRequests')
     ]).then(([convs, corReqs]) => {
         if (active) {
-            const employeesMap = new Map(employees.map(e => [e.id, e]));
+            const employeesMap = new Map(employees.map(e => [e.id, e.name]));
             const convMap = new Map<string, Conversation>();
 
+            // 1. Prime the map with existing conversations
             convs.forEach(c => {
-                if (!c.employeeName) {
-                    c.employeeName = employeesMap.get(c.employeeId)?.name || 'Desconocido';
-                }
+                c.employeeName = c.employeeName || employeesMap.get(c.employeeId) || 'Desconocido';
                 convMap.set(c.id, c);
             });
 
+            // 2. Iterate through correction requests to update or create conversations
             corReqs.forEach(req => {
                 const existingConv = convMap.get(req.employeeId);
                 const requestTimestamp = req.requestedAt instanceof Timestamp ? req.requestedAt.toDate() : new Date();
 
+                const employeeName = req.employeeName || employeesMap.get(req.employeeId) || 'Desconocido';
+                const weekStartDateFormatted = format(parseISO(req.weekId), 'dd/MM/yyyy', { locale: es });
+                const messageText = `SOLICITUD DE CORRECCIÓN - Semana: ${weekStartDateFormatted}`;
+
                 if (!existingConv || isAfter(requestTimestamp, safeParseDate(existingConv.lastMessageTimestamp) ?? new Date(0))) {
-                    const employeeName = req.employeeName || employeesMap.get(req.employeeId)?.name || 'Desconocido';
-                    const weekStartDateFormatted = format(parseISO(req.weekId), 'dd/MM/yyyy', { locale: es });
-                    const messageText = `SOLICITUD DE CORRECCIÓN - Semana: ${weekStartDateFormatted}`;
-                    
                     const newOrUpdatedConvData: Conversation = {
                         id: req.employeeId,
                         employeeId: req.employeeId,
@@ -445,7 +433,13 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
                 }
             });
 
-            setConversations(Array.from(convMap.values()).sort((a, b) => (safeParseDate(b.lastMessageTimestamp)?.getTime() ?? 0) - (safeParseDate(a.lastMessageTimestamp)?.getTime() ?? 0)));
+            const sortedConversations = Array.from(convMap.values()).sort((a, b) => {
+              const dateA = safeParseDate(a.lastMessageTimestamp)?.getTime() ?? 0;
+              const dateB = safeParseDate(b.lastMessageTimestamp)?.getTime() ?? 0;
+              return dateB - dateA;
+            });
+
+            setConversations(sortedConversations);
             setCorrectionRequests(corReqs);
             setLoadingSteps(prev => ({...prev, conversations: true}));
         }
@@ -1417,6 +1411,7 @@ export const useDataProvider = () => useContext(DataContext);
     
 
     
+
 
 
 
