@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { MessageSquareWarning } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { AddAbsenceDialog } from '@/components/schedule/add-absence-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export default function SchedulePage() {
     const dataProvider = useDataProvider();
@@ -242,10 +243,27 @@ export default function SchedulePage() {
                 </div>
 
                 {pendingRequestsForWeek.length > 0 && (
-                    <Badge variant="destructive" className="mt-2 animate-pulse">
-                        <MessageSquareWarning className="mr-2 h-4 w-4" />
-                        {pendingRequestsForWeek.length} solicitud(es) de corrección para esta semana.
-                    </Badge>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                             <Badge variant="destructive" className="mt-2 animate-pulse cursor-pointer">
+                                <MessageSquareWarning className="mr-2 h-4 w-4" />
+                                {pendingRequestsForWeek.length} solicitud(es) de corrección
+                            </Badge>
+                        </PopoverTrigger>
+                        <PopoverContent>
+                            <div className="space-y-2">
+                                <h4 className="font-medium leading-none">Solicitudes Pendientes</h4>
+                                <p className="text-sm text-muted-foreground">
+                                    Los siguientes empleados han solicitado correcciones para esta semana:
+                                </p>
+                                <ul className="list-disc list-inside">
+                                    {pendingRequestsForWeek.map(req => (
+                                        <li key={req.id} className="text-sm">{req.employeeName}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
                 )}
             </CardHeader>
             <CardContent className="p-0">
