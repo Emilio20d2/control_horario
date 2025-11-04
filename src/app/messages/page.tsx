@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -13,7 +14,7 @@ import { collection, query, orderBy, addDoc, serverTimestamp, setDoc, doc, getDo
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { db } from '@/lib/firebase';
 import type { Message, VacationCampaign, AbsenceType, Holiday, CorrectionRequest, Employee, Conversation } from '@/lib/types';
-import { format, isWithinInterval, parseISO, isValid, getYear } from 'date-fns';
+import { format, isWithinInterval, parseISO, isValid, getYear, parse } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { addScheduledAbsence, updateDocument } from '@/lib/services/employeeService';
@@ -175,8 +176,14 @@ function ChatView({ conversation }: { conversation: Conversation }) {
         if (isCorrectionRequest) {
             const match = message.text.match(/Semana: (\d{2}\/\d{2}\/\d{4})/);
             if (match && match[1]) {
-                const [day, month, year] = match[1].split('/');
-                weekId = format(new Date(`${year}-${month}-${day}`), 'yyyy-MM-dd');
+                 try {
+                    // This parse is just to convert dd/MM/yyyy to a Date object
+                    const parsedDate = parse(match[1], 'dd/MM/yyyy', new Date());
+                    // Re-format to yyyy-MM-dd for the ID
+                    weekId = format(parsedDate, 'yyyy-MM-dd');
+                } catch(e) {
+                    console.error("Error parsing date from message:", e);
+                }
             }
         }
 
@@ -352,7 +359,7 @@ export default function AdminMessagesPage() {
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 h-[calc(100vh-5rem)]">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 h-[calc(100vh-5rem)]">
             <div className="col-span-1 border-r bg-background/50 flex flex-col">
                  <h2 className="text-xl font-bold p-4 border-b">Conversaciones</h2>
                  <ScrollArea className="flex-1">
@@ -381,7 +388,7 @@ export default function AdminMessagesPage() {
                      </div>
                  </ScrollArea>
             </div>
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 p-4">
+            <div className="col-span-1 md:col-span-2 lg:col-span-2 p-4">
                 {selectedConversation ? (
                     <ChatView conversation={selectedConversation} />
                 ) : (
