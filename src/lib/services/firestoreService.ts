@@ -96,6 +96,11 @@ export const deleteDocument = async (collectionName: string, docId: string): Pro
     await deleteDoc(doc(db, collectionName, docId));
 }
 
+export const deleteSubcollectionDocument = async (collectionName: string, docId: string, subcollectionName: string, subDocId: string): Promise<void> => {
+    const docRef = doc(db, collectionName, docId, subcollectionName, subDocId);
+    await deleteDoc(docRef);
+}
+
 export const setDocument = async (collectionName: string, docId: string, data: any, options: { merge?: boolean } = {}): Promise<void> => {
     await setDoc(doc(db, collectionName, docId), data, { merge: true, ...options });
 }

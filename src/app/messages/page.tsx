@@ -7,16 +7,18 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizonal, ArrowLeft, Loader2 } from 'lucide-react';
+import { SendHorizonal, ArrowLeft, Loader2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, onSnapshot, arrayUnion } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, onSnapshot, arrayUnion, deleteDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Conversation, Message } from '@/lib/types';
 import { format } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { deleteSubcollectionDocument } from '@/lib/services/firestoreService';
 
 export default function MessagesPage() {
     const { employees, conversations, loading: dataLoading, refreshData } = useDataProvider();
@@ -28,6 +30,7 @@ export default function MessagesPage() {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [messagesLoading, setMessagesLoading] = useState(true);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const selectedConversation = conversations.find(c => c.id === selectedConversationId);
     
@@ -52,6 +55,7 @@ export default function MessagesPage() {
             const fetchedMessages = snapshot.docs.map(doc => {
                 const data = doc.data();
                 return {
+                    id: doc.id, // Make sure to include the document ID
                     ...data,
                     timestamp: data.timestamp?.toDate()
                 } as Message;
@@ -113,6 +117,37 @@ export default function MessagesPage() {
             readBy: [appUser.id], // The sender (admin) has read it. Reset for others.
         });
     };
+
+    const handleDeleteMessage = async (messageId: string) => {
+        if (!selectedConversationId) return;
+        setIsDeleting(true);
+        try {
+            await deleteSubcollectionDocument('conversations', selectedConversationId, 'messages', messageId);
+            
+            // After deleting, check if we need to update the conversation summary
+            const remainingMessagesQuery = query(collection(db, 'conversations', selectedConversationId, 'messages'), orderBy('timestamp', 'desc'));
+            const remainingMessagesSnapshot = await getDocs(remainingMessagesQuery);
+
+            if (remainingMessagesSnapshot.empty) {
+                // If no messages left, delete the conversation
+                await deleteDoc(doc(db, 'conversations', selectedConversationId));
+                setSelectedConversationId(null);
+            } else {
+                // Update conversation with the new last message
+                const newLastMessage = remainingMessagesSnapshot.docs[0].data();
+                await updateDoc(doc(db, 'conversations', selectedConversationId), {
+                    lastMessageText: newLastMessage.text,
+                    lastMessageTimestamp: newLastMessage.timestamp
+                });
+            }
+
+        } catch (error) {
+            console.error("Error deleting message:", error);
+        } finally {
+            setIsDeleting(false);
+        }
+    }
+
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -187,8 +222,8 @@ export default function MessagesPage() {
                                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                             </div>
                         ) : (
-                            messages.map((message, index) => (
-                                <div key={index} className={cn('flex items-end gap-2', message.senderId === 'admin' ? 'justify-end' : 'justify-start')}>
+                            messages.map((message) => (
+                                <div key={message.id} className={cn('group flex items-end gap-2', message.senderId === 'admin' ? 'justify-end' : 'justify-start')}>
                                     <div className={cn(
                                         'max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg shadow-sm',
                                         message.senderId === 'admin' ? 'bg-gradient-to-br from-primary to-blue-400 text-primary-foreground' : 'bg-gradient-to-br from-muted to-transparent'
@@ -200,6 +235,25 @@ export default function MessagesPage() {
                                             </p>
                                         )}
                                     </div>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Trash2 className="h-3 w-3 text-destructive" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>¿Eliminar este mensaje?</AlertDialogTitle>
+                                                <AlertDialogDescription>Esta acción no se puede deshacer y el mensaje se borrará permanentemente.</AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteMessage(message.id)} disabled={isDeleting}>
+                                                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Eliminar'}
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
                                 </div>
                             ))
                         )}

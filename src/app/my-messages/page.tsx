@@ -195,16 +195,10 @@ export default function MyMessagesPage() {
 
     const sendMessage = async (text: string, unreadByAdmin: boolean) => {
         if (!conversationId || !employeeRecord) return;
-        
-        const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
-        const userMessageData = {
-            text: text,
-            senderId: employeeRecord.id,
-            timestamp: serverTimestamp()
-        };
-
+    
         const convDocRef = doc(db, 'conversations', conversationId);
         
+        // Use setDoc with merge:true to create or update the document safely
         await setDoc(convDocRef, {
             employeeId: employeeRecord.id,
             employeeName: employeeRecord.name,
@@ -213,7 +207,14 @@ export default function MyMessagesPage() {
             unreadByAdmin: unreadByAdmin,
             unreadByEmployee: false,
         }, { merge: true });
-
+        
+        const messagesColRef = collection(db, 'conversations', conversationId, 'messages');
+        const userMessageData = {
+            text: text,
+            senderId: employeeRecord.id,
+            timestamp: serverTimestamp()
+        };
+    
         await addDoc(messagesColRef, userMessageData);
     };
     
