@@ -82,17 +82,14 @@ function ChatView({ conversation }: { conversation: Conversation }) {
             } as Message;
         });
 
-        // Si los mensajes están cargando o ya existen mensajes reales, los devolvemos.
         if (messagesLoading || realMessages.length > 0) {
             return realMessages;
         }
         
-        // Si NO hay mensajes reales, comprobamos si hay una solicitud de corrección pendiente.
         const pendingRequest = correctionRequests.find(req => 
             req.employeeId === conversation.employeeId && req.status === 'pending'
         );
 
-        // Si hay una solicitud pendiente, creamos un "mensaje virtual" para mostrarlo.
         if (pendingRequest) {
             const weekStartDateFormatted = format(parse(pendingRequest.weekId, 'yyyy-MM-dd', new Date()), 'dd/MM/yyyy', { locale: es });
             const virtualMessage: Message = {
@@ -106,7 +103,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
 
         return [];
 
-    }, [messagesSnapshot, messagesLoading, correctionRequests, conversation.employeeId]);
+    }, [messagesSnapshot, messagesLoading, correctionRequests, conversation.employeeId, es]);
 
     const handleSendMessage = async (e: React.FormEvent, customMessage?: string) => {
         e.preventDefault();
@@ -437,7 +434,3 @@ export default function AdminMessagesPage() {
         </div>
     );
 }
-
-    
-
-    
