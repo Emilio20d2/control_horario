@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { getDbAdmin } from '../firebase-admin';
@@ -178,30 +177,42 @@ export async function syncCorrectionRequestMessages() {
                 const employee = employeesMap.get(request.employeeId);
                 if (employee) {
                     const conversationRef = db.collection('conversations').doc(request.employeeId);
+                    const messagesRef = conversationRef.collection('messages');
                     const weekStartDateFormatted = format(parseISO(request.weekId), 'dd/MM/yyyy', { locale: es });
                     const messageText = `SOLICITUD DE CORRECCIÓN\n\nSemana: ${weekStartDateFormatted}\nMotivo: ${request.reason}`;
                     
-                    // Use set with merge to create or update the conversation summary
-                    batch.set(conversationRef, {
-                        employeeId: request.employeeId,
-                        employeeName: employee.name,
-                        lastMessageText: messageText,
-                        lastMessageTimestamp: request.requestedAt,
-                        unreadByAdmin: true,
-                        unreadByEmployee: false
-                    }, { merge: true });
+                    // Check if a message with this exact text and timestamp already exists
+                    const existingMessagesQuery = await messagesRef
+                        .where('text', '==', messageText)
+                        .where('timestamp', '==', request.requestedAt)
+                        .limit(1)
+                        .get();
 
-                    // Add the actual message to the subcollection
-                    const messageRef = conversationRef.collection('messages').doc();
-                    batch.set(messageRef, {
-                        text: messageText,
-                        senderId: request.employeeId,
-                        timestamp: request.requestedAt
-                    });
-                    messagesSynced++;
+                    if (existingMessagesQuery.empty) {
+                        // Use set with merge to create or update the conversation summary
+                        batch.set(conversationRef, {
+                            employeeId: request.employeeId,
+                            employeeName: employee.name,
+                            lastMessageText: messageText,
+                            lastMessageTimestamp: request.requestedAt,
+                            unreadByAdmin: true,
+                            unreadByEmployee: false
+                        }, { merge: true });
+
+                        // Add the actual message to the subcollection
+                        const messageRef = messagesRef.doc(); // Auto-generate ID
+                        batch.set(messageRef, {
+                            text: messageText,
+                            senderId: request.employeeId,
+                            timestamp: request.requestedAt
+                        });
+                        messagesSynced++;
+                    }
                 }
             }
-            await batch.commit();
+            if (messagesSynced > 0) {
+                await batch.commit();
+            }
         }
         
         if (messagesSynced > 0) {
