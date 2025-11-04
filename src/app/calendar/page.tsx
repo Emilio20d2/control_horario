@@ -124,7 +124,9 @@ export default function CalendarPage() {
       }
     });
 
-    employees.forEach(emp => {
+    const activeEmployeesForDay = getActiveEmployeesForDate(day);
+
+    activeEmployeesForDay.forEach(emp => {
       (emp.employmentPeriods || []).forEach(period => {
         (period.scheduledAbsences || []).forEach(absence => {
           const absenceStart = safeParseDate(absence.startDate);
@@ -147,7 +149,7 @@ export default function CalendarPage() {
     });
 
     return absences;
-  }, [employees, holidayReports, absenceTypes, safeParseDate]);
+  }, [getActiveEmployeesForDate, holidayReports, absenceTypes, safeParseDate]);
 
 
   const weeklyAbsenceData = useMemo(() => {
@@ -183,7 +185,7 @@ export default function CalendarPage() {
 
             if (empAbsence) {
                 hasAbsenceInWeek = true;
-                if (vacationType && empAbsence.absenceTypeId === vacationType.id) {
+                if (vacationType && empAbsence.absence.absenceTypeId === vacationType.id) {
                     isPartialVacationWeek = true;
                 }
                 info.dayAbsences[dayKey] = empAbsence;
