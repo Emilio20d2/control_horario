@@ -43,8 +43,15 @@ function ChatView({ conversation }: { conversation: Conversation }) {
 
     useEffect(() => {
         if (conversation && appUser && !conversation.readBy?.includes(appUser.id)) {
-            updateDoc(doc(db, 'conversations', conversation.id), {
+            const convDocRef = doc(db, 'conversations', conversation.id);
+            updateDoc(convDocRef, {
                 readBy: [...(conversation.readBy || []), appUser.id],
+            }).catch(error => {
+                if (error.code === 'not-found') {
+                    setDoc(convDocRef, { readBy: [appUser.id] }, { merge: true });
+                } else {
+                    console.error("Error updating conversation read status:", error);
+                }
             });
         }
     }, [conversation, appUser]);
@@ -81,12 +88,12 @@ function ChatView({ conversation }: { conversation: Conversation }) {
 
         if (!customMessage) setNewMessage('');
 
-        await updateDoc(doc(db, 'conversations', conversation.id), {
+        await setDoc(doc(db, 'conversations', conversation.id), {
             lastMessageText: messageText,
             lastMessageTimestamp: serverTimestamp(),
             unreadByEmployee: true,
             readBy: [appUser.id]
-        });
+        }, { merge: true });
 
         await addDoc(collection(db, 'conversations', conversation.id, 'messages'), {
             text: messageText,
@@ -380,4 +387,3 @@ export default function AdminMessagesPage() {
         </div>
     );
 }
-

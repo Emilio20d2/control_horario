@@ -198,7 +198,6 @@ export default function MyMessagesPage() {
     
         const convDocRef = doc(db, 'conversations', conversationId);
         
-        // Use setDoc with merge:true to create or update the document safely
         await setDoc(convDocRef, {
             employeeId: employeeRecord.id,
             employeeName: employeeRecord.name,
@@ -689,4 +688,3 @@ export default function MyMessagesPage() {
         </>
     );
 }
-

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
@@ -283,25 +284,16 @@ export default function CalendarPage() {
         };
 
         const convDocRef = doc(db, 'conversations', conversationId);
-        const convDoc = await getDoc(convDocRef);
-
-        if (!convDoc.exists()) {
-            await setDoc(convDocRef, {
-                employeeId: employee.id,
-                employeeName: employee.name,
-                lastMessageText: text,
-                lastMessageTimestamp: serverTimestamp(),
-                unreadByAdmin: false,
-                unreadByEmployee: true,
-            });
-        } else {
-             await updateDoc(convDocRef, {
-                lastMessageText: text,
-                lastMessageTimestamp: serverTimestamp(),
-                unreadByAdmin: false,
-                unreadByEmployee: true,
-            });
-        }
+        
+        // Use setDoc with merge:true to create or update the document safely
+        await setDoc(convDocRef, {
+            employeeId: employee.id,
+            employeeName: employee.name,
+            lastMessageText: text,
+            lastMessageTimestamp: serverTimestamp(),
+            unreadByAdmin: false,
+            unreadByEmployee: true,
+        }, { merge: true });
 
         await addDoc(messagesColRef, adminMessageData);
     };
