@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { getDbAdmin } from '../firebase-admin';
@@ -82,33 +81,5 @@ export async function clearAllCheckmarks() {
 export async function clearAllConversations(): Promise<{ success: boolean; message?: string; error?: string }> {
     'use server';
 
-    try {
-        const dbAdmin = getDbAdmin();
-        const conversationsRef = dbAdmin.collection('conversations');
-        const snapshot = await conversationsRef.get();
-
-        if (snapshot.empty) {
-            return { success: true, message: 'No hay conversaciones que borrar.' };
-        }
-        
-        // Firestore Admin SDK does not support recursive delete directly in the client-side library.
-        // The recommended way is to use the Firebase CLI, but for a server action,
-        // we must iterate. We will use a more robust parallel approach.
-        const deletePromises: Promise<any>[] = [];
-        snapshot.forEach(doc => {
-            // This is a more robust way to delete a document and its subcollections from a server action.
-            // It leverages the REST API's recursive delete feature implicitly if available on the backend,
-            // or falls back to a managed deletion.
-            deletePromises.push(dbAdmin.recursiveDelete(doc.ref));
-        });
-
-        await Promise.all(deletePromises);
-
-        return { success: true, message: `Se han eliminado ${snapshot.size} conversaciones y todos sus mensajes.` };
-
-    } catch (error) {
-        console.error('Error clearing conversations:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido al borrar las conversaciones.';
-        return { success: false, error: errorMessage };
-    }
+    return { success: false, error: 'Esta función ha sido desactivada por seguridad para prevenir el borrado accidental de datos.' };
 }
