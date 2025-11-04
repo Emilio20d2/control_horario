@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
@@ -360,8 +359,8 @@ export default function CalendarPage() {
   }
 
   const renderWeeklyView = () => (
-    <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
-        <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-2 p-4">
+    <div className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background border rounded-lg">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-2 p-4 border-b">
             <div className="flex items-center gap-2">
                 <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
                  {weekTurnId && (
@@ -387,8 +386,8 @@ export default function CalendarPage() {
                     refreshData={refreshData}
                 />
             </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-4">
             <div className="border rounded-lg overflow-auto">
                 <Table>
                     <TableHeader>
@@ -453,8 +452,8 @@ export default function CalendarPage() {
                     </TableBody>
                 </Table>
             </div>
-        </CardContent>
-    </Card>
+        </div>
+    </div>
   );
 
   const MonthView = () => {
@@ -463,8 +462,8 @@ export default function CalendarPage() {
     const weeksOfMonth = eachWeekOfInterval({ start: monthStart, end: monthEnd }, { weekStartsOn: 1 });
 
     return (
-        <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
-            <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-2 p-4">
+        <div className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background border rounded-lg">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-2 p-4 border-b">
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
                         <ChevronLeft className="h-4 w-4" />
@@ -491,8 +490,8 @@ export default function CalendarPage() {
                         refreshData={refreshData}
                     />
                 </div>
-            </CardHeader>
-            <CardContent className="px-2 pb-2">
+            </div>
+            <div className="px-2 pb-2">
                  <div className="grid grid-cols-[auto,repeat(7,minmax(0,1fr))] border-t border-l">
                     {['Turno', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => (
                         <div key={day} className="text-center font-bold p-2 border-r border-b bg-muted/50 text-xs sm:text-sm">
@@ -552,8 +551,8 @@ export default function CalendarPage() {
                         );
                     })}
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 };
 
@@ -641,3 +640,5 @@ export default function CalendarPage() {
     </>
   );
 }
+
+    
