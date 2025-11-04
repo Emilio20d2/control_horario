@@ -25,11 +25,10 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogTrigger,
   DialogClose,
 } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowRight, User, Loader2, CalendarPlus, Trash2, CalendarRange, Info, Calendar as CalendarIcon, MessageCircle, UserCheck } from 'lucide-react';
+import { ArrowRight, User, Loader2, CalendarPlus, Trash2, CalendarRange, Info, Calendar as CalendarIcon, MessageCircle, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import {
   format,
@@ -44,13 +43,18 @@ import {
   addDays,
   isAfter,
   endOfDay,
+  startOfMonth,
+  endOfMonth,
+  eachWeekOfInterval,
+  isSameMonth,
+  addMonths,
+  subMonths,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { Employee, ScheduledAbsence, HolidayReport, AbsenceType } from '@/lib/types';
 import { WeekNavigator } from '@/components/schedule/week-navigator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { addScheduledAbsence, hardDeleteScheduledAbsence } from '@/lib/services/employeeService';
@@ -59,9 +63,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Input } from '@/components/ui/input';
-import { DayPicker } from 'react-day-picker';
-import { useIsMobile } from '@/hooks/use-is-mobile';
 import { AddAbsenceDialog } from '@/components/schedule/add-absence-dialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface CellAbsenceInfo {
     employee: Employee;
@@ -75,10 +78,11 @@ export default function CalendarPage() {
   const { employees, holidayReports, absenceTypes, loading, getActiveEmployeesForDate, holidays, refreshData, getEmployeeBalancesForWeek, getTheoreticalHoursAndTurn } = useDataProvider();
   const { reauthenticateWithPassword } = useAuth();
   const { toast } = useToast();
-  const isMobile = useIsMobile();
   
+  const [view, setView] = useState<'week' | 'month'>('week');
   const [currentDate, setCurrentDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
-  
+  const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   
   // State for absence details dialog
@@ -105,8 +109,62 @@ export default function CalendarPage() {
     return null;
   }, []);
 
+  const getAbsencesForDay = useCallback((day: Date) => {
+    const dayStart = startOfDay(day);
+    const dayEnd = endOfDay(day);
+    const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    const activeEmployeesForDay = getActiveEmployeesForDate(day);
+    
+    const substitutesMap: Record<string, string> = {};
+    holidayReports.forEach((report: HolidayReport) => {
+        if (report.weekId === weekId) {
+            substitutesMap[report.employeeId] = report.substituteName;
+        }
+    });
+
+    const absences: CellAbsenceInfo[] = [];
+
+    activeEmployeesForDay.forEach(emp => {
+      let foundAbsence: ScheduledAbsence | null = null;
+      let foundPeriodId: string | null = null;
+      
+      for (const period of emp.employmentPeriods || []) {
+          for (const absence of period.scheduledAbsences || []) {
+              const absenceStart = safeParseDate(absence.startDate);
+              if (!absenceStart || !isValid(absenceStart)) continue;
+              
+              const absenceEnd = absence.endDate ? safeParseDate(absence.endDate) : absenceStart;
+              if (!absenceEnd || !isValid(absenceEnd)) continue;
+
+              if (isWithinInterval(day, { start: startOfDay(absenceStart), end: endOfDay(absenceEnd) })) {
+                  foundAbsence = absence;
+                  foundPeriodId = period.id;
+                  break;
+              }
+          }
+          if (foundAbsence) break;
+      }
+
+      if (foundAbsence && foundPeriodId) {
+        const absenceType = absenceTypes.find(at => at.id === foundAbsence!.absenceTypeId);
+        if (absenceType) {
+          absences.push({
+            employee: emp,
+            absence: foundAbsence,
+            absenceType: absenceType,
+            substituteName: substitutesMap[emp.id],
+            periodId: foundPeriodId
+          });
+        }
+      }
+    });
+
+    return absences;
+  }, [getActiveEmployeesForDate, holidayReports, absenceTypes, safeParseDate]);
+
+
   const weeklyAbsenceData = useMemo(() => {
-    if (loading) return [];
+    if (loading || view !== 'week') return [];
 
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekId = format(weekStart, 'yyyy-MM-dd');
@@ -131,53 +189,24 @@ export default function CalendarPage() {
         let isPartialVacationWeek = false;
         let workDaysInVacationWeek = 0;
 
-        // First pass: find real absences
         weekDays.forEach(day => {
             const dayKey = format(day, 'yyyy-MM-dd');
-            let foundAbsence: ScheduledAbsence | null = null;
-            let foundPeriodId: string | null = null;
-            
-            for (const period of employee.employmentPeriods || []) {
-                for (const absence of period.scheduledAbsences || []) {
-                    const absenceStart = safeParseDate(absence.startDate);
-                    if (!absenceStart || !isValid(absenceStart)) continue;
-                    
-                    const absenceEnd = absence.endDate ? safeParseDate(absence.endDate) : absenceStart;
-                    if (!absenceEnd || !isValid(absenceEnd)) continue;
+            const dayAbsences = getAbsencesForDay(day);
+            const empAbsence = dayAbsences.find(a => a.employee.id === employee.id);
 
-                    if (isWithinInterval(day, { start: startOfDay(absenceStart), end: endOfDay(absenceEnd) })) {
-                        foundAbsence = absence;
-                        foundPeriodId = period.id;
-                        break;
-                    }
-                }
-                if (foundAbsence) break;
-            }
-
-            if (foundAbsence && foundPeriodId) {
+            if (empAbsence) {
                 hasAbsenceInWeek = true;
-                if (vacationType && foundAbsence.absenceTypeId === vacationType.id) {
+                if (vacationType && empAbsence.absenceTypeId === vacationType.id) {
                     isPartialVacationWeek = true;
                 }
-                const absenceType = absenceTypes.find(at => at.id === foundAbsence!.absenceTypeId);
-                if (absenceType) {
-                    info.dayAbsences[dayKey] = {
-                        employee: employee,
-                        absence: foundAbsence,
-                        absenceType: absenceType,
-                        substituteName: substitutesMap[employee.id],
-                        periodId: foundPeriodId
-                    };
-                } else {
-                     info.dayAbsences[dayKey] = null;
-                }
+                info.dayAbsences[dayKey] = empAbsence;
             } else {
-                info.dayAbsences[dayKey] = null;
-                const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(employee.id, day);
-                const dayTheoretical = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
-                if (dayTheoretical && dayTheoretical.theoreticalHours > 0) {
+                 info.dayAbsences[dayKey] = null;
+                 const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(employee.id, day);
+                 const dayTheoretical = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
+                 if (dayTheoretical && dayTheoretical.theoreticalHours > 0) {
                     workDaysInVacationWeek++;
-                }
+                 }
             }
         });
         
@@ -240,7 +269,7 @@ export default function CalendarPage() {
 
     return employeesWithAbsences;
 
-  }, [loading, currentDate, getActiveEmployeesForDate, holidayReports, absenceTypes, weekDays, safeParseDate, getEmployeeBalancesForWeek, getTheoreticalHoursAndTurn, holidays]);
+  }, [loading, currentDate, getActiveEmployeesForDate, holidayReports, absenceTypes, weekDays, getAbsencesForDay, getEmployeeBalancesForWeek, getTheoreticalHoursAndTurn, holidays, view]);
   
   const handleOpenDetails = (cellInfo: CellAbsenceInfo) => {
     setSelectedCell(cellInfo);
@@ -328,90 +357,15 @@ export default function CalendarPage() {
   if (loading) {
     return (
         <div className="p-4 md:p-6 space-y-4">
-            <Skeleton className="h-10 w-full max-w-md mx-auto" />
+            <Skeleton className="h-10 w-full max-w-lg mx-auto" />
             <Skeleton className="h-[600px] w-full" />
         </div>
     );
   }
 
-  const renderMobileView = () => {
-    const absenceDaysByEmployee = weeklyAbsenceData.map(empData => {
-        const daysWithAbsences = weekDays
-            .map(day => empData.dayAbsences[format(day, 'yyyy-MM-dd')])
-            .filter((cellInfo): cellInfo is CellAbsenceInfo => cellInfo !== null);
-        return {
-            employee: empData.employee,
-            absences: daysWithAbsences
-        };
-    }).filter(data => data.absences.length > 0);
-
-    return (
-        <div className="space-y-4">
-            <div className="flex flex-col items-center gap-4">
-                <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
-                <AddAbsenceDialog
-                    isOpen={isAddDialogOpen}
-                    onOpenChange={setIsAddDialogOpen}
-                    activeEmployees={activeEmployees}
-                    absenceTypes={absenceTypes}
-                    holidays={holidays}
-                    employees={employees}
-                    refreshData={refreshData}
-                />
-            </div>
-            {absenceDaysByEmployee.map(({ employee, absences }) => (
-                <Card key={employee.id} className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
-                    <CardHeader className="py-3">
-                        <CardTitle className="text-base">{employee.name}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-2 space-y-2">
-                        {absences.map(cellInfo => (
-                            <div
-                                key={cellInfo.absence.id}
-                                onClick={() => handleOpenDetails(cellInfo)}
-                                className="flex items-center gap-4 p-3 rounded-md cursor-pointer hover:bg-muted/50"
-                                style={{ backgroundColor: `${cellInfo.absenceType.color}40` }}
-                            >
-                                <div className="flex flex-col items-center justify-center w-16 shrink-0">
-                                    <span className="font-semibold capitalize text-sm">{format(cellInfo.absence.startDate, 'E', { locale: es })}</span>
-                                    <span className="text-muted-foreground text-xs">{format(cellInfo.absence.startDate, 'dd/MM/yyyy')}</span>
-                                </div>
-                                <div className="flex-grow">
-                                    <p className="font-bold">{cellInfo.absenceType.name}</p>
-                                    {cellInfo.substituteName && (
-                                        <p className="text-xs text-muted-foreground font-semibold">Sustituto: {cellInfo.substituteName}</p>
-                                    )}
-                                </div>
-                                <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-            ))}
-            {!loading && weeklyAbsenceData.length === 0 && (
-                <Card>
-                    <CardContent className="p-8 text-center text-muted-foreground">
-                        No hay empleados con ausencias programadas para esta semana.
-                    </CardContent>
-                </Card>
-            )}
-        </div>
-    );
-};
-
-
-  const renderDesktopView = () => (
+  const renderWeeklyView = () => (
     <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
         <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <AddAbsenceDialog 
-                isOpen={isAddDialogOpen} 
-                onOpenChange={setIsAddDialogOpen} 
-                activeEmployees={activeEmployees} 
-                absenceTypes={absenceTypes} 
-                holidays={holidays}
-                employees={employees}
-                refreshData={refreshData}
-            />
             <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
         </CardHeader>
         <CardContent>
@@ -481,12 +435,98 @@ export default function CalendarPage() {
             </div>
         </CardContent>
     </Card>
-  )
+  );
+
+  const MonthView = () => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    const days = eachDayOfInterval({ start: startDate, end: endDate });
+
+    return (
+        <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
+            <CardHeader className="flex flex-row items-center justify-between">
+                <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <h2 className="text-xl font-bold capitalize">{format(currentMonth, 'MMMM yyyy', { locale: es })}</h2>
+                <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-7 border-t border-l">
+                    {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => (
+                        <div key={day} className="text-center font-bold p-2 border-r border-b bg-muted/50">
+                            {day}
+                        </div>
+                    ))}
+                    {days.map(day => {
+                        const isCurrentMonth = isSameMonth(day, currentMonth);
+                        const absences = getAbsencesForDay(day);
+                        const holiday = holidays.find(h => isSameDay(h.date, day));
+
+                        return (
+                            <div
+                                key={day.toString()}
+                                className={cn(
+                                    "p-2 border-r border-b min-h-[120px]",
+                                    !isCurrentMonth && 'bg-muted/30 text-muted-foreground'
+                                )}
+                            >
+                                <div className={cn("font-semibold", isSameDay(day, new Date()) && "text-primary font-bold")}>
+                                    {format(day, 'd')}
+                                </div>
+                                <div className="space-y-1 mt-1">
+                                    {holiday && (
+                                        <div className="text-xs p-1 rounded-md text-center" style={{backgroundColor: `${holiday.type === 'Apertura' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.1)'}`}}>
+                                            {holiday.name}
+                                        </div>
+                                    )}
+                                    {absences.map(absenceInfo => (
+                                        <div 
+                                            key={absenceInfo.employee.id} 
+                                            className="text-xs p-1 rounded-md cursor-pointer" 
+                                            style={{ backgroundColor: `${absenceInfo.absenceType.color}40` }}
+                                            onClick={() => handleOpenDetails(absenceInfo)}
+                                        >
+                                           <span className="font-bold">{absenceInfo.absenceType.abbreviation}:</span> {absenceInfo.employee.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
 
   return (
     <>
     <div className="p-4 md:p-6 space-y-6">
-        {isMobile ? renderMobileView() : renderDesktopView()}
+        <div className="flex justify-between items-center">
+            <Tabs value={view} onValueChange={(v) => setView(v as 'week' | 'month')} className="w-auto mx-auto">
+                <TabsList>
+                    <TabsTrigger value="week">Vista Semanal</TabsTrigger>
+                    <TabsTrigger value="month">Vista Mensual</TabsTrigger>
+                </TabsList>
+            </Tabs>
+             <AddAbsenceDialog 
+                isOpen={isAddDialogOpen} 
+                onOpenChange={setIsAddDialogOpen} 
+                activeEmployees={activeEmployees} 
+                absenceTypes={absenceTypes} 
+                holidays={holidays}
+                employees={employees}
+                refreshData={refreshData}
+            />
+        </div>
+        
+        {view === 'week' ? renderWeeklyView() : <MonthView />}
+
     </div>
     
     <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
