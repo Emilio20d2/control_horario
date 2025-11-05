@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { addDocument, updateDocument, deleteDocument } from './firestoreService';
@@ -84,17 +83,26 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
 
 export const updateEmployee = async (
     id: string, 
-    currentEmployee: Employee, 
+    _currentEmployee: Employee, // No longer used, will fetch fresh data
     formData: EmployeeFormData, 
     finalBalances: { ordinary: number; holiday: number; leave: number; total: number; }
 ): Promise<void> => {
-    
+
     const { 
         name, dni, phone, email, role, groupId, endDate,
         newContractType, newContractTypeDate, newWeeklyWorkHours, newWeeklyWorkHoursDate, newWeeklySchedule, 
         weeklySchedules, contractType, annualComputedHours, isTransfer, vacationDaysUsedInAnotherCenter, vacationDays2024,
         initialOrdinaryHours, initialHolidayHours, initialLeaveHours
     } = formData;
+
+    // Fetch the most recent employee data directly from Firestore to avoid stale data
+    const employeeDocRef = doc(db, 'employees', id);
+    const employeeSnap = await getDoc(employeeDocRef);
+    if (!employeeSnap.exists()) {
+        throw new Error("El empleado que intentas actualizar no existe.");
+    }
+    const currentEmployee = employeeSnap.data() as Employee;
+
 
     // Create a deep copy to avoid direct state mutation
     const updatedEmployeeData: Omit<Employee, 'id'> = JSON.parse(JSON.stringify({
@@ -106,7 +114,7 @@ export const updateEmployee = async (
     }));
     
     // Always find the latest period to modify
-    const latestPeriod = updatedEmployeeData.employmentPeriods.sort((a: EmploymentPeriod, b: EmploymentPeriod) => (b.startDate as Date).getTime() - (a.startDate as Date).getTime())[0];
+    const latestPeriod = updatedEmployeeData.employmentPeriods.sort((a: EmploymentPeriod, b: EmploymentPeriod) => new Date(b.startDate as string).getTime() - new Date(a.startDate as string).getTime())[0];
 
     if (!latestPeriod) {
         throw new Error("No se encontró un periodo laboral para actualizar.");
