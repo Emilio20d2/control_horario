@@ -102,7 +102,7 @@ export default function GuidePage() {
         <TabsContent value="agreement">
           <Card>
             <CardHeader>
-              <CardTitle>DOSIER ÚNICO DE DERECHOS Y BENEFICIOS – INDITEX (TIENDAS) · 2025</CardTitle>
+              <CardTitle>DOSIER ÚNICO DE DERECHOS Y BENEFICIOS – INDITEX (TIENDAS)</CardTitle>
             </CardHeader>
             <CardContent className="prose prose-sm max-w-none dark:prose-invert">
                 <p><strong>Ámbito:</strong> toda España (Plan de Igualdad de Grupo Inditex). Para Zaragoza, además, lo indicado en el Convenio de Comercio Textil cuando no esté superado por el Plan.</p>
