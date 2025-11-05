@@ -57,7 +57,7 @@ import { addDays, addWeeks, differenceInCalendarISOWeeks, differenceInDays, endO
 import { es } from 'date-fns/locale';
 import { addDocument, setDocument, getCollection } from '@/lib/services/firestoreService';
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
-import { Timestamp, collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
+import { Timestamp, collection, orderBy, query, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
 import { calculateBalancePreview } from '@/lib/calculators/balance-calculator';
 import { useAuth } from '@/hooks/useAuth';
