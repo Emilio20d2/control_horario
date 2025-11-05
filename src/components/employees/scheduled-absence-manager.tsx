@@ -39,10 +39,14 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
 
 
     const sortedAbsenceTypes = [...absenceTypes].sort((a, b) => a.name.localeCompare(b.name));
+    
+    const vacationTypeId = absenceTypes.find(at => at.name === 'Vacaciones')?.id;
 
     const groupedScheduledAbsences = (employee.employmentPeriods || [])
         .flatMap(p => 
-            (p.scheduledAbsences || []).map(a => ({ ...a, periodId: p.id }))
+            (p.scheduledAbsences || [])
+            .filter(a => a.absenceTypeId !== vacationTypeId) // Exclude vacations
+            .map(a => ({ ...a, periodId: p.id }))
         )
         .sort((a, b) => (b.startDate as Date).getTime() - (a.startDate as Date).getTime());
 
