@@ -3,7 +3,7 @@
 
 import { getDbAdmin } from '../firebase-admin';
 import type { DocumentData } from 'firebase-admin/firestore';
-import type { HolidayEmployee } from '../types';
+import type { HolidayEmployee, Employee } from '../types';
 
 // Utility to clear a collection
 async function clearCollection(collectionName: string) {
@@ -29,12 +29,14 @@ export async function seedDatabase(dataToImport: any, holidayEmployeesToAdd: Omi
     const dbAdmin = getDbAdmin();
     console.log("Starting database seed/update process...");
 
-    // Clear only the collections that are going to be imported.
-    await clearCollection('weeklyRecords');
-    await clearCollection('employees');
-    await clearCollection('holidayEmployees');
-    await clearCollection('users');
-    await clearCollection('conversations');
+    // Clear all relevant collections before seeding
+    await Promise.all([
+        clearCollection('weeklyRecords'),
+        clearCollection('employees'),
+        clearCollection('holidayEmployees'),
+        clearCollection('users'),
+        clearCollection('conversations')
+    ]);
     
     const batch = dbAdmin.batch();
     const stats: Record<string, number> = {
@@ -92,5 +94,3 @@ export async function seedDatabase(dataToImport: any, holidayEmployeesToAdd: Omi
     
     return stats;
 }
-
-    
