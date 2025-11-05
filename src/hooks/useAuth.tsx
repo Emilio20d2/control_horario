@@ -58,20 +58,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               const finalRole = isSpecialAdmin ? 'admin' : dbData.role;
 
               if (finalRole !== 'admin') {
-                  toast({
-                      title: 'Acceso Denegado',
-                      description: 'No tienes permisos de administrador para acceder.',
-                      variant: 'destructive',
-                  });
-                  await signOut(auth);
-                  setUser(null);
-                  setAppUser(null);
+                  router.push('/unavailable');
+                  setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: 'employee' });
+                  setViewMode('employee');
                   setLoading(false);
-                  router.push('/login');
                   return;
               }
 
-              setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: finalRole });
+              setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: 'admin' });
               setViewMode('admin');
 
           } else {
@@ -82,16 +76,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 const defaultRole = isSpecialAdmin ? 'admin' : 'employee';
                 
                  if (defaultRole !== 'admin') {
-                    toast({
-                        title: 'Acceso Denegado',
-                        description: 'Tu cuenta no tiene permisos de administrador.',
-                        variant: 'destructive',
-                    });
-                    await signOut(auth);
-                    setUser(null);
-                    setAppUser(null);
+                    router.push('/unavailable');
+                    const employeeId = !empSnapshot.empty ? empSnapshot.docs[0].id : null;
+                    const newUserDocData = { email: user.email, employeeId, role: 'employee' };
+                    await setDoc(userDocRef, newUserDocData, { merge: true });
+                    setAppUser({ id: user.uid, ...newUserDocData, trueRole: 'employee' });
+                    setViewMode('employee');
                     setLoading(false);
-                    router.push('/login');
                     return;
                 }
 
