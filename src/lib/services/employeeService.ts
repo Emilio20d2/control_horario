@@ -199,12 +199,7 @@ export const updateEmployee = async (
     // Update user role if authId exists and role is provided
     if (currentEmployee.authId && role) {
         const userRef = doc(db, "users", currentEmployee.authId);
-        const userDoc = await getDoc(userRef);
-        if (userDoc.exists()) {
-            await updateDocument('users', currentEmployee.authId, { role });
-        } else if (email) {
-            await setDocument('users', currentEmployee.authId, { email: email, employeeId: id, role });
-        }
+        await setDoc(userRef, { role: role }, { merge: true });
     }
 };
 
