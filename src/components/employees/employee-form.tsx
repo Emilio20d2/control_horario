@@ -259,6 +259,10 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         if (employee) {
             // Update existing employee
             const finalBalances = getEmployeeFinalBalances(employee.id);
+            // Don't send the current schedule if a new one is being added.
+            if (values.newWeeklySchedule?.effectiveDate) {
+                values.weeklySchedules = [];
+            }
             await updateEmployee(employee.id, employee, values, finalBalances);
             toast({
                 title: "Empleado Actualizado",
