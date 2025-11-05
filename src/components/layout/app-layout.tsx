@@ -220,7 +220,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                        <Avatar className="h-10 w-10">
+                        <Avatar className="h-10 w-10 border-2 border-foreground">
                             <AvatarFallback>{getInitials(employeeRecord?.name, user?.email)}</AvatarFallback>
                         </Avatar>
                     </Button>
