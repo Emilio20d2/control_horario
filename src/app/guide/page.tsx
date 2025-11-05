@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -10,6 +9,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, BookUser, LayoutDashboard, CalendarDays, Users, UserSquare, ListChecks, Plane, Settings2, Home, MessageSquare, CalendarClock } from 'lucide-react';
 import Image from 'next/image';
+
 
 export default function GuidePage() {
   return (
