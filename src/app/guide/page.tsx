@@ -25,13 +25,13 @@ function AdminGuideItem({ icon: Icon, title, children }: { icon: React.ElementTy
             </AccordionContent>
         </AccordionItem>
     );
-}
+};
 
 function SectionTitle({ number, title }: { number: number, title: string }) {
     return (
         <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">{number}) {title}</h3>
     );
-}
+};
 
 export default function GuidePage() {
   return (
@@ -442,3 +442,5 @@ export default function GuidePage() {
     </div>
   );
 }
+
+    
