@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
@@ -41,21 +40,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
-  const [isEmployeeViewEnabled, setIsEmployeeViewEnabled] = useState<boolean>(false);
+  const [isEmployeeViewEnabled, setIsEmployeeViewEnabled] = useState<boolean>(true); // Default to true to avoid initial lockout
   const router = useRouter();
-  const isMobile = useIsMobile();
   const { toast } = useToast();
-
+  
+  // Effect to listen for app configuration changes (e.g., employee view toggle)
   useEffect(() => {
     const configRef = doc(db, 'app_config', 'features');
     const unsubscribeConfig = onSnapshot(configRef, (docSnap) => {
         if (docSnap.exists()) {
-            setIsEmployeeViewEnabled(docSnap.data().isEmployeeViewEnabled || false);
+            setIsEmployeeViewEnabled(docSnap.data().isEmployeeViewEnabled ?? false);
         } else {
+            // Default to disabled if the document doesn't exist, for security
             setIsEmployeeViewEnabled(false);
         }
     });
 
+    return () => unsubscribeConfig();
+  }, []);
+
+  // Effect to handle user authentication state changes
+  useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setLoading(true);
       if (user) {
@@ -64,32 +69,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
           
-          const isSpecialAdmin = user.email === 'mariaavg@inditex.com';
-
           if (userDoc.exists()) {
               const dbData = userDoc.data() as Omit<AppUser, 'id'>;
+              const isSpecialAdmin = dbData.email === 'mariaavg@inditex.com';
               const finalRole = isSpecialAdmin ? 'admin' : dbData.role;
 
-              if (finalRole !== 'admin' && !isEmployeeViewEnabled) {
-                  router.replace('/unavailable');
-                  setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: 'employee' });
-                  setViewMode('employee');
-              } else {
-                setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: finalRole });
-                setViewMode(finalRole);
-              }
+              setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: finalRole });
+              setViewMode(finalRole);
           } else {
               // This is a fallback for users that might exist in Auth but not in Firestore 'users' collection
               if(user.email) {
                 const q = query(collection(db, 'employees'), where('email', '==', user.email));
                 const empSnapshot = await getDocs(q);
                 
+                const isSpecialAdmin = user.email === 'mariaavg@inditex.com';
                 const defaultRole = isSpecialAdmin ? 'admin' : 'employee';
                 
-                if (defaultRole !== 'admin' && !isEmployeeViewEnabled) {
-                    router.replace('/unavailable');
-                }
-
                 const employeeId = !empSnapshot.empty ? empSnapshot.docs[0].id : null;
                 
                 const newUserDocData = { email: user.email, employeeId, role: defaultRole };
@@ -110,11 +105,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     });
 
-    return () => {
-        unsubscribeAuth();
-        unsubscribeConfig();
-    };
-  }, [router, isEmployeeViewEnabled]);
+    return () => unsubscribeAuth();
+  }, []);
 
   // Effect to handle view mode changes for admins
   useEffect(() => {
@@ -122,6 +114,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setAppUser(prev => prev ? { ...prev, role: viewMode } : null);
     }
   }, [viewMode, appUser]);
+
+  // Effect to redirect users based on their role and employee view status
+  useEffect(() => {
+    if (!loading && user && appUser) {
+        if (appUser.role === 'employee' && !isEmployeeViewEnabled) {
+            router.replace('/unavailable');
+        }
+    }
+  }, [loading, user, appUser, isEmployeeViewEnabled, router]);
+
 
   const login = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
