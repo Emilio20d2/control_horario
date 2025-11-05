@@ -68,7 +68,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     if (authLoading || !appUser) return;
   
     const employeePages = ['/my-profile', '/my-schedule', '/my-messages', '/help'];
-    const adminPages = ['/home', '/dashboard', '/schedule', '/employees', '/listings', '/vacations', '/calendar', '/messages', '/settings'];
+    const adminPages = ['/home', '/dashboard', '/schedule', '/employees', '/listings', '/vacations', '/calendar', '/messages', '/settings', '/guide'];
   
     if (appUser.trueRole === 'admin') {
       if (viewMode === 'employee' && adminPages.some(p => pathname.startsWith(p))) {
@@ -110,6 +110,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const adminNavItemsRight = [
     { href: '/calendar', label: 'Calendario', icon: CalendarClock },
     { href: '/messages', label: 'Mensajes', icon: Mail, notification: unreadConversationsForAdmin > 0 },
+    { href: '/guide', label: 'Guía', icon: BookUser },
   ]
   
   const employeeMenuItems = [
