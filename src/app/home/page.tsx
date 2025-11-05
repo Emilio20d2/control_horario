@@ -105,7 +105,7 @@ export default function HomePage() {
 
     if (loading) {
         return (
-            <div className="p-4 md:p-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="p-4 md:p-6 grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 <Skeleton className="h-64 w-full" />
                 <Skeleton className="h-64 w-full" />
                 <Skeleton className="h-64 w-full" />
