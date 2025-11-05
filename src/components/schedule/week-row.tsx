@@ -25,7 +25,7 @@ import { AbsenceEditor } from './absence-editor';
 import { HolidayEditor } from './holiday-editor';
 import { BalancePreviewDisplay } from './balance-preview';
 import { updateDocument } from '@/lib/services/firestoreService';
-import { addScheduledAbsence } from '@/lib/services/employeeService';
+import { addScheduledAbsence, endIndefiniteAbsence } from '@/lib/services/employeeService';
 
 interface WeekRowProps {
     employee: Employee;
@@ -213,6 +213,28 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         setIsSaving(true);
     
         try {
+            // Check for interrupted indefinite absences
+            for (const day of weekDays) {
+                const dayKey = format(day, 'yyyy-MM-dd');
+                const initialDayData = initialWeekData?.days[dayKey];
+                const finalDayData = localWeekData.days[dayKey];
+
+                const wasIndefiniteAbsence = initialDayData?.absence !== 'ninguna' && 
+                    employee.employmentPeriods.some(p => p.scheduledAbsences?.some(a => 
+                        !a.endDate && 
+                        absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation === initialDayData?.absence &&
+                        isWithinInterval(day, { start: startOfDay(a.startDate), end: new Date('9999-12-31') })
+                    ));
+                
+                const isInterrupted = finalDayData?.absence !== initialDayData?.absence || finalDayData?.workedHours > 0;
+
+                if (wasIndefiniteAbsence && isInterrupted) {
+                    await endIndefiniteAbsence(employee.id, day);
+                    // No need to break, continue checking other days in case of multiple changes
+                }
+            }
+
+
             await syncVacationsWithScheduledAbsences();
     
             const activePeriod = getActivePeriod(employee.id, weekDays[0]);

@@ -4,7 +4,7 @@
 
 import { addDocument, updateDocument, deleteDocument, setDocument } from './firestoreService';
 import type { Employee, EmployeeFormData, WorkHoursRecord, ScheduledAbsence, EmploymentPeriod, WeeklyScheduleData, WeeklyRecord } from '../types';
-import { isAfter, parseISO, startOfDay, addDays, subDays, format, eachDayOfInterval, startOfWeek, isValid } from 'date-fns';
+import { isAfter, parseISO, startOfDay, addDays, subDays, format, eachDayOfInterval, startOfWeek, isValid, isWithinInterval } from 'date-fns';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { createUserAccount } from '../actions/userActions';
@@ -106,7 +106,7 @@ export const updateEmployee = async (
     }));
     
     // Always find the latest period to modify
-    const latestPeriod = updatedEmployeeData.employmentPeriods.sort((a,b) => parseISO(b.startDate as string).getTime() - parseISO(a.startDate as string).getTime())[0];
+    const latestPeriod = updatedEmployeeData.employmentPeriods.sort((a: EmploymentPeriod, b: EmploymentPeriod) => (b.startDate as Date).getTime() - (a.startDate as Date).getTime())[0];
 
     if (!latestPeriod) {
         throw new Error("No se encontró un periodo laboral para actualizar.");
@@ -177,7 +177,7 @@ export const updateEmployee = async (
                 // This case should ideally not happen if we're editing the latest, but as a fallback:
                  latestPeriod.weeklySchedulesHistory.push(currentSchedule);
             }
-            latestPeriod.weeklySchedulesHistory.sort((a,b) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
+            latestPeriod.weeklySchedulesHistory.sort((a: WeeklyScheduleData, b: WeeklyScheduleData) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
         }
 
         // Add new schedule if provided
@@ -187,7 +187,7 @@ export const updateEmployee = async (
                 ...newWeeklySchedule,
                 effectiveDate: format(parseISO(newWeeklySchedule.effectiveDate), 'yyyy-MM-dd')
             });
-            latestPeriod.weeklySchedulesHistory.sort((a,b) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
+            latestPeriod.weeklySchedulesHistory.sort((a: WeeklyScheduleData, b: WeeklyScheduleData) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
         }
     }
 
@@ -285,6 +285,29 @@ export const deleteEmployee = async (id: string): Promise<void> => {
     await deleteDocument('employees', id);
 };
 
+export const endIndefiniteAbsence = async (employeeId: string, dateToEnd: Date): Promise<void> => {
+    const employeeDoc = await getDoc(doc(db, 'employees', employeeId));
+    if (!employeeDoc.exists()) return;
+    
+    const employeeData = employeeDoc.data() as Employee;
+    let employeeModified = false;
+
+    employeeData.employmentPeriods.forEach(period => {
+        if (period.scheduledAbsences) {
+            period.scheduledAbsences.forEach(absence => {
+                const startDate = absence.startDate instanceof Date ? absence.startDate : parseISO(absence.startDate as string);
+                if (!absence.endDate && isAfter(dateToEnd, startDate)) {
+                    absence.endDate = subDays(dateToEnd, 1);
+                    employeeModified = true;
+                }
+            });
+        }
+    });
+
+    if (employeeModified) {
+        await updateDocument('employees', employeeId, { employmentPeriods: employeeData.employmentPeriods });
+    }
+};
 
 export const addScheduledAbsence = async (
     employeeId: string,
@@ -299,7 +322,15 @@ export const addScheduledAbsence = async (
     currentEmployee: Employee,
     isEmployeeRequest: boolean = false
   ): Promise<void> => {
-    const employeeCopy = JSON.parse(JSON.stringify(currentEmployee));
+
+    const startDateObj = parseISO(newAbsence.startDate);
+    await endIndefiniteAbsence(employeeId, startDateObj);
+      
+    // Refetch the employee data after potentially ending an absence
+    const employeeDoc = await getDoc(doc(db, 'employees', employeeId));
+    if (!employeeDoc.exists()) throw new Error("Employee not found after refetch");
+    const employeeCopy = JSON.parse(JSON.stringify(employeeDoc.data()));
+
     const period = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => p.id === periodId);
     if (!period) throw new Error("Periodo laboral no encontrado");
   
