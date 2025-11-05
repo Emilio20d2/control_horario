@@ -191,11 +191,18 @@ export const updateEmployee = async (
 
         // Add new schedule if provided
         if (newWeeklySchedule && newWeeklySchedule.effectiveDate && newWeeklySchedule.effectiveDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            if (!latestPeriod.weeklySchedulesHistory) latestPeriod.weeklySchedulesHistory = [];
-            latestPeriod.weeklySchedulesHistory.push({
+            const formattedNewSchedule = {
                 ...newWeeklySchedule,
                 effectiveDate: format(parseISO(newWeeklySchedule.effectiveDate), 'yyyy-MM-dd')
-            });
+            };
+            if (!latestPeriod.weeklySchedulesHistory) latestPeriod.weeklySchedulesHistory = [];
+            
+            const existingIndex = latestPeriod.weeklySchedulesHistory.findIndex(s => s.effectiveDate === formattedNewSchedule.effectiveDate);
+            if(existingIndex > -1) {
+                latestPeriod.weeklySchedulesHistory[existingIndex] = formattedNewSchedule;
+            } else {
+                 latestPeriod.weeklySchedulesHistory.push(formattedNewSchedule);
+            }
             latestPeriod.weeklySchedulesHistory.sort((a: WeeklyScheduleData, b: WeeklyScheduleData) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
         }
     }
