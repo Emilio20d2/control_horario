@@ -36,7 +36,6 @@ import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { HolidayForm } from '@/components/settings/holiday-form';
-import { ImportManager } from '@/components/settings/import-manager';
 import { DataCleanupManager } from '@/components/settings/data-cleanup-manager';
 import { RetroactiveAuditManager } from '@/components/settings/retroactive-audit-manager';
 import { Input } from '@/components/ui/input';
@@ -47,6 +46,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { VacationCampaignManager } from '@/components/settings/vacation-campaign-manager';
 import { MessageSyncManager } from './message-sync-manager';
 import { EmployeeViewManager } from './employee-view-manager';
+import { MigrationManager } from './migration-manager';
 
 
 export default function SettingsPageContent() {
@@ -460,8 +460,8 @@ export default function SettingsPageContent() {
 
             <TabsContent value="utils">
                 <div className='grid gap-6'>
+                    <MigrationManager />
                     <EmployeeViewManager />
-                    <ImportManager />
                     <DataCleanupManager />
                     <MessageSyncManager />
                     <RetroactiveAuditManager />
