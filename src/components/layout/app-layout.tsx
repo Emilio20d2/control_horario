@@ -216,14 +216,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
         
         <div className="flex items-center gap-2 ml-auto">
-            {viewMode === 'admin' && (
-              <Button asChild variant={pathname.startsWith('/settings') ? "default" : "outline"}>
-                  <Link href="/settings">
-                      <Wrench className="mr-0 sm:mr-2 h-4 w-4" />
-                      <span className="hidden sm:inline">Ajustes</span>
-                  </Link>
-              </Button>
-            )}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -234,18 +226,27 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
                     {appUser?.trueRole === 'admin' && (
-                        <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                                <span>Cambiar Vista</span>
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                                <DropdownMenuSubContent>
-                                    <DropdownMenuItem onClick={() => setViewMode('admin')}>Administrador</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setViewMode('employee')}>Empleado</DropdownMenuItem>
-                                </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                        </DropdownMenuSub>
+                        <>
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>
+                                    <span>Cambiar Vista</span>
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuPortal>
+                                    <DropdownMenuSubContent>
+                                        <DropdownMenuItem onClick={() => setViewMode('admin')}>Administrador</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setViewMode('employee')}>Empleado</DropdownMenuItem>
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                            </DropdownMenuSub>
+                            <DropdownMenuItem asChild>
+                                <Link href="/settings">
+                                    <Wrench className="mr-2 h-4 w-4" />
+                                    <span>Ajustes</span>
+                                </Link>
+                            </DropdownMenuItem>
+                        </>
                     )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={logout} className="text-destructive">
