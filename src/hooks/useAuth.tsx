@@ -71,8 +71,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           if (userDoc.exists()) {
               const dbData = userDoc.data() as Omit<AppUser, 'id'>;
-              const isSpecialAdmin = dbData.email === 'mariaavg@inditex.com';
-              const finalRole = isSpecialAdmin ? 'admin' : dbData.role;
+              
+              let finalRole: 'admin' | 'employee' = 'employee';
+              if (dbData.email === 'mariaavg@inditex.com' || dbData.role === 'admin') {
+                  finalRole = 'admin';
+              }
 
               setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: finalRole });
               setViewMode(finalRole);
@@ -117,10 +120,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Effect to redirect users based on their role and employee view status
   useEffect(() => {
-    if (!loading && user && appUser) {
-        if (appUser.role === 'employee' && !isEmployeeViewEnabled) {
-            router.replace('/unavailable');
-        }
+    if (loading || !user || !appUser) return;
+
+    if (appUser.role === 'employee' && !isEmployeeViewEnabled) {
+        router.replace('/unavailable');
     }
   }, [loading, user, appUser, isEmployeeViewEnabled, router]);
 
