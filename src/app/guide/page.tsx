@@ -330,7 +330,13 @@ export default function GuidePage() {
 
                 <SectionTitle number={7} title="Trabajo en domingos/festivos, nocturnidad y jornadas especiales" />
                  <ul className="list-disc list-inside space-y-2">
-                    <li><strong>Domingos y festivos autorizados</strong>: <strong>Recargo +75%</strong> del día trabajado. Límite: en centros > 5 personas y salvo contratos diseñados para ello, <strong>no obligados a más del 50%</strong> de aperturas anuales.</li>
+                    <li><strong>Festivos trabajados</strong>: Existen dos modalidades de compensación:
+                        <ul className="list-['-_'] list-inside ml-4 mt-1">
+                            <li><strong>Pago simple (96€):</strong> Se abona esta cantidad y además se devuelven las horas trabajadas en la bolsa de festivos para su posterior disfrute.</li>
+                            <li><strong>Pago doble (192€):</strong> Se abona esta cantidad superior, pero en este caso, las horas trabajadas no se devuelven en la bolsa de festivos.</li>
+                        </ul>
+                    </li>
+                    <li>Límite de trabajo en domingos y festivos: en centros > 5 personas y salvo contratos diseñados para ello, <strong>no obligados a más del 50%</strong> de aperturas anuales.</li>
                     <li><strong>Domingo/festivo no habilitado</strong>: <strong>+150%</strong>.</li>
                     <li><strong>Nocturnidad</strong>: Entre 22:00 y 06:00, <strong>+25%</strong> del salario hora.</li>
                     <li><strong>Jornadas especiales</strong>: Black Friday, víspera de Reyes, remontajes… <strong>voluntarias</strong> y con <strong>salario/hora superior</strong> al del convenio, a pactar previamente.</li>
