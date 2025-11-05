@@ -105,7 +105,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/employees', label: 'Empleados', icon: Users },
     { href: '/listings', label: 'Formularios', icon: ListChecks },
     { href: '/vacations', label: 'Vacaciones', icon: Plane },
-    { href: '/settings', label: 'Ajustes', icon: Wrench },
   ];
 
   const adminNavItemsRight = [
@@ -217,6 +216,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
         
         <div className="flex items-center gap-2 ml-auto">
+            {viewMode === 'admin' && (
+              <Button asChild variant={pathname.startsWith('/settings') ? "default" : "outline"}>
+                  <Link href="/settings">
+                      <Wrench className="mr-0 sm:mr-2 h-4 w-4" />
+                      <span className="hidden sm:inline">Ajustes</span>
+                  </Link>
+              </Button>
+            )}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -261,6 +268,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
                         <span className="text-xl">Control Horario</span>
                     </Link>
                     <MainNav isMobileNav={true} />
+                     {viewMode === 'admin' && (
+                      <Link href="/settings" onClick={() => setMobileNavOpen(false)} className="flex items-center justify-between p-3 rounded-md transition-colors text-lg hover:bg-muted mt-4">
+                        <div className="flex items-center gap-3">
+                          <Wrench className="h-5 w-5" />
+                          <span>Ajustes</span>
+                        </div>
+                      </Link>
+                    )}
                 </SheetContent>
               </Sheet>
             )}
