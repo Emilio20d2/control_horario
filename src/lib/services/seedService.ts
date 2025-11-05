@@ -94,16 +94,29 @@ export async function seedDatabase(dataToImport: any, holidayEmployeesToAdd: Omi
         }
     }
 
-    // Staging weekly records
+    // Staging weekly records with the new structure
     if (dataToImport.weeklyRecords) {
-        for (const [docId, docData] of Object.entries(dataToImport.weeklyRecords)) {
-            const docRef = dbAdmin.collection('weeklyRecords').doc(docId);
-            batch.set(docRef, docData as DocumentData);
-            operationCount++;
-            stats.weeklyRecords++;
-            await commitBatchIfNeeded();
+        for (const [weekId, weekRecord] of Object.entries(dataToImport.weeklyRecords as any)) {
+            if (weekRecord.weekData) {
+                for (const [employeeId, employeeData] of Object.entries(weekRecord.weekData)) {
+                    const docId = `${weekId}-${employeeId}`;
+                    const docRef = dbAdmin.collection('weeklyRecords').doc(docId);
+                    
+                    const dataToSet = {
+                        weekId: weekId,
+                        employeeId: employeeId,
+                        ...employeeData as DocumentData
+                    };
+
+                    batch.set(docRef, dataToSet);
+                    operationCount++;
+                    stats.weeklyRecords++;
+                    await commitBatchIfNeeded();
+                }
+            }
         }
     }
+
 
     // Add employees not found to holidayEmployees
     if (holidayEmployeesToAdd && holidayEmployeesToAdd.length > 0) {
