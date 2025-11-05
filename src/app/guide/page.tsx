@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -56,7 +57,7 @@ export default function GuidePage() {
             </CardHeader>
             <CardContent>
               <Accordion type="single" collapsible className="w-full">
-                <AdminGuideItem title="a. Inicio">
+                <AdminGuideItem title="Inicio">
                   <p>
                     Es la primera página que ves al iniciar sesión y actúa como un centro de notificaciones y tareas pendientes.
                   </p>
@@ -66,7 +67,7 @@ export default function GuidePage() {
                     <li><strong>Próximos Eventos</strong>: Ofrece una vista rápida de las próximas ausencias programadas.</li>
                   </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="b. Panel de Control">
+                <AdminGuideItem title="Panel de Control">
                    <p>Centro de operaciones para la generación de informes en PDF.</p>
                    <ul className="list-disc pl-5 mt-2 space-y-1">
                     <li><strong>Informes por Empleado</strong>: Resumen Anual, Jornada Anual y Ausencias.</li>
@@ -74,28 +75,28 @@ export default function GuidePage() {
                     <li><strong>Informes Generales (Semanales)</strong>: Horas complementarias y estado de balances.</li>
                    </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="c. Registro Horario">
+                <AdminGuideItem title="Registro Horario">
                   <p>La herramienta principal para la gestión diaria. Permite introducir horas, ausencias y ver el impacto en tiempo real en las bolsas de horas antes de confirmar.</p>
                 </AdminGuideItem>
-                <AdminGuideItem title="d. Empleados">
+                <AdminGuideItem title="Empleados">
                   <p>Centro de gestión de la plantilla. Permite ver empleados activos e inactivos, y crear o editar sus fichas, incluyendo datos personales, de contrato y calendario laboral.</p>
                 </AdminGuideItem>
-                 <AdminGuideItem title="e. Ficha de Empleado">
+                 <AdminGuideItem title="Ficha de Empleado">
                   <p>Visión de 360 grados de un trabajador, mostrando balances, vacaciones, datos del contrato, cómputo anual y gestión de ausencias programadas.</p>
                 </AdminGuideItem>
-                <AdminGuideItem title="f. Formularios Personalizados">
+                <AdminGuideItem title="Formularios Personalizados">
                   <p>Herramienta para crear PDFs a medida, como listados para entrega de material o informes con datos personales específicos de la plantilla.</p>
                 </AdminGuideItem>
-                <AdminGuideItem title="g. Programador de Vacaciones">
+                <AdminGuideItem title="Programador de Vacaciones">
                     <p>Vista de cuadrante anual para la planificación de ausencias largas, permitiendo identificar solapamientos.</p>
                 </AdminGuideItem>
-                <AdminGuideItem title="h. Calendario">
+                <AdminGuideItem title="Calendario">
                   <p>Visión global de todas las ausencias programadas en el sistema, con vistas semanales o mensuales.</p>
                 </AdminGuideItem>
-                <AdminGuideItem title="i. Mensajes">
+                <AdminGuideItem title="Mensajes">
                   <p>Canal de comunicación centralizado con los empleados para gestionar incidencias y solicitudes de corrección.</p>
                 </AdminGuideItem>
-                <AdminGuideItem title="j. Ajustes">
+                <AdminGuideItem title="Ajustes">
                   <p>El cerebro de la aplicación, donde se definen las reglas de negocio como días festivos, horas de convenio, tipos de ausencia y contrato, y campañas de solicitud de vacaciones.</p>
                 </AdminGuideItem>
               </Accordion>
