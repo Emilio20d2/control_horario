@@ -26,7 +26,7 @@ import {
   MessageSquareWarning,
   CalendarClock,
   Home,
-  BookUser
+  BookOpen
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -110,7 +110,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const adminNavItemsRight = [
     { href: '/calendar', label: 'Calendario', icon: CalendarClock },
     { href: '/messages', label: 'Mensajes', icon: Mail, notification: unreadConversationsForAdmin > 0 },
-    { href: '/guide', label: 'Guía', icon: BookUser },
+    { href: '/guide', label: 'Guía', icon: BookOpen },
   ]
   
   const employeeMenuItems = [
