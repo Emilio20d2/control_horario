@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { doc, getDoc, collection, query, where, getDocs, setDoc, onSnapshot } from 'firebase/firestore';
 import type { AppUser, Employee } from '@/lib/types';
 import { useIsMobile } from './use-is-mobile';
@@ -42,6 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
   const [isEmployeeViewEnabled, setIsEmployeeViewEnabled] = useState<boolean>(true); // Default to true to avoid initial lockout
   const router = useRouter();
+  const pathname = usePathname();
   const { toast } = useToast();
   
   // Effect to listen for app configuration changes (e.g., employee view toggle)
@@ -111,22 +112,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribeAuth();
   }, []);
 
-  // Effect to handle view mode changes for admins
-  useEffect(() => {
-    if (appUser && appUser.trueRole === 'admin' && appUser.role !== viewMode) {
-      setAppUser(prev => prev ? { ...prev, role: viewMode } : null);
-    }
-  }, [viewMode, appUser]);
-
-  // Effect to redirect users based on their role and employee view status
+  // Effect to handle view mode changes for admins and to enforce routing rules
   useEffect(() => {
     if (loading || !user || !appUser) return;
 
-    if (appUser.role === 'employee' && !isEmployeeViewEnabled) {
-        router.replace('/unavailable');
+    // Handle view mode state change for admins
+    if (appUser.trueRole === 'admin' && appUser.role !== viewMode) {
+      setAppUser(prev => prev ? { ...prev, role: viewMode } : null);
     }
-  }, [loading, user, appUser, isEmployeeViewEnabled, router]);
-
+    
+    // Define page routes
+    const employeePages = ['/my-profile', '/my-schedule', '/my-messages', '/help'];
+    const adminPages = ['/home', '/dashboard', '/schedule', '/employees', '/listings', '/vacations', '/calendar', '/messages', '/settings', '/guide'];
+    
+    const isAccessingEmployeePage = employeePages.some(p => pathname.startsWith(p));
+    const isAccessingAdminPage = adminPages.some(p => pathname.startsWith(p));
+    
+    // Centralized redirection logic
+    if (appUser.role === 'employee') {
+      if (!isEmployeeViewEnabled) {
+        router.replace('/unavailable');
+      } else if (isAccessingAdminPage) {
+        router.replace('/my-profile');
+      }
+    } else if (appUser.role === 'admin') {
+      if (isAccessingEmployeePage) {
+        router.replace('/home');
+      }
+    }
+  }, [loading, user, appUser, viewMode, isEmployeeViewEnabled, pathname, router]);
 
   const login = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
