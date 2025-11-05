@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -45,6 +46,7 @@ import type { EmployeeGroup } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { VacationCampaignManager } from '@/components/settings/vacation-campaign-manager';
 import { MessageSyncManager } from './message-sync-manager';
+import { EmployeeViewManager } from './employee-view-manager';
 
 
 export default function SettingsPageContent() {
@@ -458,6 +460,7 @@ export default function SettingsPageContent() {
 
             <TabsContent value="utils">
                 <div className='grid gap-6'>
+                    <EmployeeViewManager />
                     <ImportManager />
                     <DataCleanupManager />
                     <MessageSyncManager />

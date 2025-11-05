@@ -1,4 +1,5 @@
 
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -84,6 +85,7 @@ interface DataContextType {
   vacationCampaigns: VacationCampaign[];
   correctionRequests: CorrectionRequest[];
   unconfirmedWeeksDetails: UnconfirmedWeekDetail[];
+  appConfig: { isEmployeeViewEnabled?: boolean };
   loading: boolean;
   unreadMessageCount: number;
   pendingCorrectionRequestCount: number;
@@ -160,6 +162,7 @@ const DataContext = createContext<DataContextType>({
   vacationCampaigns: [],
   correctionRequests: [],
   unconfirmedWeeksDetails: [],
+  appConfig: {},
   loading: true,
   unreadMessageCount: 0,
   pendingCorrectionRequestCount: 0,
@@ -234,6 +237,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [vacationCampaigns, setVacationCampaigns] = useState<VacationCampaign[]>([]);
   const [correctionRequests, setCorrectionRequests] = useState<CorrectionRequest[]>([]);
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<UnconfirmedWeekDetail[]>([]);
+  const [appConfig, setAppConfig] = useState<{ isEmployeeViewEnabled?: boolean }>({});
   const [loading, setLoading] = useState(true);
   const [loadingSteps, setLoadingSteps] = useState({
     statics: false,
@@ -339,8 +343,16 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
+    const configRef = doc(db, 'app_config', 'features');
+    const unsubConfig = onSnapshot(configRef, (docSnap) => {
+        if (docSnap.exists()) {
+            setAppConfig(docSnap.data());
+        }
+    });
+
     return () => {
       active = false;
+      unsubConfig();
     }
   }, [authLoading, user, appUser, safeParseDate]);
 
@@ -1348,6 +1360,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     vacationCampaigns,
     correctionRequests,
     unconfirmedWeeksDetails,
+    appConfig,
     loading,
     unreadMessageCount,
     pendingCorrectionRequestCount,

@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, setDoc, onSnapshot } from 'firebase/firestore';
 import type { AppUser, Employee } from '@/lib/types';
 import { useIsMobile } from './use-is-mobile';
 import { useToast } from './use-toast';
@@ -20,6 +21,7 @@ interface AuthContextType {
   reauthenticateWithPassword: (password: string) => Promise<boolean>;
   viewMode: 'admin' | 'employee';
   setViewMode: (mode: 'admin' | 'employee') => void;
+  isEmployeeViewEnabled: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -31,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   reauthenticateWithPassword: async () => false,
   viewMode: 'admin',
   setViewMode: () => {},
+  isEmployeeViewEnabled: false,
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -38,12 +41,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
+  const [isEmployeeViewEnabled, setIsEmployeeViewEnabled] = useState<boolean>(false);
   const router = useRouter();
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const configRef = doc(db, 'app_config', 'features');
+    const unsubscribeConfig = onSnapshot(configRef, (docSnap) => {
+        if (docSnap.exists()) {
+            setIsEmployeeViewEnabled(docSnap.data().isEmployeeViewEnabled || false);
+        } else {
+            setIsEmployeeViewEnabled(false);
+        }
+    });
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setLoading(true);
       if (user) {
         setUser(user);
@@ -57,33 +70,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               const dbData = userDoc.data() as Omit<AppUser, 'id'>;
               const finalRole = isSpecialAdmin ? 'admin' : dbData.role;
 
-              if (finalRole !== 'admin') {
-                  router.push('/unavailable');
+              if (finalRole !== 'admin' && !isEmployeeViewEnabled) {
+                  router.replace('/unavailable');
                   setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: 'employee' });
                   setViewMode('employee');
-                  setLoading(false);
-                  return;
+              } else {
+                setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: finalRole });
+                setViewMode(finalRole);
               }
-
-              setAppUser({ id: user.uid, ...dbData, trueRole: finalRole });
-              setViewMode(dbData.role as 'admin' | 'employee');
-
           } else {
+              // This is a fallback for users that might exist in Auth but not in Firestore 'users' collection
               if(user.email) {
                 const q = query(collection(db, 'employees'), where('email', '==', user.email));
                 const empSnapshot = await getDocs(q);
                 
                 const defaultRole = isSpecialAdmin ? 'admin' : 'employee';
                 
-                 if (defaultRole !== 'admin') {
-                    router.push('/unavailable');
-                    const employeeId = !empSnapshot.empty ? empSnapshot.docs[0].id : null;
-                    const newUserDocData = { email: user.email, employeeId, role: 'employee' };
-                    await setDoc(userDocRef, newUserDocData, { merge: true });
-                    setAppUser({ id: user.uid, ...newUserDocData, trueRole: 'employee' });
-                    setViewMode('employee');
-                    setLoading(false);
-                    return;
+                if (defaultRole !== 'admin' && !isEmployeeViewEnabled) {
+                    router.replace('/unavailable');
                 }
 
                 const employeeId = !empSnapshot.empty ? empSnapshot.docs[0].id : null;
@@ -105,8 +109,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       setLoading(false);
     });
-    return () => unsubscribe();
-  }, [router, toast]);
+
+    return () => {
+        unsubscribeAuth();
+        unsubscribeConfig();
+    };
+  }, [router, isEmployeeViewEnabled]);
 
   // Effect to handle view mode changes for admins
   useEffect(() => {
@@ -143,7 +151,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user, loading, router]);
 
 
-  const value = { user, appUser, loading, login, logout, reauthenticateWithPassword, viewMode, setViewMode };
+  const value = { user, appUser, loading, login, logout, reauthenticateWithPassword, viewMode, setViewMode, isEmployeeViewEnabled };
 
   return (
     <AuthContext.Provider value={value}>
