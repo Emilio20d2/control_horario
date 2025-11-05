@@ -375,94 +375,94 @@ export default function HelpPage() {
                  <ul className="list-disc list-inside space-y-2">
                     <li><strong>Tablas salariales</strong>: 2023: +2,5% sobre 2022; 2024: +2% sobre 2023. Tablas completas por grupos y categorías en anexos del Convenio.</li>
                     <li><strong>Pagas extraordinarias</strong>: <strong>Julio y Navidad</strong>: una mensualidad según tablas, más ad personam si procede; prorrateables por acuerdo.</li>
-                    <li><strong>Paga de marzo (antigua de beneficios)</strong>: la empresa debe abonar <strong>al menos una mensualidad</strong> anual ligada a ventas/beneficios; liquidación cada primer trimestre del ejercicio siguiente o prorrateo.</li>
-                    <li><strong>Pluses</strong>: <strong>Transporte</strong> por día trabajado y <strong>Ropa de trabajo</strong> mensual; importes en anexos (p. ej., 2024: transporte 3,64 €/día; ropa 24,85 €/mes).</li>
-                    <li><strong>Plus salarial de fidelidad</strong> (mayores de 61 años con ≥15 años de antigüedad, condicionado): mensual, no compensable/absorbible, con tope hasta los 66 años.</li>
-                    <li><strong>Premios y seguros</strong>: <strong>Premio jubilación</strong> por años de anticipo respecto a edad legal, con escala económica (referencias en anexos).</li>
-                    <li><strong>Seguro</strong> por invalidez o muerte: 16.500 €.</li>
+                    <li><strong>Paga de marzo (antigua de beneficios)</strong>: la empresa debe abonar **al menos una mensualidad** anual ligada a ventas/beneficios; liquidación cada primer trimestre del ejercicio siguiente o prorrateo.</li>
+                    <li><strong>Pluses</strong>: **Transporte** por día trabajado y **Ropa de trabajo** mensual; importes en anexos (p. ej., 2024: transporte 3,64 €/día; ropa 24,85 €/mes).</li>
+                    <li>**Plus salarial de fidelidad** (mayores de 61 años con ≥15 años de antigüedad, condicionado): mensual, no compensable/absorbible, con tope hasta los 66 años.</li>
+                    <li>**Premios y seguros**: **Premio jubilación** por años de anticipo respecto a edad legal, con escala económica (referencias en anexos).</li>
+                    <li>**Seguro** por invalidez o muerte: 16.500 €.</li>
                 </ul>
 
                 <SectionTitle number={9} title="Promoción profesional y desconexión digital" />
                  <ul className="list-disc list-inside space-y-2">
-                    <li><strong>Ascensos automáticos por permanencia efectiva</strong> en categoría (ayudante → dependiente 2ª en 2 años; dependiente 2ª → 1ª en 3; 1ª → mayor en 5; etc.).</li>
-                    <li><strong>Desconexión digital</strong>: el convenio faculta protocolos para garantizarla (art. 20 bis ET).</li>
+                    <li>**Ascensos automáticos por permanencia efectiva** en categoría (ayudante → dependiente 2ª en 2 años; dependiente 2ª → 1ª en 3; 1ª → mayor en 5; etc.).</li>
+                    <li>**Desconexión digital**: el convenio faculta protocolos para garantizarla (art. 20 bis ET).</li>
                 </ul>
 
                 <SectionTitle number={10} title="Definiciones útiles: parentesco y grados" />
                  <ul className="list-disc list-inside space-y-2">
-                    <li><strong>Consanguinidad</strong>: relación por sangre. Grados: 1º: madre/padre, hijo/a. 2º: abuelo/a, nieto/a, hermano/a. 3º: bisabuelo/a, bisnieto/a, tío/a-sobrino/a. 4º: primos/as.</li>
-                    <li><strong>Afinidad</strong>: por matrimonio o pareja de hecho respecto de la familia del cónyuge/pareja. Grados análogos: suegro/a, yerno/nuera (1º); cuñado/a, abuelo/a político/a (2º), etc.</li>
-                    <li>Salvo mejora, <strong>los permisos del convenio referidos a grados</strong> se computan con estas reglas.</li>
+                    <li>**Consanguinidad**: relación por sangre. Grados: 1º: madre/padre, hijo/a. 2º: abuelo/a, nieto/a, hermano/a. 3º: bisabuelo/a, bisnieto/a, tío/a-sobrino/a. 4º: primos/as.</li>
+                    <li>**Afinidad**: por matrimonio o pareja de hecho respecto de la familia del cónyuge/pareja. Grados análogos: suegro/a, yerno/nuera (1º); cuñado/a, abuelo/a político/a (2º), etc.</li>
+                    <li>Salvo mejora, **los permisos del convenio referidos a grados** se computan con estas reglas.</li>
                 </ul>
 
                 <SectionTitle number={11} title="Medidas del Plan de Igualdad que debes tener presentes (prevalecen)" />
                  <ul className="list-disc list-inside space-y-2">
-                    <li><strong>Jornada y organización</strong>: <strong>Calendario anual</strong> con 2 meses de antelación y cambios con 15 días salvo causa justificada; prioridad jornada continuada; medidas para <strong>reducir parcialidad no deseada</strong> y fijar <strong>mínimos de horas</strong> en parciales (definición vía Comisión de Seguimiento).</li>
-                    <li><strong>Conciliación reforzada</strong>: Todo el bloque de <strong>horas médicas</strong> y acompañamientos descrito en el punto 5 (20 h/año, etc.) <strong>es del Plan</strong> y se aplica en todo el territorio.</li>
-                    <li><strong>Excedencia por estudios</strong> con <strong>reserva</strong> (hasta 1 año) en condiciones del Plan.</li>
+                    <li>**Jornada y organización**: **Calendario anual** con 2 meses de antelación y cambios con 15 días salvo causa justificada; prioridad jornada continuada; medidas para **reducir parcialidad no deseada** y fijar **mínimos de horas** en parciales (definición vía Comisión de Seguimiento).</li>
+                    <li>**Conciliación reforzada**: Todo el bloque de **horas médicas** y acompañamientos descrito en el punto 5 (20 h/año, etc.) **es del Plan** y se aplica en todo el territorio.</li>
+                    <li>**Excedencia por estudios** con **reserva** (hasta 1 año) en condiciones del Plan.</li>
                 </ul>
 
                 <SectionTitle number={12} title="Beneficios y acuerdos comunicados por CCOO/empresa (2024-2025)" />
-                <p className="text-muted-foreground">Nota: este bloque recoge <strong>acuerdos y comunicaciones</strong> corporativas de ámbito Inditex que has aportado. Cuando son mejoras ya activas, las he tratado como derecho; cuando están <strong>en negociación</strong>, quedan señaladas como tal.</p>
+                <p className="text-muted-foreground">Nota: este bloque recoge **acuerdos y comunicaciones** corporativas de ámbito Inditex que has aportado. Cuando son mejoras ya activas, las he tratado como derecho; cuando están **en negociación**, quedan señaladas como tal.</p>
                 <div className="space-y-4">
                     <h4 className="font-bold">Gestión de la Madurez (acuerdo estatal de homologación)</h4>
                     <ul className="list-disc list-inside space-y-2">
-                        <li><strong>Premios de vinculación</strong>:
+                        <li>**Premios de vinculación**:
                             <ul className="list-['-_'] list-inside ml-4 mt-1">
-                                <li><strong>25 años</strong>: <strong>1.500 €</strong> en un único pago.</li>
-                                <li><strong>30 años</strong>: <strong>tarjeta regalo 500 €</strong> (vía INET con <strong>código QR</strong> individual; si no hay INET por reserva/suspenso, se facilitará <strong>tarjeta física</strong> por canales alternativos).</li>
+                                <li>**25 años**: **1.500 €** en un único pago.</li>
+                                <li>**30 años**: **tarjeta regalo 500 €** (vía INET con **código QR** individual; si no hay INET por reserva/suspenso, se facilitará **tarjeta física** por canales alternativos).</li>
                             </ul>
                         </li>
-                        <li><strong>Garantía mínima de vinculación anual (proporcional a jornada)</strong>:
+                        <li>**Garantía mínima de vinculación anual (proporcional a jornada)**:
                              <ul className="list-['-_'] list-inside ml-4 mt-1">
-                                <li>8-11 años: <strong>850 €</strong>; 12-15: <strong>1.000 €</strong>; 16-19: <strong>1.200 €</strong>; <strong>≥20</strong>: <strong>1.400 €</strong>.</li>
+                                <li>8-11 años: **850 €**; 12-15: **1.000 €**; 16-19: **1.200 €**; **≥20**: **1.400 €**.</li>
                              </ul>
                         </li>
-                        <li><strong>Reducción de jornada por edad</strong>: implantación <strong>a partir de 2025</strong>, con disfrute el año en que se <strong>cumplan 10 años de antigüedad</strong> (configuración detallada por tramos en las comunicaciones sindicales).</li>
-                        <li><strong>Abonos</strong>: se ha comunicado que <strong>en nómina de agosto</strong> se refleja antigüedad y premio de vinculación; <strong>atrasos desde 1 de abril</strong> en <strong>septiembre</strong>.</li>
-                        <li><strong>Reconocimiento de antigüedad</strong>:
+                        <li>**Reducción de jornada por edad**: implantación **a partir de 2025**, con disfrute el año en que se **cumplan 10 años de antigüedad** (configuración detallada por tramos en las comunicaciones sindicales).</li>
+                        <li>**Abonos**: se ha comunicado que **en nómina de agosto** se refleja antigüedad y premio de vinculación; **atrasos desde 1 de abril** en **septiembre**.</li>
+                        <li>**Reconocimiento de antigüedad**:
                              <ul className="list-['-_'] list-inside ml-4 mt-1">
-                                <li>En concatenación de <strong>temporales</strong> de la misma cadena, computa a efectos de vinculación si no hay interrupción > <strong>6 meses + 1 día</strong>; abono de pendientes en octubre.</li>
-                                <li><strong>Excedencias con reserva</strong> (Plan/Convenio): <strong>se reconoce la antigüedad</strong> a efectos de estos premios.</li>
-                                <li>Situaciones con <strong>reserva de puesto</strong> sin nómina previa a abril 2024: pago de atrasos y premio si corresponde, en la primera semana de octubre.</li>
-                                <li>Personas con <strong>30 años</strong>: activación del <strong>QR de 500 €</strong> a las 12:00 h del día comunicado por INET.</li>
+                                <li>En concatenación de **temporales** de la misma cadena, computa a efectos de vinculación si no hay interrupción > **6 meses + 1 día**; abono de pendientes en octubre.</li>
+                                <li>**Excedencias con reserva** (Plan/Convenio): **se reconoce la antigüedad** a efectos de estos premios.</li>
+                                <li>Situaciones con **reserva de puesto** sin nómina previa a abril 2024: pago de atrasos y premio si corresponde, en la primera semana de octubre.</li>
+                                <li>Personas con **30 años**: activación del **QR de 500 €** a las 12:00 h del día comunicado por INET.</li>
                              </ul>
                         </li>
                     </ul>
                      <h4 className="font-bold">Trabajo en sábado tarde y comisiones: en negociación</h4>
-                    <p>Se han planteado mejoras de <strong>comisión</strong> en sábados tarde, Black Friday y días de alta venta; y <strong>subida del incentivo de dependientas</strong> (ej.: 600→900 € en &lt;24 h/sem y 1.000→1.500 € en ≥24 h/sem), así como actualizar objetivos 2025. A la fecha de las piezas remitidas, <strong>las cifras exactas estaban en mesa</strong> (no cerradas).</p>
+                    <p>Se han planteado mejoras de **comisión** en sábados tarde, Black Friday y días de alta venta; y **subida del incentivo de dependientas** (ej.: 600→900 € en &lt;24 h/sem y 1.000→1.500 € en ≥24 h/sem), así como actualizar objetivos 2025. A la fecha de las piezas remitidas, **las cifras exactas estaban en mesa** (no cerradas).</p>
                     <h4 className="font-bold">App/visibilidad de comisiones</h4>
-                    <p>Comunicación de empresa: desarrollo de <strong>app</strong> para que plantilla vea el <strong>desglose diario de comisiones</strong>; fase de pruebas y despliegue comunicado.</p>
+                    <p>Comunicación de empresa: desarrollo de **app** para que plantilla vea el **desglose diario de comisiones**; fase de pruebas y despliegue comunicado.</p>
                      <h4 className="font-bold">Permisos elecciones</h4>
-                    <p>En jornadas electorales europeas se difundieron <strong>horas retribuidas</strong> según coincidencia de horarios. Aplica la normativa autonómica de cada proceso, con el <strong>deber público retribuido</strong> ya cubierto por el Convenio.</p>
+                    <p>En jornadas electorales europeas se difundieron **horas retribuidas** según coincidencia de horarios. Aplica la normativa autonómica de cada proceso, con el **deber público retribuido** ya cubierto por el Convenio.</p>
                 </div>
                 
                  <SectionTitle number={13} title="Ruta práctica en INET (autoservicio)" />
                  <ul className="list-disc list-inside space-y-2">
-                    <li><strong>Área Personal → Autoservicio del Empleado → Jornada / Permisos retribuidos / Excedencias</strong>.</li>
-                    <li>Formularios activos (según las piezas que enviaste): <strong>necesidades de formación; adaptación de jornada por dependientes o discapacidad a cargo; adaptación por estudios; adaptación por hospitalización o tratamiento médico de cónyuge/pareja/hijos; extensión de reducción de jornada</strong> hasta fecha indicada.</li>
-                    <li>Para el <strong>premio 30 años</strong>, se activa <strong>QR individual</strong> en INET; si estás en reserva y sin INET, la empresa comunica alternativa física.</li>
+                    <li>**Área Personal → Autoservicio del Empleado → Jornada / Permisos retribuidos / Excedencias**.</li>
+                    <li>Formularios activos (según las piezas que enviaste): **necesidades de formación; adaptación de jornada por dependientes o discapacidad a cargo; adaptación por estudios; adaptación por hospitalización o tratamiento médico de cónyuge/pareja/hijos; extensión de reducción de jornada** hasta fecha indicada.</li>
+                    <li>Para el **premio 30 años**, se activa **QR individual** en INET; si estás en reserva y sin INET, la empresa comunica alternativa física.</li>
                 </ul>
 
                  <SectionTitle number={14} title="Resumen “qué me llevo puesto”" />
                  <ol className="list-decimal list-inside space-y-2">
-                    <li><strong>Horas médicas</strong>: tienes <strong>20 h/año retribuidas</strong> (propias, menores a cargo y 1º grado) + <strong>10 h extra</strong> si familia monoparental; además, por Convenio, <strong>12 h/año</strong> propias/menores&lt;16/ascendiente 1º grado dependiente y <strong>24 h/año</strong> para crónicos/raras hasta 2º grado. Usa siempre la <strong>mejor combinación</strong> (Plan + Convenio).</li>
-                    <li><strong>Vacaciones</strong>: 31 días, 21 en verano y 10 resto, en lunes, con turnos rotativos y reglas de coincidencia y no inicio en festivo.</li>
-                    <li><strong>Asuntos propios</strong>: 2 días y <strong>no afectan</strong> a la jornada anual; 1 día fraccionable.</li>
-                    <li><strong>Domingos/festivos</strong>: +75% (autorizados) y límite del 50% de aperturas obligatorias; <strong>no habilitados</strong> +150%.</li>
-                    <li><strong>Pausas retribuidas</strong> ampliadas por el Plan (hasta 30 min según duración).</li>
-                    <li><strong>Pagas</strong>: julio, Navidad y <strong>paga de marzo</strong> mínima de <strong>una mensualidad</strong> ligada a ventas/beneficios.</li>
-                    <li><strong>Pluses</strong>: transporte por día, ropa de trabajo mensual y <strong>plus de fidelidad</strong> (condicionado).</li>
-                    <li><strong>Premios de vinculación</strong> (25 y 30 años), <strong>garantía mínima anual por tramos de antigüedad</strong> y <strong>reducción de jornada por edad</strong>: activados a partir de los acuerdos estatales comunicados (bloque Madurez).</li>
-                    <li><strong>Excedencias con reserva</strong>: cuidado de hijos (hasta 3 años), estudios (Plan, hasta 1 año), adopción internacional/reagrupación (hasta 4 meses).</li>
-                    <li><strong>Promoción</strong> por permanencia efectiva en categoría; <strong>desconexión digital</strong> con protocolo.</li>
+                    <li>**Horas médicas**: tienes **20 h/año retribuidas** (propias, menores a cargo y 1º grado) + **10 h extra** si familia monoparental; además, por Convenio, **12 h/año** propias/menores&lt;16/ascendiente 1º grado dependiente y **24 h/año** para crónicos/raras hasta 2º grado. Usa siempre la **mejor combinación** (Plan + Convenio).</li>
+                    <li>**Vacaciones**: 31 días, 21 en verano y 10 resto, en lunes, con turnos rotativos y reglas de coincidencia y no inicio en festivo.</li>
+                    <li>**Asuntos propios**: 2 días y **no afectan** a la jornada anual; 1 día fraccionable.</li>
+                    <li>**Domingos/festivos**: +75% (autorizados) y límite del 50% de aperturas obligatorias; **no habilitados** +150%.</li>
+                    <li>**Pausas retribuidas** ampliadas por el Plan (hasta 30 min según duración).</li>
+                    <li>**Pagas**: julio, Navidad y **paga de marzo** mínima de **una mensualidad** ligada a ventas/beneficios.</li>
+                    <li>**Pluses**: transporte por día, ropa de trabajo mensual y **plus de fidelidad** (condicionado).</li>
+                    <li>**Premios de vinculación** (25 y 30 años), **garantía mínima anual por tramos de antigüedad** y **reducción de jornada por edad**: activados a partir de los acuerdos estatales comunicados (bloque Madurez).</li>
+                    <li>**Excedencias con reserva**: cuidado de hijos (hasta 3 años), estudios (Plan, hasta 1 año), adopción internacional/reagrupación (hasta 4 meses).</li>
+                    <li>**Promoción** por permanencia efectiva en categoría; **desconexión digital** con protocolo.</li>
                 </ol>
 
                 <h4 className="font-bold pt-6">Notas finales de uso</h4>
                 <ul className="list-disc list-inside space-y-2">
-                    <li>Guarda justificantes y <strong>avisa siempre</strong> con la antelación exigida (7 días en flexibilización, 15 días en cambios de calendario del Plan).</li>
-                    <li>En <strong>permisos fraccionables</strong> por hospitalización/enfermedad grave, el Convenio permite <strong>disfrute en medios días</strong> durante la duración del hecho causante.</li>
-                    <li>Si algo no te encaja en tienda, este dosier te da base para exigir la <strong>opción más favorable</strong>.</li>
+                    <li>Guarda justificantes y **avisa siempre** con la antelación exigida (7 días en flexibilización, 15 días en cambios de calendario del Plan).</li>
+                    <li>En **permisos fraccionables** por hospitalización/enfermedad grave, el Convenio permite **disfrute en medios días** durante la duración del hecho causante.</li>
+                    <li>Si algo no te encaja en tienda, este dosier te da base para exigir la **opción más favorable**.</li>
                 </ul>
 
             </div>
@@ -477,9 +477,9 @@ export default function HelpPage() {
                                 Es la página principal y el centro de operaciones para la generación de informes. Desde aquí puedes exportar en PDF toda la información clave para la gestión y auditoría.
                             </p>
                             <ul className="list-disc list-inside space-y-2 text-sm">
-                                <li><strong>Informes Anuales por Empleado:</strong> Genera resúmenes semanales o comparativas de jornada teórica vs. real.</li>
-                                <li><strong>Informes Generales:</strong> Exporta datos de ausencias, planificación de festivos, horas complementarias y balances semanales.</li>
-                                <li><strong>Gráfico de Balances:</strong> Visualiza rápidamente los 10 empleados con mayor balance de horas.</li>
+                                <li>**Informes Anuales por Empleado:** Genera resúmenes semanales o comparativas de jornada teórica vs. real.</li>
+                                <li>**Informes Generales:** Exporta datos de ausencias, planificación de festivos, horas complementarias y balances semanales.</li>
+                                <li>**Gráfico de Balances:** Visualiza rápidamente los 10 empleados con mayor balance de horas.</li>
                             </ul>
                         </div>
                         <Image src="https://picsum.photos/seed/dashboard/600/400" alt="Captura de pantalla del Panel de Control" width={600} height={400} className="rounded-lg shadow-md w-full" data-ai-hint="dashboard graph" />
@@ -493,10 +493,10 @@ export default function HelpPage() {
                                 La sección más importante para el trabajo diario. Permite registrar las horas trabajadas, ausencias y otros eventos de los empleados.
                             </p>
                             <ul className="list-disc list-inside space-y-2 text-sm">
-                                <li><strong>Vista Semanal y Anual:</strong> Alterna entre una vista de todos los empleados para una semana o el calendario completo de un año para un solo empleado.</li>
-                                <li><strong>Registro Detallado:</strong> Para cada día, puedes introducir horas trabajadas, ausencias, horas de libranza y complementarias.</li>
-                                <li><strong>Impacto en Tiempo Real:</strong> El sistema calcula y muestra al instante cómo afectará cada cambio a las bolsas de horas del empleado.</li>
-                                <li><strong>Confirmación:</strong> Una vez los datos son correctos, debes pulsar "Confirmar" para que los balances se actualicen de forma permanente.</li>
+                                <li>**Vista Semanal y Anual:** Alterna entre una vista de todos los empleados para una semana o el calendario completo de un año para un solo empleado.</li>
+                                <li>**Registro Detallado:** Para cada día, puedes introducir horas trabajadas, ausencias, horas de libranza y complementarias.</li>
+                                <li>**Impacto en Tiempo Real:** El sistema calcula y muestra al instante cómo afectará cada cambio a las bolsas de horas del empleado.</li>
+                                <li>**Confirmación:** Una vez los datos son correctos, debes pulsar "Confirmar" para que los balances se actualicen de forma permanente.</li>
                             </ul>
                         </div>
                         <Image src="https://picsum.photos/seed/schedule/600/400" alt="Captura de pantalla del Registro Horario" width={600} height={400} className="rounded-lg shadow-md w-full" data-ai-hint="schedule calendar" />
@@ -510,9 +510,9 @@ export default function HelpPage() {
                                 Centro de gestión de la plantilla. Aquí puedes ver, crear y modificar la información de tus empleados.
                             </p>
                             <ul className="list-disc list-inside space-y-2 text-sm">
-                                <li><strong>Listado de Empleados:</strong> Se divide en "Activos" e "Inactivos", con un resumen en tiempo real de los balances y vacaciones consumidas.</li>
-                                <li><strong>Crear/Editar Ficha:</strong> Permite definir datos personales, detalles del contrato y el calendario laboral rotativo (4 turnos).</li>
-                                <li><strong>Programar Modificaciones:</strong> Puedes programar cambios de jornada o de tipo de contrato a futuro para un empleado existente.</li>
+                                <li>**Listado de Empleados:** Se divide en "Activos" e "Inactivos", con un resumen en tiempo real de los balances y vacaciones consumidas.</li>
+                                <li>**Crear/Editar Ficha:** Permite definir datos personales, detalles del contrato y el calendario laboral rotativo (4 turnos).</li>
+                                <li>**Programar Modificaciones:** Puedes programar cambios de jornada o de tipo de contrato a futuro para un empleado existente.</li>
                             </ul>
                         </div>
                         <Image src="https://picsum.photos/seed/employees/600/400" alt="Captura de pantalla de la lista de Empleados" width={600} height={400} className="rounded-lg shadow-md w-full" data-ai-hint="employee list" />
@@ -526,9 +526,9 @@ export default function HelpPage() {
                                 Muestra toda la información relevante de un empleado en un solo lugar.
                             </p>
                             <ul className="list-disc list-inside space-y-2 text-sm">
-                                <li><strong>Balances y Contrato:</strong> Visualización en tiempo real de las bolsas de horas y los detalles del contrato vigente.</li>
-                                <li><strong>Cómputo Anual:</strong> Un resumen año por año que compara horas teóricas vs. computadas y muestra el balance anual final.</li>
-                                <li><strong>Ausencias Programadas:</strong> Permite registrar ausencias de larga duración (como bajas o excedencias) que se aplicarán automáticamente.</li>
+                                <li>**Balances y Contrato:** Visualización en tiempo real de las bolsas de horas y los detalles del contrato vigente.</li>
+                                <li>**Cómputo Anual:** Un resumen año por año que compara horas teóricas vs. computadas y muestra el balance anual final.</li>
+                                <li>**Ausencias Programadas:** Permite registrar ausencias de larga duración (como bajas o excedencias) que se aplicarán automáticamente.</li>
                             </ul>
                         </div>
                         <Image src="https://picsum.photos/seed/employeedetail/600/400" alt="Captura de pantalla de la ficha de un empleado" width={600} height={400} className="rounded-lg shadow-md w-full" data-ai-hint="profile page" />
@@ -542,9 +542,9 @@ export default function HelpPage() {
                                 Herramienta flexible para crear e imprimir formularios en PDF para cualquier necesidad.
                             </p>
                             <ul className="list-disc list-inside space-y-2 text-sm">
-                                <li><strong>Crea tu Formulario:</strong> Define un título, descripción y añade las columnas que necesites (ej: "Casco", "Botas", "Firma").</li>
-                                <li><strong>Tipos de Contenido:</strong> Cada columna puede ser un campo de texto libre o casillas de verificación con etiquetas personalizadas (ej: "Entregado, Devuelto").</li>
-                                <li><strong>Genera el PDF:</strong> La aplicación creará un documento con todos los empleados activos listados, listo para rellenar.</li>
+                                <li>**Crea tu Formulario:** Define un título, descripción y añade las columnas que necesites (ej: "Casco", "Botas", "Firma").</li>
+                                <li>**Tipos de Contenido:** Cada columna puede ser un campo de texto libre o casillas de verificación con etiquetas personalizadas (ej: "Entregado, Devuelto").</li>
+                                <li>**Genera el PDF:** La aplicación creará un documento con todos los empleados activos listados, listo para rellenar.</li>
                             </ul>
                         </div>
                         <Image src="https://picsum.photos/seed/listings/600/400" alt="Captura de pantalla de la creación de formularios" width={600} height={400} className="rounded-lg shadow-md w-full" data-ai-hint="form builder" />
@@ -558,8 +558,8 @@ export default function HelpPage() {
                                 Sección visual para planificar y gestionar las vacaciones y otras ausencias largas de forma estratégica.
                             </p>
                             <ul className="list-disc list-inside space-y-2 text-sm">
-                                <li><strong>Cuadrante Anual:</strong> Muestra una vista de todo el año con los empleados agrupados por categorías, permitiendo identificar rápidamente solapamientos.</li>
-                                <li><strong>Informes Específicos:</strong> Desde aquí puedes exportar la vista del cuadrante a un PDF o generar un listado para que los empleados firmen la conformidad de sus vacaciones.</li>
+                                <li>**Cuadrante Anual:** Muestra una vista de todo el año con los empleados agrupados por categorías, permitiendo identificar rápidamente solapamientos.</li>
+                                <li>**Informes Específicos:** Desde aquí puedes exportar la vista del cuadrante a un PDF o generar un listado para que los empleados firmen la conformidad de sus vacaciones.</li>
                             </ul>
                         </div>
                         <Image src="https://picsum.photos/seed/vacations/600/400" alt="Captura de pantalla del programador de vacaciones" width={600} height={400} className="rounded-lg shadow-md w-full" data-ai-hint="vacation planner" />
@@ -573,11 +573,11 @@ export default function HelpPage() {
                                 Aquí se configuran las reglas de negocio que rigen toda la aplicación. Es el cerebro del sistema.
                             </p>
                             <ul className="list-disc list-inside space-y-2 text-sm">
-                                <li><strong>Días Festivos:</strong> Añade, edita o elimina los festivos nacionales, regionales, locales y las aperturas comerciales.</li>
-                                <li><strong>Conf. Anual:</strong> Define las horas máximas de convenio para cada año.</li>
-                                <li><strong>Tipos de Ausencia:</strong> Crea o modifica los tipos de ausencia y sus reglas (si computan, si descuentan, si tienen límite, etc.).</li>
-                                <li><strong>Tipos de Contrato:</strong> Gestiona los tipos de contrato y define qué bolsas de horas se aplican a cada uno.</li>
-                                <li><strong>Utilidades:</strong> Herramientas para administradores, como la auditoría retroactiva de comentarios.</li>
+                                <li>**Días Festivos:** Añade, edita o elimina los festivos nacionales, regionales, locales y las aperturas comerciales.</li>
+                                <li>**Conf. Anual:** Define las horas máximas de convenio para cada año.</li>
+                                <li>**Tipos de Ausencia:** Crea o modifica los tipos de ausencia y sus reglas (si computan, si descuentan, si tienen límite, etc.).</li>
+                                <li>**Tipos de Contrato:** Gestiona los tipos de contrato y define qué bolsas de horas se aplican a cada uno.</li>
+                                <li>**Utilidades:** Herramientas para administradores, como la auditoría retroactiva de comentarios.</li>
                             </ul>
                         </div>
                         <Image src="https://picsum.photos/seed/settings/600/400" alt="Captura de pantalla de la página de ajustes" width={600} height={400} className="rounded-lg shadow-md w-full" data-ai-hint="settings page" />
@@ -589,5 +589,4 @@ export default function HelpPage() {
       </Tabs>
     </div>
   );
-
-    
+}
