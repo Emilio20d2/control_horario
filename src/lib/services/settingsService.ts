@@ -98,6 +98,8 @@ export const deleteContractType = async (id: string): Promise<void> => {
 export const addHolidayEmployee = async (data: Partial<Omit<HolidayEmployee, 'id'>> & { id?: string }): Promise<string> => {
     const { id, ...rest } = data;
     
+    // An eventual employee will not have an ID, so we auto-generate one.
+    // A regular employee will have their employeeNumber as ID.
     const docRef = id ? doc(db, 'holidayEmployees', id) : doc(collection(db, 'holidayEmployees'));
     
     const dataToSave = { 
@@ -105,6 +107,7 @@ export const addHolidayEmployee = async (data: Partial<Omit<HolidayEmployee, 'id
         active: rest.active !== undefined ? rest.active : true,
         groupId: rest.groupId || null,
         workShift: rest.workShift || null,
+        employeeNumber: rest.employeeNumber || null,
     };
     
     await setDoc(docRef, dataToSave, { merge: true });

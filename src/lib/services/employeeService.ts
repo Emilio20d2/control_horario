@@ -177,13 +177,13 @@ export const updateEmployee = async (
         // Update current schedule
         if (weeklySchedules && weeklySchedules.length > 0) {
             const currentSchedule = weeklySchedules[0];
-             if (!latestPeriod.weeklySchedulesHistory) latestPeriod.weeklySchedulesHistory = [];
+            if (!latestPeriod.weeklySchedulesHistory) latestPeriod.weeklySchedulesHistory = [];
             
             const existingIndex = latestPeriod.weeklySchedulesHistory.findIndex(s => s.effectiveDate === currentSchedule.effectiveDate);
+            
             if (existingIndex > -1) {
                 latestPeriod.weeklySchedulesHistory[existingIndex] = currentSchedule;
-            } else {
-                 // This case should ideally not happen if we're editing the latest, but as a fallback:
+            } else if (newWeeklySchedule?.effectiveDate !== currentSchedule.effectiveDate) { // Avoid duplication
                  latestPeriod.weeklySchedulesHistory.push(currentSchedule);
             }
             latestPeriod.weeklySchedulesHistory.sort((a: WeeklyScheduleData, b: WeeklyScheduleData) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());

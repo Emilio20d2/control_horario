@@ -57,6 +57,7 @@ export function HolidayEmployeeManager() {
                     name: mainEmp.name,
                     active: holidayEmp?.active ?? true,
                     isEventual: false,
+                    employeeNumber: mainEmp.employeeNumber
                 };
             } else if (holidayEmp) {
                 return { ...holidayEmp, isEventual: true };
@@ -125,6 +126,7 @@ export function HolidayEmployeeManager() {
                     id: employee.id,
                     name: employee.name,
                     active: newActiveState,
+                    employeeNumber: employee.employeeNumber,
                 });
             } else {
                 await updateHolidayEmployee(employee.id, { active: newActiveState });

@@ -33,22 +33,38 @@ export async function seedDatabase(dataToImport: any, holidayEmployeesToAdd: Omi
     await clearCollection('weeklyRecords');
     await clearCollection('employees');
     await clearCollection('holidayEmployees');
+    await clearCollection('users');
+    await clearCollection('conversations');
     
     const batch = dbAdmin.batch();
     const stats: Record<string, number> = {
         employees: 0,
         weeklyRecords: 0,
         holidayEmployees: 0,
+        users: 0,
     };
 
     // Staging employees (already enriched with employeeNumber)
     if (dataToImport.employees) {
-        Object.entries(dataToImport.employees).forEach(([docId, docData]) => {
+        for (const [docId, docData] of Object.entries(dataToImport.employees)) {
             const docRef = dbAdmin.collection('employees').doc(docId);
             batch.set(docRef, docData as DocumentData);
             stats.employees++;
-        });
+            
+            // Create user document in 'users' collection
+            const employee = docData as Employee;
+            if(employee.authId) {
+                const userRef = dbAdmin.collection('users').doc(employee.authId);
+                batch.set(userRef, {
+                    employeeId: employee.employeeNumber,
+                    email: employee.email,
+                    role: employee.email === 'mariaavg@inditex.com' ? 'admin' : 'employee'
+                });
+                stats.users++;
+            }
+        }
         console.log(`Staging ${stats.employees} documents for collection 'employees'...`);
+        console.log(`Staging ${stats.users} documents for collection 'users'...`);
     }
 
     // Staging weekly records
@@ -64,7 +80,7 @@ export async function seedDatabase(dataToImport: any, holidayEmployeesToAdd: Omi
     // Add employees not found to holidayEmployees
     if (holidayEmployeesToAdd && holidayEmployeesToAdd.length > 0) {
         holidayEmployeesToAdd.forEach(emp => {
-            const docRef = dbAdmin.collection('holidayEmployees').doc(); // Auto-generate ID
+            const docRef = dbAdmin.collection('holidayEmployees').doc(emp.employeeNumber); 
             batch.set(docRef, emp);
             stats.holidayEmployees++;
         });

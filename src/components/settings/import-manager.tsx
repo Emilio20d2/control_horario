@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState } from 'react';
@@ -42,24 +41,19 @@ export function ImportManager() {
         }
     };
     
-    // Oculto para evitar confusiones. La carga de datos de auditoría se hace por script
-    // y la carga inicial de datos también. Esta herramienta podría borrar los datos de auditoría.
-    return null;
-
-    /*
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Importar Datos desde JSON</CardTitle>
+                <CardTitle>Importar y Migrar Datos desde JSON</CardTitle>
                 <CardDescription>
-                    Carga los datos desde el archivo `public/firestore_import_data.json`.
-                    Esta acción borrará todos los datos existentes antes de importar los nuevos.
+                    Carga los datos desde `public/firestore_import_data.json` y migra los IDs de empleado al número de empleado.
+                    Esta acción borrará las colecciones `employees`, `weeklyRecords`, `holidayEmployees`, `users` y `conversations`.
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <p className="text-sm text-muted-foreground">
-                        Asegúrate de que el archivo `import_from_excel.js` se haya ejecutado para generar el archivo JSON más reciente antes de proceder.
+                    <p className="text-sm text-destructive font-bold">
+                       ¡Atención! Esta es una operación destructiva y no se puede deshacer. Úsala solo si estás seguro de que quieres reemplazar todos los datos existentes.
                     </p>
                     <Button type="submit" className="w-full" disabled={isSubmitting}>
                         {isSubmitting ? (
@@ -70,7 +64,7 @@ export function ImportManager() {
                         ) : (
                             <>
                                 <FileJson className="mr-2 h-4 w-4" />
-                                Importar desde JSON y Sincronizar
+                                Importar, Migrar y Sincronizar
                             </>
                         )}
                     </Button>
@@ -78,5 +72,4 @@ export function ImportManager() {
             </CardContent>
         </Card>
     );
-    */
 }

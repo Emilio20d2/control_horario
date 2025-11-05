@@ -142,6 +142,28 @@ export async function processAndSeedData() {
     // Replace old employee data with the new ID-based structure
     dataToImport.employees = newEmployeesData;
 
+    // Remap weeklyRecords to use employeeNumber as keys
+    const originalWeeklyRecords = dataToImport.weeklyRecords;
+    const newWeeklyRecords: Record<string, any> = {};
+
+    for (const weekId in originalWeeklyRecords) {
+        const weekData = originalWeeklyRecords[weekId].weekData;
+        const newWeekData: Record<string, any> = {};
+        for (const oldEmployeeId in weekData) {
+            // Find employee by old ID to get their name
+            const employeeName = originalEmployeesData[oldEmployeeId]?.name.toUpperCase().trim();
+            if (employeeName) {
+                const employeeNumber = employeeNumberMapping[employeeName as keyof typeof employeeNumberMapping];
+                if (employeeNumber) {
+                    newWeekData[employeeNumber] = weekData[oldEmployeeId];
+                }
+            }
+        }
+        newWeeklyRecords[weekId] = { weekData: newWeekData };
+    }
+    dataToImport.weeklyRecords = newWeeklyRecords;
+
+
     const employeesToAddToEventual = Object.entries(employeeNumberMapping)
         .filter(([fullName]) => !employeesFoundInMapping.has(fullName.toUpperCase().trim()))
         .map(([fullName, number]) => ({
