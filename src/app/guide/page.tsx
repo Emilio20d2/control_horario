@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -42,7 +43,7 @@ export default function GuidePage() {
 
       <Tabs defaultValue="admin-manual" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="admin-manual">Manual de Usuario (Admin)</TabsTrigger>
+          <TabsTrigger value="admin-manual">Manual de Usuario</TabsTrigger>
           <TabsTrigger value="agreement">Convenio y Normativa</TabsTrigger>
         </TabsList>
         <TabsContent value="admin-manual">
