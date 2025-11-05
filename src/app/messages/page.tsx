@@ -82,28 +82,10 @@ function ChatView({ conversation }: { conversation: Conversation }) {
             } as Message;
         });
 
-        if (messagesLoading || realMessages.length > 0) {
-            return realMessages;
-        }
-        
-        const pendingRequest = correctionRequests.find(req => 
-            req.employeeId === conversation.employeeId && req.status === 'pending'
-        );
+        // Correction requests are now merged in the data provider, so we don't need the virtual message logic here.
+        return realMessages;
 
-        if (pendingRequest) {
-            const weekStartDateFormatted = format(parse(pendingRequest.weekId, 'yyyy-MM-dd', new Date()), 'dd/MM/yyyy', { locale: es });
-            const virtualMessage: Message = {
-                id: `virtual_${pendingRequest.id}`,
-                text: `SOLICITUD DE CORRECCIÓN\n\nSemana: ${weekStartDateFormatted}\nMotivo: ${pendingRequest.reason}`,
-                senderId: pendingRequest.employeeId,
-                timestamp: pendingRequest.requestedAt.toDate(),
-            };
-            return [virtualMessage];
-        }
-
-        return [];
-
-    }, [messagesSnapshot, messagesLoading, correctionRequests, conversation.employeeId, es]);
+    }, [messagesSnapshot]);
 
     const handleSendMessage = async (e: React.FormEvent, customMessage?: string) => {
         e.preventDefault();
@@ -434,3 +416,5 @@ export default function AdminMessagesPage() {
         </div>
     );
 }
+
+    

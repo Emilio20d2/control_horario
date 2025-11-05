@@ -1,5 +1,4 @@
 
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -395,58 +394,62 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   // Load conversations and correction requests after employees are loaded
   useEffect(() => {
     if (!loadingSteps.employees) return;
-
+  
     let active = true;
+  
+    const processConversations = async () => {
+        const [convs, corReqs] = await Promise.all([
+            getCollection<Conversation>('conversations'),
+            getCollection<CorrectionRequest>('correctionRequests')
+        ]);
+  
+        if (!active) return;
 
-    Promise.all([
-        getCollection<Conversation>('conversations'),
-        getCollection<CorrectionRequest>('correctionRequests')
-    ]).then(([convs, corReqs]) => {
-        if (active) {
-            const employeesMap = new Map(employees.map(e => [e.id, e.name]));
-            const convMap = new Map<string, Conversation>();
+        const employeesMap = new Map(employees.map(e => [e.id, e.name]));
+        const convMap = new Map<string, Conversation>();
 
-            // 1. Prime the map with existing conversations, ensuring name is present
-            convs.forEach(c => {
-                c.employeeName = c.employeeName || employeesMap.get(c.employeeId) || 'Desconocido';
-                convMap.set(c.id, c);
-            });
+        // 1. Prime the map with existing conversations, ensuring name is present
+        convs.forEach(c => {
+            c.employeeName = c.employeeName || employeesMap.get(c.employeeId) || 'Desconocido';
+            convMap.set(c.id, c);
+        });
 
-            // 2. Iterate through correction requests to update or create conversations
-            corReqs.forEach(req => {
-                const employeeName = employeesMap.get(req.employeeId) || 'Desconocido';
-                const existingConv = convMap.get(req.employeeId);
-                const requestTimestamp = req.requestedAt;
-                
-                const weekStartDateFormatted = format(parseISO(req.weekId), 'dd/MM/yyyy', { locale: es });
-                const messageText = `SOLICITUD DE CORRECCIÓN - Semana: ${weekStartDateFormatted}`;
-
-                if (!existingConv || isAfter(safeParseDate(requestTimestamp)!, safeParseDate(existingConv.lastMessageTimestamp) ?? new Date(0))) {
-                    const newOrUpdatedConvData: Conversation = {
-                        id: req.employeeId,
-                        employeeId: req.employeeId,
-                        employeeName: employeeName,
-                        lastMessageText: messageText,
-                        lastMessageTimestamp: requestTimestamp,
-                        readBy: existingConv?.readBy || [],
-                        unreadByEmployee: existingConv?.unreadByEmployee || false,
-                    };
-                    convMap.set(req.employeeId, newOrUpdatedConvData);
-                }
-            });
+        // 2. Iterate through correction requests to update or create conversations
+        corReqs.forEach(req => {
+            const employeeName = employeesMap.get(req.employeeId) || 'Desconocido';
+            const existingConv = convMap.get(req.employeeId);
+            const requestTimestamp = req.requestedAt;
             
-            const sortedConversations = Array.from(convMap.values()).sort((a, b) => {
-              const dateA = safeParseDate(a.lastMessageTimestamp)?.getTime() ?? 0;
-              const dateB = safeParseDate(b.lastMessageTimestamp)?.getTime() ?? 0;
-              return dateB - dateA;
-            });
+            const weekStartDateFormatted = format(parseISO(req.weekId), 'dd/MM/yyyy', { locale: es });
+            const messageText = `SOLICITUD DE CORRECCIÓN - Semana: ${weekStartDateFormatted}`;
 
-            setConversations(sortedConversations);
-            setCorrectionRequests(corReqs);
-            setLoadingSteps(prev => ({...prev, conversations: true}));
-        }
-    });
+            if (!existingConv || isAfter(safeParseDate(requestTimestamp)!, safeParseDate(existingConv.lastMessageTimestamp) ?? new Date(0))) {
+                const newOrUpdatedConvData: Conversation = {
+                    id: req.employeeId,
+                    employeeId: req.employeeId,
+                    employeeName: employeeName,
+                    lastMessageText: messageText,
+                    lastMessageTimestamp: requestTimestamp,
+                    readBy: existingConv?.readBy || [],
+                    unreadByEmployee: existingConv?.unreadByEmployee || false,
+                };
+                convMap.set(req.employeeId, newOrUpdatedConvData);
+            }
+        });
+        
+        const sortedConversations = Array.from(convMap.values()).sort((a, b) => {
+          const dateA = safeParseDate(a.lastMessageTimestamp)?.getTime() ?? 0;
+          const dateB = safeParseDate(b.lastMessageTimestamp)?.getTime() ?? 0;
+          return dateB - dateA;
+        });
 
+        setConversations(sortedConversations);
+        setCorrectionRequests(corReqs);
+        setLoadingSteps(prev => ({...prev, conversations: true}));
+    };
+  
+    processConversations();
+  
     return () => { active = false };
   }, [loadingSteps.employees, employees, safeParseDate]);
 
@@ -1405,30 +1408,5 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 };
 
 export const useDataProvider = () => useContext(DataContext);
-
-
-    
-
-    
-
-    
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
 
     
