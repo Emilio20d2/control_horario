@@ -11,8 +11,8 @@ import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@
 import { Trash2, Loader2, Edit, X } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { useToast } from '@/hooks/use-toast';
-import type { Employee, EmploymentPeriod } from '@/lib/types';
-import { format, parseISO } from 'date-fns';
+import type { Employee, EmploymentPeriod, ScheduledAbsence } from '@/lib/types';
+import { format, parseISO, isSameDay, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { addScheduledAbsence, hardDeleteScheduledAbsence } from '@/lib/services/employeeService';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -33,16 +33,18 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
     const [absenceTypeId, setAbsenceTypeId] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [editingAbsence, setEditingAbsence] = useState<{ id: string, periodId: string, originalRequest?: any } | null>(null);
+    const [editingAbsence, setEditingAbsence] = useState<ScheduledAbsence | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [deletePassword, setDeletePassword] = useState('');
 
 
     const sortedAbsenceTypes = [...absenceTypes].sort((a, b) => a.name.localeCompare(b.name));
 
-    const allScheduledAbsences = employee.employmentPeriods.flatMap(p => 
-        (p.scheduledAbsences || []).map(a => ({...a, periodId: p.id}))
-    ).sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
+    const groupedScheduledAbsences = (employee.employmentPeriods || [])
+        .flatMap(p => 
+            (p.scheduledAbsences || []).map(a => ({ ...a, periodId: p.id }))
+        )
+        .sort((a, b) => (b.startDate as Date).getTime() - (a.startDate as Date).getTime());
 
 
     const handleAddOrUpdateAbsence = async (e: React.FormEvent) => {
@@ -59,7 +61,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
         setIsLoading(true);
         try {
             const periodToUpdate = editingAbsence
-                ? employee.employmentPeriods.find(p => p.id === editingAbsence.periodId)
+                ? employee.employmentPeriods.find(p => p.id === (editingAbsence as any).periodId)
                 : period;
             
             if (!periodToUpdate) throw new Error("No se encontró el periodo del contrato para esta ausencia.");
@@ -111,14 +113,14 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
         setEndDate('');
     }
 
-    const handleEditAbsence = (absence: {id: string, absenceTypeId: string, startDate: Date, endDate: Date | null, periodId: string, originalRequest?: any}) => {
-        setEditingAbsence({ id: absence.id, periodId: absence.periodId, originalRequest: absence.originalRequest });
+    const handleEditAbsence = (absence: ScheduledAbsence) => {
+        setEditingAbsence(absence);
         setAbsenceTypeId(absence.absenceTypeId);
-        setStartDate(format(absence.startDate, 'yyyy-MM-dd'));
-        setEndDate(absence.endDate ? format(absence.endDate, 'yyyy-MM-dd') : '');
+        setStartDate(format(absence.startDate as Date, 'yyyy-MM-dd'));
+        setEndDate(absence.endDate ? format(absence.endDate as Date, 'yyyy-MM-dd') : '');
     };
 
-    const handleHardDelete = async (absenceId: string, periodId: string) => {
+    const handleHardDelete = async (absence: ScheduledAbsence) => {
         if (!deletePassword) {
             toast({ title: 'Contraseña requerida', description: 'Introduce tu contraseña para confirmar.', variant: 'destructive' });
             return;
@@ -133,7 +135,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                 return;
             }
 
-            await hardDeleteScheduledAbsence(employee.id, periodId, absenceId);
+            await hardDeleteScheduledAbsence(employee.id, (absence as any).periodId, absence.id, absence.originalRequest);
             toast({ title: 'Ausencia eliminada permanentemente', variant: 'destructive' });
             
             resetForm();
@@ -198,19 +200,19 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {(!allScheduledAbsences || allScheduledAbsences.length === 0) && (
+                                {(!groupedScheduledAbsences || groupedScheduledAbsences.length === 0) && (
                                     <TableRow>
                                         <TableCell colSpan={4} className="text-center h-24">No hay ausencias programadas.</TableCell>
                                     </TableRow>
                                 )}
-                                {allScheduledAbsences.map(absence => {
+                                {groupedScheduledAbsences.map(absence => {
                                     const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
                                     const isEditingCurrent = editingAbsence?.id === absence.id;
                                     return (
                                         <TableRow key={absence.id} className={isEditingCurrent ? 'bg-muted/50' : ''}>
                                             <TableCell className="font-medium">{absenceType?.name || 'Desconocido'}</TableCell>
-                                            <TableCell>{format(absence.startDate, 'dd/MM/yyyy', { locale: es })}</TableCell>
-                                            <TableCell>{absence.endDate ? format(absence.endDate, 'dd/MM/yyyy', { locale: es }) : 'Indefinida'}</TableCell>
+                                            <TableCell>{format(absence.startDate as Date, 'dd/MM/yyyy', { locale: es })}</TableCell>
+                                            <TableCell>{absence.endDate ? format(absence.endDate as Date, 'dd/MM/yyyy', { locale: es }) : 'Indefinida'}</TableCell>
                                             <TableCell className="text-right">
                                                  <Button variant="ghost" size="icon" onClick={() => handleEditAbsence(absence)} disabled={isEditingCurrent}>
                                                      <Edit className="h-4 w-4" />
@@ -235,7 +237,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                                                             </div>
                                                             <AlertDialogFooter>
                                                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleHardDelete(absence.id, absence.periodId)} disabled={isLoading}>
+                                                                <AlertDialogAction onClick={() => handleHardDelete(absence)} disabled={isLoading}>
                                                                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sí, eliminar permanentemente'}
                                                                 </AlertDialogAction>
                                                             </AlertDialogFooter>

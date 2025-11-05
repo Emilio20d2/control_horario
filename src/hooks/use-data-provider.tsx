@@ -269,45 +269,46 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   const processScheduledAbsences = useCallback((absences: any[], loadedAbsenceTypes: AbsenceType[], weeklyRecords: Record<string, WeeklyRecord>, employeeId: string): ScheduledAbsence[] => {
     if (!absences || !loadedAbsenceTypes.length) return [];
-  
+
     const confirmedAbsenceDays = new Set<string>();
     
     Object.values(weeklyRecords).forEach(record => {
-      const empWeekData = record.weekData?.[employeeId];
-      if (empWeekData?.confirmed && empWeekData.days) {
-        Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
-          if (dayData.absence !== 'ninguna') {
-            confirmedAbsenceDays.add(dayStr);
-          }
-        });
-      }
+        const empWeekData = record.weekData?.[employeeId];
+        if (empWeekData?.confirmed && empWeekData.days) {
+            Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                if (dayData.absence !== 'ninguna') {
+                    confirmedAbsenceDays.add(dayStr);
+                }
+            });
+        }
     });
-  
+
     const processedAbsences: ScheduledAbsence[] = [];
     absences.forEach(a => {
-      const startDate = safeParseDate(a.startDate);
-      if (!startDate) return;
-  
-      const endDate = a.endDate ? safeParseDate(a.endDate) : null;
-      
-      const absenceDayStr = format(startDate, 'yyyy-MM-dd');
-      
-      // Do not process if the absence is a single day and it's already confirmed
-      if (isSameDay(startDate, endDate || startDate) && confirmedAbsenceDays.has(absenceDayStr)) {
-          return;
-      }
-      
-      const processedAbsence: any = { ...a, startDate, endDate };
-      if (a.originalRequest) {
-          processedAbsence.originalRequest = {
-              ...a.originalRequest,
-              startDate: a.originalRequest.startDate instanceof Timestamp ? a.originalRequest.startDate.toDate().toISOString() : a.originalRequest.startDate,
-              endDate: a.originalRequest.endDate instanceof Timestamp ? a.originalRequest.endDate.toDate().toISOString() : a.originalRequest.endDate,
-          };
-      }
-      processedAbsences.push(processedAbsence);
+        const startDate = safeParseDate(a.startDate);
+        if (!startDate) return;
+        
+        // This is the key fix: if endDate is null/undefined, keep it that way.
+        const endDate = a.endDate ? safeParseDate(a.endDate) : null;
+        
+        // If it's a single day absence that's already confirmed, we can skip it.
+        const dayStr = format(startDate, 'yyyy-MM-dd');
+        if (endDate && isSameDay(startDate, endDate) && confirmedAbsenceDays.has(dayStr)) {
+            return;
+        }
+
+        const processedAbsence: any = { ...a, startDate, endDate };
+
+        if (a.originalRequest) {
+            processedAbsence.originalRequest = {
+                ...a.originalRequest,
+                startDate: a.originalRequest.startDate instanceof Timestamp ? a.originalRequest.startDate.toDate().toISOString() : a.originalRequest.startDate,
+                endDate: a.originalRequest.endDate instanceof Timestamp ? a.originalRequest.endDate.toDate().toISOString() : a.originalRequest.endDate,
+            };
+        }
+        processedAbsences.push(processedAbsence);
     });
-  
+
     return processedAbsences;
   }, [safeParseDate]);
 
@@ -1144,11 +1145,12 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                     
                     const endDate = a.endDate ? safeParseDate(a.endDate) : null;
 
-                    if (!endDate) { // Indefinite absence
+                    // This now correctly handles open-ended absences
+                    if (!endDate) { 
                         return !isBefore(day, startDate);
                     }
                     
-                    return startDate && endDate && isWithinInterval(day, { start: startOfDay(startDate), end: endOfDay(endDate) });
+                    return isWithinInterval(day, { start: startOfDay(startDate), end: endOfDay(endDate) });
                 });
     
             const absenceType = scheduledAbsence ? absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId) : undefined;
@@ -1229,8 +1231,12 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     
             emp.employmentPeriods?.forEach(period => {
                 period.scheduledAbsences?.forEach(absence => {
-                    if (!absence.startDate || !absence.endDate) return;
-                    const daysInAbsence = eachDayOfInterval({start: startOfDay(absence.startDate), end: startOfDay(absence.endDate)});
+                    if (!absence.startDate) return;
+                    const startDate = safeParseDate(absence.startDate)!;
+                    const endDate = absence.endDate ? safeParseDate(absence.endDate)! : startDate;
+                    
+                    const daysInAbsence = eachDayOfInterval({start: startOfDay(startDate), end: startOfDay(endDate)});
+                    
                     daysInAbsence.forEach(day => {
                         if (getYear(day) === targetYear) {
                             const dayStr = format(day, 'yyyy-MM-dd');

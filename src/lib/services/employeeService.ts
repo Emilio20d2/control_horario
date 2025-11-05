@@ -183,7 +183,7 @@ export const updateEmployee = async (
             if (existingIndex > -1) {
                 latestPeriod.weeklySchedulesHistory[existingIndex] = currentSchedule;
             } else {
-                // This case should ideally not happen if we're editing the latest, but as a fallback:
+                 // This case should ideally not happen if we're editing the latest, but as a fallback:
                  latestPeriod.weeklySchedulesHistory.push(currentSchedule);
             }
             latestPeriod.weeklySchedulesHistory.sort((a: WeeklyScheduleData, b: WeeklyScheduleData) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime());
@@ -355,13 +355,13 @@ export const addScheduledAbsence = async (
         id: `abs_${Date.now()}_${Math.random()}`,
         absenceTypeId: newAbsence.absenceTypeId,
         startDate: newAbsence.startDate,
-        endDate: finalEndDate,
+        endDate: newAbsence.endDate, // Store null if it's open-ended
         notes: newAbsence.notes || null,
         communicatedTo: newAbsence.communicatedTo || null,
         isDefinitive: !isEmployeeRequest, // It's definitive if an admin adds it, not definitive if it's an employee request.
         originalRequest: {
             startDate: newAbsence.startDate,
-            endDate: finalEndDate,
+            endDate: newAbsence.endDate,
         },
     };
   
