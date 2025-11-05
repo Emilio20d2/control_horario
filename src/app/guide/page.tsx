@@ -11,28 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, BookUser, LayoutDashboard, CalendarDays, Users, UserSquare, ListChecks, Plane, Settings2, Home, MessageSquare, CalendarClock } from 'lucide-react';
 import Image from 'next/image';
 
-function AdminGuideItem({ icon: Icon, title, children }: { icon: React.ElementType, title: string, children: React.ReactNode }) {
-    return (
-        <AccordionItem value={title}>
-            <AccordionTrigger className="text-lg font-semibold">
-                <div className="flex items-center gap-3">
-                    <Icon className="h-5 w-5 text-primary" />
-                    <span>{title}</span>
-                </div>
-            </AccordionTrigger>
-            <AccordionContent className="space-y-4 pt-2">
-                {children}
-            </AccordionContent>
-        </AccordionItem>
-    );
-};
-
-function SectionTitle({ number, title }: { number: number, title: string }) {
-    return (
-        <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">{number}) {title}</h3>
-    );
-};
-
 export default function GuidePage() {
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6 max-w-6xl mx-auto">
@@ -60,193 +38,274 @@ export default function GuidePage() {
         
         <TabsContent value="admin-guide" className="pt-6">
             <Accordion type="single" collapsible className="w-full">
-                <AdminGuideItem icon={Home} title="Inicio">
-                    <div className="space-y-4">
-                        <p className="text-muted-foreground">
-                            Es la primera página que ves al iniciar sesión y actúa como un centro de notificaciones y tareas pendientes.
-                        </p>
-                        <ul className="list-disc list-inside space-y-3 text-sm">
-                            <li><strong>Semanas Pendientes</strong>: Esta tarjeta te avisa de la semana más antigua que tiene empleados sin confirmar. Muestra un contador con el número de empleados pendientes y un botón para ir directamente a esa semana en el "Registro Horario" y finalizar la tarea.</li>
-                            <li><strong>Mensajes Sin Leer</strong>: Aquí aparecen las últimas conversaciones con mensajes de empleados que aún no has leído. Actúa como un acceso directo a la sección de "Mensajes" para que puedas responder rápidamente.</li>
-                            <li><strong>Próximos Eventos</strong>: Ofrece una vista rápida de las próximas ausencias programadas (bajas, excedencias, vacaciones, etc.) en las siguientes semanas, permitiéndote anticipar las necesidades de personal.</li>
-                        </ul>
-                    </div>
-                </AdminGuideItem>
-
-                <AdminGuideItem icon={LayoutDashboard} title="Panel de Control">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <AccordionItem value="Inicio">
+                    <AccordionTrigger className="text-lg font-semibold">
+                        <div className="flex items-center gap-3">
+                            <Home className="h-5 w-5 text-primary" />
+                            <span>Inicio</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-2">
                         <div className="space-y-4">
                             <p className="text-muted-foreground">
-                                Es la página principal y el centro de operaciones para la generación de informes. Desde aquí puedes exportar en PDF toda la información clave para la gestión y auditoría.
+                                Es la primera página que ves al iniciar sesión y actúa como un centro de notificaciones y tareas pendientes.
                             </p>
-                            <ul className="list-disc list-inside space-y-2 text-sm">
-                                <li>**Informes Anuales por Empleado:** Genera resúmenes semanales o comparativas de jornada teórica vs. real.</li>
-                                <li>**Informes Generales:** Exporta datos de ausencias, planificación de festivos, horas complementarias y balances semanales.</li>
-                                <li>**Gráfico de Balances:** Visualiza rápidamente los 10 empleados con mayor balance de horas.</li>
+                            <ul className="list-disc list-inside space-y-3 text-sm">
+                                <li><strong>Semanas Pendientes</strong>: Esta tarjeta te avisa de la semana más antigua que tiene empleados sin confirmar. Muestra un contador con el número de empleados pendientes y un botón para ir directamente a esa semana en el "Registro Horario" y finalizar la tarea.</li>
+                                <li><strong>Mensajes Sin Leer</strong>: Aquí aparecen las últimas conversaciones con mensajes de empleados que aún no has leído. Actúa como un acceso directo a la sección de "Mensajes" para que puedas responder rápidamente.</li>
+                                <li><strong>Próximos Eventos</strong>: Ofrece una vista rápida de las próximas ausencias programadas (bajas, excedencias, vacaciones, etc.) en las siguientes semanas, permitiéndote anticipar las necesidades de personal.</li>
                             </ul>
                         </div>
-                        <Image src="https://picsum.photos/seed/dashboard/600/400" alt="Captura de pantalla del Panel de Control" width={600} height={400} className="rounded-lg shadow-md w-full" data-ai-hint="dashboard graph" />
-                    </div>
-                </AdminGuideItem>
+                    </AccordionContent>
+                </AccordionItem>
 
-                <AdminGuideItem icon={CalendarDays} title="Registro Horario">
-                     <div className="space-y-4">
-                        <p className="text-muted-foreground">
-                            Esta es la herramienta principal para la gestión diaria del tiempo. Aquí se registran las horas trabajadas, ausencias y otros eventos de cada empleado para cada semana.
-                        </p>
-                        <ul className="list-disc list-inside space-y-3 text-sm">
-                            <li>
-                                <strong>Navegación y Vistas:</strong>
-                                <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
-                                    <li>Usa las flechas y el calendario en la parte superior para moverte entre semanas.</li>
-                                    <li>Para cambiar a una vista anual de un solo empleado, selecciónalo en el menú desplegable de la cabecera.</li>
+                <AccordionItem value="Panel de Control">
+                    <AccordionTrigger className="text-lg font-semibold">
+                        <div className="flex items-center gap-3">
+                            <LayoutDashboard className="h-5 w-5 text-primary" />
+                            <span>Panel de Control</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-2">
+                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                            <div className="space-y-4">
+                                <p className="text-muted-foreground">
+                                    Es la página principal y el centro de operaciones para la generación de informes. Desde aquí puedes exportar en PDF toda la información clave para la gestión y auditoría.
+                                </p>
+                                <ul className="list-disc list-inside space-y-2 text-sm">
+                                    <li>**Informes Anuales por Empleado:** Genera resúmenes semanales o comparativas de jornada teórica vs. real.</li>
+                                    <li>**Informes Generales:** Exporta datos de ausencias, planificación de festivos, horas complementarias y balances semanales.</li>
+                                    <li>**Gráfico de Balances:** Visualiza rápidamente los 10 empleados con mayor balance de horas.</li>
                                 </ul>
-                            </li>
-                            <li>
-                                <strong>Fila de Empleado:</strong> Cada fila representa a un empleado para la semana seleccionada.
-                                <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
-                                    <li>A la izquierda, verás el nombre, el tipo de turno asignado (T1, T2, etc.) y campos para modificar la <strong>Jornada Semanal</strong> (si necesitas ajustar las horas teóricas para esa semana específica) y para añadir <strong>H. Complementarias</strong>.</li>
-                                </ul>
-                            </li>
-                            <li>
-                                <strong>Celdas de Día:</strong> Cada celda diaria contiene varios campos:
-                                <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
-                                    <li><strong>Teóricas:</strong> Muestra las horas que le corresponden trabajar ese día según su calendario. No es editable.</li>
-                                    <li><strong>Campo numérico principal:</strong> Aquí introduces las <strong>horas trabajadas</strong>.</li>
-                                    <li><strong>Campo H. Libranza:</strong> Solo aparece en festivos si el empleado libra. Aquí puedes registrar las horas que acumula por librar en festivo. Es editable.</li>
-                                </ul>
-                            </li>
-                                <li>
-                                <strong>Gestión de Ausencias:</strong>
-                                <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
-                                    <li>Haz clic en el icono <code className="font-bold">+</code> en una celda para abrir el menú de ausencias.</li>
-                                    <li>Selecciona un tipo de ausencia de la lista (Baja, Asuntos Propios, etc.).</li>
-                                    <li>Si la ausencia permite horas parciales (ej. "Horas Médicas"), aparecerá un nuevo campo para que introduzcas las horas exactas de ausencia. El sistema calculará las horas trabajadas restantes.</li>
-                                    <li>Para quitar una ausencia, vuelve a abrir el menú y selecciona "Sin ausencia".</li>
-                                </ul>
-                            </li>
-                                <li>
-                                <strong>Impacto Semanal y Confirmación:</strong>
-                                <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
-                                    <li>Debajo de cada empleado, una tabla muestra el <strong>impacto en tiempo real</strong> de tus cambios sobre las bolsas de horas (Ordinaria, Festivos, Libranza).</li>
-                                    <li>Una vez que todos los datos de la semana para ese empleado son correctos, pulsa el botón <strong>"Confirmar"</strong>. Los datos se guardarán de forma permanente y sus balances de horas se actualizarán oficialmente.</li>
-                                </ul>
-                            </li>
-                        </ul>
-                    </div>
-                </AdminGuideItem>
-                
-                <AdminGuideItem icon={Users} title="Empleados">
-                    <div className="space-y-4">
-                        <p className="text-muted-foreground">
-                            Centro de gestión de la plantilla. Aquí puedes ver, crear y modificar la información de tus empleados.
-                        </p>
-                        <ul className="list-disc list-inside space-y-3 text-sm">
-                            <li><strong>Pestañas "Activos" e "Inactivos":</strong> Te permite filtrar entre empleados con contrato en vigor y aquellos cuyo contrato ha finalizado.</li>
-                            <li><strong>Listado de Empleados:</strong> Muestra un resumen de cada empleado. En "Activos", verás sus balances de horas y días de vacaciones en tiempo real.</li>
-                            <li><strong>Botón "Añadir Empleado":</strong> Te lleva a un formulario para crear una nueva ficha de empleado desde cero.</li>
-                            <li><strong>Botón "Ver Ficha":</strong> En cada fila, este botón te lleva a la "Ficha de Empleado" individual para ver y gestionar todos sus detalles.</li>
-                        </ul>
-                    </div>
-                </AdminGuideItem>
+                            </div>
+                            <Image src="https://picsum.photos/seed/dashboard/600/400" alt="Captura de pantalla del Panel de Control" width={600} height={400} className="rounded-lg shadow-md w-full" data-ai-hint="dashboard graph" />
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
 
-                <AdminGuideItem icon={UserSquare} title="Ficha de Empleado">
-                   <div className="space-y-4">
-                        <p className="text-muted-foreground">
-                            Visión de 360 grados de un trabajador, donde se centraliza toda su información laboral y personal.
-                        </p>
-                        <ul className="list-disc list-inside space-y-3 text-sm">
-                            <li><strong>Tarjetas de Resumen:</strong> Muestran una vista rápida de las bolsas de horas, el balance total y el estado de sus vacaciones.</li>
-                            <li><strong>Detalles del Contrato:</strong> Muestra la información del contrato vigente, el historial de cambios de jornada y el calendario laboral rotativo.</li>
-                            <li><strong>Cómputo Anual:</strong> Una tabla que resume, año por año, la comparativa entre horas teóricas y computadas, y el balance anual resultante.</li>
-                            <li><strong>Gestión de Ausencias Programadas:</strong> Un formulario para registrar ausencias de larga duración como bajas, excedencias o permisos de maternidad/paternidad. Estas ausencias se aplicarán automáticamente en el "Registro Horario".</li>
-                            <li><strong>Botones de Acción:</strong> Permiten "Editar Ficha", "Generar Informes" específicos para ese empleado, o "Recontratar" si está inactivo.</li>
-                        </ul>
-                    </div>
-                </AdminGuideItem>
-
-                <AdminGuideItem icon={ListChecks} title="Formularios Personalizados">
-                    <div className="space-y-4">
-                        <p className="text-muted-foreground">
-                            Herramienta para crear e imprimir PDFs a medida para cualquier necesidad (controles de EPIs, formaciones, etc.).
-                        </p>
+                <AccordionItem value="Registro Horario">
+                    <AccordionTrigger className="text-lg font-semibold">
+                        <div className="flex items-center gap-3">
+                            <CalendarDays className="h-5 w-5 text-primary" />
+                            <span>Registro Horario</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-2">
+                         <div className="space-y-4">
+                            <p className="text-muted-foreground">
+                                Esta es la herramienta principal para la gestión diaria del tiempo. Aquí se registran las horas trabajadas, ausencias y otros eventos de cada empleado para cada semana.
+                            </p>
                             <ul className="list-disc list-inside space-y-3 text-sm">
-                            <li><strong>Formularios Personalizados:</strong>
-                                <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
-                                    <li>Define un título y descripción.</li>
-                                    <li>Añade columnas personalizadas, eligiendo si el contenido será un campo de texto libre o casillas de verificación (ej: "Entregado", "Devuelto").</li>
-                                    <li>Al generar el PDF, la aplicación creará un documento con todos los empleados activos listados, listo para imprimir y rellenar.</li>
-                                </ul>
-                            </li>
-                            <li><strong>Datos Personales:</strong> Genera un informe en PDF con los datos personales de la plantilla (DNI, teléfono, email, etc.) que elijas.</li>
-                            <li><strong>Empleados para Informes:</strong> Gestiona una lista de empleados "eventuales" que no están en la plantilla principal pero que deben aparecer en ciertos informes, como el de planificación de festivos.</li>
-                        </ul>
-                    </div>
-                </AdminGuideItem>
+                                <li>
+                                    <strong>Navegación y Vistas:</strong>
+                                    <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
+                                        <li>Usa las flechas y el calendario en la parte superior para moverte entre semanas.</li>
+                                        <li>Para cambiar a una vista anual de un solo empleado, selecciónalo en el menú desplegable de la cabecera.</li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <strong>Fila de Empleado:</strong> Cada fila representa a un empleado para la semana seleccionada.
+                                    <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
+                                        <li>A la izquierda, verás el nombre, el tipo de turno asignado (T1, T2, etc.) y campos para modificar la <strong>Jornada Semanal</strong> (si necesitas ajustar las horas teóricas para esa semana específica) y para añadir <strong>H. Complementarias</strong>.</li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <strong>Celdas de Día:</strong> Cada celda diaria contiene varios campos:
+                                    <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
+                                        <li><strong>Teóricas:</strong> Muestra las horas que le corresponden trabajar ese día según su calendario. No es editable.</li>
+                                        <li><strong>Campo numérico principal:</strong> Aquí introduces las <strong>horas trabajadas</strong>.</li>
+                                        <li><strong>Campo H. Libranza:</strong> Solo aparece en festivos si el empleado libra. Aquí puedes registrar las horas que acumula por librar en festivo. Es editable.</li>
+                                    </ul>
+                                </li>
+                                    <li>
+                                    <strong>Gestión de Ausencias:</strong>
+                                    <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
+                                        <li>Haz clic en el icono <code className="font-bold">+</code> en una celda para abrir el menú de ausencias.</li>
+                                        <li>Selecciona un tipo de ausencia de la lista (Baja, Asuntos Propios, etc.).</li>
+                                        <li>Si la ausencia permite horas parciales (ej. "Horas Médicas"), aparecerá un nuevo campo para que introduzcas las horas exactas de ausencia. El sistema calculará las horas trabajadas restantes.</li>
+                                        <li>Para quitar una ausencia, vuelve a abrir el menú y selecciona "Sin ausencia".</li>
+                                    </ul>
+                                </li>
+                                    <li>
+                                    <strong>Impacto Semanal y Confirmación:</strong>
+                                    <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
+                                        <li>Debajo de cada empleado, una tabla muestra el <strong>impacto en tiempo real</strong> de tus cambios sobre las bolsas de horas (Ordinaria, Festivos, Libranza).</li>
+                                        <li>Una vez que todos los datos de la semana para ese empleado son correctos, pulsa el botón <strong>"Confirmar"</strong>. Los datos se guardarán de forma permanente y sus balances de horas se actualizarán oficialmente.</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
 
-                <AdminGuideItem icon={Plane} title="Programador de Vacaciones">
-                    <div className="space-y-4">
+                 <AccordionItem value="Empleados">
+                    <AccordionTrigger className="text-lg font-semibold">
+                        <div className="flex items-center gap-3">
+                            <Users className="h-5 w-5 text-primary" />
+                            <span>Empleados</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-2">
+                        <div className="space-y-4">
                             <p className="text-muted-foreground">
-                            Vista de cuadrante anual para la planificación estratégica de ausencias largas (vacaciones, excedencias, etc.).
-                        </p>
-                        <ul className="list-disc list-inside space-y-3 text-sm">
-                            <li><strong>Cuadrante Anual:</strong> Muestra una vista de todo el año con los empleados agrupados por categorías (que se definen en Ajustes). Las ausencias programadas se muestran en el color del grupo, permitiendo identificar rápidamente solapamientos y periodos de alta o baja ocupación.</li>
-                            <li><strong>Informes:</strong> Desde aquí puedes exportar la vista del cuadrante a un PDF para imprimir, o generar un listado de firmas para que los empleados validen sus periodos de vacaciones.</li>
-                        </ul>
-                    </div>
-                </AdminGuideItem>
-                
-                <AdminGuideItem icon={CalendarClock} title="Calendario">
-                    <div className="space-y-4">
-                            <p className="text-muted-foreground">
-                            Visión global de todas las ausencias programadas en el sistema.
-                        </p>
-                        <ul className="list-disc list-inside space-y-2 text-sm">
-                            <li><strong>Vista Semanal o Mensual:</strong> Muestra en un calendario quién está ausente cada día y por qué motivo, usando un código de colores por tipo de ausencia.</li>
-                            <li><strong>Gestión de Ausencias:</strong> Permite añadir, modificar o eliminar ausencias de larga duración directamente desde el calendario, haciendo clic en un día o en un evento existente.</li>
-                        </ul>
-                    </div>
-                </AdminGuideItem>
-                
-                <AdminGuideItem icon={MessageSquare} title="Mensajes">
-                    <div className="space-y-4">
-                            <p className="text-muted-foreground">
-                            Canal de comunicación centralizado con los empleados.
-                        </p>
-                        <ul className="list-disc list-inside space-y-2 text-sm">
-                            <li><strong>Chat Individual:</strong> Cada empleado tiene su propio chat para comunicar incidencias o recibir notificaciones. Las conversaciones no leídas se marcan para llamar tu atención.</li>
-                            <li><strong>Solicitudes de Corrección:</strong> Aquí recibirás las peticiones de los empleados para corregir errores en semanas ya confirmadas. Estas solicitudes aparecen como mensajes en el chat del empleado correspondiente.</li>
-                        </ul>
-                    </div>
-                </AdminGuideItem>
-                
-                <AdminGuideItem icon={Settings2} title="Ajustes">
-                    <div className="space-y-4">
-                        <p className="text-muted-foreground">
-                            El cerebro de la aplicación, donde se definen las reglas de negocio que afectan a todos los cálculos.
-                        </p>
+                                Centro de gestión de la plantilla. Aquí puedes ver, crear y modificar la información de tus empleados.
+                            </p>
                             <ul className="list-disc list-inside space-y-3 text-sm">
-                            <li><strong>Días Festivos:</strong> Añade, edita o elimina los festivos nacionales, regionales, locales y las aperturas comerciales para cada año.</li>
-                            <li><strong>Conf. Anual:</strong> Define las horas máximas de convenio para cada año, que se usarán como base para el cómputo anual.</li>
-                            <li><strong>Tipos de Ausencia:</strong> Crea o modifica los tipos de ausencia y sus reglas (si computan para la jornada semanal/anual, si descuentan horas, si suspenden el contrato, etc.).</li>
-                            <li><strong>Tipos de Contrato:</strong> Gestiona los tipos de contrato y define qué bolsas de horas se aplican a cada uno.</li>
-                            <li><strong>Campañas de Solicitud:</strong> Abre y cierra periodos específicos para que los empleados puedan solicitar sus vacaciones o ausencias largas.</li>
-                            <li><strong>Utilidades:</strong> Herramientas avanzadas para administradores, como la limpieza de datos o la ejecución de auditorías retroactivas.</li>
-                        </ul>
-                    </div>
-                </AdminGuideItem>
+                                <li><strong>Pestañas "Activos" e "Inactivos":</strong> Te permite filtrar entre empleados con contrato en vigor y aquellos cuyo contrato ha finalizado.</li>
+                                <li><strong>Listado de Empleados:</strong> Muestra un resumen de cada empleado. En "Activos", verás sus balances de horas y días de vacaciones en tiempo real.</li>
+                                <li><strong>Botón "Añadir Empleado":</strong> Te lleva a un formulario para crear una nueva ficha de empleado desde cero.</li>
+                                <li><strong>Botón "Ver Ficha":</strong> En cada fila, este botón te lleva a la "Ficha de Empleado" individual para ver y gestionar todos sus detalles.</li>
+                            </ul>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="Ficha de Empleado">
+                    <AccordionTrigger className="text-lg font-semibold">
+                        <div className="flex items-center gap-3">
+                            <UserSquare className="h-5 w-5 text-primary" />
+                            <span>Ficha de Empleado</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-2">
+                        <div className="space-y-4">
+                            <p className="text-muted-foreground">
+                                Visión de 360 grados de un trabajador, donde se centraliza toda su información laboral y personal.
+                            </p>
+                            <ul className="list-disc list-inside space-y-3 text-sm">
+                                <li><strong>Tarjetas de Resumen:</strong> Muestran una vista rápida de las bolsas de horas, el balance total y el estado de sus vacaciones.</li>
+                                <li><strong>Detalles del Contrato:</strong> Muestra la información del contrato vigente, el historial de cambios de jornada y el calendario laboral rotativo.</li>
+                                <li><strong>Cómputo Anual:</strong> Una tabla que resume, año por año, la comparativa entre horas teóricas y computadas, y el balance anual resultante.</li>
+                                <li><strong>Gestión de Ausencias Programadas:</strong> Un formulario para registrar ausencias de larga duración como bajas, excedencias o permisos de maternidad/paternidad. Estas ausencias se aplicarán automáticamente en el "Registro Horario".</li>
+                                <li><strong>Botones de Acción:</strong> Permiten "Editar Ficha", "Generar Informes" específicos para ese empleado, o "Recontratar" si está inactivo.</li>
+                            </ul>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="Formularios Personalizados">
+                    <AccordionTrigger className="text-lg font-semibold">
+                        <div className="flex items-center gap-3">
+                            <ListChecks className="h-5 w-5 text-primary" />
+                            <span>Formularios Personalizados</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-2">
+                        <div className="space-y-4">
+                            <p className="text-muted-foreground">
+                                Herramienta para crear e imprimir PDFs a medida para cualquier necesidad (controles de EPIs, formaciones, etc.).
+                            </p>
+                                <ul className="list-disc list-inside space-y-3 text-sm">
+                                <li><strong>Formularios Personalizados:</strong>
+                                    <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
+                                        <li>Define un título y descripción.</li>
+                                        <li>Añade columnas personalizadas, eligiendo si el contenido será un campo de texto libre o casillas de verificación (ej: "Entregado", "Devuelto").</li>
+                                        <li>Al generar el PDF, la aplicación creará un documento con todos los empleados activos listados, listo para imprimir y rellenar.</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Datos Personales:</strong> Genera un informe en PDF con los datos personales de la plantilla (DNI, teléfono, email, etc.) que elijas.</li>
+                                <li><strong>Empleados para Informes:</strong> Gestiona una lista de empleados "eventuales" que no están en la plantilla principal pero que deben aparecer en ciertos informes, como el de planificación de festivos.</li>
+                            </ul>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                 <AccordionItem value="Programador de Vacaciones">
+                    <AccordionTrigger className="text-lg font-semibold">
+                        <div className="flex items-center gap-3">
+                            <Plane className="h-5 w-5 text-primary" />
+                            <span>Programador de Vacaciones</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-2">
+                        <div className="space-y-4">
+                                <p className="text-muted-foreground">
+                                Vista de cuadrante anual para la planificación estratégica de ausencias largas (vacaciones, excedencias, etc.).
+                            </p>
+                            <ul className="list-disc list-inside space-y-3 text-sm">
+                                <li><strong>Cuadrante Anual:</strong> Muestra una vista de todo el año con los empleados agrupados por categorías (que se definen en Ajustes). Las ausencias programadas se muestran en el color del grupo, permitiendo identificar rápidamente solapamientos y periodos de alta o baja ocupación.</li>
+                                <li><strong>Informes:</strong> Desde aquí puedes exportar la vista del cuadrante a un PDF para imprimir, o generar un listado de firmas para que los empleados valides sus periodos de vacaciones.</li>
+                            </ul>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+                
+                <AccordionItem value="Calendario">
+                    <AccordionTrigger className="text-lg font-semibold">
+                        <div className="flex items-center gap-3">
+                            <CalendarClock className="h-5 w-5 text-primary" />
+                            <span>Calendario</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-2">
+                       <div className="space-y-4">
+                                <p className="text-muted-foreground">
+                                Visión global de todas las ausencias programadas en el sistema.
+                            </p>
+                            <ul className="list-disc list-inside space-y-2 text-sm">
+                                <li><strong>Vista Semanal o Mensual:</strong> Muestra en un calendario quién está ausente cada día y por qué motivo, usando un código de colores por tipo de ausencia.</li>
+                                <li><strong>Gestión de Ausencias:</strong> Permite añadir, modificar o eliminar ausencias de larga duración directamente desde el calendario, haciendo clic en un día o en un evento existente.</li>
+                            </ul>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+                
+                <AccordionItem value="Mensajes">
+                    <AccordionTrigger className="text-lg font-semibold">
+                        <div className="flex items-center gap-3">
+                            <MessageSquare className="h-5 w-5 text-primary" />
+                            <span>Mensajes</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-2">
+                        <div className="space-y-4">
+                                <p className="text-muted-foreground">
+                                Canal de comunicación centralizado con los empleados.
+                            </p>
+                            <ul className="list-disc list-inside space-y-2 text-sm">
+                                <li><strong>Chat Individual:</strong> Cada empleado tiene su propio chat para comunicar incidencias o recibir notificaciones. Las conversaciones no leídas se marcan para llamar tu atención.</li>
+                                <li><strong>Solicitudes de Corrección:</strong> Aquí recibirás las peticiones de los empleados para corregir errores en semanas ya confirmadas. Estas solicitudes aparecen como mensajes en el chat del empleado correspondiente.</li>
+                            </ul>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                 <AccordionItem value="Ajustes">
+                    <AccordionTrigger className="text-lg font-semibold">
+                        <div className="flex items-center gap-3">
+                            <Settings2 className="h-5 w-5 text-primary" />
+                            <span>Ajustes</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-2">
+                       <div className="space-y-4">
+                            <p className="text-muted-foreground">
+                                El cerebro de la aplicación, donde se definen las reglas de negocio que afectan a todos los cálculos.
+                            </p>
+                                <ul className="list-disc list-inside space-y-3 text-sm">
+                                <li><strong>Días Festivos:</strong> Añade, edita o elimina los festivos nacionales, regionales, locales y las aperturas comerciales para cada año.</li>
+                                <li><strong>Conf. Anual:</strong> Define las horas máximas de convenio para cada año, que se usarán como base para el cómputo anual.</li>
+                                <li><strong>Tipos de Ausencia:</strong> Crea o modifica los tipos de ausencia y sus reglas (si computan para la jornada semanal/anual, si descuentan horas, si suspenden el contrato, etc.).</li>
+                                <li><strong>Tipos de Contrato:</strong> Gestiona los tipos de contrato y define qué bolsas de horas se aplican a cada uno.</li>
+                                <li><strong>Campañas de Solicitud:</strong> Abre y cierra periodos específicos para que los empleados puedan solicitar sus vacaciones o ausencias largas.</li>
+                                <li><strong>Utilidades:</strong> Herramientas avanzadas para administradores, como la limpieza de datos o la ejecución de auditorías retroactivas.</li>
+                            </ul>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
             </Accordion>
         </TabsContent>
 
         <TabsContent value="convenio-guide" className="pt-6 prose dark:prose-invert max-w-full">
             <div className="space-y-6">
-                <SectionTitle number={1} title="Marco de aplicación y criterio de prevalencia" />
+
+                <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">1) Marco de aplicación y criterio de prevalencia</h3>
                 <ul className="list-disc list-inside space-y-2">
                     <li><strong>Orden de referencia práctica</strong>: Estatuto de los Trabajadores (mínimos), <strong>Plan de Igualdad Grupo Inditex</strong> (ámbito estatal y mejoras), <strong>Convenio Comercio Textil Zaragoza</strong> y pactos internos más favorables. En conflicto, aplica la <strong>condición más beneficiosa</strong> para la persona trabajadora.</li>
                     <li>Este dosier ya incorpora esa prevalencia: donde el Plan de Igualdad mejora al Convenio, <strong>se aplica la mejora del Plan</strong>.</li>
                 </ul>
 
-                <SectionTitle number={2} title="Jornada, pausas, descansos y calendario" />
+                <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">2) Jornada, pausas, descansos y calendario</h3>
                 <div className="space-y-4">
                     <h4 className="font-bold">Jornada anual</h4>
                     <p>1.794 horas/año durante toda la vigencia del convenio.</p>
@@ -271,13 +330,13 @@ export default function GuidePage() {
                     <p>El Plan fomenta <strong>eliminar el turno partido</strong> como régimen ordinario allí donde sea viable, priorizando jornada continuada.</p>
                 </div>
 
-                <SectionTitle number={3} title="Vacaciones" />
+                <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">3) Vacaciones</h3>
                 <p><strong>31 días naturales</strong>, en <strong>dos periodos</strong>: 21 días entre junio-septiembre y 10 días en otra época pactada. Inician en <strong>lunes</strong> salvo acuerdo distinto. <strong>Turno rotativo</strong> de elección; matrimonio en la empresa: <strong>coincidencia de vacaciones</strong>. No comienzan en domingos/festivos/descanso semanal. IT que impida disfrutarlas: <strong>se posponen</strong>.</p>
                 
-                <SectionTitle number={4} title="Asuntos propios" />
+                <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">4) Asuntos propios</h3>
                 <p><strong>2 días al año</strong>, <strong>no computan contra la jornada anual</strong>. Uno puede <strong>fraccionarse en dos medias jornadas</strong> de mutuo acuerdo.</p>
 
-                <SectionTitle number={5} title="Permisos retribuidos del Convenio (y mejoras del Plan)" />
+                <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">5) Permisos retribuidos del Convenio (y mejoras del Plan)</h3>
                 <div className="space-y-4">
                     <h4 className="font-bold">Convenio Zaragoza (retribuidos, con aviso y justificación)</h4>
                      <ul className="list-disc list-inside space-y-2">
@@ -320,7 +379,7 @@ export default function GuidePage() {
                     </ul>
                 </div>
 
-                <SectionTitle number={6} title="Excedencias y reducciones" />
+                <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">6) Excedencias y reducciones</h3>
                  <ul className="list-disc list-inside space-y-2">
                     <li><strong>Cuidado de hijos</strong>: <strong>Excedencia</strong> hasta <strong>3 años</strong> por cada hijo (nacimiento, adopción o acogimiento). Reincorporación automática al finalizar; solicita con 1 mes de antelación.</li>
                     <li><strong>Excedencia especial por duelo familiar</strong>: Por <strong>fallecimiento de familiar hasta 2º grado</strong>: hasta <strong>4 semanas</strong>, con <strong>reserva de puesto</strong>.</li>
@@ -328,9 +387,10 @@ export default function GuidePage() {
                     <li><strong>Reducciones y adaptaciones</strong>: Se mantienen las de ET (guarda legal, cuidados, etc.). El Plan incluye <strong>medidas de adaptación de jornada y eliminación del turno partido</strong> cuando sea viable.</li>
                 </ul>
 
-                <SectionTitle number={7} title="Trabajo en domingos/festivos, nocturnidad y jornadas especiales" />
+                <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">7) Trabajo en domingos/festivos, nocturnidad y jornadas especiales</h3>
                  <ul className="list-disc list-inside space-y-2">
-                    <li><strong>Festivos trabajados</strong>: Existen dos modalidades de compensación:
+                    <li>
+                        <strong>Festivos trabajados</strong>: Existen dos modalidades de compensación:
                         <ul className="list-['-_'] list-inside ml-4 mt-1">
                             <li><strong>Pago simple (96€):</strong> Se abona esta cantidad y además se devuelven las horas trabajadas en la bolsa de festivos para su posterior disfrute.</li>
                             <li><strong>Pago doble (192€):</strong> Se abona esta cantidad superior, pero en este caso, las horas trabajadas no se devuelven en la bolsa de festivos.</li>
@@ -342,7 +402,7 @@ export default function GuidePage() {
                     <li><strong>Jornadas especiales</strong>: Black Friday, víspera de Reyes, remontajes… <strong>voluntarias</strong> y con <strong>salario/hora superior</strong> al del convenio, a pactar previamente.</li>
                 </ul>
 
-                <SectionTitle number={8} title="Retribución: tablas, pluses y pagas" />
+                <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">8) Retribución: tablas, pluses y pagas</h3>
                  <ul className="list-disc list-inside space-y-2">
                     <li><strong>Tablas salariales</strong>: 2023: +2,5% sobre 2022; 2024: +2% sobre 2023. Tablas completas por grupos y categorías en anexos del Convenio.</li>
                     <li><strong>Pagas extraordinarias</strong>: <strong>Julio y Navidad</strong>: una mensualidad según tablas, más ad personam si procede; prorrateables por acuerdo.</li>
@@ -353,27 +413,27 @@ export default function GuidePage() {
                     <li>**Seguro** por invalidez o muerte: 16.500 €.</li>
                 </ul>
 
-                <SectionTitle number={9} title="Promoción profesional y desconexión digital" />
+                <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">9) Promoción profesional y desconexión digital</h3>
                  <ul className="list-disc list-inside space-y-2">
                     <li>**Ascensos automáticos por permanencia efectiva** en categoría (ayudante → dependiente 2ª en 2 años; dependiente 2ª → 1ª en 3; 1ª → mayor en 5; etc.).</li>
                     <li>**Desconexión digital**: el convenio faculta protocolos para garantizarla (art. 20 bis ET).</li>
                 </ul>
 
-                <SectionTitle number={10} title="Definiciones útiles: parentesco y grados" />
+                <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">10) Definiciones útiles: parentesco y grados</h3>
                  <ul className="list-disc list-inside space-y-2">
                     <li>**Consanguinidad**: relación por sangre. Grados: 1º: madre/padre, hijo/a. 2º: abuelo/a, nieto/a, hermano/a. 3º: bisabuelo/a, bisnieto/a, tío/a-sobrino/a. 4º: primos/as.</li>
                     <li>**Afinidad**: por matrimonio o pareja de hecho respecto de la familia del cónyuge/pareja. Grados análogos: suegro/a, yerno/nuera (1º); cuñado/a, abuelo/a político/a (2º), etc.</li>
                     <li>Salvo mejora, **los permisos del convenio referidos a grados** se computan con estas reglas.</li>
                 </ul>
 
-                <SectionTitle number={11} title="Medidas del Plan de Igualdad que debes tener presentes (prevalecen)" />
+                <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">11) Medidas del Plan de Igualdad que debes tener presentes (prevalecen)</h3>
                  <ul className="list-disc list-inside space-y-2">
                     <li>**Jornada y organización**: **Calendario anual** con 2 meses de antelación y cambios con 15 días salvo causa justificada; prioridad jornada continuada; medidas para **reducir parcialidad no deseada** y fijar **mínimos de horas** en parciales (definición vía Comisión de Seguimiento).</li>
                     <li>**Conciliación reforzada**: Todo el bloque de **horas médicas** y acompañamientos descrito en el punto 5 (20 h/año, etc.) **es del Plan** y se aplica en todo el territorio.</li>
                     <li>**Excedencia por estudios** con **reserva** (hasta 1 año) en condiciones del Plan.</li>
                 </ul>
 
-                <SectionTitle number={12} title="Beneficios y acuerdos comunicados por CCOO/empresa (2024-2025)" />
+                <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">12) Beneficios y acuerdos comunicados por CCOO/empresa (2024-2025)</h3>
                 <p className="text-muted-foreground">Nota: este bloque recoge **acuerdos y comunicaciones** corporativas de ámbito Inditex que has aportado. Cuando son mejoras ya activas, las he tratado como derecho; cuando están **en negociación**, quedan señaladas como tal.</p>
                 <div className="space-y-4">
                     <h4 className="font-bold">Gestión de la Madurez (acuerdo estatal de homologación)</h4>
@@ -408,14 +468,14 @@ export default function GuidePage() {
                     <p>En jornadas electorales europeas se difundieron **horas retribuidas** según coincidencia de horarios. Aplica la normativa autonómica de cada proceso, con el **deber público retribuido** ya cubierto por el Convenio.</p>
                 </div>
                 
-                 <SectionTitle number={13} title="Ruta práctica en INET (autoservicio)" />
+                 <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">13) Ruta práctica en INET (autoservicio)</h3>
                  <ul className="list-disc list-inside space-y-2">
                     <li>**Área Personal → Autoservicio del Empleado → Jornada / Permisos retribuidos / Excedencias**.</li>
                     <li>Formularios activos (según las piezas que enviaste): **necesidades de formación; adaptación de jornada por dependientes o discapacidad a cargo; adaptación por estudios; adaptación por hospitalización o tratamiento médico de cónyuge/pareja/hijos; extensión de reducción de jornada** hasta fecha indicada.</li>
                     <li>Para el **premio 30 años**, se activa **QR individual** en INET; si estás en reserva y sin INET, la empresa comunica alternativa física.</li>
                 </ul>
 
-                 <SectionTitle number={14} title="Resumen “qué me llevo puesto”" />
+                 <h3 className="text-xl font-bold tracking-tight font-headline pt-6 pb-2 border-b">14) Resumen “qué me llevo puesto”</h3>
                  <ol className="list-decimal list-inside space-y-2">
                     <li>**Horas médicas**: tienes **20 h/año retribuidas** (propias, menores a cargo y 1º grado) + **10 h extra** si familia monoparental; además, por Convenio, **12 h/año** propias/menores&lt;16/ascendiente 1º grado dependiente y **24 h/año** para crónicos/raras hasta 2º grado. Usa siempre la **mejor combinación** (Plan + Convenio).</li>
                     <li>**Vacaciones**: 31 días, 21 en verano y 10 resto, en lunes, con turnos rotativos y reglas de coincidencia y no inicio en festivo.</li>
@@ -442,5 +502,3 @@ export default function GuidePage() {
     </div>
   );
 }
-
-    
