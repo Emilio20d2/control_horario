@@ -56,15 +56,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               const finalRole = isSpecialAdmin ? 'admin' : dbData.role;
               setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: finalRole });
               
-              if (finalRole === 'admin') {
-                if (isSpecialAdmin) {
-                  setViewMode('admin');
-                } else {
-                  setViewMode(isMobile ? 'employee' : 'admin');
-                }
-              } else {
-                setViewMode('employee');
-              }
+              // Always force admin view for now
+              setViewMode('admin');
 
           } else {
               if(user.email) {
@@ -79,15 +72,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 
                 setAppUser({ id: user.uid, ...newUserDocData, trueRole: defaultRole });
                 
-                if (defaultRole === 'admin') {
-                   if (isSpecialAdmin) {
-                    setViewMode('admin');
-                   } else {
-                    setViewMode(isMobile ? 'employee' : 'admin');
-                   }
-                } else {
-                  setViewMode('employee');
-                }
+                // Always force admin view for now
+                setViewMode('admin');
               }
           }
         } catch (error) {
@@ -101,10 +87,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [isMobile]); // Rerun on mobile change
+  }, []);
 
   // Effect to handle view mode changes for admins
   useEffect(() => {
+    // This effect is currently overridden by the logic above,
+    // but kept for when the employee view is re-enabled.
     if (appUser && appUser.trueRole === 'admin' && appUser.role !== viewMode) {
       setAppUser(prev => prev ? { ...prev, role: viewMode } : null);
     }
