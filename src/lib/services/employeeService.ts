@@ -2,10 +2,10 @@
 
 'use client';
 
-import { addDocument, updateDocument, deleteDocument, setDocument } from './firestoreService';
+import { addDocument, updateDocument, deleteDocument } from './firestoreService';
 import type { Employee, EmployeeFormData, WorkHoursRecord, ScheduledAbsence, EmploymentPeriod, WeeklyScheduleData, WeeklyRecord } from '../types';
-import { isAfter, parseISO, startOfDay, addDays, subDays, format, eachDayOfInterval, startOfWeek, isValid, isWithinInterval } from 'date-fns';
-import { getDoc, doc } from 'firebase/firestore';
+import { isAfter, parseISO, startOfDay, addDays, subDays, format, eachDayOfInterval, startOfWeek, isValid, isWithinInterval, endOfDay } from 'date-fns';
+import { getDoc, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { createUserAccount } from '../actions/userActions';
 import { addHolidayEmployee } from './settingsService';
@@ -76,7 +76,7 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
 
     // Now update the user document in 'users' collection with the correct employeeId
     if (authId && email) {
-        await setDocument('users', authId, { email, employeeId: employeeNumber, role: formData.role || 'employee' });
+        await setDoc(doc(db, 'users', authId), { email, employeeId: employeeNumber, role: formData.role || 'employee' });
     }
 
     return employeeNumber;
