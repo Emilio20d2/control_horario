@@ -12,7 +12,7 @@ import {
   LayoutDashboard,
   Users,
   CalendarDays,
-  Settings,
+  Wrench,
   LogOut,
   Bell,
   Menu,
@@ -105,12 +105,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/employees', label: 'Empleados', icon: Users },
     { href: '/listings', label: 'Formularios', icon: ListChecks },
     { href: '/vacations', label: 'Vacaciones', icon: Plane },
+    { href: '/settings', label: 'Ajustes', icon: Wrench },
   ];
 
   const adminNavItemsRight = [
     { href: '/calendar', label: 'Calendario', icon: CalendarClock },
     { href: '/messages', label: 'Mensajes', icon: Mail, notification: unreadConversationsForAdmin > 0 },
-    { href: '/settings', label: 'Ajustes', icon: Settings },
   ]
   
   const employeeMenuItems = [
