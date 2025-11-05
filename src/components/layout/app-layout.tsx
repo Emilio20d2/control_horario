@@ -99,16 +99,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const unreadConversationsForAdmin = (conversations || []).filter(c => appUser && !c.readBy?.includes(appUser.id)).length;
 
 
-  const adminNavItems = [
+  const adminNavItemsMain = [
     { href: '/dashboard', label: 'Panel', icon: LayoutDashboard },
     { href: '/schedule', label: 'Horario', icon: CalendarDays, notification: pendingCorrectionRequestCount > 0 },
     { href: '/employees', label: 'Empleados', icon: Users },
     { href: '/listings', label: 'Formularios', icon: ListChecks },
     { href: '/vacations', label: 'Vacaciones', icon: Plane },
+  ];
+
+  const adminNavItemsRight = [
     { href: '/calendar', label: 'Calendario', icon: CalendarClock },
     { href: '/messages', label: 'Mensajes', icon: Mail, notification: unreadConversationsForAdmin > 0 },
     { href: '/settings', label: 'Ajustes', icon: Settings },
-  ];
+  ]
   
   const employeeMenuItems = [
     { href: '/my-profile', label: 'Ficha', icon: User },
@@ -117,61 +120,86 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/help', label: 'Ayuda', icon: HelpCircle },
   ];
 
-  const menuItems = viewMode === 'admin' ? adminNavItems : employeeMenuItems;
+  const menuItems = viewMode === 'admin' ? [...adminNavItemsMain, ...adminNavItemsRight] : employeeMenuItems;
 
-  const MainNav = ({className, isMobileNav}: {className?: string, isMobileNav?: boolean}) => (
-    <nav className={cn("flex gap-1", isMobileNav ? "flex-col items-stretch" : 'justify-center items-center')}>
-      {menuItems.map((item) => {
-        const isActive = pathname.startsWith(item.href);
-        if (isMobileNav) {
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileNavOpen(false)}
-              className={cn(
-                'flex items-center justify-between p-3 rounded-md transition-colors text-lg',
-                isActive ? 'bg-muted font-semibold' : 'hover:bg-muted'
-              )}
-            >
-              <div className="flex items-center gap-3">
-                  <item.icon className="h-5 w-5" />
-                  <span>{item.label}</span>
-              </div>
-              {item.notification && (
-                <span className="flex h-2.5 w-2.5 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
-                </span>
-              )}
-            </Link>
-          );
-        }
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative',
-              'flex-col text-center h-auto w-16 sm:h-auto sm:w-auto',
-              isActive
-                ? 'bg-primary text-primary-foreground font-semibold'
-                : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-            )}
-          >
-            <item.icon className="h-5 w-5" />
-            <span className="text-xs font-medium">{item.label}</span>
-            {item.notification && (
-              <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
-              </span>
-            )}
-          </Link>
-        );
-      })}
-    </nav>
-  );
+  const NavLink = ({ item, isMobileNav }: {item: typeof menuItems[0], isMobileNav?: boolean}) => {
+    const isActive = pathname.startsWith(item.href);
+    if (isMobileNav) {
+      return (
+        <Link
+          key={item.href}
+          href={item.href}
+          onClick={() => setMobileNavOpen(false)}
+          className={cn(
+            'flex items-center justify-between p-3 rounded-md transition-colors text-lg',
+            isActive ? 'bg-muted font-semibold' : 'hover:bg-muted'
+          )}
+        >
+          <div className="flex items-center gap-3">
+              <item.icon className="h-5 w-5" />
+              <span>{item.label}</span>
+          </div>
+          {item.notification && (
+            <span className="flex h-2.5 w-2.5 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+            </span>
+          )}
+        </Link>
+      );
+    }
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={cn(
+          'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative',
+          'flex-col text-center h-auto w-16 sm:h-auto sm:w-auto',
+          isActive
+            ? 'bg-primary text-primary-foreground font-semibold'
+            : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+        )}
+      >
+        <item.icon className="h-5 w-5" />
+        <span className="text-xs font-medium">{item.label}</span>
+        {item.notification && (
+          <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+          </span>
+        )}
+      </Link>
+    );
+  };
+
+  const MainNav = ({ isMobileNav }: { isMobileNav?: boolean }) => {
+    if (isMobileNav) {
+      return (
+        <nav className="flex flex-col items-stretch gap-1">
+          {menuItems.map(item => <NavLink key={item.href} item={item} isMobileNav />)}
+        </nav>
+      );
+    }
+  
+    if (viewMode === 'employee') {
+      return (
+        <nav className="flex items-center justify-center gap-1">
+          {employeeMenuItems.map(item => <NavLink key={item.href} item={item} />)}
+        </nav>
+      );
+    }
+  
+    return (
+      <div className="flex w-full items-center justify-between">
+        <nav className="flex items-center gap-1">
+          {adminNavItemsMain.map(item => <NavLink key={item.href} item={item} />)}
+        </nav>
+        <nav className="flex items-center gap-1">
+          {adminNavItemsRight.map(item => <NavLink key={item.href} item={item} />)}
+        </nav>
+      </div>
+    );
+  };
 
   return (
     <div className="flex h-screen w-full flex-col bg-background">
@@ -182,7 +210,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </Link>
         
         <div className={cn(
-            "flex-1 justify-center",
+            "flex-1",
             isMobile ? 'hidden' : 'flex'
         )}>
             <MainNav isMobileNav={false} />
