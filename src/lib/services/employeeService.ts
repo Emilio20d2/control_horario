@@ -76,7 +76,7 @@ export const createEmployee = async (formData: EmployeeFormData): Promise<string
 
     // Now update the user document in 'users' collection with the correct employeeId
     if (authId && email) {
-        await setDocument('users', authId, { email, employeeId: employeeNumber, role: role || 'employee' });
+        await setDocument('users', authId, { email, employeeId: employeeNumber, role: formData.role || 'employee' });
     }
 
     return employeeNumber;
@@ -197,9 +197,9 @@ export const updateEmployee = async (
     await addHolidayEmployee({ id: id, name: name, groupId: groupId || null, active: true });
 
     // Update user role if authId exists and role is provided
-    if (currentEmployee.authId && role) {
+    if (currentEmployee.authId && formData.role) {
         const userRef = doc(db, "users", currentEmployee.authId);
-        await setDoc(userRef, { role: role }, { merge: true });
+        await setDoc(userRef, { role: formData.role }, { merge: true });
     }
 };
 
