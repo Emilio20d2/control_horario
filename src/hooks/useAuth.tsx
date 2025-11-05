@@ -65,8 +65,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   return;
               }
 
-              setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: 'admin' });
-              setViewMode('admin');
+              setAppUser({ id: user.uid, ...dbData, trueRole: finalRole });
+              setViewMode(dbData.role as 'admin' | 'employee');
 
           } else {
               if(user.email) {
@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 await setDoc(userDocRef, newUserDocData, { merge: true });
                 
                 setAppUser({ id: user.uid, ...newUserDocData, trueRole: defaultRole });
-                setViewMode('admin');
+                setViewMode(defaultRole);
               }
           }
         } catch (error) {
