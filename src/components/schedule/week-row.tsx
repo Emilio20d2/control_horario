@@ -200,7 +200,9 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 }
             }
     
-            const dataToSave: DailyEmployeeData = {
+            const dataToSave = {
+                weekId: weekId,
+                employeeId: employee.id,
                 ...localWeekData,
                 confirmed: true,
                 previousBalances: initialBalances,
@@ -212,8 +214,6 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
     
             // Sanitize data before saving
             const sanitizedDataToSave = {
-                weekId: weekId,
-                employeeId: employee.id,
                 ...dataToSave,
                 expectedOrdinaryImpact: dataToSave.expectedOrdinaryImpact ?? null,
                 expectedHolidayImpact: dataToSave.expectedHolidayImpact ?? null,
@@ -234,8 +234,6 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             await setDoc(doc(db, 'weeklyRecords', docId), sanitizedDataToSave, { merge: true });
             toast({ title: `Semana Confirmada para ${employee.name}` });
     
-            // Check for week completion might need adjustment if data fetching is not immediate
-            // For now, we optimistically call it.
             onWeekCompleted(weekId);
 
         } catch (error) {
@@ -412,3 +410,5 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         </TableRow>
     );
 };
+
+    

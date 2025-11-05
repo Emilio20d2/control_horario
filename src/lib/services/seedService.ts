@@ -81,29 +81,24 @@ export async function seedDatabase(dataToImport: any, holidayEmployeesToAdd: Omi
     }
 
     // Staging weekly records
-    if (dataToImport.weeklyRecords) {
+    if (dataToImport.weeklyRecords && Array.isArray(dataToImport.weeklyRecords)) {
         console.log("Seeding weekly records...");
-        const weeklyRecordsEntries = Object.entries(dataToImport.weeklyRecords as any);
-        for (let i = 0; i < weeklyRecordsEntries.length; i += batchSize) {
-             const batch = dbAdmin.batch();
-             const chunk = weeklyRecordsEntries.slice(i, i + batchSize);
-             for (const [weekId, weekRecord] of chunk) {
-                if ((weekRecord as any).weekData) {
-                    for (const [employeeId, employeeData] of Object.entries((weekRecord as any).weekData)) {
-                        const docId = `${weekId}-${employeeId}`;
-                        const docRef = dbAdmin.collection('weeklyRecords').doc(docId);
-                        const dataToSet = {
-                            weekId: weekId,
-                            employeeId: employeeId,
-                            ...employeeData as DocumentData
-                        };
-                        batch.set(docRef, dataToSet);
-                        stats.weeklyRecords++;
-                    }
+        const weeklyRecordsList = dataToImport.weeklyRecords as any[];
+
+        for (let i = 0; i < weeklyRecordsList.length; i += batchSize) {
+            const batch = dbAdmin.batch();
+            const chunk = weeklyRecordsList.slice(i, i + batchSize);
+            for (const record of chunk) {
+                if (record.id) {
+                    const docRef = dbAdmin.collection('weeklyRecords').doc(record.id);
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { id, ...dataToSet } = record;
+                    batch.set(docRef, dataToSet);
+                    stats.weeklyRecords++;
                 }
-             }
-             await batch.commit();
-             console.log(`Committed batch of weekly records data.`);
+            }
+            await batch.commit();
+            console.log(`Committed batch of ${chunk.length} weekly records.`);
         }
     }
 
@@ -128,3 +123,5 @@ export async function seedDatabase(dataToImport: any, holidayEmployeesToAdd: Omi
     
     return stats;
 }
+
+    

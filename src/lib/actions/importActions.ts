@@ -142,26 +142,30 @@ export async function processAndSeedData() {
     // Replace old employee data with the new ID-based structure
     dataToImport.employees = newEmployeesData;
 
-    // Remap weeklyRecords to use employeeNumber as keys
+    // --- REMAP WEEKLY RECORDS ---
     const originalWeeklyRecords = dataToImport.weeklyRecords;
-    const newWeeklyRecords: Record<string, any> = {};
+    const weeklyRecordsList = [];
 
     for (const weekId in originalWeeklyRecords) {
         const weekData = originalWeeklyRecords[weekId].weekData;
-        const newWeekData: Record<string, any> = {};
         for (const oldEmployeeId in weekData) {
-            // Find employee by old ID to get their name
             const employeeName = originalEmployeesData[oldEmployeeId]?.name.toUpperCase().trim();
             if (employeeName) {
                 const employeeNumber = employeeNumberMapping[employeeName as keyof typeof employeeNumberMapping];
                 if (employeeNumber) {
-                    newWeekData[employeeNumber] = weekData[oldEmployeeId];
+                    const docId = `${weekId}-${employeeNumber}`;
+                    const dataToSet = {
+                        id: docId,
+                        weekId: weekId,
+                        employeeId: employeeNumber,
+                        ...weekData[oldEmployeeId]
+                    };
+                    weeklyRecordsList.push(dataToSet);
                 }
             }
         }
-        newWeeklyRecords[weekId] = { weekData: newWeekData };
     }
-    dataToImport.weeklyRecords = newWeeklyRecords;
+    dataToImport.weeklyRecords = weeklyRecordsList;
 
 
     const employeesToAddToEventual = Object.entries(employeeNumberMapping)
@@ -186,3 +190,5 @@ export async function processAndSeedData() {
     return { success: false, error: errorMessage };
   }
 }
+
+    
