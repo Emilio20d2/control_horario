@@ -41,7 +41,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
     const sortedAbsenceTypes = [...absenceTypes].sort((a, b) => a.name.localeCompare(b.name));
 
     const allScheduledAbsences = employee.employmentPeriods.flatMap(p => 
-        (p.scheduledAbsences || []).filter(a => a.endDate && a.startDate.getTime() !== a.endDate.getTime()).map(a => ({...a, periodId: p.id}))
+        (p.scheduledAbsences || []).map(a => ({...a, periodId: p.id}))
     ).sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
 
 
@@ -254,5 +254,3 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
         </Card>
     );
 }
-
-    
