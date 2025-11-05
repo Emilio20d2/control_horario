@@ -1130,7 +1130,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             }
     
             // If not, build the day from scratch.
-            const holidayDetails = holidays.find(h => isSameDay(h.date, day));
+            const holidayDetails = holidays.find(h => isSameDay(h.date as Date, day));
             const theoreticalDay = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
             const theoreticalHours = theoreticalDay?.theoreticalHours ?? 0;
     
@@ -1138,7 +1138,14 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                 .flatMap(p => p.scheduledAbsences || [])
                 .find(a => {
                     const startDate = safeParseDate(a.startDate);
-                    const endDate = safeParseDate(a.endDate) || startDate;
+                    if (!startDate) return false;
+                    
+                    const endDate = a.endDate ? safeParseDate(a.endDate) : startDate;
+
+                    if (!endDate) { // Indefinite absence
+                        return !isBefore(day, startDate);
+                    }
+                    
                     return startDate && endDate && isWithinInterval(day, { start: startOfDay(startDate), end: endOfDay(endDate) });
                 });
     
