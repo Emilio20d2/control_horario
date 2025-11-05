@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
 import type { AppUser, Employee } from '@/lib/types';
 import { useIsMobile } from './use-is-mobile';
+import { useToast } from './use-toast';
 
 
 interface AuthContextType {
@@ -39,6 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [viewMode, setViewMode] = useState<'admin' | 'employee'>('admin');
   const router = useRouter();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -54,9 +56,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (userDoc.exists()) {
               const dbData = userDoc.data() as Omit<AppUser, 'id'>;
               const finalRole = isSpecialAdmin ? 'admin' : dbData.role;
+
+              if (finalRole !== 'admin') {
+                  toast({
+                      title: 'Acceso Denegado',
+                      description: 'No tienes permisos de administrador para acceder.',
+                      variant: 'destructive',
+                  });
+                  await signOut(auth);
+                  setUser(null);
+                  setAppUser(null);
+                  setLoading(false);
+                  router.push('/login');
+                  return;
+              }
+
               setAppUser({ id: user.uid, ...dbData, trueRole: finalRole, role: finalRole });
-              
-              // Always force admin view for now
               setViewMode('admin');
 
           } else {
@@ -65,14 +80,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 const empSnapshot = await getDocs(q);
                 
                 const defaultRole = isSpecialAdmin ? 'admin' : 'employee';
+                
+                 if (defaultRole !== 'admin') {
+                    toast({
+                        title: 'Acceso Denegado',
+                        description: 'Tu cuenta no tiene permisos de administrador.',
+                        variant: 'destructive',
+                    });
+                    await signOut(auth);
+                    setUser(null);
+                    setAppUser(null);
+                    setLoading(false);
+                    router.push('/login');
+                    return;
+                }
+
                 const employeeId = !empSnapshot.empty ? empSnapshot.docs[0].id : null;
                 
                 const newUserDocData = { email: user.email, employeeId, role: defaultRole };
                 await setDoc(userDocRef, newUserDocData, { merge: true });
                 
                 setAppUser({ id: user.uid, ...newUserDocData, trueRole: defaultRole });
-                
-                // Always force admin view for now
                 setViewMode('admin');
               }
           }
@@ -87,12 +115,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [router, toast]);
 
   // Effect to handle view mode changes for admins
   useEffect(() => {
-    // This effect is currently overridden by the logic above,
-    // but kept for when the employee view is re-enabled.
     if (appUser && appUser.trueRole === 'admin' && appUser.role !== viewMode) {
       setAppUser(prev => prev ? { ...prev, role: viewMode } : null);
     }
@@ -136,5 +162,3 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
-
-    
