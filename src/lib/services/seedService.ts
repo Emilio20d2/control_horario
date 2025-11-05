@@ -5,7 +5,7 @@ import { getDbAdmin } from '../firebase-admin';
 import type { DocumentData } from 'firebase-admin/firestore';
 import type { HolidayEmployee, Employee } from '../types';
 
-// Utility to clear a collection
+// Utility to clear a collection in chunks
 async function clearCollection(collectionName: string) {
     const dbAdmin = getDbAdmin();
     const collectionRef = dbAdmin.collection(collectionName);
@@ -16,11 +16,24 @@ async function clearCollection(collectionName: string) {
         return 0;
     }
 
-    const batch = dbAdmin.batch();
-    snapshot.docs.forEach(doc => {
+    const batchSize = 400;
+    let batch = dbAdmin.batch();
+    let count = 0;
+
+    for (const doc of snapshot.docs) {
         batch.delete(doc.ref);
-    });
-    await batch.commit();
+        count++;
+        if (count >= batchSize) {
+            await batch.commit();
+            batch = dbAdmin.batch();
+            count = 0;
+        }
+    }
+    // Commit the final batch if it's not empty
+    if (count > 0) {
+        await batch.commit();
+    }
+    
     console.log(`Collection ${collectionName} cleared.`);
     return snapshot.size;
 }
@@ -38,7 +51,19 @@ export async function seedDatabase(dataToImport: any, holidayEmployeesToAdd: Omi
         clearCollection('conversations')
     ]);
     
-    const batch = dbAdmin.batch();
+    const batchSize = 400;
+    let batch = dbAdmin.batch();
+    let operationCount = 0;
+    
+    const commitBatchIfNeeded = async () => {
+        if (operationCount >= batchSize) {
+            console.log(`Committing batch with ${operationCount} operations...`);
+            await batch.commit();
+            batch = dbAdmin.batch();
+            operationCount = 0;
+        }
+    };
+
     const stats: Record<string, number> = {
         employees: 0,
         weeklyRecords: 0,
@@ -46,14 +71,14 @@ export async function seedDatabase(dataToImport: any, holidayEmployeesToAdd: Omi
         users: 0,
     };
 
-    // Staging employees (already enriched with employeeNumber)
+    // Staging employees and users
     if (dataToImport.employees) {
         for (const [docId, docData] of Object.entries(dataToImport.employees)) {
             const docRef = dbAdmin.collection('employees').doc(docId);
             batch.set(docRef, docData as DocumentData);
+            operationCount++;
             stats.employees++;
             
-            // Create user document in 'users' collection
             const employee = docData as Employee;
             if(employee.authId) {
                 const userRef = dbAdmin.collection('users').doc(employee.authId);
@@ -62,34 +87,41 @@ export async function seedDatabase(dataToImport: any, holidayEmployeesToAdd: Omi
                     email: employee.email,
                     role: employee.email === 'mariaavg@inditex.com' ? 'admin' : 'employee'
                 });
+                operationCount++;
                 stats.users++;
             }
+            await commitBatchIfNeeded();
         }
-        console.log(`Staging ${stats.employees} documents for collection 'employees'...`);
-        console.log(`Staging ${stats.users} documents for collection 'users'...`);
     }
 
     // Staging weekly records
     if (dataToImport.weeklyRecords) {
-        Object.entries(dataToImport.weeklyRecords).forEach(([docId, docData]) => {
+        for (const [docId, docData] of Object.entries(dataToImport.weeklyRecords)) {
             const docRef = dbAdmin.collection('weeklyRecords').doc(docId);
             batch.set(docRef, docData as DocumentData);
+            operationCount++;
             stats.weeklyRecords++;
-        });
-        console.log(`Staging ${stats.weeklyRecords} documents for collection 'weeklyRecords'...`);
+            await commitBatchIfNeeded();
+        }
     }
 
     // Add employees not found to holidayEmployees
     if (holidayEmployeesToAdd && holidayEmployeesToAdd.length > 0) {
-        holidayEmployeesToAdd.forEach(emp => {
+        for (const emp of holidayEmployeesToAdd) {
             const docRef = dbAdmin.collection('holidayEmployees').doc(emp.employeeNumber); 
             batch.set(docRef, emp);
+            operationCount++;
             stats.holidayEmployees++;
-        });
-        console.log(`Staging ${stats.holidayEmployees} new documents for collection 'holidayEmployees'...`);
+            await commitBatchIfNeeded();
+        }
     }
 
-    await batch.commit();
+    // Commit any remaining operations in the final batch
+    if (operationCount > 0) {
+        console.log(`Committing final batch with ${operationCount} operations...`);
+        await batch.commit();
+    }
+    
     console.log("Database seed/update process completed successfully!");
     
     return stats;
