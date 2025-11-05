@@ -288,22 +288,24 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       const startDate = safeParseDate(a.startDate);
       if (!startDate) return;
   
-      const endDate = a.endDate ? safeParseDate(a.endDate) : startDate;
-      if (!endDate) return;
-  
+      const endDate = a.endDate ? safeParseDate(a.endDate) : null;
+      
       const absenceDayStr = format(startDate, 'yyyy-MM-dd');
       
-      if (!confirmedAbsenceDays.has(absenceDayStr)) {
-        const processedAbsence: any = { ...a, startDate, endDate };
-        if (a.originalRequest) {
-            processedAbsence.originalRequest = {
-                ...a.originalRequest,
-                startDate: a.originalRequest.startDate instanceof Timestamp ? a.originalRequest.startDate.toDate().toISOString() : a.originalRequest.startDate,
-                endDate: a.originalRequest.endDate instanceof Timestamp ? a.originalRequest.endDate.toDate().toISOString() : a.originalRequest.endDate,
-            };
-        }
-        processedAbsences.push(processedAbsence);
+      // Do not process if the absence is a single day and it's already confirmed
+      if (isSameDay(startDate, endDate || startDate) && confirmedAbsenceDays.has(absenceDayStr)) {
+          return;
       }
+      
+      const processedAbsence: any = { ...a, startDate, endDate };
+      if (a.originalRequest) {
+          processedAbsence.originalRequest = {
+              ...a.originalRequest,
+              startDate: a.originalRequest.startDate instanceof Timestamp ? a.originalRequest.startDate.toDate().toISOString() : a.originalRequest.startDate,
+              endDate: a.originalRequest.endDate instanceof Timestamp ? a.originalRequest.endDate.toDate().toISOString() : a.originalRequest.endDate,
+          };
+      }
+      processedAbsences.push(processedAbsence);
     });
   
     return processedAbsences;
@@ -1140,7 +1142,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                     const startDate = safeParseDate(a.startDate);
                     if (!startDate) return false;
                     
-                    const endDate = a.endDate ? safeParseDate(a.endDate) : startDate;
+                    const endDate = a.endDate ? safeParseDate(a.endDate) : null;
 
                     if (!endDate) { // Indefinite absence
                         return !isBefore(day, startDate);
