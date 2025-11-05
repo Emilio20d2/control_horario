@@ -105,7 +105,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/employees', label: 'Empleados', icon: Users },
     { href: '/listings', label: 'Formularios', icon: ListChecks },
     { href: '/vacations', label: 'Vacaciones', icon: Plane },
+    { href: '/calendar', label: 'Calendario', icon: CalendarClock },
+    { href: '/messages', label: 'Mensajes', icon: Mail, notification: unreadConversationsForAdmin > 0 },
     { href: '/settings', label: 'Ajustes', icon: Settings },
+    { href: '/guide', label: 'Guía', icon: BookUser },
   ];
   
   const employeeMenuItems = [
@@ -115,18 +118,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { href: '/help', label: 'Ayuda', icon: HelpCircle },
   ];
 
-  // The mobile nav will contain all items for that view
-  const mobileAdminNavItems = [
-    { href: '/home', label: 'Inicio', icon: Home, notification: unconfirmedWeeksDetails.length > 0 },
-    ...adminNavItems,
-    { href: '/guide', label: 'Guía', icon: BookUser },
-  ];
-
   const menuItems = viewMode === 'admin' ? adminNavItems : employeeMenuItems;
 
   const MainNav = ({className, isMobileNav}: {className?: string, isMobileNav?: boolean}) => (
     <nav className={cn("flex gap-1", isMobileNav ? "flex-col items-stretch" : 'justify-center items-center')}>
-      {(isMobileNav ? mobileAdminNavItems : menuItems).map((item) => {
+      {menuItems.map((item) => {
         const isActive = pathname.startsWith(item.href);
         if (isMobileNav) {
           return (
@@ -182,69 +178,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="flex h-screen w-full flex-col bg-background">
       <header className="sticky top-0 inset-x-0 flex h-20 shrink-0 items-center gap-4 border-b bg-gradient-to-l from-primary/10 to-background px-4 md:px-6 z-10">
         
-        {viewMode === 'admin' && (
-          <Link href="/home" className="flex items-center gap-2 font-semibold">
-              <Image src="/logo.png" alt="Logo" width={70} height={70} className="h-[70px] w-[70px]" />
-          </Link>
-        )}
+        <Link href={viewMode === 'admin' ? '/home' : '/my-profile'} className="flex items-center gap-2 font-semibold">
+            <Image src="/logo.png" alt="Logo" width={70} height={70} className="h-[70px] w-[70px]" />
+        </Link>
         
         <div className={cn(
             "flex-1 justify-center",
-            viewMode === 'admin' ? (isMobile ? 'hidden' : 'flex') : 'flex'
+            isMobile ? 'hidden' : 'flex'
         )}>
             <MainNav isMobileNav={false} />
         </div>
         
         <div className="flex items-center gap-2 ml-auto">
-             {viewMode === 'admin' && (
-              <TooltipProvider>
-                <div className="flex items-center gap-1">
-                  
-                   <Link
-                        href="/calendar"
-                        className={cn(
-                            'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative flex-col text-center h-auto w-16 sm:h-auto sm:w-auto',
-                            pathname.startsWith('/calendar')
-                                ? 'bg-primary text-primary-foreground font-semibold'
-                                : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-                        )}
-                    >
-                        <CalendarClock className="h-5 w-5" />
-                        <span className="text-xs font-medium">Calendario</span>
-                    </Link>
-                  <Link
-                        href="/messages"
-                        className={cn(
-                            'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative flex-col text-center h-auto w-16 sm:h-auto sm:w-auto',
-                            pathname.startsWith('/messages')
-                                ? 'bg-primary text-primary-foreground font-semibold'
-                                : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-                        )}
-                    >
-                        <Mail className="h-5 w-5" />
-                        <span className="text-xs font-medium">Mensajes</span>
-                        {unreadConversationsForAdmin > 0 && (
-                            <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
-                            </span>
-                        )}
-                    </Link>
-                    <Link
-                        href="/guide"
-                        className={cn(
-                            'flex items-center justify-center gap-1 p-2 rounded-md transition-colors relative flex-col text-center h-auto w-16 sm:h-auto sm:w-auto',
-                            pathname.startsWith('/guide')
-                                ? 'bg-primary text-primary-foreground font-semibold'
-                                : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-                        )}
-                    >
-                        <BookUser className="h-5 w-5" />
-                        <span className="text-xs font-medium">Guía</span>
-                    </Link>
-                </div>
-              </TooltipProvider>
-            )}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -275,7 +220,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
-            {isMobile && viewMode === 'admin' && (
+            {isMobile && (
               <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
                 <SheetTrigger asChild>
                     <Button variant="outline" size="icon">
@@ -284,7 +229,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="flex flex-col">
-                    <Link href="/home" className="flex items-center gap-2 font-semibold mb-4" onClick={() => setMobileNavOpen(false)}>
+                    <Link href={viewMode === 'admin' ? '/home' : '/my-profile'} className="flex items-center gap-2 font-semibold mb-4" onClick={() => setMobileNavOpen(false)}>
                         <Image src="/logo.png" alt="Logo" width={60} height={60} className="h-14 w-14" />
                         <span className="text-xl">Control Horario</span>
                     </Link>
@@ -300,3 +245,5 @@ export function AppLayout({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+    
