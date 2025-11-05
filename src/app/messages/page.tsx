@@ -59,7 +59,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
 
     useEffect(() => {
         if (viewportRef.current) {
-            viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
+            viewportRef.current.scrollTop = 0; // Scroll to top for descending order
         }
     }, [messagesSnapshot, messagesLoading]);
 
@@ -235,7 +235,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
                 </div>
             </CardHeader>
             <ScrollArea className="flex-1 p-4" viewportRef={viewportRef}>
-                <div className="space-y-4 flex flex-col-reverse">
+                <div className="space-y-4">
                 {messagesLoading ? (
                     <div className="flex h-full items-center justify-center">
                         <Loader2 className="h-8 w-8 animate-spin" />
