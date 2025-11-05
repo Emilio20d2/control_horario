@@ -231,8 +231,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [holidayReports, setHolidayReports] = useState<HolidayReport[]>([]);
   const [employeeGroups, setEmployeeGroups] = useState<EmployeeGroup[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [correctionRequests, setCorrectionRequests] = useState<CorrectionRequest[]>([]);
   const [vacationCampaigns, setVacationCampaigns] = useState<VacationCampaign[]>([]);
+  const [correctionRequests, setCorrectionRequests] = useState<CorrectionRequest[]>([]);
   const [unconfirmedWeeksDetails, setUnconfirmedWeeksDetails] = useState<UnconfirmedWeekDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSteps, setLoadingSteps] = useState({
@@ -1408,5 +1408,3 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 };
 
 export const useDataProvider = () => useContext(DataContext);
-
-    

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -109,7 +108,7 @@ export default function MyMessagesPage() {
     }, [absenceTypes]);
 
     const [messagesSnapshot, messagesLoading] = useCollectionData(
-        conversationId ? query(collection(db, 'conversations', conversationId, 'messages'), orderBy('timestamp', 'asc')) : null
+        conversationId ? query(collection(db, 'conversations', conversationId, 'messages'), orderBy('timestamp', 'desc')) : null
     );
     
     // Effect to calculate senior hours total, now including previously confirmed hours from the current year
@@ -463,7 +462,8 @@ export default function MyMessagesPage() {
                     <CardHeader className="p-4 border-b">
                         {renderChatHeader()}
                     </CardHeader>
-                    <ScrollArea className="flex-1 p-4 space-y-4" viewportRef={viewportRef}>
+                    <ScrollArea className="flex-1 p-4" viewportRef={viewportRef}>
+                        <div className="space-y-4 flex flex-col-reverse">
                         {messagesLoading ? (
                             <div className="flex h-full items-center justify-center">
                                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -486,6 +486,7 @@ export default function MyMessagesPage() {
                                 </div>
                             ))
                         )}
+                        </div>
                     </ScrollArea>
                     <CardFooter className="p-4 border-t bg-background">
                          <form onSubmit={handleSendMessage} className="relative flex items-end w-full">

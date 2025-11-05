@@ -39,7 +39,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
     const [messageToDelete, setMessageToDelete] = useState<Message | null>(null);
 
     const [messagesSnapshot, messagesLoading] = useCollectionData(
-        conversation ? query(collection(db, 'conversations', conversation.id, 'messages'), orderBy('timestamp', 'asc')) : null
+        conversation ? query(collection(db, 'conversations', conversation.id, 'messages'), orderBy('timestamp', 'desc')) : null
     );
 
     useEffect(() => {
@@ -235,7 +235,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
                 </div>
             </CardHeader>
             <ScrollArea className="flex-1 p-4" viewportRef={viewportRef}>
-                <div className="space-y-4">
+                <div className="space-y-4 flex flex-col-reverse">
                 {messagesLoading ? (
                     <div className="flex h-full items-center justify-center">
                         <Loader2 className="h-8 w-8 animate-spin" />
@@ -416,5 +416,3 @@ export default function AdminMessagesPage() {
         </div>
     );
 }
-
-    
