@@ -1240,14 +1240,25 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const theoreticalDay = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
             const theoreticalHours = theoreticalDay?.theoreticalHours ?? 0;
     
-            // Find any scheduled absence for the current day
-            const scheduledAbsence = (emp.employmentPeriods || []).flatMap(p => p.scheduledAbsences || []).find(a => {
-                const startDate = safeParseDate(a.startDate);
-                if (!startDate) return false;
-                const endDate = a.endDate ? safeParseDate(a.endDate) : startDate; // Treat null endDate as same day
-                return isWithinInterval(day, { start: startOfDay(startDate), end: endOfDay(endDate) });
-            });
-    
+            let scheduledAbsence: ScheduledAbsence | undefined;
+            if (emp.employmentPeriods) {
+                for (const period of emp.employmentPeriods) {
+                    if (period.scheduledAbsences) {
+                        for (const absence of period.scheduledAbsences) {
+                            const startDate = safeParseDate(absence.startDate);
+                            if (startDate) {
+                                const endDate = absence.endDate ? safeParseDate(absence.endDate) : startDate;
+                                if (isWithinInterval(day, { start: startOfDay(startDate), end: endOfDay(endDate!) })) {
+                                    scheduledAbsence = absence;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (scheduledAbsence) break;
+                }
+            }
+
             const absenceType = scheduledAbsence ? absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId) : undefined;
             
             let leaveHours = 0;
@@ -1262,15 +1273,12 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             let absenceAbbreviation = 'ninguna';
             let absenceHours = 0;
 
-            // If an absence is found, it takes precedence
             if (absenceType) {
                 absenceAbbreviation = absenceType.abbreviation;
                 if (absenceType.computesFullDay) {
                     workedHours = 0;
                     absenceHours = theoreticalHours;
                 }
-                // If not computesFullDay, we assume workedHours remain theoreticalHours until edited by user.
-                // The user will have to manually adjust worked and absence hours for splittable absences.
             }
     
             newDays[dayKey] = {
@@ -1441,3 +1449,4 @@ export const useDataProvider = () => useContext(DataContext);
 
 
     
+
