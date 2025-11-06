@@ -462,7 +462,6 @@ export default function SettingsPageContent() {
                     <EmployeeViewManager />
                     <DataCleanupManager />
                     <MessageSyncManager />
-                    <RetroactiveAuditManager />
                 </div>
             </TabsContent>
 
