@@ -1225,13 +1225,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             return null; // Don't create data for inactive employees
         }
     
-        // If the record is confirmed, return it as is.
-        if (dbRecord?.confirmed) {
-            return dbRecord;
-        }
-    
-        // If there's an unconfirmed record in the DB, use it as the base.
-        // Otherwise, pre-fill from scratch.
+        // If there's a record in the DB, confirmed or not, use it as the base.
         if (dbRecord) {
             return dbRecord;
         }
@@ -1429,4 +1423,5 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 export const useDataProvider = () => useContext(DataContext);
 
     
+
 
