@@ -4,7 +4,7 @@
 'use client';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear, isWithinInterval, getISOWeek, isAfter, isBefore, isEqual, isValid } from 'date-fns';
+import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear, isWithinInterval, getISOWeek, isAfter, isBefore, isEqual, isValid, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Employee, WeeklyRecord, AbsenceType, Holiday, EmployeeGroup, Ausencia, Conversation, VacationCampaign, ScheduledAbsence, EmploymentPeriod } from './types';
 import { Timestamp } from 'firebase/firestore';
@@ -736,6 +736,7 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
 
