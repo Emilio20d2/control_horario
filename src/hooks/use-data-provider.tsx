@@ -1200,7 +1200,32 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         const dbRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
     
         if (dbRecord) {
-            return dbRecord;
+            // MERGE scheduled absences over the dbRecord before returning
+            const mergedDays = { ...dbRecord.days };
+            for (const day of weekDays) {
+                const dayKey = format(day, 'yyyy-MM-dd');
+                let scheduledAbsence: ScheduledAbsence | undefined;
+                for (const period of emp.employmentPeriods) {
+                    scheduledAbsence = period.scheduledAbsences?.find(absence => {
+                        const startDate = startOfDay(absence.startDate);
+                        const endDate = absence.endDate ? endOfDay(absence.endDate) : endOfDay(startDate);
+                        return isWithinInterval(day, { start: startDate, end: endDate });
+                    });
+                    if (scheduledAbsence) break;
+                }
+    
+                if (scheduledAbsence) {
+                    const absenceType = absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId);
+                    if (absenceType) {
+                        mergedDays[dayKey].absence = absenceType.abbreviation;
+                        if (absenceType.computesFullDay) {
+                            mergedDays[dayKey].workedHours = 0;
+                            mergedDays[dayKey].absenceHours = mergedDays[dayKey].theoreticalHours;
+                        }
+                    }
+                }
+            }
+            return { ...dbRecord, days: mergedDays };
         }
     
         const activePeriod = getActivePeriod(emp.id, weekDays[0]);
@@ -1225,7 +1250,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                     scheduledAbsence = period.scheduledAbsences.find(absence => {
                         if (!absence.startDate) return false;
                         const startDate = startOfDay(absence.startDate);
-                        const endDate = absence.endDate ? endOfDay(absence.endDate) : endOfDay(startDate);
+                        const endDate = absence.endDate ? endOfDay(absence.endDate) : endOfDay(new Date('9999-12-31'));
                         return isWithinInterval(day, { start: startDate, end: endDate });
                     });
                     if (scheduledAbsence) break;
