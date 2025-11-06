@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useCallback } from 'react';
@@ -160,13 +161,14 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                     (contractType?.computesOffDayBag ?? false) &&
                     dayData.absence === 'ninguna';
                 
-                let cellStyle: React.CSSProperties = { background: 'linear-gradient(to left, #e3f2fd, transparent)' }; // Blue gradient
+                // HSL for the primary color: 210 31% 60%
+                let cellStyle: React.CSSProperties = { background: 'linear-gradient(to right, hsla(210, 31%, 60%, 0.15), transparent)' };
                 if (isHoliday) {
                     if (holidayType === 'Apertura') {
-                        cellStyle.background = 'linear-gradient(to left, #e8f5e9, transparent)';
+                        cellStyle.background = 'linear-gradient(to right, #e8f5e9, transparent)'; // Green
                     }
                 } else if (absenceType?.color) {
-                    cellStyle.background = `linear-gradient(to left, ${absenceType.color}40, transparent)`;
+                    cellStyle.background = `linear-gradient(to right, ${absenceType.color}40, transparent)`;
                 } else if (initialWeekData.confirmed) {
                     cellStyle.background = 'rgba(240, 240, 240, 0.5)';
                 }
