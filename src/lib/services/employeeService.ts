@@ -310,7 +310,6 @@ export const endIndefiniteAbsence = async (employeeId: string, dateToEnd: Date):
         return isValid(parsed) ? parsed : null;
     };
 
-    // Find the active period for the given date
     const activePeriod = employeeData.employmentPeriods?.find(p => 
         isWithinInterval(dateToEnd, { 
             start: startOfDay(safeParseDate(p.startDate)!), 
@@ -320,15 +319,14 @@ export const endIndefiniteAbsence = async (employeeId: string, dateToEnd: Date):
 
     if (!activePeriod || !activePeriod.scheduledAbsences) return;
 
-    // Find the indefinite absence active on the date to end
     const absenceToEnd = activePeriod.scheduledAbsences.find(absence => {
-        if (absence.endDate) return false; // Already has an end date, not indefinite
+        if (absence.endDate) return false;
         const startDate = safeParseDate(absence.startDate);
         return startDate && !isAfter(startOfDay(startDate), startOfDay(dateToEnd));
     });
 
     if (absenceToEnd) {
-        absenceToEnd.endDate = format(subDays(dateToEnd, 1), 'yyyy-MM-dd');
+        absenceToEnd.endDate = format(subDays(dateToEnd, 1), 'yyyy-MM-dd') as any;
         employeeModified = true;
     }
 
@@ -354,10 +352,8 @@ export const addScheduledAbsence = async (
     const startDateObj = parseISO(newAbsence.startDate);
     await endIndefiniteAbsence(employeeId, startDateObj);
       
-    // A little delay to ensure the endIndefiniteAbsence write is processed before we read again
     await new Promise(resolve => setTimeout(resolve, 250));
 
-    // Refetch the employee data after potentially ending an absence
     const employeeDoc = await getDoc(doc(db, 'employees', employeeId));
     if (!employeeDoc.exists()) throw new Error("Employee not found after refetch");
     const employeeCopy = JSON.parse(JSON.stringify(employeeDoc.data()));
@@ -412,10 +408,9 @@ export const updateScheduledAbsence = async (
 
     const absenceToUpdate = period.scheduledAbsences[absenceIndex];
 
-    // Mark as definitive and update data
     absenceToUpdate.isDefinitive = true;
-    absenceToUpdate.startDate = newData.startDate;
-    absenceToUpdate.endDate = newData.endDate;
+    absenceToUpdate.startDate = newData.startDate as any;
+    absenceToUpdate.endDate = newData.endDate as any;
     absenceToUpdate.absenceTypeId = newData.absenceTypeId;
 
     await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
@@ -443,8 +438,6 @@ export const deleteScheduledAbsence = async (
 
     const absenceToModify = period.scheduledAbsences[absenceIndex];
     
-    // If a week within the absence is already confirmed, we can't fully delete.
-    // Instead, we invalidate the absence by setting its end date to its start date.
     if (weeklyRecords) {
         const startDate = absenceToModify.startDate instanceof Date ? absenceToModify.startDate : parseISO(absenceToModify.startDate as string);
         const endDate = absenceToModify.endDate ? (absenceToModify.endDate instanceof Date ? absenceToModify.endDate : parseISO(absenceToModify.endDate as string)) : startDate;
@@ -458,7 +451,6 @@ export const deleteScheduledAbsence = async (
             const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
             const weekRecord = weeklyRecords[weekId]?.weekData?.[employeeId];
             if (weekRecord?.confirmed) {
-                // Instead of throwing, we just modify the week record
                 const dayKey = format(day, 'yyyy-MM-dd');
                 const docRef = doc(db, 'weeklyRecords', weekId);
                 await updateDoc(docRef, {
@@ -479,25 +471,32 @@ export const hardDeleteScheduledAbsence = async (
     employeeId: string,
     periodId: string,
     absenceId: string,
-    originalRequest?: any,
-    weeklyRecords?: Record<string, WeeklyRecord>
+    originalRequest?: any
 ): Promise<void> => {
-    const employeeDoc = await getDoc(doc(db, 'employees', employeeId));
+    const employeeDocRef = doc(db, 'employees', employeeId);
+    const employeeDoc = await getDoc(employeeDocRef);
     if (!employeeDoc.exists()) throw new Error("Employee not found");
 
-    const employeeCopy = JSON.parse(JSON.stringify(employeeDoc.data()));
-    const period = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => p.id === periodId);
-    if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas.");
+    const employeeData = employeeDoc.data();
+    const employeeCopy = JSON.parse(JSON.stringify(employeeData));
 
-    // Filter out the absence to be deleted by its unique ID. This is the most reliable way.
+    const period = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => p.id === periodId);
+    if (!period || !period.scheduledAbsences) {
+        console.warn(`Period with id ${periodId} not found. No changes made.`);
+        return;
+    }
+    
     const originalLength = period.scheduledAbsences.length;
     period.scheduledAbsences = period.scheduledAbsences.filter((a: ScheduledAbsence) => a.id !== absenceId);
 
     if (period.scheduledAbsences.length === originalLength) {
         console.warn(`Absence with id ${absenceId} not found for hard delete. No changes made.`);
-        return; // No need to update if nothing changed
+        return; 
     }
 
-    await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
+    await updateDoc(employeeDocRef, { employmentPeriods: employeeCopy.employmentPeriods });
 };
+    
+
+
     

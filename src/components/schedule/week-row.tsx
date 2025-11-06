@@ -210,8 +210,8 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             }
     
             const dataToSave: DailyEmployeeData = {
-                ...initialWeekData, // Start with the original data
-                ...localWeekData, // Apply local changes
+                ...initialWeekData,
+                ...localWeekData,
                 confirmed: true,
                 previousBalances: initialBalances,
                 impact: {
@@ -238,11 +238,10 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             
             toast({ title: `Semana Confirmada para ${employee.name}` });
             
-            // Clear local edits after successful save
             setEditedDays({});
             setEditedWeekLevel({});
 
-            refreshData(); // Manually trigger a refresh just in case
+            refreshData(); 
             onWeekCompleted(weekId);
 
         } catch (error) {
@@ -349,7 +348,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                         ) : (
                             <Button onClick={handleConfirm} size="sm" className="w-full" disabled={isSaving || !preview}>
                                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
-                                Confirmar
+                                Confirmar Semana
                             </Button>
                         )}
                     </div>
@@ -430,3 +429,5 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         </TableRow>
     );
 };
+
+    
