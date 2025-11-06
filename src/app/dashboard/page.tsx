@@ -131,7 +131,8 @@ export default function DashboardPage() {
             const lastWeekExists = availableWeeks.some(w => w.value === lastWeekId);
             if (lastWeekExists) {
                 setSelectedGeneralReportWeek(lastWeekId);
-            } else if (availableWeeks[0]?.value) {
+            } else {
+                // Fallback to the most recent available week if last week doesn't exist
                 setSelectedGeneralReportWeek(availableWeeks[0].value);
             }
         }
