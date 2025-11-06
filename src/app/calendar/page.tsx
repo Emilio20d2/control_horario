@@ -130,9 +130,9 @@ export default function CalendarPage() {
       (emp.employmentPeriods || []).forEach(period => {
         (period.scheduledAbsences || []).forEach(absence => {
           const absenceStart = safeParseDate(absence.startDate);
-          const absenceEnd = absence.endDate ? safeParseDate(absence.endDate) : absenceStart;
+          const absenceEnd = absence.endDate ? safeParseDate(absence.endDate) : new Date('9999-12-31');
 
-          if (absenceStart && absenceEnd && isWithinInterval(dayStart, { start: startOfDay(absenceStart), end: endOfDay(absenceEnd) })) {
+          if (absenceStart && isWithinInterval(dayStart, { start: startOfDay(absenceStart), end: endOfDay(absenceEnd) })) {
             const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
             if (absenceType) {
               absences.push({
@@ -630,3 +630,5 @@ export default function CalendarPage() {
     </>
   );
 }
+
+    
