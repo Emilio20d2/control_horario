@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Bar, CartesianGrid, XAxis, BarChart as RechartsBarChart } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getMonth, getYear, parseISO, format, isSameDay, isAfter, startOfDay, startOfWeek, endOfMonth, endOfWeek, parse, isWithinInterval, subWeeks, getISODay, addDays, getISOWeekYear } from 'date-fns';
+import { getMonth, getYear, parseISO, format, isSameDay, isAfter, startOfDay, startOfWeek, endOfMonth, endOfWeek, parse, isWithinInterval, subWeeks, getISODay, addDays, getISOWeekYear, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -116,13 +116,17 @@ export default function DashboardPage() {
             .sort((a, b) => b.localeCompare(a)) // Sort weeks descending
             .map(weekId => {
                 const weekStartDate = parseISO(weekId);
+                if (!isValid(weekStartDate)) {
+                    return null; // Skip invalid weekIds
+                }
                 const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
                 
                 const startDay = format(weekStartDate, 'd MMM', { locale: es });
                 const endDay = format(weekEndDate, 'd MMM, yyyy', { locale: es });
-
+    
                 return { value: weekId, label: `${startDay} - ${endDay}`};
-            });
+            })
+            .filter((item): item is { value: string; label: string } => item !== null);
     }, [weeklyRecords]);
 
     useEffect(() => {
@@ -511,6 +515,7 @@ export default function DashboardPage() {
     
 
     
+
 
 
 
