@@ -146,11 +146,6 @@ export default function CalendarPage() {
     return eventsByDay;
   }, [loading, view, weekDays, getAbsencesForDay]);
   
-  const allWeekEvents = useMemo(() => {
-      if(view !== 'week') return [];
-      return Object.values(weeklyAbsenceData).flat().sort((a,b) => (a.absence.startDate as Date).getTime() - (b.absence.startDate as Date).getTime());
-  }, [weeklyAbsenceData, view]);
-
 
   const { turnId: weekTurnId } = useMemo(() => {
     if (activeEmployees.length > 0) {
@@ -269,10 +264,10 @@ export default function CalendarPage() {
                                         <div 
                                             key={`${event.employee.id}-${event.absence.id}`}
                                             onClick={() => handleOpenDetails(event)}
-                                            className="p-2 rounded-md cursor-pointer text-xs"
+                                            className="p-1.5 rounded-md cursor-pointer text-[11px]"
                                             style={{ backgroundColor: `${event.absenceType.color}40` }}
                                         >
-                                            <p className="font-bold truncate">{event.employee.name}</p>
+                                            <p className="font-bold">{event.employee.name}</p>
                                             <p className="text-muted-foreground">{event.absenceType.name}</p>
                                         </div>
                                     ))}
@@ -491,3 +486,5 @@ export default function CalendarPage() {
     </>
   );
 }
+
+    
