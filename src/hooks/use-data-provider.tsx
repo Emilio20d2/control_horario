@@ -118,7 +118,7 @@ interface DataContextType {
   updateEmployeeWorkHours: (employeeId: string, employee: Employee, weeklyHours: number, effectiveDate: string) => Promise<void>;
   getWeekId: (d: Date) => string;
   processEmployeeWeekData: (emp: Employee, weekDays: Date[], weekId: string) => DailyEmployeeData | null;
-  calculateEmployeeVacations: (emp: Employee, year?: number, mode?: 'confirmed' | 'programmed') => {
+  calculateEmployeeVacations: (emp: Employee | null, year?: number, mode?: 'confirmed' | 'programmed') => {
     vacationDaysTaken: number;
     suspensionDays: number;
     vacationDaysAvailable: number;
@@ -1026,7 +1026,7 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
     return allYearsData;
 };
 
-const calculateEmployeeVacations = useCallback((emp: Employee, year: number = getYear(new Date()), mode: 'confirmed' | 'programmed' = 'programmed'): {
+const calculateEmployeeVacations = useCallback((emp: Employee | null, year: number = getYear(new Date()), mode: 'confirmed' | 'programmed' = 'programmed'): {
     vacationDaysTaken: number;
     suspensionDays: number;
     vacationDaysAvailable: number;
@@ -1140,7 +1140,7 @@ const calculateEmployeeVacations = useCallback((emp: Employee, year: number = ge
       suspensionDeduction: suspensionDeduction,
       proratedDays: proratedDays,
     };
-}, [absenceTypes, weeklyRecords, employees, safeParseDate]);
+}, [absenceTypes, weeklyRecords, safeParseDate]);
 
 const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     const employee = getEmployeeById(employeeId);
@@ -1440,4 +1440,5 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 };
 
 export const useDataProvider = () => useContext(DataContext);
+
 
