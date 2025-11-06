@@ -24,7 +24,7 @@ import { es } from 'date-fns/locale';
 import { AbsenceEditor } from './absence-editor';
 import { HolidayEditor } from './holiday-editor';
 import { BalancePreviewDisplay } from './balance-preview';
-import { updateDocument } from '@/lib/services/firestoreService';
+import { setDocument, updateDocument } from '@/lib/services/firestoreAdminService';
 import { endIndefiniteAbsence } from '@/lib/services/employeeService';
 import { Label } from '../ui/label';
 
@@ -209,7 +209,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 toast({ title: `Jornada Actualizada para ${employee.name}`, description: `Nueva jornada: ${formHours}h/semana.` });
             }
     
-            const dataToSave = {
+            const dataToSave: DailyEmployeeData = {
                 ...initialWeekData, // Start with the original data
                 ...localWeekData, // Apply local changes
                 confirmed: true,
@@ -219,16 +219,8 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 generalComment: localWeekData.generalComment || null,
                 isDifference: localWeekData.isDifference ?? false,
             };
-    
-            // Remove any undefined values to keep Firestore happy
-            Object.keys(dataToSave).forEach(key => {
-                if (dataToSave[key as keyof typeof dataToSave] === undefined) {
-                    delete dataToSave[key as keyof typeof dataToSave];
-                }
-            });
             
-            const docId = `${weekId}-${employee.id}`;
-            await setDoc(doc(db, 'weeklyRecords', docId), dataToSave, { merge: true });
+            await setDocument('weeklyRecords', weekId, { weekData: { [employee.id]: dataToSave } }, { merge: true });
             
             toast({ title: `Semana Confirmada para ${employee.name}` });
             
@@ -241,7 +233,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
 
         } catch (error) {
             console.error(error);
-            toast({ title: 'Error al confirmar', description: error instanceof Error ? error.message : "Error desconocido.", variant: 'destructive' });
+            toast({ title: 'Error al confirmar', description: error instanceof Error ? error.message : "No se pudo guardar la confirmación.", variant: 'destructive' });
         } finally {
             setIsSaving(false);
         }
@@ -251,8 +243,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         if (!localWeekData || !employee) return;
         setIsSaving(true);
         try {
-            const docId = `${weekId}-${employee.id}`;
-            await updateDocument('weeklyRecords', docId, { confirmed: false });
+            await updateDocument('weeklyRecords', weekId, { [`weekData.${employee.id}.confirmed`]: false });
             
             refreshData();
 
