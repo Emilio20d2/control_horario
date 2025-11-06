@@ -37,19 +37,18 @@ export default function SchedulePage() {
         correctionRequests,
         availableYears,
         refreshData,
-        unconfirmedWeeksDetails,
+        unconfirmedWeeksDetails
     } = dataProvider;
     const searchParams = useSearchParams();
     const { toast } = useToast();
 
-    const getInitialDate = useCallback(() => {
+    const initialDate = useMemo(() => {
         const weekParam = searchParams.get('week');
         if (weekParam) {
             const date = parseISO(weekParam);
             if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
         }
         
-        // Use optional chaining and check length
         if (unconfirmedWeeksDetails?.length > 0) {
             const oldestWeekId = unconfirmedWeeksDetails[unconfirmedWeeksDetails.length - 1].weekId;
             const date = parseISO(oldestWeekId);
@@ -57,10 +56,9 @@ export default function SchedulePage() {
         }
         
         return startOfWeek(new Date(), { weekStartsOn: 1 });
-    
     }, [searchParams, unconfirmedWeeksDetails, getWeekId]);
     
-    const [currentDate, setCurrentDate] = useState(getInitialDate);
+    const [currentDate, setCurrentDate] = useState(initialDate);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
     const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
     
@@ -74,14 +72,14 @@ export default function SchedulePage() {
 
     useEffect(() => {
         if (!loading) {
-            setCurrentDate(getInitialDate());
+            setCurrentDate(initialDate);
             if (selectedEmployeeId === 'all') {
                  setSelectedYear(getYear(new Date()));
             } else {
                 setSelectedYear(getISOWeekYear(currentDate));
             }
         }
-    }, [loading, getInitialDate, selectedEmployeeId, setSelectedYear, currentDate]);
+    }, [loading, initialDate, selectedEmployeeId, setSelectedYear, currentDate]);
 
     const isEmployeeActiveForWeek = useCallback((employee: Employee, weekStartDate: Date): boolean => {
         const weekStart = startOfDay(weekStartDate);
@@ -266,7 +264,7 @@ export default function SchedulePage() {
     
         try {
             let dataWasRefreshed = false;
-            const weekDaysToConfirm = eachDayOfInterval({start: startOfWeek(parseISO(weekIdToConfirm), {weekStartsOn: 1}), end: endOfWeek(parseISO(weekIdToConfirm), {weekStartsOn: 1})});
+            const weekDaysToConfirm = eachDayOfInterval({start: startOfWeek(parseISO(weekIdToConfirm), { weekStartsOn: 1 }), end: endOfWeek(parseISO(weekIdToConfirm), { weekStartsOn: 1 })});
             
             for (const day of weekDaysToConfirm) {
                 const dayKey = format(day, 'yyyy-MM-dd');
