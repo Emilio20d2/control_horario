@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { subWeeks, addWeeks, format, startOfWeek, endOfWeek } from 'date-fns';
+import { subWeeks, addWeeks, format, startOfWeek, endOfWeek, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface WeekNavigatorProps {
@@ -21,6 +21,7 @@ export const WeekNavigator: React.FC<WeekNavigatorProps> = ({ currentDate, onWee
     const end = endOfWeek(currentDate, { weekStartsOn: 1 });
  
     const formatRange = (start: Date, end: Date): string => {
+        if (!isValid(start) || !isValid(end)) return 'Seleccionar fecha...';
         return `${format(start, 'dd/MM/yyyy', { locale: es })} - ${format(end, 'dd/MM/yyyy', { locale: es })}`;
     }
  
