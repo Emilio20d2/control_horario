@@ -15,10 +15,11 @@ import { WeekRow } from '@/components/schedule/week-row';
 import type { Employee, DailyEmployeeData, DailyData } from '@/lib/types';
 import { CompletionDialog } from '@/components/schedule/completion-dialog';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquareWarning } from 'lucide-react';
+import { MessageSquareWarning, CalendarPlus } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { AddAbsenceDialog } from '@/components/schedule/add-absence-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 
 export default function SchedulePage() {
     const dataProvider = useDataProvider();
@@ -120,6 +121,7 @@ export default function SchedulePage() {
             const currentEmployeeData = prevData[employeeId];
             if (!currentEmployeeData || !currentEmployeeData.days) return prevData;
     
+            // Create a deep copy to avoid direct state mutation
             const newEmployeeData = JSON.parse(JSON.stringify(currentEmployeeData));
             const dayToUpdate = newEmployeeData.days[dayKey];
             if (!dayToUpdate) return prevData;
@@ -128,30 +130,38 @@ export default function SchedulePage() {
             const originalAbsenceType = absenceTypes.find(at => at.abbreviation === originalAbsence);
             const wasIndefiniteAbsence = originalAbsence !== 'ninguna' && originalAbsenceType && !originalAbsenceType.endDate;
     
+            // Apply the new value
             dayToUpdate[field] = value;
     
             const isNowInterrupted = value === 'ninguna' || (field === 'workedHours' && value > 0);
     
+            // If an indefinite absence was interrupted, clear subsequent days
             if (wasIndefiniteAbsence && isNowInterrupted) {
                 const interruptionDate = parseISO(dayKey);
                 for (const day of weekDays) {
                     if (isAfter(day, interruptionDate)) {
                         const subsequentDayKey = format(day, 'yyyy-MM-dd');
-                        if (newEmployeeData.days[subsequentDayKey]) {
-                            const regeneratedDayData = processEmployeeWeekData(employees.find(e => e.id === employeeId)!, [day], weekId);
-                            if (regeneratedDayData?.days[subsequentDayKey]) {
-                                newEmployeeData.days[subsequentDayKey] = regeneratedDayData.days[subsequentDayKey];
+                        const dayToClear = newEmployeeData.days[subsequentDayKey];
+                        if (dayToClear) {
+                            // Reset to a clean state without the absence
+                            dayToClear.absence = 'ninguna';
+                            dayToClear.absenceHours = 0;
+                            // Optionally, reset worked hours if absence implied it was zero
+                            if (originalAbsenceType?.computesFullDay) {
+                                dayToClear.workedHours = dayToClear.theoreticalHours;
                             }
                         }
                     }
                 }
             } else if (field === 'absence') {
+                // If a new absence is selected, adjust hours
                 const selectedAbsenceType = absenceTypes.find(at => at.abbreviation === value);
                 if (selectedAbsenceType?.computesFullDay) {
                     dayToUpdate.workedHours = 0;
                     dayToUpdate.absenceHours = dayToUpdate.theoreticalHours;
                 }
             } else if (field === 'absenceHours') {
+                // If absence hours are edited for a splittable type, adjust worked hours
                 const selectedAbsenceType = absenceTypes.find(at => at.abbreviation === dayToUpdate.absence);
                 if (selectedAbsenceType?.isAbsenceSplittable) {
                     dayToUpdate.workedHours = Math.max(0, dayToUpdate.theoreticalHours - value);
@@ -160,7 +170,7 @@ export default function SchedulePage() {
             
             return { ...prevData, [employeeId]: newEmployeeData };
         });
-    }, [weekDays, absenceTypes, processEmployeeWeekData, employees, weekId]);
+    }, [weekDays, absenceTypes]);
     
     const handleWeekLevelChange = (employeeId: string, field: string, value: any) => {
         setProcessedWeeklyViewData(prevData => {
