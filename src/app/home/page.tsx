@@ -126,7 +126,7 @@ export default function HomePage() {
                         Aquí tienes un resumen de tus tareas pendientes.
                     </p>
                 </div>
-                <div className="grid gap-6 auto-rows-fr sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 flex-grow">
+                <div className="grid gap-6 auto-rows-fr sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     
                     <Card className="flex flex-col bg-gradient-to-br from-yellow-50 to-white dark:from-yellow-950/30 dark:to-background">
                         <CardHeader className="p-4">
@@ -137,9 +137,9 @@ export default function HomePage() {
                                 <CardTitle>Semanas Pendientes</CardTitle>
                             </div>
                         </CardHeader>
-                        <CardContent className="flex-grow flex flex-col items-center justify-center text-center p-4">
+                        <CardContent className="flex-grow p-4">
                              {oldestUnconfirmedWeek ? (
-                                <div className="flex flex-col items-center gap-2">
+                                <div className="flex flex-col items-center justify-center text-center">
                                      <p className="text-sm text-muted-foreground font-semibold">Semana del {format(parseISO(oldestUnconfirmedWeek.weekId), 'dd/MM/yyyy')}</p>
                                      <div className="text-7xl font-bold text-destructive">
                                         {oldestUnconfirmedWeek.employeeNames.length}
@@ -147,9 +147,9 @@ export default function HomePage() {
                                      <p className="text-muted-foreground">empleados sin confirmar</p>
                                 </div>
                             ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                                    <CheckCircle className="h-12 w-12 text-green-500 mb-2"/>
-                                    <p className="font-semibold text-lg">¡Todo al día!</p>
+                                <div className="flex flex-col items-center text-center text-muted-foreground pt-4">
+                                    <CheckCircle className="h-10 w-10 text-green-500 mb-2"/>
+                                    <p className="font-semibold">¡Todo al día!</p>
                                     <p className="text-sm">No hay semanas pendientes.</p>
                                 </div>
                             )}
@@ -175,7 +175,7 @@ export default function HomePage() {
                     </Card>
 
                     <Card className="flex flex-col bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
-                        <CardHeader className="p-3">
+                        <CardHeader className="p-4">
                             <div className="flex items-center gap-3">
                                 <div className="bg-primary/10 p-3 rounded-full">
                                     <Mail className="h-6 w-6 text-primary" />
@@ -185,10 +185,10 @@ export default function HomePage() {
                         </CardHeader>
                         <CardContent className="flex-grow p-3 space-y-2">
                             {unreadConversations.length > 0 ? (
-                                <ScrollArea className="h-full">
+                                <ScrollArea className="h-full pr-2">
                                     <div className="space-y-2">
                                         {unreadConversations.map(conv => (
-                                            <Link key={conv.id} href="/messages">
+                                            <Link key={conv.id} href={`/messages?conversationId=${conv.id}`}>
                                                 <div className="flex items-center justify-between p-3 rounded-md border bg-background/50 hover:bg-muted">
                                                     <div className="flex items-center gap-3">
                                                         <Avatar>
@@ -206,7 +206,7 @@ export default function HomePage() {
                                     </div>
                                 </ScrollArea>
                             ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                                <div className="flex flex-col items-center text-center text-muted-foreground pt-4">
                                     <CheckCircle className="h-10 w-10 text-green-500 mb-2"/>
                                     <p className="font-semibold">¡Bandeja de entrada al día!</p>
                                     <p className="text-sm">No hay mensajes nuevos.</p>
@@ -216,7 +216,7 @@ export default function HomePage() {
                     </Card>
 
                     <Card className="flex flex-col bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
-                        <CardHeader className="p-3">
+                        <CardHeader className="p-4">
                         <div className="flex items-center gap-3">
                                 <div className="bg-primary/10 p-3 rounded-full">
                                 <CalendarClock className="h-6 w-6 text-primary" />
@@ -226,7 +226,7 @@ export default function HomePage() {
                         </CardHeader>
                         <CardContent className="flex-grow p-3 space-y-2">
                             {upcomingEvents.length > 0 ? (
-                                <ScrollArea className="h-full">
+                                <ScrollArea className="h-full pr-2">
                                     <div className="space-y-2">
                                         {upcomingEvents.map((event, index) => {
                                             const startDate = event.absence.startDate as Date;
@@ -256,7 +256,7 @@ export default function HomePage() {
                                     </div>
                                 </ScrollArea>
                             ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                                <div className="flex flex-col items-center text-center text-muted-foreground pt-4">
                                     <CheckCircle className="h-10 w-10 text-green-500 mb-2"/>
                                     <p className="font-semibold">¡Todo tranquilo!</p>
                                     <p className="text-sm">No hay ausencias programadas.</p>
