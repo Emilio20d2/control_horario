@@ -58,7 +58,7 @@ import { addDocument, setDocument, getCollection } from '@/lib/services/firestor
 import { updateEmployeeWorkHours as updateEmployeeWorkHoursService } from '@/lib/services/employeeService';
 import { Timestamp, collection, orderBy, query, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import prefilledData from '@/lib/prefilled_data.json';
-import { calculateBalancePreview } from '@/lib/calculators/balance-calculator';
+import { calculateBalancePreview as balanceCalculator } from '@/lib/calculators/balance-calculator';
 import { useAuth } from '@/hooks/useAuth';
 import { db } from '@/lib/firebase';
 import { getFinalBalancesForEmployee, getVacationSummaryForEmployee } from '@/lib/services/employee-data-service';
@@ -592,11 +592,11 @@ const getEffectiveWeeklyHours = useCallback((period: EmploymentPeriod | null, da
 
 
 
-const calculateBalancePreviewCallback = useCallback((employeeId: string, weekData: Record<string, DailyData>, initialBalances: { ordinary: number, holiday: number, leave: number }, weeklyHoursOverride?: number | null, totalComplementaryHours?: number | null) => {
+const calculateBalancePreview = useCallback((employeeId: string, weekData: Record<string, DailyData>, initialBalances: { ordinary: number, holiday: number, leave: number }, weeklyHoursOverride?: number | null, totalComplementaryHours?: number | null) => {
     const employee = getEmployeeById(employeeId);
     if (!employee) return null;
 
-    return calculateBalancePreview(
+    return balanceCalculator(
         employee.id,
         weekData,
         initialBalances,
@@ -655,7 +655,7 @@ const getEmployeeBalancesForWeek = useCallback((employeeId: string, weekId: stri
 
     for (const record of recordsToProcess) {
         const weekData = record.weekData[employeeId];
-        const preview = calculateBalancePreviewCallback(
+        const preview = calculateBalancePreview(
             employeeId,
             weekData.days,
             currentBalances,
@@ -672,7 +672,7 @@ const getEmployeeBalancesForWeek = useCallback((employeeId: string, weekId: stri
     }
 
     return { ...currentBalances, total: currentBalances.ordinary + currentBalances.holiday + currentBalances.leave };
-}, [employees, weeklyRecords, calculateBalancePreviewCallback]);
+}, [employees, weeklyRecords, calculateBalancePreview]);
 
   
 const getEmployeeFinalBalances = useCallback((employeeId: string): { ordinary: number, holiday: number, leave: number, total: number } => {
@@ -940,7 +940,7 @@ const getProcessedAnnualDataForEmployee = async (employeeId: string, year: numbe
         const weekData = processEmployeeWeekData(employee, weekDays, currentWeekId);
         
         if (weekData?.days) {
-            const preview = calculateBalancePreviewCallback(employeeId, weekData.days, initialBalances, weekData.weeklyHoursOverride, weekData.totalComplementaryHours);
+            const preview = calculateBalancePreview(employeeId, weekData.days, initialBalances, weekData.weeklyHoursOverride, weekData.totalComplementaryHours);
             
             if (preview) {
                 annualData.push({
@@ -1365,7 +1365,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     getEmployeeBalancesForWeek,
     getEmployeeFinalBalances,
     getTheoreticalHoursAndTurn,
-    calculateBalancePreview: calculateBalancePreviewCallback,
+    calculateBalancePreview,
     calculateCurrentAnnualComputedHours,
     calculateTheoreticalAnnualWorkHours,
     getProcessedAnnualDataForEmployee,
