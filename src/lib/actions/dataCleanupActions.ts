@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { getDbAdmin } from '../firebase-admin';
@@ -77,46 +78,6 @@ export async function clearAllCheckmarks() {
   }
 }
 
-
-export async function deleteSelectedConversations(conversationIds: string[]): Promise<{ success: boolean; message?: string; error?: string }> {
-    'use server';
-
-    if (!conversationIds || conversationIds.length === 0) {
-        return { success: false, error: "No se proporcionaron IDs de conversación." };
-    }
-
-    try {
-        const db = getDbAdmin();
-        const batch = db.batch();
-        
-        let messagesDeleted = 0;
-
-        for (const convId of conversationIds) {
-            const convRef = db.collection('conversations').doc(convId);
-            const messagesRef = convRef.collection('messages');
-            
-            // Delete all messages in the subcollection
-            const messagesSnapshot = await messagesRef.get();
-            if (!messagesSnapshot.empty) {
-                messagesSnapshot.docs.forEach(doc => {
-                    batch.delete(doc.ref);
-                    messagesDeleted++;
-                });
-            }
-
-            // Delete the main conversation document
-            batch.delete(convRef);
-        }
-
-        await batch.commit();
-
-        return { success: true, message: `${conversationIds.length} conversación(es) y ${messagesDeleted} mensaje(s) han sido eliminados.` };
-    } catch (error) {
-        console.error("Error deleting conversations:", error);
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido al eliminar las conversaciones.';
-        return { success: false, error: errorMessage };
-    }
-}
 
 export async function resolveCorrectionRequest(requestId: string): Promise<{ success: boolean; error?: string; }> {
     'use server';

@@ -18,17 +18,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { clearAllCheckmarks, deleteSelectedConversations } from '@/lib/actions/dataCleanupActions';
+import { clearAllCheckmarks } from '@/lib/actions/dataCleanupActions';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import { Checkbox } from '../ui/checkbox';
 import { ScrollArea } from '../ui/scroll-area';
+import { collection, deleteDoc, doc, getDocs, writeBatch } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 
 function ConversationCleanupManager() {
-    const { conversations, loading } = useDataProvider();
+    const { conversations, loading, refreshData } = useDataProvider();
     const { toast } = useToast();
     const { reauthenticateWithPassword } = useAuth();
     
@@ -62,19 +64,34 @@ function ConversationCleanupManager() {
         }
         
         try {
-            const result = await deleteSelectedConversations(selectedConversations);
-            if (result.success) {
-                toast({
-                    title: 'Conversaciones Eliminadas',
-                    description: result.message,
-                    variant: 'destructive',
+            const batch = writeBatch(db);
+            let messagesDeletedCount = 0;
+
+            for (const convId of selectedConversations) {
+                const messagesRef = collection(db, 'conversations', convId, 'messages');
+                const messagesSnapshot = await getDocs(messagesRef);
+
+                messagesSnapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                    messagesDeletedCount++;
                 });
-                setSelectedConversations([]);
-            } else {
-                throw new Error(result.error);
+
+                const convRef = doc(db, 'conversations', convId);
+                batch.delete(convRef);
             }
+
+            await batch.commit();
+            
+            toast({
+                title: 'Conversaciones Eliminadas',
+                description: `${selectedConversations.length} conversación(es) y ${messagesDeletedCount} mensaje(s) eliminados.`,
+                variant: 'destructive',
+            });
+            refreshData(); // Refresh the data provider to update the UI
+            setSelectedConversations([]);
+
         } catch (error) {
-            console.error(error);
+            console.error("Error deleting conversations:", error);
             toast({
                 title: 'Error al eliminar',
                 description: error instanceof Error ? error.message : 'No se pudieron eliminar las conversaciones.',
