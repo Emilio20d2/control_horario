@@ -46,14 +46,12 @@ export default function SchedulePage() {
             if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
         }
         
-        // If there are unconfirmed weeks, default to the oldest one.
         if (unconfirmedWeeksDetails && unconfirmedWeeksDetails.length > 0) {
             const oldestWeekId = unconfirmedWeeksDetails[unconfirmedWeeksDetails.length - 1].weekId;
             const date = parseISO(oldestWeekId);
             if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
         }
         
-        // Otherwise, default to the current week
         return startOfWeek(new Date(), { weekStartsOn: 1 });
     
     }, [searchParams, unconfirmedWeeksDetails]);
@@ -107,8 +105,15 @@ export default function SchedulePage() {
     const weekDays = useMemo(() => eachDayOfInterval({ start: startOfWeek(currentDate, { weekStartsOn: 1 }), end: endOfWeek(currentDate, { weekStartsOn: 1 }) }), [currentDate]);
     
     const onWeekCompleted = (completedWeekId: string) => {
-        const nextWeekId = findNextUnconfirmedWeek(parseISO(completedWeekId));
-        setCompletionInfo({ weekId: completedWeekId, nextWeekId });
+        const activeEmployeesForCompletedWeek = getActiveEmployeesForDate(parseISO(completedWeekId));
+        const allConfirmed = activeEmployeesForCompletedWeek.every(emp => 
+            weeklyRecords[completedWeekId]?.weekData?.[emp.id]?.confirmed
+        );
+
+        if (allConfirmed) {
+            const nextWeekId = findNextUnconfirmedWeek(parseISO(completedWeekId));
+            setCompletionInfo({ weekId: completedWeekId, nextWeekId });
+        }
     };
 
     // Data processor for WEEKLY view (all employees)
@@ -125,7 +130,7 @@ export default function SchedulePage() {
         }
         setProcessedWeeklyViewData(newProcessedData);
 
-    }, [loading, weekId, selectedEmployeeId, processEmployeeWeekData, weekDays, activeEmployeesForSchedule, employees]);
+    }, [loading, weekId, selectedEmployeeId, processEmployeeWeekData, weekDays, activeEmployeesForSchedule, employees, weeklyRecords]);
     
     const pendingRequestsForWeek = useMemo(() => {
         return correctionRequests.filter(r => r.weekId === weekId && r.status === 'pending');
