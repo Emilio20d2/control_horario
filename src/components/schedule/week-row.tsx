@@ -24,7 +24,7 @@ import { es } from 'date-fns/locale';
 import { AbsenceEditor } from './absence-editor';
 import { HolidayEditor } from './holiday-editor';
 import { BalancePreviewDisplay } from './balance-preview';
-import { setDocument } from '@/lib/services/firestoreAdminService';
+import { setDocument, updateDocument } from '@/lib/services/firestoreService';
 import { endIndefiniteAbsence } from '@/lib/services/employeeService';
 import { Label } from '../ui/label';
 
@@ -243,8 +243,13 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             onWeekCompleted(weekId);
 
         } catch (error) {
-            console.error(error);
-            toast({ title: 'Error al confirmar', description: error instanceof Error ? error.message : "No se pudo guardar la confirmación.", variant: 'destructive' });
+            console.error("Error al confirmar:", error);
+            const errorMessage = error instanceof Error ? error.message : "No se pudo guardar la confirmación.";
+            toast({ 
+                title: 'Error al confirmar', 
+                description: errorMessage,
+                variant: 'destructive' 
+            });
         } finally {
             setIsSaving(false);
         }
@@ -260,7 +265,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
 
             toast({ title: `Semana Habilitada para Edición`, variant: "destructive" });
         } catch (error) {
-            console.error(error);
+            console.error("Error al habilitar corrección:", error);
             toast({ title: 'Error al habilitar corrección', description: error instanceof Error ? error.message : "Error desconocido.", variant: 'destructive' });
         } finally {
             setIsSaving(false);
@@ -341,7 +346,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                         ) : (
                             <Button onClick={handleConfirm} size="sm" className="w-full" disabled={isSaving || !preview}>
                                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
-                                Confirmar Semana
+                                Confirmar
                             </Button>
                         )}
                     </div>
