@@ -1260,12 +1260,24 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                     leaveHours = roundToNearestQuarter(weeklyWorkHours / 5);
                 }
             }
+
+            let workedHours = theoreticalHours;
+            let absenceAbbreviation = 'ninguna';
+            let absenceHours = 0;
+
+            if (absenceType) {
+                absenceAbbreviation = absenceType.abbreviation;
+                if (absenceType.computesFullDay) {
+                    workedHours = 0;
+                    absenceHours = theoreticalHours;
+                }
+            }
     
             newDays[dayKey] = {
                 theoreticalHours,
-                workedHours: absenceType && !absenceType.isAbsenceSplittable ? 0 : theoreticalHours,
-                absence: absenceType ? absenceType.abbreviation : 'ninguna',
-                absenceHours: absenceType && !absenceType.isAbsenceSplittable ? theoreticalHours : 0,
+                workedHours,
+                absence: absenceAbbreviation,
+                absenceHours,
                 leaveHours,
                 doublePay: false,
                 isHoliday: !!holidayDetails,
@@ -1426,3 +1438,6 @@ export const useDataProvider = () => useContext(DataContext);
 
 
 
+
+
+    
