@@ -60,6 +60,7 @@ import { Badge } from '@/components/ui/badge';
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
 
 
 interface CellAbsenceInfo {
@@ -240,83 +241,50 @@ export default function CalendarPage() {
   }
 
   const renderWeeklyView = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3">
-            <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
-                <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-2 p-4 border-b">
-                    <div className="flex items-center gap-2">
-                        <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
-                        {weekTurnId && (
-                            <Badge variant="secondary" className="text-xs">
-                                {`T.${weekTurnId.replace('turn', '')}`}
-                            </Badge>
-                        )}
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                     <div className="grid grid-cols-7 border-t">
-                        {weekDays.map(day => {
-                            const dayKey = format(day, 'yyyy-MM-dd');
-                            const events = weeklyAbsenceData[dayKey] || [];
-                            return (
-                                <div key={dayKey} className="flex flex-col border-r last:border-r-0 min-h-[400px]">
-                                    <div className="text-center p-2 border-b">
-                                        <p className="font-semibold capitalize text-sm">{format(day, 'E', { locale: es })}</p>
-                                        <p className="text-2xl font-bold">{format(day, 'd')}</p>
-                                    </div>
-                                    <ScrollArea className="flex-1">
-                                        <div className="p-2 space-y-2">
-                                            {events.map(event => (
-                                                <div 
-                                                    key={`${event.employee.id}-${event.absence.id}`}
-                                                    onClick={() => handleOpenDetails(event)}
-                                                    className="p-2 rounded-md cursor-pointer text-xs"
-                                                    style={{ backgroundColor: `${event.absenceType.color}40` }}
-                                                >
-                                                    <p className="font-bold truncate">{event.employee.name}</p>
-                                                    <p className="text-muted-foreground">{event.absenceType.name}</p>
-                                                </div>
-                                            ))}
-                                            {events.length === 0 && <div className="h-24"></div>}
-                                        </div>
-                                    </ScrollArea>
-                                </div>
-                            )
-                        })}
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-        <div className="lg:col-span-1">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Eventos de la Semana</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[450px]">
-                         {allWeekEvents.length === 0 ? (
-                            <p className="text-muted-foreground text-center py-10">No hay eventos esta semana.</p>
-                        ) : (
-                            <div className="space-y-3">
-                                {allWeekEvents.map((event, index) => (
-                                    <div key={`${event.absence.id}-${index}`} onClick={() => handleOpenDetails(event)} className="flex items-center gap-3 cursor-pointer p-2 rounded-md hover:bg-muted">
-                                        <div className="flex-shrink-0 w-12 text-center">
-                                            <p className="font-bold">{format(event.absence.startDate, 'dd')}</p>
-                                            <p className="text-xs capitalize">{format(event.absence.startDate, 'MMM', {locale: es})}</p>
-                                        </div>
-                                        <div className="flex-grow">
-                                            <p className="font-semibold text-sm truncate">{event.employee.name}</p>
-                                            <p className="text-xs text-muted-foreground">{event.absenceType.name}</p>
-                                        </div>
-                                    </div>
-                                ))}
+    <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
+        <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-2 p-4 border-b">
+            <div className="flex items-center gap-2">
+                <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
+                {weekTurnId && (
+                    <Badge variant="secondary" className="text-xs">
+                        {`T.${weekTurnId.replace('turn', '')}`}
+                    </Badge>
+                )}
+            </div>
+        </CardHeader>
+        <CardContent className="p-0">
+             <div className="grid grid-cols-7 border-t">
+                {weekDays.map(day => {
+                    const dayKey = format(day, 'yyyy-MM-dd');
+                    const events = weeklyAbsenceData[dayKey] || [];
+                    return (
+                        <div key={dayKey} className="flex flex-col border-r last:border-r-0 min-h-[600px]">
+                            <div className="text-center p-2 border-b">
+                                <p className="font-semibold capitalize text-sm">{format(day, 'E', { locale: es })}</p>
+                                <p className="text-2xl font-bold">{format(day, 'd')}</p>
                             </div>
-                        )}
-                    </ScrollArea>
-                </CardContent>
-            </Card>
-        </div>
-    </div>
+                            <ScrollArea className="flex-1">
+                                <div className="p-2 space-y-2">
+                                    {events.map(event => (
+                                        <div 
+                                            key={`${event.employee.id}-${event.absence.id}`}
+                                            onClick={() => handleOpenDetails(event)}
+                                            className="p-2 rounded-md cursor-pointer text-xs"
+                                            style={{ backgroundColor: `${event.absenceType.color}40` }}
+                                        >
+                                            <p className="font-bold truncate">{event.employee.name}</p>
+                                            <p className="text-muted-foreground">{event.absenceType.name}</p>
+                                        </div>
+                                    ))}
+                                    {events.length === 0 && <div className="h-24"></div>}
+                                </div>
+                            </ScrollArea>
+                        </div>
+                    )
+                })}
+            </div>
+        </CardContent>
+    </Card>
   );
 
   const MonthView = () => {
