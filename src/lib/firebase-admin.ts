@@ -42,14 +42,14 @@ const initializeAdminApp = () => {
 
 const getDbAdmin = () => {
     if (!adminApp) initializeAdminApp();
-    // This ensures we get the firestore instance from the initialized app.
-    // By default, it will use the project's default database, but we need to specify it.
+    // This ensures we get the firestore instance from the initialized app,
+    // explicitly pointing to the correct database.
     return admin.firestore(adminApp);
 };
 
 const getAuthAdmin = () => {
      if (!adminApp) initializeAdminApp();
-    return admin.auth();
+    return admin.auth(adminApp);
 };
 
 export { getDbAdmin, getAuthAdmin };
