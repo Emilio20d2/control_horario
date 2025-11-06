@@ -116,61 +116,52 @@ export default function SchedulePage() {
         }
     };
 
-    const handleEmployeeWeekDataChange = useCallback((employeeId: string, dayKey: string, field: string, value: any) => {
+    const handleEmployeeWeekDataChange = (employeeId: string, dayKey: string, field: string, value: any) => {
         setProcessedWeeklyViewData(prevData => {
             const currentEmployeeData = prevData[employeeId];
-            if (!currentEmployeeData || !currentEmployeeData.days) return prevData;
+            if (!currentEmployeeData) return prevData;
     
-            // Create a deep copy to avoid direct state mutation
-            const newEmployeeData = JSON.parse(JSON.stringify(currentEmployeeData));
-            const dayToUpdate = newEmployeeData.days[dayKey];
-            if (!dayToUpdate) return prevData;
+            const newEmployeeData: DailyEmployeeData = JSON.parse(JSON.stringify(currentEmployeeData));
     
-            const originalAbsence = dayToUpdate.absence;
-            const originalAbsenceType = absenceTypes.find(at => at.abbreviation === originalAbsence);
-            const wasIndefiniteAbsence = originalAbsence !== 'ninguna' && originalAbsenceType && !originalAbsenceType.endDate;
+            if (newEmployeeData.days && newEmployeeData.days[dayKey]) {
+                const dayToUpdate = newEmployeeData.days[dayKey];
+                const originalAbsence = dayToUpdate.absence;
+                const originalAbsenceType = absenceTypes.find(at => at.abbreviation === originalAbsence);
     
-            // Apply the new value
-            dayToUpdate[field] = value;
+                dayToUpdate[field] = value;
     
-            const isNowInterrupted = value === 'ninguna' || (field === 'workedHours' && value > 0);
+                const isNowInterrupted = value === 'ninguna' || (field === 'workedHours' && value > 0);
     
-            // If an indefinite absence was interrupted, clear subsequent days
-            if (wasIndefiniteAbsence && isNowInterrupted) {
-                const interruptionDate = parseISO(dayKey);
-                for (const day of weekDays) {
-                    if (isAfter(day, interruptionDate)) {
-                        const subsequentDayKey = format(day, 'yyyy-MM-dd');
-                        const dayToClear = newEmployeeData.days[subsequentDayKey];
-                        if (dayToClear) {
-                            // Reset to a clean state without the absence
-                            dayToClear.absence = 'ninguna';
-                            dayToClear.absenceHours = 0;
-                            // Optionally, reset worked hours if absence implied it was zero
-                            if (originalAbsenceType?.computesFullDay) {
+                if (originalAbsenceType && !originalAbsenceType.endDate && isNowInterrupted) {
+                    const interruptionDate = parseISO(dayKey);
+                    weekDays.forEach(day => {
+                        if (isAfter(day, interruptionDate)) {
+                            const subsequentDayKey = format(day, 'yyyy-MM-dd');
+                            const dayToClear = newEmployeeData.days[subsequentDayKey];
+                            if (dayToClear && dayToClear.absence === originalAbsence) {
+                                dayToClear.absence = 'ninguna';
+                                dayToClear.absenceHours = 0;
                                 dayToClear.workedHours = dayToClear.theoreticalHours;
                             }
                         }
+                    });
+                } else if (field === 'absence') {
+                    const selectedAbsenceType = absenceTypes.find(at => at.abbreviation === value);
+                    if (selectedAbsenceType?.computesFullDay) {
+                        dayToUpdate.workedHours = 0;
+                        dayToUpdate.absenceHours = dayToUpdate.theoreticalHours;
                     }
-                }
-            } else if (field === 'absence') {
-                // If a new absence is selected, adjust hours
-                const selectedAbsenceType = absenceTypes.find(at => at.abbreviation === value);
-                if (selectedAbsenceType?.computesFullDay) {
-                    dayToUpdate.workedHours = 0;
-                    dayToUpdate.absenceHours = dayToUpdate.theoreticalHours;
-                }
-            } else if (field === 'absenceHours') {
-                // If absence hours are edited for a splittable type, adjust worked hours
-                const selectedAbsenceType = absenceTypes.find(at => at.abbreviation === dayToUpdate.absence);
-                if (selectedAbsenceType?.isAbsenceSplittable) {
-                    dayToUpdate.workedHours = Math.max(0, dayToUpdate.theoreticalHours - value);
+                } else if (field === 'absenceHours') {
+                    const selectedAbsenceType = absenceTypes.find(at => at.abbreviation === dayToUpdate.absence);
+                    if (selectedAbsenceType?.isAbsenceSplittable) {
+                        dayToUpdate.workedHours = Math.max(0, dayToUpdate.theoreticalHours - (Number(value) || 0));
+                    }
                 }
             }
             
             return { ...prevData, [employeeId]: newEmployeeData };
         });
-    }, [weekDays, absenceTypes]);
+    };
     
     const handleWeekLevelChange = (employeeId: string, field: string, value: any) => {
         setProcessedWeeklyViewData(prevData => {
@@ -294,7 +285,7 @@ export default function SchedulePage() {
                                                     {format(startOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM')} - {format(endOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM yyyy', {locale:es})}
                                                 </div>
                                             </TableHead>
-                                            {currentWeekDays.map(d => <TableHead key={d.toISOString()} className={cn("text-left p-2 text-xs min-w-[100px] sm:min-w-[120px]", holidays.some(h => isSameDay(h.date, d)) && "bg-blue-100")}><span className="sm:hidden">{format(d, 'E', {locale:es})}</span><span className="hidden sm:inline">{format(d, 'E dd/MM', {locale:es})}</span></TableHead>)}
+                                            {currentWeekDays.map(d => <TableHead key={d.toISOString()} className={cn("text-left p-2 text-xs w-[140px]", holidays.some(h => isSameDay(h.date, d)) && "bg-blue-100")}><span className="sm:hidden">{format(d, 'E', {locale:es})}</span><span className="hidden sm:inline">{format(d, 'E dd/MM', {locale:es})}</span></TableHead>)}
                                         </TableRow>
                                         <WeekRow 
                                             employee={employee} 
@@ -361,7 +352,7 @@ export default function SchedulePage() {
                                     const isHoliday = holidays.some(h => isSameDay(h.date, d));
                                     return (
                                         <TableHead key={d.toISOString()} className={cn(
-                                            "text-center p-2 text-xs min-w-[100px] sm:min-w-[120px]", 
+                                            "text-center p-2 text-xs w-[140px]", 
                                             isHoliday 
                                             ? "bg-gradient-to-br from-green-100 to-transparent" 
                                             : "bg-gradient-to-br from-gray-50/50 to-transparent"
