@@ -327,7 +327,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
   const isFirstPeriod = !employee || employee.employmentPeriods.length <= 1;
 
   return (
-    <Card>
+    <Card className="bg-gradient-to-br from-green-50 to-transparent dark:from-green-950/30 dark:to-transparent">
       <CardHeader>
         <CardTitle>{employee ? 'Editar Empleado' : 'Crear Empleado y Primer Periodo Laboral'}</CardTitle>
         <CardDescription>

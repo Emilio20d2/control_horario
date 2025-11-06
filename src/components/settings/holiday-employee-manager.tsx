@@ -170,7 +170,7 @@ export function HolidayEmployeeManager() {
     }
 
     return (
-        <Card>
+        <Card className="bg-gradient-to-br from-teal-50 to-transparent dark:from-teal-950/30 dark:to-transparent">
             <CardHeader>
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div>

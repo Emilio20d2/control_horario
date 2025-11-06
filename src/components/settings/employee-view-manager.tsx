@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -53,7 +54,7 @@ export function EmployeeViewManager() {
     };
 
     return (
-        <Card>
+        <Card className="bg-gradient-to-br from-teal-50 to-transparent dark:from-teal-950/30 dark:to-transparent">
             <CardHeader>
                 <CardTitle>Gestión de Acceso de Empleados</CardTitle>
                 <CardDescription>

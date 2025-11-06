@@ -17,7 +17,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { clearAllCheckmarks } from '@/lib/actions/dataCleanupActions';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useAuth } from '@/hooks/useAuth';
@@ -103,7 +102,7 @@ function ConversationCleanupManager() {
     };
     
     return (
-        <Card>
+        <Card className="bg-gradient-to-br from-red-50 to-transparent dark:from-red-950/30 dark:to-transparent">
             <CardHeader>
                 <CardTitle>Limpieza de Conversaciones</CardTitle>
                 <CardDescription>

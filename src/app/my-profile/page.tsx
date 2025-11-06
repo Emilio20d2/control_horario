@@ -204,7 +204,7 @@ export default function MyProfilePage() {
             </h1>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 <Card className="bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-background">
+                 <Card className="bg-gradient-to-br from-indigo-50 to-transparent dark:from-indigo-950/30 dark:to-transparent">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-base">Detalle de Bolsas de Horas</CardTitle>
                     </CardHeader>
@@ -227,7 +227,7 @@ export default function MyProfilePage() {
                 </Card>
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Card className="cursor-pointer bg-gradient-to-br from-cyan-50 to-white dark:from-cyan-950/30 dark:to-background">
+                        <Card className="cursor-pointer bg-gradient-to-br from-cyan-50 to-transparent dark:from-cyan-950/30 dark:to-transparent">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Vacaciones</CardTitle>
                                 <Plane className="h-4 w-4 text-muted-foreground" />
@@ -277,7 +277,7 @@ export default function MyProfilePage() {
             </div>
 
 
-             <Card className="bg-gradient-to-br from-pink-50 to-white dark:from-pink-950/30 dark:to-background">
+             <Card className="bg-gradient-to-br from-pink-50 to-transparent dark:from-pink-950/30 dark:to-transparent">
                 <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">
                         <CalendarX2 className="h-5 w-5 text-primary" />
@@ -321,7 +321,7 @@ export default function MyProfilePage() {
                 </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-teal-50 to-white dark:from-teal-950/30 dark:to-background">
+            <Card className="bg-gradient-to-br from-teal-50 to-transparent dark:from-teal-950/30 dark:to-transparent">
                 <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">
                         <Plane className="h-5 w-5 text-primary" />
@@ -365,7 +365,7 @@ export default function MyProfilePage() {
                         <EmployeeDetails employee={employee} period={activePeriod} allPeriods={employee.employmentPeriods} isEmployeeView={true} />
                     </>
                 ) : (
-                    <Card className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/30 dark:to-background">
+                    <Card className="bg-gradient-to-br from-gray-50 to-transparent dark:from-gray-950/30 dark:to-transparent">
                         <CardHeader>
                             <CardTitle>Sin Contrato Activo</CardTitle>
                         </CardHeader>
@@ -378,7 +378,3 @@ export default function MyProfilePage() {
         </div>
     );
 }
-
-
-
-    

@@ -369,7 +369,7 @@ export default function DashboardPage() {
             </h1>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
+                <Card className="bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-950/30 dark:to-transparent">
                     <CardHeader className="flex flex-row items-start justify-between gap-4 p-4 pb-2">
                         <CardTitle className="text-lg font-bold">Informes por Empleado</CardTitle>
                         <Select value={String(reportYear)} onValueChange={v => setReportYear(Number(v))}>
@@ -414,7 +414,7 @@ export default function DashboardPage() {
                 
                 <HolidayReportGenerator />
                 
-                <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
+                <Card className="bg-gradient-to-br from-green-50 to-transparent dark:from-green-950/30 dark:to-transparent">
                     <CardHeader className="p-4 pb-2">
                         <CardTitle className="text-lg font-bold">Informes Generales</CardTitle>
                     </CardHeader>
@@ -456,7 +456,7 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="flex flex-col bg-gradient-to-br from-yellow-50 to-white dark:from-yellow-950/30 dark:to-background">
+                <Card className="flex flex-col bg-gradient-to-br from-yellow-50 to-transparent dark:from-yellow-950/30 dark:to-transparent">
                     <CardHeader className="p-4 pb-2">
                         <CardTitle className="text-lg font-bold">Top 10 Empleados por Balance</CardTitle>
                     </CardHeader>
@@ -495,27 +495,3 @@ export default function DashboardPage() {
         </div>
       );
 }
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-      
-
-    
-
-    
-
-
-
-

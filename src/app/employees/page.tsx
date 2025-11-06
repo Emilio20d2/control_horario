@@ -244,7 +244,7 @@ export default function EmployeesPage() {
       </div>
 
       <div className="px-4 md:px-6 pb-4">
-        <Card className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background">
+        <Card className="bg-gradient-to-br from-purple-50 to-transparent dark:from-purple-950/30 dark:to-transparent">
             <CardHeader>
             <CardTitle>Lista de Empleados</CardTitle>
             </CardHeader>

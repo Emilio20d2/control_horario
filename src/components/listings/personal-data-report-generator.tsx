@@ -145,7 +145,7 @@ export function PersonalDataReportGenerator() {
   };
 
   return (
-    <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
+    <Card className="bg-gradient-to-br from-green-50 to-transparent dark:from-green-950/30 dark:to-transparent">
       <CardHeader>
         <CardTitle>Formulario de Datos Personales</CardTitle>
         <CardDescription>
@@ -281,5 +281,3 @@ export function PersonalDataReportGenerator() {
     </Card>
   );
 }
-
-    

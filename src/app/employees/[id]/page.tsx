@@ -234,7 +234,7 @@ export default function EmployeeDetailPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 md:px-6">
-                <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
+                <Card className="bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-950/30 dark:to-transparent">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-base">Detalle de Bolsas de Horas</CardTitle>
                     </CardHeader>
@@ -260,7 +260,7 @@ export default function EmployeeDetailPage() {
                     </CardFooter>
                 </Card>
                 
-                <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background">
+                <Card className="bg-gradient-to-br from-green-50 to-transparent dark:from-green-950/30 dark:to-transparent">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Vacaciones</CardTitle>
                          {isMobile && <Plane className="h-4 w-4 text-muted-foreground" />}
@@ -296,7 +296,7 @@ export default function EmployeeDetailPage() {
                     </CardContent>
                 </Card>
 
-                 <Card className="bg-gradient-to-br from-yellow-50 to-white dark:from-yellow-950/30 dark:to-background">
+                 <Card className="bg-gradient-to-br from-yellow-50 to-transparent dark:from-yellow-950/30 dark:to-transparent">
                     <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
                             <CalendarX2 className="h-5 w-5 text-primary" />

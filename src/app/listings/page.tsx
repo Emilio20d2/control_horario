@@ -205,7 +205,7 @@ export default function ListingsPage() {
             <TabsTrigger value="external-employees">Empleados para Informes</TabsTrigger>
           </TabsList>
           <TabsContent value="custom-forms">
-            <Card>
+            <Card className="bg-gradient-to-br from-indigo-50 to-transparent dark:from-indigo-950/30 dark:to-transparent">
               <CardHeader>
                 <CardTitle>Crea un Formulario Personalizado</CardTitle>
                 <CardDescription>

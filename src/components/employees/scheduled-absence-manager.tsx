@@ -155,7 +155,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
     };
     
     return (
-        <Card className="bg-gradient-to-br from-pink-50 to-white dark:from-pink-950/30 dark:to-background">
+        <Card className="bg-gradient-to-br from-pink-50 to-transparent dark:from-pink-950/30 dark:to-transparent">
             <CardHeader>
                 <CardTitle>Gestión de Ausencias Programadas (Bajas, etc.)</CardTitle>
                 <CardDescription>

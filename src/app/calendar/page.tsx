@@ -237,7 +237,7 @@ export default function CalendarPage() {
   }
 
   const renderWeeklyView = () => (
-    <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
+    <Card className="bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-950/30 dark:to-transparent">
         <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-2 p-4 border-b">
             <div className="flex items-center gap-2">
                 <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
@@ -289,7 +289,7 @@ export default function CalendarPage() {
     const weeksOfMonth = eachWeekOfInterval({ start: monthStart, end: monthEnd }, { weekStartsOn: 1 });
 
     return (
-        <div className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background border rounded-lg">
+        <div className="bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-950/30 dark:to-transparent border rounded-lg">
              <div className="px-2 pb-2">
                  <div className="grid grid-cols-[repeat(7,minmax(0,1fr))] border-t border-l">
                     {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => (
@@ -373,7 +373,7 @@ export default function CalendarPage() {
   return (
     <>
     <div className="p-2 md:p-4 space-y-4">
-        <Card className="shadow-none border-0">
+        <Card className="shadow-none border-0 bg-transparent">
              <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-2 p-4">
                  {view === 'week' ? (
                      <div /> // Placeholder to keep spacing
@@ -488,5 +488,3 @@ export default function CalendarPage() {
     </>
   );
 }
-
-    
