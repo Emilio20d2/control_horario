@@ -37,6 +37,7 @@ export default function SchedulePage() {
         correctionRequests,
         availableYears,
         refreshData,
+        unconfirmedWeeksDetails,
     } = dataProvider;
     const searchParams = useSearchParams();
     const { toast } = useToast();
@@ -48,7 +49,8 @@ export default function SchedulePage() {
             if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
         }
         
-        if (unconfirmedWeeksDetails && unconfirmedWeeksDetails.length > 0) {
+        // Use optional chaining and check length
+        if (unconfirmedWeeksDetails?.length > 0) {
             const oldestWeekId = unconfirmedWeeksDetails[unconfirmedWeeksDetails.length - 1].weekId;
             const date = parseISO(oldestWeekId);
             if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
@@ -79,7 +81,7 @@ export default function SchedulePage() {
                 setSelectedYear(getISOWeekYear(currentDate));
             }
         }
-    }, [loading, getInitialDate, selectedEmployeeId, setSelectedYear]);
+    }, [loading, getInitialDate, selectedEmployeeId, setSelectedYear, currentDate]);
 
     const isEmployeeActiveForWeek = useCallback((employee: Employee, weekStartDate: Date): boolean => {
         const weekStart = startOfDay(weekStartDate);
@@ -385,7 +387,7 @@ export default function SchedulePage() {
                         <TableBody>
                             {weeksOfYear.map(weekId => {
                                 const weekStartDate = parseISO(weekId);
-                                const currentWeekDays = eachDayOfInterval({start: weekStartDate, end: endOfWeek(weekStartDate, {weekStartsOn: 1})});
+                                const currentWeekDays = eachDayOfInterval({start: weekStartDate, end: endOfWeek(weekStartDate, {weekStartsOn:1})});
 
                                 return (
                                     <React.Fragment key={weekId}>
