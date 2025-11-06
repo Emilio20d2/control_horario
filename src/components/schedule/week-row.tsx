@@ -28,15 +28,15 @@ interface WeekRowProps {
     balancePreview: any | null;
     initialBalances: { ordinary: number, holiday: number, leave: number, total: number } | null;
     isSaving: boolean;
-    onDataChange: (employeeId: string, dayKey: string | 'week', field: string, value: any) => void;
-    onConfirm: (employeeId: string) => void;
+    onDataChange: (employeeId: string, weekId: string, dayOrWeekKey: string, field: string, value: any) => void;
+    onConfirm: (employeeId: string, weekId: string) => void;
 }
 
 export const WeekRow: React.FC<WeekRowProps> = ({ 
     employee, 
     weekId, 
     weekDays, 
-    weekData, 
+    weekData: initialWeekData, 
     balancePreview,
     initialBalances,
     isSaving,
@@ -55,25 +55,23 @@ export const WeekRow: React.FC<WeekRowProps> = ({
     const { turnId: weekTurn } = getTheoreticalHoursAndTurn(employee.id, weekDays[0]);
 
     const handleDailyDataChange = (dayKey: string, field: string, value: any) => {
-        onDataChange(employee.id, dayKey, field, value);
+        onDataChange(employee.id, weekId, dayKey, field, value);
     };
 
     const handleWeekLevelChange = (field: string, value: any) => {
-        onDataChange(employee.id, 'week', field, value);
+        onDataChange(employee.id, weekId, 'week', field, value);
     };
     
     const handleEnableCorrection = () => {
-        onDataChange(employee.id, 'week', 'confirmed', false);
+        handleWeekLevelChange('confirmed', false);
     };
-
-    const isConfirmed = weekData.confirmed;
     
     const activePeriod = getActivePeriod(employee.id, weekDays[0]);
     let contractType;
     if (activePeriod) {
         contractType = contractTypes.find(c => c.name === activePeriod.contractType);
     }
-    const weeklyHours = weekData.weeklyHoursOverride ?? getEffectiveWeeklyHours(activePeriod, weekDays[0]);
+    const weeklyHours = initialWeekData.weeklyHoursOverride ?? getEffectiveWeeklyHours(activePeriod, weekDays[0]);
     
     const auditEndDate = new Date('2025-09-08');
     const showDifferenceCheckbox = isBefore(weekDays[0], auditEndDate);
@@ -91,19 +89,19 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                     <p className="text-muted-foreground">{contractType?.name ?? 'N/A'}</p>
                     
                     <div className="space-y-2 mt-2">
-                         <InputStepper label="Jornada Semanal" value={weekData.weeklyHoursOverride ?? weeklyHours} onChange={(v) => handleWeekLevelChange('weeklyHoursOverride', v)} className="text-xs" disabled={isConfirmed} />
-                         <InputStepper label="H. Complementarias" value={weekData.totalComplementaryHours ?? undefined} onChange={(v) => handleWeekLevelChange('totalComplementaryHours', v)} disabled={isConfirmed} />
+                         <InputStepper label="Jornada Semanal" value={initialWeekData.weeklyHoursOverride ?? weeklyHours} onChange={(v) => handleWeekLevelChange('weeklyHoursOverride', v)} className="text-xs" disabled={initialWeekData.confirmed} />
+                         <InputStepper label="H. Complementarias" value={initialWeekData.totalComplementaryHours ?? undefined} onChange={(v) => handleWeekLevelChange('totalComplementaryHours', v)} disabled={initialWeekData.confirmed} />
                          {showDifferenceCheckbox && (
                             <div className="flex items-center space-x-2 pt-1">
                                 <Checkbox 
                                     id={`diff-${employee.id}-${weekId}`} 
-                                    checked={weekData.isDifference}
+                                    checked={initialWeekData.isDifference}
                                     onCheckedChange={(checked) => handleWeekLevelChange('isDifference', !!checked)}
-                                    disabled={isConfirmed || !weekData.hasPreregistration}
+                                    disabled={initialWeekData.confirmed || !initialWeekData.hasPreregistration}
                                 />
                                 <label
                                     htmlFor={`diff-${employee.id}-${weekId}`}
-                                    className={cn("text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70", weekData.hasPreregistration && weekData.isDifference && "text-destructive")}
+                                    className={cn("text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70", initialWeekData.hasPreregistration && initialWeekData.isDifference && "text-destructive")}
                                 >
                                     Diferencia con Excel
                                 </label>
@@ -112,9 +110,9 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                          <Textarea
                             placeholder="Añadir comentario..."
                             className="h-8 text-xs mt-2 resize-none"
-                            value={weekData.generalComment || ''}
+                            value={initialWeekData.generalComment || ''}
                             onChange={(e) => handleWeekLevelChange('generalComment', e.target.value)}
-                            disabled={isConfirmed}
+                            disabled={initialWeekData.confirmed}
                         />
                     </div>
                     
@@ -123,7 +121,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                     <BalancePreviewDisplay initialBalances={initialBalances} preview={balancePreview} />
                     
                     <div className="mt-2 space-y-2">
-                        {isConfirmed ? (
+                        {initialWeekData.confirmed ? (
                             <div className="flex flex-col items-center gap-2">
                                 <div className="flex items-center gap-2 p-2 justify-center rounded-md bg-green-100 dark:bg-green-900/50 w-full">
                                     <CheckCircle className="h-5 w-5 text-green-600" />
@@ -135,7 +133,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                                 </Button>
                             </div>
                         ) : (
-                            <Button onClick={() => onConfirm(employee.id)} size="sm" className="w-full" disabled={isSaving || !balancePreview}>
+                            <Button onClick={() => onConfirm(employee.id, weekId)} size="sm" className="w-full" disabled={isSaving || !balancePreview}>
                                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
                                 Confirmar
                             </Button>
@@ -145,9 +143,9 @@ export const WeekRow: React.FC<WeekRowProps> = ({
             </TableCell>
             {weekDays.map(day => {
                 const dayId = format(day, 'yyyy-MM-dd');
-                const dayData = weekData.days?.[dayId];
+                const dayData = initialWeekData.days?.[dayId];
 
-                if (!dayData) return <TableCell key={day.toISOString()} className="p-1" />;
+                if (!dayData) return <TableCell key={day.toISOString()} className="p-1 min-w-[140px]" />;
                 
                 const isHoliday = dayData.isHoliday;
                 const holidayType = dayData.holidayType;
@@ -163,18 +161,19 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                 
                 const cellStyle: React.CSSProperties = {};
                 if (isHoliday) {
-                    cellStyle.background = 'linear-gradient(to bottom right, #e0f2f1, transparent)';
-                } else if (isConfirmed) {
-                     cellStyle.background = 'linear-gradient(to bottom right, rgba(240, 240, 240, 0.5), transparent)';
-                }
-
-
-                if (absenceType?.color) {
+                    if (holidayType === 'Apertura') {
+                        cellStyle.background = 'linear-gradient(to bottom right, #e8f5e9, transparent)';
+                    } else {
+                        cellStyle.background = 'linear-gradient(to bottom right, #e3f2fd, transparent)';
+                    }
+                } else if (absenceType?.color) {
                     cellStyle.background = `linear-gradient(to bottom right, ${absenceType.color}40, transparent)`;
+                } else if (initialWeekData.confirmed) {
+                    cellStyle.background = 'rgba(240, 240, 240, 0.5)';
                 }
 
                 return (
-                    <TableCell key={day.toISOString()} className="p-1 align-top text-xs" style={cellStyle}>
+                    <TableCell key={day.toISOString()} className="p-1 align-top text-xs min-w-[140px]" style={cellStyle}>
                         <div className="flex flex-col items-center justify-start gap-2 h-full py-2">
                              <div className='w-full space-y-1 flex-grow'>
                                 <div className="text-muted-foreground text-xs h-4 text-center font-semibold">
@@ -183,14 +182,14 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                                 <InputStepper
                                     value={dayData.workedHours}
                                     onChange={(v) => handleDailyDataChange(dayId, 'workedHours', v)}
-                                    disabled={isConfirmed}
+                                    disabled={initialWeekData.confirmed}
                                 />
                                 {absenceType && (absenceType.isAbsenceSplittable || absenceType.computesFullDay) && (
                                      <InputStepper
                                         label={absenceType.name}
                                         value={dayData.absenceHours}
                                         onChange={(v) => handleDailyDataChange(dayId, 'absenceHours', v)}
-                                        disabled={isConfirmed}
+                                        disabled={initialWeekData.confirmed}
                                     />
                                 )}
                                 {showLeaveHours && (
@@ -198,14 +197,14 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                                         label="H. Libranza"
                                         value={dayData.leaveHours}
                                         onChange={(v) => handleDailyDataChange(dayId, 'leaveHours', v)}
-                                        disabled={isConfirmed}
+                                        disabled={initialWeekData.confirmed}
                                     />
                                 )}
                             </div>
 
                             <div className="flex flex-row gap-1 h-auto sm:h-8 items-center mt-auto">
-                                <AbsenceEditor dayData={dayData} absenceTypes={absenceTypes} onAbsenceChange={(f, v) => handleDailyDataChange(dayId, f, v)} disabled={isConfirmed} />
-                                {isHoliday && holidayType && <HolidayEditor dayData={dayData} holidayType={holidayType} onHolidayChange={(f, v) => handleDailyDataChange(dayId, f, v)} disabled={isConfirmed} />}
+                                <AbsenceEditor dayData={dayData} absenceTypes={absenceTypes} onAbsenceChange={(f, v) => handleDailyDataChange(dayId, f, v)} disabled={initialWeekData.confirmed} />
+                                {isHoliday && holidayType && <HolidayEditor dayData={dayData} holidayType={holidayType} onHolidayChange={(f, v) => handleDailyDataChange(dayId, f, v)} disabled={initialWeekData.confirmed} />}
                             </div>
                             
                              <div className="h-4 mt-1 sm:mt-2">
