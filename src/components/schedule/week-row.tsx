@@ -195,6 +195,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
 
                 if (wasIndefiniteAbsenceDay && isInterrupted) {
                     await endIndefiniteAbsence(employee.id, day);
+                    await refreshData();
                 }
             }
     
@@ -348,7 +349,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                         ) : (
                             <Button onClick={handleConfirm} size="sm" className="w-full" disabled={isSaving || !preview}>
                                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
-                                Confirmar Semana
+                                Confirmar
                             </Button>
                         )}
                     </div>
@@ -429,5 +430,3 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         </TableRow>
     );
 };
-
-    
