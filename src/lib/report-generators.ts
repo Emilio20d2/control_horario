@@ -559,21 +559,39 @@ export const generateSignatureReportPDF = (
         .sort((a, b) => a.name.localeCompare(b.name));
 
     employeesForReport.forEach((employee) => {
-        const vacationAbsences = (employeesWithAbsences[employee.id] || [])
+        const vacationDays = new Set<string>();
+        (employeesWithAbsences[employee.id] || [])
             .filter(a => a.absenceTypeId === vacationType.id && getYear(a.startDate) === year)
-            .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-        
-        // Group absences into periods
-        const periods = new Set<string>();
-        vacationAbsences.forEach(v => {
-             const startDate = v.startDate;
-             const endDate = v.endDate ? v.endDate : startDate;
-             const periodString = `del ${format(startDate, 'dd/MM/yyyy', { locale: es })} al ${format(endDate, 'dd/MM/yyyy', { locale: es })}`;
-             periods.add(periodString);
-        });
+            .forEach(a => {
+                const start = a.startDate;
+                const end = a.endDate || start;
+                const days = eachDayOfInterval({ start, end });
+                days.forEach(day => vacationDays.add(format(day, 'yyyy-MM-dd')));
+            });
 
-        const vacationPeriodsText = periods.size > 0
-            ? Array.from(periods).join('\n')
+        const sortedDays = Array.from(vacationDays).sort();
+        
+        const periods: { start: Date; end: Date }[] = [];
+        if (sortedDays.length > 0) {
+            let currentPeriodStart = parseISO(sortedDays[0]);
+            let currentPeriodEnd = parseISO(sortedDays[0]);
+
+            for (let i = 1; i < sortedDays.length; i++) {
+                const day = parseISO(sortedDays[i]);
+                const prevDay = parseISO(sortedDays[i - 1]);
+                if (isSameDay(day, addDays(prevDay, 1))) {
+                    currentPeriodEnd = day;
+                } else {
+                    periods.push({ start: currentPeriodStart, end: currentPeriodEnd });
+                    currentPeriodStart = day;
+                    currentPeriodEnd = day;
+                }
+            }
+            periods.push({ start: currentPeriodStart, end: currentPeriodEnd });
+        }
+        
+        const vacationPeriodsText = periods.length > 0
+            ? periods.map(p => `del ${format(p.start, 'dd/MM/yyyy', { locale: es })} al ${format(p.end, 'dd/MM/yyyy', { locale: es })}`).join('\n')
             : 'No tiene vacaciones programadas.';
         
         const textLines = doc.splitTextToSize(vacationPeriodsText, 180);
@@ -625,7 +643,6 @@ export const generateRequestStatusReportPDF = (
     doc.text(campaign.title, pageMargin, 22);
 
     const campaignAbsenceTypeIds = new Set(campaign.allowedAbsenceTypeIds);
-    const campaignAbsencePeriod = { start: toDate(campaign.absenceStartDate), end: toDate(campaign.absenceEndDate) };
     
     const toDate = (date: any): Date => {
         if (date instanceof Timestamp) return date.toDate();
@@ -633,10 +650,11 @@ export const generateRequestStatusReportPDF = (
         if (typeof date === 'string') return parseISO(date);
         return new Date(date);
     }
+    const campaignAbsencePeriod = { start: toDate(campaign.absenceStartDate), end: toDate(campaign.absenceEndDate) };
 
     const reportData = allEmployeesForQuadrant.map(quadrantEmp => {
         const emp = allEmployees.find(e => e.id === quadrantEmp.id);
-        if (!emp) return null;
+        if (!emp || emp.isEventual) return null;
 
         const allAbsencesInCampaign = (emp.employmentPeriods || [])
             .flatMap(p => p.scheduledAbsences || [])
@@ -717,6 +735,7 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
 
