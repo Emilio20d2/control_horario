@@ -1,5 +1,4 @@
 
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -219,6 +218,17 @@ const roundToNearestQuarter = (num: number) => {
     return Math.round(num * 4) / 4;
 };
 
+const safeParseDate = (date: any): Date | null => {
+    if (!date) return null;
+    if (date instanceof Date) return date;
+    if (date instanceof Timestamp) return date.toDate();
+    if (typeof date === 'string') {
+        const parsed = parseISO(date);
+        return isValid(parsed) ? parsed : null;
+    }
+    return null;
+};
+
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
   const { user, appUser, loading: authLoading } = useAuth();
@@ -251,66 +261,35 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   }, [loadingSteps]);
 
   // Pure utility functions
-  const safeParseDate = useCallback((date: any): Date | null => {
-    if (!date) return null;
-    if (date instanceof Date) return date;
-    if (date instanceof Timestamp) return date.toDate();
-    if (typeof date === 'string') {
-        const parsed = parseISO(date);
-        return isValid(parsed) ? parsed : null;
-    }
-    return null;
-  }, []);
-  
   const getWeekId = useCallback((d: Date): string => {
     const monday = startOfWeek(d, { weekStartsOn: 1 });
     return format(monday, 'yyyy-MM-dd');
   }, []);
 
-  const processScheduledAbsences = useCallback((absences: any[], loadedAbsenceTypes: AbsenceType[], weeklyRecords: Record<string, WeeklyRecord>, employeeId: string): ScheduledAbsence[] => {
-    if (!absences || !loadedAbsenceTypes.length) return [];
-
-    const confirmedAbsenceDays = new Set<string>();
-    
-    Object.values(weeklyRecords).forEach(record => {
-        const empWeekData = record.weekData?.[employeeId];
-        if (empWeekData?.confirmed && empWeekData.days) {
-            Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
-                if (dayData.absence !== 'ninguna') {
-                    confirmedAbsenceDays.add(dayStr);
-                }
-            });
-        }
-    });
+  const processScheduledAbsences = useCallback((absences: any[]): ScheduledAbsence[] => {
+    if (!absences) return [];
 
     const processedAbsences: ScheduledAbsence[] = [];
     absences.forEach(a => {
         const startDate = safeParseDate(a.startDate);
         if (!startDate) return;
         
-        // This is the key fix: if endDate is null/undefined, keep it that way.
         const endDate = a.endDate ? safeParseDate(a.endDate) : null;
         
-        // If it's a single day absence that's already confirmed, we can skip it.
-        const dayStr = format(startDate, 'yyyy-MM-dd');
-        if (endDate && isSameDay(startDate, endDate) && confirmedAbsenceDays.has(dayStr)) {
-            return;
-        }
-
         const processedAbsence: any = { ...a, startDate, endDate };
 
         if (a.originalRequest) {
             processedAbsence.originalRequest = {
                 ...a.originalRequest,
-                startDate: a.originalRequest.startDate instanceof Timestamp ? a.originalRequest.startDate.toDate().toISOString() : a.originalRequest.startDate,
-                endDate: a.originalRequest.endDate instanceof Timestamp ? a.originalRequest.endDate.toDate().toISOString() : a.originalRequest.endDate,
+                startDate: safeParseDate(a.originalRequest.startDate),
+                endDate: safeParseDate(a.originalRequest.endDate),
             };
         }
         processedAbsences.push(processedAbsence);
     });
 
     return processedAbsences;
-  }, [safeParseDate]);
+  }, []);
 
   // Effect for static data (does not depend on other collections)
   useEffect(() => {
@@ -341,7 +320,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setHolidayEmployees(holEmps.sort((a,b) => a.name.localeCompare(b.name)));
         setHolidayReports(holReps);
         setEmployeeGroups(empGrps.sort((a,b) => a.order - b.order));
-        setVacationCampaigns(vacCamps.sort((a,b) => (b.submissionStartDate as any).toDate().getTime() - (a.submissionStartDate as any).toDate().getTime()));
+        setVacationCampaigns(vacCamps.sort((a,b) => (safeParseDate(b.submissionStartDate))!.getTime() - (safeParseDate(a.submissionStartDate))!.getTime()));
         setLoadingSteps(prev => ({...prev, statics: true}));
       }
     });
@@ -357,7 +336,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       active = false;
       unsubConfig();
     }
-  }, [authLoading, user, appUser, safeParseDate]);
+  }, [authLoading, user, appUser]);
 
   // Effect for weekly records (depends on statics being loaded)
   useEffect(() => {
@@ -377,9 +356,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [loadingSteps.statics]);
 
-  // Effect for employees (depends on static data and weeklyRecords)
+  // Effect for employees (depends on static data)
   useEffect(() => {
-    if (!loadingSteps.statics || !loadingSteps.weeklyRecords) return;
+    if (!loadingSteps.statics) return;
     
     let active = true;
     const unsub = onCollectionUpdate<Employee>('employees', (data) => {
@@ -390,7 +369,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             ...p, 
             startDate: safeParseDate(p.startDate), 
             endDate: safeParseDate(p.endDate), 
-            scheduledAbsences: processScheduledAbsences(p.scheduledAbsences, absenceTypes, weeklyRecords, emp.id),
+            scheduledAbsences: processScheduledAbsences(p.scheduledAbsences),
             workHoursHistory: (p.workHoursHistory || []).map((wh: any) => ({ ...wh, effectiveDate: safeParseDate(wh.effectiveDate) })),
             weeklySchedulesHistory: (p.weeklySchedulesHistory || []).map((ws: any) => ({ ...ws, effectiveDate: safeParseDate(ws.effectiveDate) }))
           }))
@@ -404,7 +383,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       active = false;
       unsub();
     }
-  }, [loadingSteps.statics, loadingSteps.weeklyRecords, absenceTypes, processScheduledAbsences, safeParseDate]);
+  }, [loadingSteps.statics, processScheduledAbsences]);
 
   // Load conversations and correction requests after employees are loaded
   useEffect(() => {
@@ -466,7 +445,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     processConversations();
   
     return () => { active = false };
-  }, [loadingSteps.employees, employees, safeParseDate]);
+  }, [loadingSteps.employees, employees]);
 
   // Final loading state
   useEffect(() => {
@@ -609,7 +588,7 @@ const getEffectiveWeeklyHours = useCallback((period: EmploymentPeriod | null, da
     });
     
     return effectiveRecord?.weeklyHours || 0;
-}, [safeParseDate]);
+}, []);
 
 
 
@@ -1060,8 +1039,8 @@ const calculateEmployeeVacations = useCallback((emp: Employee | null, year: numb
         emp.employmentPeriods?.forEach(period => {
             period.scheduledAbsences?.forEach(absence => {
                 if (!absence.startDate) return;
-                const startDate = safeParseDate(absence.startDate)!;
-                const endDate = absence.endDate ? safeParseDate(absence.endDate)! : startDate;
+                const startDate = absence.startDate;
+                const endDate = absence.endDate || startDate;
                 
                 const daysInAbsence = eachDayOfInterval({start: startOfDay(startDate), end: startOfDay(endDate)});
                 
@@ -1141,7 +1120,7 @@ const calculateEmployeeVacations = useCallback((emp: Employee | null, year: numb
       suspensionDeduction: suspensionDeduction,
       proratedDays: proratedDays,
     };
-}, [absenceTypes, weeklyRecords, safeParseDate]);
+}, [absenceTypes, weeklyRecords]);
 
 const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     const employee = getEmployeeById(employeeId);
@@ -1241,20 +1220,14 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const theoreticalHours = theoreticalDay?.theoreticalHours ?? 0;
     
             let scheduledAbsence: ScheduledAbsence | undefined;
-            if (emp.employmentPeriods) {
-                for (const period of emp.employmentPeriods) {
-                    if (period.scheduledAbsences) {
-                        for (const absence of period.scheduledAbsences) {
-                            const startDate = safeParseDate(absence.startDate);
-                            if (startDate) {
-                                const endDate = absence.endDate ? safeParseDate(absence.endDate) : startDate;
-                                if (isWithinInterval(day, { start: startOfDay(startDate), end: endOfDay(endDate!) })) {
-                                    scheduledAbsence = absence;
-                                    break;
-                                }
-                            }
-                        }
-                    }
+            for (const period of emp.employmentPeriods) {
+                if (period.scheduledAbsences) {
+                    scheduledAbsence = period.scheduledAbsences.find(absence => {
+                        if (!absence.startDate) return false;
+                        const startDate = startOfDay(absence.startDate);
+                        const endDate = absence.endDate ? endOfDay(absence.endDate) : endOfDay(startDate);
+                        return isWithinInterval(day, { start: startDate, end: endDate });
+                    });
                     if (scheduledAbsence) break;
                 }
             }
@@ -1315,8 +1288,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         holidays, 
         absenceTypes, 
         contractTypes, 
-        getEffectiveWeeklyHours, 
-        safeParseDate
+        getEffectiveWeeklyHours
     ]);
 
   const availableYears = useMemo(() => {
@@ -1441,12 +1413,3 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 };
 
 export const useDataProvider = () => useContext(DataContext);
-
-    
-
-
-
-
-
-    
-

@@ -1,9 +1,8 @@
 
-
 import type { Timestamp } from 'firebase/firestore';
 
 export interface WorkHoursRecord {
-    effectiveDate: string; // YYYY-MM-DD
+    effectiveDate: string | Date; // Allow both for flexibility
     weeklyHours: number;
 }
 
@@ -17,8 +16,8 @@ export interface DaySchedule {
  * The `effectiveDate` is the anchor for the 4-week turn rotation calculation.
  */
 export interface WeeklyScheduleData {
-    effectiveDate: string; // YYYY-MM-DD
-    endDate?: string | null;
+    effectiveDate: string | Date; // Allow both
+    endDate?: string | Date | null;
     shifts: {
         turn1: Record<string, DaySchedule>;
         turn2: Record<string, DaySchedule>;
@@ -36,8 +35,8 @@ export interface ScheduledAbsence {
     notes?: string | null; // For extra info like appointment time
     communicatedTo?: string | null; // Name of the manager it was communicated to
     originalRequest?: {
-        startDate: Date | string;
-        endDate: Date | string | null;
+        startDate: Date;
+        endDate: Date | null;
     }
 }
 
@@ -289,7 +288,7 @@ export interface Conversation {
     employeeId: string;
     employeeName: string;
     lastMessageText: string;
-    lastMessageTimestamp: Timestamp;
+    lastMessageTimestamp: Timestamp | Date;
     readBy: string[]; // List of admin UIDs who have read the conversation
     unreadByEmployee: boolean;
 }
@@ -322,6 +321,4 @@ export interface CorrectionRequest {
     status: 'pending' | 'resolved';
     requestedAt: Timestamp;
 }
-    
-
     
