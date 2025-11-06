@@ -17,6 +17,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogClose,
+  DialogTrigger
 } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ArrowRight, User, Loader2, Trash2, CalendarRange, Info, Calendar as CalendarIcon, MessageCircle, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -264,10 +265,10 @@ export default function CalendarPage() {
                                         <div 
                                             key={`${event.employee.id}-${event.absence.id}`}
                                             onClick={() => handleOpenDetails(event)}
-                                            className="p-1.5 rounded-md cursor-pointer text-[11px]"
+                                            className="p-1.5 rounded-md cursor-pointer text-[10px] leading-tight"
                                             style={{ backgroundColor: `${event.absenceType.color}40` }}
                                         >
-                                            <p className="font-bold">{event.employee.name}</p>
+                                            <p className="font-bold truncate">{event.employee.name}</p>
                                             <p className="text-muted-foreground">{event.absenceType.name}</p>
                                         </div>
                                     ))}
@@ -308,8 +309,8 @@ export default function CalendarPage() {
                                     const holiday = holidays.find(h => isSameDay(h.date, day));
 
                                     return (
-                                        <Popover key={day.toString()}>
-                                            <PopoverTrigger asChild>
+                                        <Dialog key={day.toString()}>
+                                            <DialogTrigger asChild>
                                                 <div
                                                     className={cn(
                                                         "relative p-1 sm:p-2 border-r border-b min-h-[120px] cursor-pointer hover:bg-muted/50",
@@ -339,24 +340,25 @@ export default function CalendarPage() {
                                                         ))}
                                                     </div>
                                                 </div>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-80">
-                                                <div className="space-y-2">
-                                                    <h4 className="font-medium leading-none capitalize">{format(day, 'EEEE, d \'de\' MMMM', {locale: es})}</h4>
-                                                    <Separator />
-                                                    <div className="space-y-2">
+                                            </DialogTrigger>
+                                            <DialogContent className="w-80">
+                                                 <DialogHeader>
+                                                    <DialogTitle className="capitalize">{format(day, 'EEEE, d \'de\' MMMM', {locale: es})}</DialogTitle>
+                                                </DialogHeader>
+                                                <ScrollArea className="max-h-[60vh]">
+                                                    <div className="space-y-2 pr-4">
                                                         {absences.length > 0 ? absences.map(absenceInfo => (
-                                                             <div key={absenceInfo.employee.id} onClick={() => handleOpenDetails(absenceInfo)} className="p-2 rounded-md" style={{ backgroundColor: `${absenceInfo.absenceType.color}40`}}>
-                                                               <p className="font-bold text-sm truncate">{absenceInfo.employee.name}</p>
-                                                               <p className="text-xs text-muted-foreground">{absenceInfo.absenceType.name}</p>
+                                                            <div key={absenceInfo.employee.id} onClick={() => {handleOpenDetails(absenceInfo);}} className="p-2 rounded-md cursor-pointer" style={{ backgroundColor: `${absenceInfo.absenceType.color}40`}}>
+                                                            <p className="font-bold text-sm truncate">{absenceInfo.employee.name}</p>
+                                                            <p className="text-xs text-muted-foreground">{absenceInfo.absenceType.name}</p>
                                                             </div>
                                                         )) : (
-                                                            <p className="text-sm text-muted-foreground">No hay eventos programados.</p>
+                                                            <p className="text-sm text-muted-foreground py-8 text-center">No hay eventos programados.</p>
                                                         )}
                                                     </div>
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
+                                                </ScrollArea>
+                                            </DialogContent>
+                                        </Dialog>
                                     );
                                 })}
                             </React.Fragment>
