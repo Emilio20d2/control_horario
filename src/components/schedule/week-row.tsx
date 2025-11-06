@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -10,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, isSameDay, getISODay, isBefore, parseISO, isAfter, eachDayOfInterval, subDays, startOfDay, isValid, isWithinInterval, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { InputStepper } from '@/components/ui/input-stepper';
 import { useDataProvider } from '@/hooks/use-data-provider';
@@ -24,7 +23,6 @@ import { es } from 'date-fns/locale';
 import { AbsenceEditor } from './absence-editor';
 import { HolidayEditor } from './holiday-editor';
 import { BalancePreviewDisplay } from './balance-preview';
-import { setDocument, updateDocument } from '@/lib/services/firestoreService';
 import { endIndefiniteAbsence } from '@/lib/services/employeeService';
 import { Label } from '../ui/label';
 
@@ -235,7 +233,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 }
             };
             
-            await setDocument('weeklyRecords', weekId, finalData, { merge: true });
+            await setDoc(doc(db, 'weeklyRecords', weekId), finalData, { merge: true });
             
             toast({ title: `Semana Confirmada para ${employee.name}` });
             
@@ -262,7 +260,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         if (!localWeekData || !employee) return;
         setIsSaving(true);
         try {
-            await updateDocument('weeklyRecords', weekId, { [`weekData.${employee.id}.confirmed`]: false });
+            await updateDoc(doc(db, 'weeklyRecords', weekId), { [`weekData.${employee.id}.confirmed`]: false });
             
             refreshData();
 

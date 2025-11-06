@@ -1199,15 +1199,15 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     const processEmployeeWeekData = useCallback((emp: Employee, weekDays: Date[], weekId: string): DailyEmployeeData | null => {
         const dbRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
     
+        if (dbRecord) {
+            return dbRecord;
+        }
+    
         const activePeriod = getActivePeriod(emp.id, weekDays[0]);
         if (!activePeriod) {
             return null;
         }
     
-        if (dbRecord) {
-            return dbRecord;
-        }
-
         const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(emp.id, weekDays[0]);
         const weeklyWorkHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
         const newDays: Record<string, DailyData> = {};
@@ -1231,7 +1231,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                     if (scheduledAbsence) break;
                 }
             }
-
+    
             const absenceType = scheduledAbsence ? absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId) : undefined;
             
             let leaveHours = 0;
@@ -1241,11 +1241,11 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                     leaveHours = roundToNearestQuarter(weeklyWorkHours / 5);
                 }
             }
-
+    
             let workedHours = theoreticalHours;
             let absenceAbbreviation = 'ninguna';
             let absenceHours = 0;
-
+    
             if (absenceType) {
                 absenceAbbreviation = absenceType.abbreviation;
                 if (absenceType.computesFullDay) {
