@@ -30,7 +30,7 @@ const initializeAdminApp = () => {
 
         adminApp = admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
-            databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`,
+            databaseURL: `https://shiftmaster-9iefy-default-rtdb.europe-west1.firebasedatabase.app`,
         });
         return adminApp;
 
