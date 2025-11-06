@@ -46,7 +46,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { VacationCampaignManager } from '@/components/settings/vacation-campaign-manager';
 import { MessageSyncManager } from './message-sync-manager';
 import { EmployeeViewManager } from './employee-view-manager';
-import { MigrationManager } from './migration-manager';
 
 
 export default function SettingsPageContent() {
@@ -460,7 +459,6 @@ export default function SettingsPageContent() {
 
             <TabsContent value="utils">
                 <div className='grid gap-6'>
-                    <MigrationManager />
                     <EmployeeViewManager />
                     <DataCleanupManager />
                     <MessageSyncManager />
