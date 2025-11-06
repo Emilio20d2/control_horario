@@ -198,7 +198,7 @@ export default function SchedulePage() {
     const handleWeekRowChange = (employeeId: string, weekIdToUpdate: string, dayOrWeekKey: string, field: string, value: any) => {
         const isAnnualView = selectedEmployeeId !== 'all';
         const dataSetter = isAnnualView ? setProcessedAnnualViewData : setProcessedWeeklyViewData;
-
+    
         dataSetter(prevData => {
             const keyToUpdate = isAnnualView ? weekIdToUpdate : employeeId;
             const currentData = prevData[keyToUpdate];
@@ -207,22 +207,25 @@ export default function SchedulePage() {
             const newEmployeeData: DailyEmployeeData = JSON.parse(JSON.stringify(currentData));
     
             if (dayOrWeekKey === 'week') {
+                // It's a week-level change (like 'confirmed' or 'generalComment')
                 (newEmployeeData as any)[field] = value;
             } else { 
-                if (!newEmployeeData.days) return prevData;
+                // It's a day-level change
                 const dayKey = dayOrWeekKey;
-                const dayToUpdate = newEmployeeData.days[dayKey];
-                const originalAbsence = dayToUpdate.absence;
+                const dayToUpdate = newEmployeeData.days?.[dayKey];
+                if (!dayToUpdate) return prevData;
     
+                const originalAbsence = dayToUpdate.absence;
                 (dayToUpdate as any)[field] = value;
     
                 const absenceType = dataProvider.absenceTypes.find(at => at.abbreviation === originalAbsence);
                 const isIndefinite = absenceType ? !absenceType.isAbsenceSplittable && !absenceType.affectedBag : false;
                 
+                // If an indefinite absence is changed, clear it for subsequent days of the week.
                 if (field === 'absence' && value !== originalAbsence && isIndefinite) {
                     const interruptionDate = parseISO(dayKey);
                     const weekDaysToUpdate = eachDayOfInterval({start: startOfWeek(interruptionDate, {weekStartsOn: 1}), end: endOfWeek(interruptionDate, {weekStartsOn: 1})})
-
+    
                     weekDaysToUpdate.forEach(day => {
                         if (isAfter(day, interruptionDate)) {
                             const subsequentDayKey = format(day, 'yyyy-MM-dd');
@@ -235,7 +238,7 @@ export default function SchedulePage() {
                         }
                     });
                 }
-
+    
                 const newAbsenceType = dataProvider.absenceTypes.find(at => at.abbreviation === dayToUpdate.absence);
                 if (field === 'absence' && newAbsenceType?.computesFullDay) {
                     dayToUpdate.workedHours = 0;
@@ -394,7 +397,7 @@ export default function SchedulePage() {
                                                 {format(weekStartDate, 'd MMM')} - {format(endOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM yyyy', {locale:es})}
                                             </TableHead>
                                             {currentWeekDays.map(d => 
-                                                <TableHead key={d.toISOString()} className={cn("text-left p-2 text-xs w-[140px]", holidays.some(h => isSameDay(h.date, d)) && "bg-blue-100")}>
+                                                <TableHead key={d.toISOString()} className={cn("text-left p-2 text-xs w-[120px]", holidays.some(h => isSameDay(h.date, d)) && "bg-blue-100")}>
                                                     <span className="sm:hidden">{format(d, 'E', {locale:es})}</span>
                                                     <span className="hidden sm:inline">{format(d, 'E dd/MM', {locale:es})}</span>
                                                 </TableHead>
@@ -470,7 +473,7 @@ export default function SchedulePage() {
                                         const isHoliday = holidays.some(h => isSameDay(h.date, d));
                                         return (
                                             <TableHead key={d.toISOString()} className={cn(
-                                                "text-center p-2 text-xs w-[140px]", 
+                                                "text-center p-2 text-xs w-[120px]", 
                                                 isHoliday ? "bg-green-100/50" : "bg-gray-50/50"
                                             )}>
                                                 <span className="sm:hidden">{format(d, 'E', {locale:es})}</span>

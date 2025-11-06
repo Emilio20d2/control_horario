@@ -1,6 +1,7 @@
+
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,17 +55,17 @@ export const WeekRow: React.FC<WeekRowProps> = ({
     
     const { turnId: weekTurn } = getTheoreticalHoursAndTurn(employee.id, weekDays[0]);
 
-    const handleDailyDataChange = (dayKey: string, field: string, value: any) => {
+    const handleDailyDataChange = useCallback((dayKey: string, field: string, value: any) => {
         onDataChange(employee.id, weekId, dayKey, field, value);
-    };
+    }, [employee.id, weekId, onDataChange]);
 
-    const handleWeekLevelChange = (field: string, value: any) => {
+    const handleWeekLevelChange = useCallback((field: string, value: any) => {
         onDataChange(employee.id, weekId, 'week', field, value);
-    };
+    }, [employee.id, weekId, onDataChange]);
     
-    const handleEnableCorrection = () => {
+    const handleEnableCorrection = useCallback(() => {
         handleWeekLevelChange('confirmed', false);
-    };
+    }, [handleWeekLevelChange]);
     
     const activePeriod = getActivePeriod(employee.id, weekDays[0]);
     let contractType;
@@ -145,7 +146,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                 const dayId = format(day, 'yyyy-MM-dd');
                 const dayData = initialWeekData.days?.[dayId];
 
-                if (!dayData) return <TableCell key={day.toISOString()} className="p-1 min-w-[140px]" />;
+                if (!dayData) return <TableCell key={day.toISOString()} className="p-1 min-w-[120px]" />;
                 
                 const isHoliday = dayData.isHoliday;
                 const holidayType = dayData.holidayType;
@@ -162,18 +163,18 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                 const cellStyle: React.CSSProperties = {};
                 if (isHoliday) {
                     if (holidayType === 'Apertura') {
-                        cellStyle.background = 'linear-gradient(to bottom right, #e8f5e9, transparent)';
+                        cellStyle.background = 'linear-gradient(to left, #e8f5e9, transparent)';
                     } else {
-                        cellStyle.background = 'linear-gradient(to bottom right, #e3f2fd, transparent)';
+                        cellStyle.background = 'linear-gradient(to left, #e3f2fd, transparent)';
                     }
                 } else if (absenceType?.color) {
-                    cellStyle.background = `linear-gradient(to bottom right, ${absenceType.color}40, transparent)`;
+                    cellStyle.background = `linear-gradient(to left, ${absenceType.color}40, transparent)`;
                 } else if (initialWeekData.confirmed) {
                     cellStyle.background = 'rgba(240, 240, 240, 0.5)';
                 }
 
                 return (
-                    <TableCell key={day.toISOString()} className="p-1 align-top text-xs min-w-[140px]" style={cellStyle}>
+                    <TableCell key={day.toISOString()} className="p-1 align-top text-xs min-w-[120px]" style={cellStyle}>
                         <div className="flex flex-col items-center justify-start gap-2 h-full py-2">
                              <div className='w-full space-y-1 flex-grow'>
                                 <div className="text-muted-foreground text-xs h-4 text-center font-semibold">
