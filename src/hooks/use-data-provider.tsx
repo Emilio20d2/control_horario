@@ -1230,21 +1230,18 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             return dbRecord;
         }
     
-        const baseRecord = dbRecord || {};
-        const baseDays = baseRecord.days || {};
-    
+        // If there's an unconfirmed record in the DB, use it as the base.
+        // Otherwise, pre-fill from scratch.
+        if (dbRecord) {
+            return dbRecord;
+        }
+
         const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(emp.id, weekDays[0]);
         const weeklyWorkHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
         const newDays: Record<string, DailyData> = {};
     
         for (const day of weekDays) {
             const dayKey = format(day, 'yyyy-MM-dd');
-            const existingDayData = baseDays[dayKey];
-    
-            if (existingDayData) {
-                newDays[dayKey] = { ...existingDayData };
-                continue;
-            }
     
             const holidayDetails = holidays.find(h => isSameDay(h.date as Date, day));
             const theoreticalDay = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
@@ -1286,13 +1283,12 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         const prefilledEmployeeData = prefilledWeek?.weekData?.[emp.name];
     
         return {
-            ...baseRecord,
             days: newDays,
             confirmed: false,
-            totalComplementaryHours: baseRecord.totalComplementaryHours ?? null,
-            generalComment: baseRecord.generalComment ?? null,
-            weeklyHoursOverride: baseRecord.weeklyHoursOverride ?? null,
-            isDifference: baseRecord.isDifference ?? false,
+            totalComplementaryHours: null,
+            generalComment: null,
+            weeklyHoursOverride: null,
+            isDifference: false,
             hasPreregistration: !!prefilledEmployeeData,
             expectedOrdinaryImpact: prefilledEmployeeData?.expectedOrdinaryImpact,
             expectedHolidayImpact: prefilledEmployeeData?.expectedHolidayImpact,
@@ -1433,3 +1429,4 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 export const useDataProvider = () => useContext(DataContext);
 
     
+

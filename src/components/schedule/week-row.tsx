@@ -148,36 +148,25 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         setIsSaving(true);
     
         try {
+             // Handle interruption of indefinite absences
             for (const day of weekDays) {
                 const dayKey = format(day, 'yyyy-MM-dd');
                 const initialDayData = initialWeekData?.days?.[dayKey];
                 const finalDayData = localWeekData.days?.[dayKey];
-    
+
                 if (!initialDayData || !finalDayData) continue;
-    
+
                 const wasIndefiniteAbsenceDay = 
                     initialDayData.absence !== 'ninguna' && 
                     absenceTypes.find(at => at.abbreviation === initialDayData.absence)?.suspendsContract;
-    
+                
                 const isInterrupted = finalDayData.absence !== initialDayData.absence || finalDayData.workedHours > 0;
-    
+
                 if (wasIndefiniteAbsenceDay && isInterrupted) {
-                    const activePeriod = getActivePeriod(employee.id, day);
-                    if (activePeriod?.scheduledAbsences) {
-                        // Find the indefinite absence active on this day.
-                        const relevantAbsence = activePeriod.scheduledAbsences.find(a => 
-                            !a.endDate && 
-                            a.absenceTypeId === absenceTypes.find(at => at.abbreviation === initialDayData.absence)?.id &&
-                            !isBefore(startOfDay(day), startOfDay(a.startDate))
-                        );
-                        
-                        if (relevantAbsence) {
-                             await endIndefiniteAbsence(employee.id, day);
-                        }
-                    }
+                    await endIndefiniteAbsence(employee.id, day);
                 }
             }
-
+    
             const activePeriod = getActivePeriod(employee.id, weekDays[0]);
             if (!activePeriod) throw new Error("No active period found");
     
@@ -425,3 +414,4 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
     
 
     
+
