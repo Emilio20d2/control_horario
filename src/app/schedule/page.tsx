@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { format, eachDayOfInterval, getYear, addWeeks, startOfWeek, endOfWeek, isSameDay, addDays, isAfter, parseISO, startOfDay, getISODay, differenceInWeeks, isWithinInterval, getISOWeek, subWeeks, endOfDay, getISOWeekYear, isValid } from 'date-fns';
+import { format, eachDayOfInterval, getYear, addWeeks, startOfWeek, endOfWeek, isSameDay, addDays, isAfter, parseISO, startOfDay, getISODay, differenceInWeeks, isWithinInterval, getISOWeek, subWeeks, endOfDay, getISOWeekYear, isValid, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,14 +17,11 @@ import { CompletionDialog } from '@/components/schedule/completion-dialog';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquareWarning, CalendarPlus, Loader2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { AddAbsenceDialog } from '@/components/schedule/add-absence-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { endIndefiniteAbsence } from '@/lib/services/employeeService';
-import { isBefore } from 'date-fns';
 
 export default function SchedulePage() {
     const dataProvider = useDataProvider();
@@ -39,13 +36,6 @@ export default function SchedulePage() {
         findNextUnconfirmedWeek,
         correctionRequests,
         availableYears,
-        absenceTypes,
-        unconfirmedWeeksDetails,
-        calculateBalancePreview,
-        getEmployeeBalancesForWeek,
-        updateEmployeeWorkHours,
-        getActivePeriod,
-        getEffectiveWeeklyHours,
         refreshData,
     } = dataProvider;
     const searchParams = useSearchParams();
@@ -66,20 +56,19 @@ export default function SchedulePage() {
         
         return startOfWeek(new Date(), { weekStartsOn: 1 });
     
-    }, [searchParams, unconfirmedWeeksDetails]);
+    }, [searchParams, unconfirmedWeeksDetails, getWeekId]);
     
     const [currentDate, setCurrentDate] = useState(getInitialDate);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
     const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
     
-    // This state is now the single source of truth for the data being displayed and edited.
-    const [processedData, setProcessedData] = useState<Record<string, DailyEmployeeData>>({});
+    const [processedWeeklyViewData, setProcessedWeeklyViewData] = useState<Record<string, DailyEmployeeData>>({});
+    const [processedAnnualViewData, setProcessedAnnualViewData] = useState<Record<string, DailyEmployeeData>>({});
     const [balancePreviews, setBalancePreviews] = useState<Record<string, any | null>>({});
     const [initialBalancesMap, setInitialBalancesMap] = useState<Record<string, any | null>>({});
     const [isSaving, setIsSaving] = useState<Record<string, boolean>>({});
 
     const [completionInfo, setCompletionInfo] = useState<{ weekId: string; nextWeekId: string | null } | null>(null);
-    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
     useEffect(() => {
         if (!loading) {
@@ -90,8 +79,8 @@ export default function SchedulePage() {
                 setSelectedYear(getISOWeekYear(currentDate));
             }
         }
-    }, [loading, getInitialDate, selectedEmployeeId]);
-    
+    }, [loading, getInitialDate, selectedEmployeeId, setSelectedYear]);
+
     const isEmployeeActiveForWeek = useCallback((employee: Employee, weekStartDate: Date): boolean => {
         const weekStart = startOfDay(weekStartDate);
         const weekEnd = endOfDay(endOfWeek(weekStart, { weekStartsOn: 1 }));
@@ -104,52 +93,95 @@ export default function SchedulePage() {
         });
     }, []);
 
-    const activeEmployeesForSchedule = useMemo(() => {
-        return employees.filter(emp => isEmployeeActiveForWeek(emp, currentDate));
-    }, [currentDate, employees, isEmployeeActiveForWeek]);
-
     const activeEmployeesForDropdown = useMemo(() => {
         return employees.filter(e => e.employmentPeriods?.some(p => {
             if (!p.endDate) return true;
             const endDate = typeof p.endDate === 'string' ? parseISO(p.endDate) : p.endDate;
             return isAfter(endDate, startOfDay(new Date()));
-        }));
+        })).sort((a, b) => a.name.localeCompare(b.name));
     }, [employees]);
 
-    const weekId = useMemo(() => {
-        return getWeekId(currentDate);
-    }, [currentDate, getWeekId]);
-
+    const weekId = useMemo(() => getWeekId(currentDate), [currentDate, getWeekId]);
     const weekDays = useMemo(() => eachDayOfInterval({ start: startOfWeek(currentDate, { weekStartsOn: 1 }), end: endOfWeek(currentDate, { weekStartsOn: 1 }) }), [currentDate]);
     
-    // Initial data processing effect
+    // Initial data processing for weekly view
     useEffect(() => {
         if (loading || selectedEmployeeId !== 'all') return;
+        
+        const newProcessedData: Record<string, DailyEmployeeData> = {};
+        const newInitialBalances: Record<string, any> = {};
+
+        const activeForWeek = employees.filter(emp => isEmployeeActiveForWeek(emp, currentDate));
+        
+        for (const emp of activeForWeek) {
+            const empData = processEmployeeWeekData(emp, weekDays, weekId);
+            if (empData) {
+                newProcessedData[emp.id] = empData;
+                newInitialBalances[emp.id] = dataProvider.getEmployeeBalancesForWeek(emp.id, weekId);
+            }
+        }
+        setProcessedWeeklyViewData(newProcessedData);
+        setInitialBalancesMap(newInitialBalances);
+    }, [loading, weekId, selectedEmployeeId, processEmployeeWeekData, weekDays, employees, isEmployeeActiveForWeek, currentDate, dataProvider.getEmployeeBalancesForWeek]);
+
+    // Data processing for annual view
+    useEffect(() => {
+        if (loading || selectedEmployeeId === 'all') return;
+
+        const employee = employees.find(e => e.id === selectedEmployeeId);
+        if (!employee) return;
+        
+        const year = selectedYear;
+        let weeksOfYear: Date[] = [];
+        const yearStartBoundary = startOfYear(new Date(year, 0, 1));
+        const yearEndBoundary = endOfYear(new Date(year, 11, 31));
+        if (year === 2025) {
+            weeksOfYear.push(new Date('2024-12-30'));
+        }
+        weeksOfYear = [...weeksOfYear, ...eachWeekOfInterval({ start: yearStartBoundary, end: yearEndBoundary }, { weekStartsOn: 1 })];
 
         const newProcessedData: Record<string, DailyEmployeeData> = {};
         const newInitialBalances: Record<string, any> = {};
 
-        for (const emp of activeEmployeesForSchedule) {
-            const empData = processEmployeeWeekData(emp, weekDays, weekId);
-            if (empData) {
-                newProcessedData[emp.id] = empData;
-                newInitialBalances[emp.id] = getEmployeeBalancesForWeek(emp.id, weekId);
+        weeksOfYear.forEach(weekStartDate => {
+            const currentWeekId = getWeekId(weekStartDate);
+            if (isEmployeeActiveForWeek(employee, weekStartDate)) {
+                const currentWeekDays = eachDayOfInterval({ start: weekStartDate, end: endOfWeek(weekStartDate, { weekStartsOn: 1 }) });
+                const empData = processEmployeeWeekData(employee, currentWeekDays, currentWeekId);
+                if (empData) {
+                    newProcessedData[currentWeekId] = empData;
+                    newInitialBalances[currentWeekId] = dataProvider.getEmployeeBalancesForWeek(employee.id, currentWeekId);
+                }
             }
-        }
-        setProcessedData(newProcessedData);
+        });
+        
+        setProcessedAnnualViewData(newProcessedData);
         setInitialBalancesMap(newInitialBalances);
-    }, [loading, weekId, selectedEmployeeId, processEmployeeWeekData, weekDays, activeEmployeesForSchedule, employees, weeklyRecords, getEmployeeBalancesForWeek]);
+
+    }, [loading, selectedEmployeeId, selectedYear, employees, processEmployeeWeekData, getWeekId, isEmployeeActiveForWeek, dataProvider.getEmployeeBalancesForWeek]);
 
     // Balance preview calculation effect
     useEffect(() => {
+        const dataToProcess = selectedEmployeeId === 'all' ? processedWeeklyViewData : processedAnnualViewData;
+        const keys = Object.keys(dataToProcess);
+
+        if (keys.length === 0) {
+            setBalancePreviews({});
+            return;
+        };
+
         const calculateAllPreviews = async () => {
             const newPreviews: Record<string, any | null> = {};
-            for (const empId in processedData) {
-                const weekData = processedData[empId];
-                const initialBalances = initialBalancesMap[empId];
+            for (const key of keys) {
+                const isAnnualView = selectedEmployeeId !== 'all';
+                const employeeId = isAnnualView ? selectedEmployeeId : key;
+                const weekData = dataToProcess[key];
+                const initialBalancesKey = isAnnualView ? key : employeeId;
+                const initialBalances = initialBalancesMap[initialBalancesKey];
+                
                 if (weekData && initialBalances) {
-                    newPreviews[empId] = await calculateBalancePreview(
-                        empId,
+                    newPreviews[key] = await dataProvider.calculateBalancePreview(
+                        employeeId,
                         weekData.days || {},
                         initialBalances,
                         weekData.weeklyHoursOverride,
@@ -160,19 +192,23 @@ export default function SchedulePage() {
             setBalancePreviews(newPreviews);
         };
         calculateAllPreviews();
-    }, [processedData, initialBalancesMap, calculateBalancePreview]);
+    }, [processedWeeklyViewData, processedAnnualViewData, initialBalancesMap, dataProvider.calculateBalancePreview, selectedEmployeeId]);
     
     
-    const handleWeekRowChange = (employeeId: string, dayOrWeekKey: string, field: string, value: any) => {
-        setProcessedData(prevData => {
-            const currentEmployeeData = prevData[employeeId];
-            if (!currentEmployeeData) return prevData;
+    const handleWeekRowChange = (employeeId: string, weekIdToUpdate: string, dayOrWeekKey: string, field: string, value: any) => {
+        const isAnnualView = selectedEmployeeId !== 'all';
+        const dataSetter = isAnnualView ? setProcessedAnnualViewData : setProcessedWeeklyViewData;
+
+        dataSetter(prevData => {
+            const keyToUpdate = isAnnualView ? weekIdToUpdate : employeeId;
+            const currentData = prevData[keyToUpdate];
+            if (!currentData) return prevData;
     
-            const newEmployeeData: DailyEmployeeData = JSON.parse(JSON.stringify(currentEmployeeData));
+            const newEmployeeData: DailyEmployeeData = JSON.parse(JSON.stringify(currentData));
     
             if (dayOrWeekKey === 'week') {
                 (newEmployeeData as any)[field] = value;
-            } else { // It's a dayKey
+            } else { 
                 if (!newEmployeeData.days) return prevData;
                 const dayKey = dayOrWeekKey;
                 const dayToUpdate = newEmployeeData.days[dayKey];
@@ -180,12 +216,14 @@ export default function SchedulePage() {
     
                 (dayToUpdate as any)[field] = value;
     
-                const absenceType = absenceTypes.find(at => at.abbreviation === originalAbsence);
+                const absenceType = dataProvider.absenceTypes.find(at => at.abbreviation === originalAbsence);
                 const isIndefinite = absenceType ? !absenceType.isAbsenceSplittable && !absenceType.affectedBag : false;
                 
                 if (field === 'absence' && value !== originalAbsence && isIndefinite) {
                     const interruptionDate = parseISO(dayKey);
-                    weekDays.forEach(day => {
+                    const weekDaysToUpdate = eachDayOfInterval({start: startOfWeek(interruptionDate, {weekStartsOn: 1}), end: endOfWeek(interruptionDate, {weekStartsOn: 1})})
+
+                    weekDaysToUpdate.forEach(day => {
                         if (isAfter(day, interruptionDate)) {
                             const subsequentDayKey = format(day, 'yyyy-MM-dd');
                             const dayToClear = newEmployeeData.days?.[subsequentDayKey];
@@ -198,8 +236,7 @@ export default function SchedulePage() {
                     });
                 }
 
-                // Recalculate related fields based on the change
-                const newAbsenceType = absenceTypes.find(at => at.abbreviation === dayToUpdate.absence);
+                const newAbsenceType = dataProvider.absenceTypes.find(at => at.abbreviation === dayToUpdate.absence);
                 if (field === 'absence' && newAbsenceType?.computesFullDay) {
                     dayToUpdate.workedHours = 0;
                     dayToUpdate.absenceHours = dayToUpdate.theoreticalHours;
@@ -208,23 +245,28 @@ export default function SchedulePage() {
                 }
             }
     
-            return { ...prevData, [employeeId]: newEmployeeData };
+            return { ...prevData, [keyToUpdate]: newEmployeeData };
         });
     };
 
-     const handleConfirm = async (employeeId: string) => {
+     const handleConfirm = async (employeeId: string, weekIdToConfirm: string) => {
         const employee = employees.find(e => e.id === employeeId);
-        const weekData = processedData[employeeId];
-        const preview = balancePreviews[employeeId];
-        const initialBalances = initialBalancesMap[employeeId];
+        const dataMap = selectedEmployeeId === 'all' ? processedWeeklyViewData : processedAnnualViewData;
+        const dataKey = selectedEmployeeId === 'all' ? employeeId : weekIdToConfirm;
+
+        const weekData = dataMap[dataKey];
+        const preview = balancePreviews[dataKey];
+        const initialBalances = initialBalancesMap[dataKey];
 
         if (!weekData || !employee || !preview || !initialBalances) return;
 
-        setIsSaving(prev => ({ ...prev, [employeeId]: true }));
+        setIsSaving(prev => ({ ...prev, [dataKey]: true }));
     
         try {
             let dataWasRefreshed = false;
-            for (const day of weekDays) {
+            const weekDaysToConfirm = eachDayOfInterval({start: startOfWeek(parseISO(weekIdToConfirm), {weekStartsOn: 1}), end: endOfWeek(parseISO(weekIdToConfirm), {weekStartsOn: 1})});
+            
+            for (const day of weekDaysToConfirm) {
                 const dayKey = format(day, 'yyyy-MM-dd');
                 const wasInterrupted = await endIndefiniteAbsence(employee.id, day, weekData.days[dayKey]);
                 if (wasInterrupted) {
@@ -237,14 +279,14 @@ export default function SchedulePage() {
                 await new Promise(resolve => setTimeout(resolve, 300));
             }
     
-            const activePeriod = getActivePeriod(employee.id, weekDays[0]);
+            const activePeriod = dataProvider.getActivePeriod(employee.id, weekDaysToConfirm[0]);
             if (!activePeriod) throw new Error("No active period found");
     
-            const currentDbHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
+            const currentDbHours = dataProvider.getEffectiveWeeklyHours(activePeriod, weekDaysToConfirm[0]);
             const formHours = weekData.weeklyHoursOverride ?? currentDbHours;
     
             if (formHours !== currentDbHours && weekData.weeklyHoursOverride !== null) {
-                await updateEmployeeWorkHours(employee.id, employee, formHours, format(weekDays[0], 'yyyy-MM-dd'));
+                await dataProvider.updateEmployeeWorkHours(employee.id, employee, formHours, format(weekDaysToConfirm[0], 'yyyy-MM-dd'));
                 toast({ title: `Jornada Actualizada para ${employee.name}`, description: `Nueva jornada: ${formHours}h/semana.` });
             }
     
@@ -261,26 +303,23 @@ export default function SchedulePage() {
                 totalComplementaryHours: weekData.totalComplementaryHours ?? null,
                 generalComment: weekData.generalComment || null,
                 isDifference: weekData.isDifference ?? false,
-                expectedOrdinaryImpact: weekData.expectedOrdinaryImpact || null,
-                expectedHolidayImpact: weekData.expectedHolidayImpact || null,
-                expectedLeaveImpact: weekData.expectedLeaveImpact || null,
             };
             
             const finalData = { weekData: { [employee.id]: dataToSave } };
             
-            await setDoc(doc(db, 'weeklyRecords', weekId), finalData, { merge: true });
+            await setDoc(doc(db, 'weeklyRecords', weekIdToConfirm), finalData, { merge: true });
             
             toast({ title: `Semana Confirmada para ${employee.name}` });
             
-            handleWeekRowChange(employeeId, 'week', 'confirmed', true);
+            handleWeekRowChange(employeeId, weekIdToConfirm, 'week', 'confirmed', true);
             
-            const allConfirmed = activeEmployeesForSchedule.every(emp =>
-                 (emp.id === employeeId) || (processedData[emp.id]?.confirmed)
+            const allConfirmed = (selectedEmployeeId === 'all' ? Object.keys(processedWeeklyViewData) : [selectedEmployeeId]).every(empId =>
+                 (empId === employeeId) || (processedWeeklyViewData[empId]?.confirmed)
             );
 
             if(allConfirmed) {
                 const nextWeek = findNextUnconfirmedWeek(currentDate);
-                setCompletionInfo({ weekId: weekId, nextWeekId: nextWeek });
+                setCompletionInfo({ weekId: weekIdToConfirm, nextWeekId: nextWeek });
             }
 
         } catch (error) {
@@ -288,14 +327,9 @@ export default function SchedulePage() {
             const errorMessage = error instanceof Error ? error.message : "No se pudo guardar la confirmación.";
             toast({ title: 'Error al confirmar', description: errorMessage, variant: 'destructive' });
         } finally {
-            setIsSaving(prev => ({ ...prev, [employeeId]: false }));
+            setIsSaving(prev => ({ ...prev, [dataKey]: false }));
         }
     }
-
-    const onWeekCompleted = (completedWeekId: string) => {
-        const nextWeekId = findNextUnconfirmedWeek(parseISO(completedWeekId));
-        setCompletionInfo({ weekId: completedWeekId, nextWeekId });
-    };
 
     const pendingRequestsForWeek = useMemo(() => {
         return correctionRequests.filter(r => r.weekId === weekId && r.status === 'pending');
@@ -339,19 +373,7 @@ export default function SchedulePage() {
         const employee = employees.find(e => e.id === selectedEmployeeId);
         if (!employee) return <div className="text-center p-8">Empleado no encontrado.</div>;
     
-        let weeksOfYear: Date[] = [];
-        const year = selectedYear;
-
-        let firstMondayOfYear = startOfWeek(new Date(year, 0, 4), { weekStartsOn: 1 });
-        if (getISOWeek(firstMondayOfYear) > 1) {
-            firstMondayOfYear = subWeeks(firstMondayOfYear, 1);
-        }
-        weeksOfYear = Array.from({ length: 53 }).map((_, i) => addWeeks(firstMondayOfYear, i))
-            .filter(d => {
-                const isoYear = getISOWeekYear(d);
-                if (year === 2025) return isoYear === 2025;
-                return isoYear === year;
-            });
+        const weeksOfYear = Object.keys(processedAnnualViewData).sort();
     
         return (
             <Card className="rounded-none border-0 border-t bg-card">
@@ -361,36 +383,33 @@ export default function SchedulePage() {
                 <CardContent className="overflow-x-auto p-0">
                      <Table>
                         <TableBody>
-                            {weeksOfYear.map(weekStartDate => {
-                                const currentWeekId = getWeekId(weekStartDate);
-                                if (!isEmployeeActiveForWeek(employee, weekStartDate)) return null;
-                                
-                                const initialWeekData = processEmployeeWeekData(employee, weekDays, currentWeekId);
-                                const balancePreview = balancePreviews[employee.id];
-                                const initialBalances = initialBalancesMap[employee.id];
-
-                                if (!initialWeekData) {
-                                    return <TableRow key={currentWeekId}><TableCell colSpan={8} className="p-0"><Skeleton className="h-48 w-full rounded-none" /></TableCell></TableRow>;
-                                }
+                            {weeksOfYear.map(weekId => {
+                                const weekStartDate = parseISO(weekId);
+                                const currentWeekDays = eachDayOfInterval({start: weekStartDate, end: endOfWeek(weekStartDate, {weekStartsOn: 1})});
 
                                 return (
-                                    <React.Fragment key={currentWeekId}>
+                                    <React.Fragment key={weekId}>
                                         <TableRow className="bg-muted/50 hover:bg-muted/50">
                                             <TableHead className="sticky left-0 bg-muted z-20 font-semibold p-2 text-xs w-[150px] sm:w-[200px] min-w-[150px] sm:min-w-[200px]" colSpan={1}>
-                                                {format(startOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM')} - {format(endOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM yyyy', {locale:es})}
+                                                {format(weekStartDate, 'd MMM')} - {format(endOfWeek(weekStartDate, {weekStartsOn:1}), 'd MMM yyyy', {locale:es})}
                                             </TableHead>
-                                            {weekDays.map(d => <TableHead key={d.toISOString()} className={cn("text-left p-2 text-xs w-[140px]", holidays.some(h => isSameDay(h.date, d)) && "bg-blue-100")}><span className="sm:hidden">{format(d, 'E', {locale:es})}</span><span className="hidden sm:inline">{format(d, 'E dd/MM', {locale:es})}</span></TableHead>)}
+                                            {currentWeekDays.map(d => 
+                                                <TableHead key={d.toISOString()} className={cn("text-left p-2 text-xs w-[140px]", holidays.some(h => isSameDay(h.date, d)) && "bg-blue-100")}>
+                                                    <span className="sm:hidden">{format(d, 'E', {locale:es})}</span>
+                                                    <span className="hidden sm:inline">{format(d, 'E dd/MM', {locale:es})}</span>
+                                                </TableHead>
+                                            )}
                                         </TableRow>
                                         <WeekRow 
                                             employee={employee} 
-                                            weekId={currentWeekId} 
-                                            weekDays={weekDays} 
-                                            weekData={processedData[employee.id] || initialWeekData}
-                                            balancePreview={balancePreview}
-                                            initialBalances={initialBalances}
-                                            isSaving={isSaving[employee.id] || false}
+                                            weekId={weekId} 
+                                            weekDays={currentWeekDays} 
+                                            weekData={processedAnnualViewData[weekId]}
+                                            balancePreview={balancePreviews[weekId]}
+                                            initialBalances={initialBalancesMap[weekId]}
+                                            isSaving={isSaving[weekId] || false}
                                             onDataChange={handleWeekRowChange}
-                                            onConfirm={handleConfirm}
+                                            onConfirm={() => handleConfirm(employee.id, weekId)}
                                         />
                                     </React.Fragment>
                                 );
@@ -402,91 +421,93 @@ export default function SchedulePage() {
         );
     }
     
-    const renderWeeklyView = () => (
-        <Card className="rounded-none border-0 border-t bg-card">
-            <CardHeader className="flex flex-col gap-2 items-center">
-                <div className="flex w-full justify-center items-center gap-4">
-                    <div className="flex-1 flex justify-end">
-                    </div>
-                    <div className="flex-grow-0">
-                        <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
-                    </div>
-                    <div className="flex-1"></div>
-                </div>
+    const renderWeeklyView = () => {
+        const activeEmployeesForSchedule = Object.keys(processedWeeklyViewData).map(id => employees.find(e => e.id === id)).filter(Boolean) as Employee[];
 
-                {pendingRequestsForWeek.length > 0 && (
-                    <Popover>
-                        <PopoverTrigger asChild>
-                             <Badge variant="destructive" className="mt-2 animate-pulse cursor-pointer">
-                                <MessageSquareWarning className="mr-2 h-4 w-4" />
-                                {pendingRequestsForWeek.length} solicitud(es) de corrección
-                            </Badge>
-                        </PopoverTrigger>
-                        <PopoverContent>
-                            <div className="space-y-2">
-                                <h4 className="font-medium leading-none">Solicitudes Pendientes</h4>
-                                <p className="text-sm text-muted-foreground">
-                                    Los siguientes empleados han solicitado correcciones para esta semana:
-                                </p>
-                                <ul className="list-disc list-inside">
-                                    {pendingRequestsForWeek.map(req => (
-                                        <li key={req.id} className="text-sm">{req.employeeName}</li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                )}
-            </CardHeader>
-            <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="sticky left-0 bg-gradient-to-br from-primary/10 to-transparent z-20 p-2 text-xs w-[150px] sm:w-[200px] min-w-[150px] sm:min-w-[200px]">Empleado</TableHead>
-                                {weekDays.map(d => {
-                                    const isHoliday = holidays.some(h => isSameDay(h.date, d));
+        return (
+            <Card className="rounded-none border-0 border-t bg-card">
+                <CardHeader className="flex flex-col gap-2 items-center">
+                    <div className="flex w-full justify-center items-center gap-4">
+                        <div className="flex-1 flex justify-end">
+                        </div>
+                        <div className="flex-grow-0">
+                            <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
+                        </div>
+                        <div className="flex-1"></div>
+                    </div>
+
+                    {pendingRequestsForWeek.length > 0 && (
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Badge variant="destructive" className="mt-2 animate-pulse cursor-pointer">
+                                    <MessageSquareWarning className="mr-2 h-4 w-4" />
+                                    {pendingRequestsForWeek.length} solicitud(es) de corrección
+                                </Badge>
+                            </PopoverTrigger>
+                            <PopoverContent>
+                                <div className="space-y-2">
+                                    <h4 className="font-medium leading-none">Solicitudes Pendientes</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        Los siguientes empleados han solicitado correcciones para esta semana:
+                                    </p>
+                                    <ul className="list-disc list-inside">
+                                        {pendingRequestsForWeek.map(req => (
+                                            <li key={req.id} className="text-sm">{req.employeeName}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    )}
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="sticky left-0 bg-background z-20 p-2 text-xs w-[150px] sm:w-[200px] min-w-[150px] sm:min-w-[200px]">Empleado</TableHead>
+                                    {weekDays.map(d => {
+                                        const isHoliday = holidays.some(h => isSameDay(h.date, d));
+                                        return (
+                                            <TableHead key={d.toISOString()} className={cn(
+                                                "text-center p-2 text-xs w-[140px]", 
+                                                isHoliday ? "bg-green-100/50" : "bg-gray-50/50"
+                                            )}>
+                                                <span className="sm:hidden">{format(d, 'E', {locale:es})}</span>
+                                                <span className="hidden sm:inline">{format(d, 'E dd/MM', {locale:es})}</span>
+                                            </TableHead>
+                                        );
+                                    })}
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {activeEmployeesForSchedule.length > 0 ? activeEmployeesForSchedule.map(employee => {
+                                    const weekData = processedWeeklyViewData[employee.id];
+                                    if (!weekData) {
+                                        return <TableRow key={`${employee.id}-${weekId}`}><TableCell colSpan={8} className="p-0"><Skeleton className="h-48 w-full rounded-none" /></TableCell></TableRow>;
+                                    }
                                     return (
-                                        <TableHead key={d.toISOString()} className={cn(
-                                            "text-center p-2 text-xs w-[140px]", 
-                                            isHoliday 
-                                            ? "bg-gradient-to-br from-green-100 to-transparent" 
-                                            : "bg-gradient-to-br from-gray-50/50 to-transparent"
-                                        )}>
-                                            <span className="sm:hidden">{format(d, 'E', {locale:es})}</span>
-                                            <span className="hidden sm:inline">{format(d, 'E dd/MM', {locale:es})}</span>
-                                        </TableHead>
-                                    );
-                                })}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {activeEmployeesForSchedule.length > 0 ? activeEmployeesForSchedule.map(employee => {
-                                const weekData = processedData[employee.id];
-                                if (!weekData) {
-                                    return <TableRow key={`${employee.id}-${weekId}`}><TableCell colSpan={8} className="p-0"><Skeleton className="h-48 w-full rounded-none" /></TableCell></TableRow>;
-                                }
-                                return (
-                                    <WeekRow 
-                                        key={`${employee.id}-${weekId}`} 
-                                        employee={employee} 
-                                        weekId={weekId} 
-                                        weekDays={weekDays} 
-                                        weekData={weekData}
-                                        balancePreview={balancePreviews[employee.id]}
-                                        initialBalances={initialBalancesMap[employee.id]}
-                                        isSaving={isSaving[employee.id] || false}
-                                        onDataChange={handleWeekRowChange}
-                                        onConfirm={handleConfirm}
-                                    />
-                                )
-                            }) : <TableRow><TableCell colSpan={8} className="text-center h-48">No hay empleados activos esta semana.</TableCell></TableRow>}
-                        </TableBody>
-                    </Table>
-                </div>
-            </CardContent>
-        </Card>
-    );
+                                        <WeekRow 
+                                            key={`${employee.id}-${weekId}`} 
+                                            employee={employee} 
+                                            weekId={weekId} 
+                                            weekDays={weekDays} 
+                                            weekData={weekData}
+                                            balancePreview={balancePreviews[employee.id]}
+                                            initialBalances={initialBalancesMap[employee.id]}
+                                            isSaving={isSaving[employee.id] || false}
+                                            onDataChange={handleWeekRowChange}
+                                            onConfirm={() => handleConfirm(employee.id, weekId)}
+                                        />
+                                    )
+                                }) : <TableRow><TableCell colSpan={8} className="text-center h-48">No hay empleados activos esta semana.</TableCell></TableRow>}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
 
  return (
     <>
@@ -498,15 +519,6 @@ export default function SchedulePage() {
             setCurrentDate(parseISO(weekId));
             setCompletionInfo(null);
         }}
-    />
-     <AddAbsenceDialog 
-        isOpen={isAddDialogOpen} 
-        onOpenChange={setIsAddDialogOpen} 
-        activeEmployees={activeEmployeesForDropdown} 
-        absenceTypes={absenceTypes} 
-        holidays={holidays}
-        employees={employees}
-        refreshData={dataProvider.refreshData}
     />
     <div className="flex flex-col gap-0">
         <div className="flex flex-col sm:flex-row justify-between items-center px-4 md:px-6 py-4 gap-4">
