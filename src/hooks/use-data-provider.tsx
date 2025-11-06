@@ -1200,35 +1200,6 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     const processEmployeeWeekData = useCallback((emp: Employee, weekDays: Date[], weekId: string): DailyEmployeeData | null => {
         const dbRecord = weeklyRecords[weekId]?.weekData?.[emp.id];
     
-        if (dbRecord) {
-            // MERGE scheduled absences over the dbRecord before returning
-            const mergedDays = { ...dbRecord.days };
-            for (const day of weekDays) {
-                const dayKey = format(day, 'yyyy-MM-dd');
-                let scheduledAbsence: ScheduledAbsence | undefined;
-                for (const period of emp.employmentPeriods) {
-                    scheduledAbsence = period.scheduledAbsences?.find(absence => {
-                        const startDate = startOfDay(absence.startDate);
-                        const endDate = absence.endDate ? endOfDay(absence.endDate) : endOfDay(new Date('9999-12-31'));
-                        return isWithinInterval(day, { start: startDate, end: endDate });
-                    });
-                    if (scheduledAbsence) break;
-                }
-    
-                if (scheduledAbsence) {
-                    const absenceType = absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId);
-                    if (absenceType) {
-                        mergedDays[dayKey].absence = absenceType.abbreviation;
-                        if (absenceType.computesFullDay) {
-                            mergedDays[dayKey].workedHours = 0;
-                            mergedDays[dayKey].absenceHours = mergedDays[dayKey].theoreticalHours;
-                        }
-                    }
-                }
-            }
-            return { ...dbRecord, days: mergedDays };
-        }
-    
         const activePeriod = getActivePeriod(emp.id, weekDays[0]);
         if (!activePeriod) {
             return null;
@@ -1244,51 +1215,59 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const holidayDetails = holidays.find(h => isSameDay(h.date as Date, day));
             const theoreticalDay = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
             const theoreticalHours = theoreticalDay?.theoreticalHours ?? 0;
-    
-            let scheduledAbsence: ScheduledAbsence | undefined;
-            for (const period of emp.employmentPeriods) {
-                if (period.scheduledAbsences) {
-                    scheduledAbsence = period.scheduledAbsences.find(absence => {
-                        if (!absence.startDate) return false;
-                        const startDate = startOfDay(absence.startDate);
-                        if (absence.endDate) {
-                            const endDate = endOfDay(absence.endDate);
-                            return isWithinInterval(day, { start: startDate, end: endDate });
-                        }
-                        // Handle indefinite absences
-                        return !isBefore(day, startDate);
+            
+            const dbDayData = dbRecord?.days?.[dayKey];
+
+            // If not confirmed (i.e. editing), prioritize scheduled absences
+            if (!dbRecord?.confirmed) {
+                let scheduledAbsence: ScheduledAbsence | undefined;
+                for (const period of emp.employmentPeriods) {
+                    scheduledAbsence = period.scheduledAbsences?.find(absence => {
+                        const startDate = startOfDay(safeParseDate(absence.startDate)!);
+                        const endDate = absence.endDate ? endOfDay(safeParseDate(absence.endDate)!) : new Date('9999-12-31');
+                        return isWithinInterval(day, { start: startDate, end: endDate });
                     });
                     if (scheduledAbsence) break;
                 }
+
+                if (scheduledAbsence) {
+                    const absenceType = absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId);
+                    if (absenceType) {
+                        newDays[dayKey] = {
+                            theoreticalHours,
+                            workedHours: absenceType.computesFullDay ? 0 : theoreticalHours,
+                            absence: absenceType.abbreviation,
+                            absenceHours: absenceType.computesFullDay ? theoreticalHours : 0,
+                            leaveHours: 0,
+                            doublePay: false,
+                            isHoliday: !!holidayDetails,
+                            holidayType: holidayDetails?.type ?? null,
+                        };
+                        continue;
+                    }
+                }
             }
-    
-            const absenceType = scheduledAbsence ? absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId) : undefined;
-            
+
+
+            // If there's a dbRecord, use it as the base
+            if (dbDayData) {
+                newDays[dayKey] = { ...dbDayData };
+                continue;
+            }
+
+
+            // Default logic if no dbRecord and no overriding scheduled absence
             let leaveHours = 0;
-            if (holidayDetails && theoreticalHours === 0 && getISODay(day) !== 7) {
-                const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
-                if (contractType?.computesOffDayBag) {
-                    leaveHours = roundToNearestQuarter(weeklyWorkHours / 5);
-                }
-            }
-    
-            let workedHours = theoreticalHours;
-            let absenceAbbreviation = 'ninguna';
-            let absenceHours = 0;
-    
-            if (absenceType) {
-                absenceAbbreviation = absenceType.abbreviation;
-                if (absenceType.computesFullDay) {
-                    workedHours = 0;
-                    absenceHours = theoreticalHours;
-                }
+            const contractType = contractTypes.find(ct => ct.name === activePeriod.contractType);
+            if (holidayDetails && theoreticalHours === 0 && getISODay(day) !== 7 && contractType?.computesOffDayBag) {
+                leaveHours = roundToNearestQuarter(weeklyWorkHours / 5);
             }
     
             newDays[dayKey] = {
                 theoreticalHours,
-                workedHours,
-                absence: absenceAbbreviation,
-                absenceHours,
+                workedHours: theoreticalHours,
+                absence: 'ninguna',
+                absenceHours: 0,
                 leaveHours,
                 doublePay: false,
                 isHoliday: !!holidayDetails,
@@ -1301,11 +1280,13 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     
         return {
             days: newDays,
-            confirmed: false,
-            totalComplementaryHours: null,
-            generalComment: null,
-            weeklyHoursOverride: null,
-            isDifference: false,
+            confirmed: dbRecord?.confirmed ?? false,
+            totalComplementaryHours: dbRecord?.totalComplementaryHours ?? null,
+            generalComment: dbRecord?.generalComment ?? null,
+            weeklyHoursOverride: dbRecord?.weeklyHoursOverride ?? null,
+            isDifference: dbRecord?.isDifference ?? false,
+            previousBalances: dbRecord?.previousBalances,
+            impact: dbRecord?.impact,
             hasPreregistration: !!prefilledEmployeeData,
             expectedOrdinaryImpact: prefilledEmployeeData?.expectedOrdinaryImpact,
             expectedHolidayImpact: prefilledEmployeeData?.expectedHolidayImpact,

@@ -294,7 +294,7 @@ export const deleteEmployee = async (id: string): Promise<void> => {
     await deleteDocument('employees', id);
 };
 
-export const endIndefiniteAbsence = async (employeeId: string, dayOfInterruption: Date): Promise<boolean> => {
+export const endIndefiniteAbsence = async (employeeId: string, dayOfInterruption: Date, dayData: DailyData): Promise<boolean> => {
     const employeeDocRef = doc(db, 'employees', employeeId);
     const employeeDoc = await getDoc(employeeDocRef);
     if (!employeeDoc.exists()) return false;
@@ -311,16 +311,26 @@ export const endIndefiniteAbsence = async (employeeId: string, dayOfInterruption
   
     if (!period || !period.scheduledAbsences) return false;
   
-    const absenceToEnd = period.scheduledAbsences.find((a: ScheduledAbsence) =>
-        a.endDate === null && // Is indefinite
-        isBefore(startOfDay(parseISO(a.startDate as string)), startOfDay(addDays(dayOfInterruption, 1))) // Starts on or before the interruption day
-    );
-  
+    const absenceToEnd = period.scheduledAbsences.find((a: ScheduledAbsence) => {
+        if (a.endDate !== null) return false; // Not indefinite
+        
+        const startDate = startOfDay(parseISO(a.startDate as string));
+        // Check if the absence is active on the day *before* the interruption
+        return !isAfter(startDate, subDays(dayOfInterruption, 1));
+    });
+
     if (!absenceToEnd) return false;
+    
+    // Check if the absence was indeed interrupted on this day
+    const wasInterrupted = dayData.absence === 'ninguna' || dayData.workedHours > 0;
   
-    absenceToEnd.endDate = format(subDays(dayOfInterruption, 1), 'yyyy-MM-dd');
-    await updateDoc(employeeDocRef, { employmentPeriods: employeeCopy.employmentPeriods });
-    return true; // Indicates an update was made
+    if (wasInterrupted) {
+        absenceToEnd.endDate = format(subDays(dayOfInterruption, 1), 'yyyy-MM-dd');
+        await updateDoc(employeeDocRef, { employmentPeriods: employeeCopy.employmentPeriods });
+        return true; // Indicates an update was made
+    }
+    
+    return false;
 };
 
 export const addScheduledAbsence = async (
@@ -338,11 +348,9 @@ export const addScheduledAbsence = async (
   ): Promise<void> => {
     
     const startDateObj = parseISO(newAbsence.startDate);
-    await endIndefiniteAbsence(employeeId, startDateObj);
-      
-    await new Promise(resolve => setTimeout(resolve, 250));
-
-    const employeeDoc = await getDoc(doc(db, 'employees', employeeId));
+    
+    const employeeDocRef = doc(db, 'employees', employeeId);
+    const employeeDoc = await getDoc(employeeDocRef);
     if (!employeeDoc.exists()) throw new Error("Employee not found after refetch");
     const employeeCopy = JSON.parse(JSON.stringify(employeeDoc.data()));
 
