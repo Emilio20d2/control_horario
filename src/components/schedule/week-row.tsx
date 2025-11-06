@@ -147,7 +147,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         setIsSaving(true);
     
         try {
-            // Check for interrupted indefinite absences
+             // Check for interrupted indefinite absences by comparing initial vs. final state
             for (const day of weekDays) {
                 const dayKey = format(day, 'yyyy-MM-dd');
                 const initialDayData = initialWeekData?.days[dayKey];
@@ -155,6 +155,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
 
                 if (!initialDayData || !finalDayData) continue;
 
+                // An indefinite absence is one that originally had no end date.
                 const wasIndefiniteAbsence = initialDayData.absence !== 'ninguna' && 
                     employee.employmentPeriods.some(p => p.scheduledAbsences?.some(a => 
                         !a.endDate && 
@@ -162,14 +163,14 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                         !isBefore(startOfDay(day), startOfDay(a.startDate as Date))
                     ));
                 
+                // An interruption occurs if the absence type changes OR if hours are worked where there were none.
                 const isInterrupted = finalDayData.absence !== initialDayData.absence || (finalDayData.workedHours > 0 && initialDayData.workedHours === 0);
-
+                
                 if (wasIndefiniteAbsence && isInterrupted) {
                     await endIndefiniteAbsence(employee.id, day);
-                    // No need to break, continue checking other days in case of multiple changes
                 }
             }
-    
+
             const activePeriod = getActivePeriod(employee.id, weekDays[0]);
             if (!activePeriod) throw new Error("No active period found");
     

@@ -1,4 +1,5 @@
 
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -1075,6 +1076,7 @@ const calculateEmployeeVacations = useCallback((emp: Employee | null, year: numb
         });
 
         Object.values(weeklyRecords).forEach(record => {
+            if (!record.weekData || !record.weekData[emp.id]) return;
             const empWeekData = record.weekData[emp.id];
             if (empWeekData?.confirmed && empWeekData.days) {
                  Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
@@ -1228,8 +1230,6 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             return dbRecord;
         }
     
-        // If there's a record in DB (even unconfirmed), use it as the base.
-        // Otherwise, create a new structure.
         const baseRecord = dbRecord || {};
         const baseDays = baseRecord.days || {};
     
@@ -1241,13 +1241,11 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const dayKey = format(day, 'yyyy-MM-dd');
             const existingDayData = baseDays[dayKey];
     
-            // If we have existing (unconfirmed) data for the day, use it.
             if (existingDayData) {
                 newDays[dayKey] = { ...existingDayData };
                 continue;
             }
     
-            // If not, build the day from scratch.
             const holidayDetails = holidays.find(h => isSameDay(h.date as Date, day));
             const theoreticalDay = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
             const theoreticalHours = theoreticalDay?.theoreticalHours ?? 0;
@@ -1257,14 +1255,8 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                 .find(a => {
                     const startDate = safeParseDate(a.startDate);
                     if (!startDate) return false;
-                    
                     const endDate = a.endDate ? safeParseDate(a.endDate) : null;
-
-                    // This now correctly handles open-ended absences
-                    if (!endDate) { 
-                        return !isBefore(day, startDate);
-                    }
-                    
+                    if (!endDate) return !isBefore(day, startOfDay(startDate));
                     return isWithinInterval(day, { start: startOfDay(startDate), end: endOfDay(endDate) });
                 });
     

@@ -4,7 +4,7 @@
 
 import { addDocument, updateDocument, deleteDocument } from './firestoreService';
 import type { Employee, EmployeeFormData, WorkHoursRecord, ScheduledAbsence, EmploymentPeriod, WeeklyScheduleData, WeeklyRecord } from '../types';
-import { isAfter, parseISO, startOfDay, addDays, subDays, format, eachDayOfInterval, startOfWeek, isValid, isWithinInterval, endOfDay } from 'date-fns';
+import { isAfter, parseISO, startOfDay, addDays, subDays, format, eachDayOfInterval, startOfWeek, isValid, isWithinInterval, endOfDay, isBefore } from 'date-fns';
 import { getDoc, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { createUserAccount } from '../actions/userActions';
@@ -303,18 +303,18 @@ export const endIndefiniteAbsence = async (employeeId: string, dateToEnd: Date):
     const employeeData = employeeDoc.data() as Employee;
     let employeeModified = false;
 
-    employeeData.employmentPeriods?.forEach(period => {
-        if (period.scheduledAbsences) {
-            period.scheduledAbsences.forEach(absence => {
-                const startDate = absence.startDate instanceof Date ? absence.startDate : parseISO(absence.startDate as string);
-                // Check if absence is indefinite AND the end date is on or after the start date
-                if (!absence.endDate && !isBefore(startOfDay(dateToEnd), startOfDay(startDate))) {
-                    absence.endDate = subDays(dateToEnd, 1);
-                    employeeModified = true;
-                }
-            });
+    for (const period of employeeData.employmentPeriods || []) {
+        if (!period.scheduledAbsences) continue;
+        
+        for (const absence of period.scheduledAbsences) {
+            // Find an indefinite absence that is active on the dateToEnd
+            const startDate = absence.startDate instanceof Date ? absence.startDate : parseISO(absence.startDate as string);
+            if (!absence.endDate && !isBefore(startOfDay(dateToEnd), startOfDay(startDate))) {
+                absence.endDate = format(subDays(dateToEnd, 1), 'yyyy-MM-dd');
+                employeeModified = true;
+            }
         }
-    });
+    }
 
     if (employeeModified) {
         await updateDocument('employees', employeeId, { employmentPeriods: employeeData.employmentPeriods });
