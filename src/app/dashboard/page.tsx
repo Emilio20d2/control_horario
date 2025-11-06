@@ -131,8 +131,8 @@ export default function DashboardPage() {
             const lastWeekExists = availableWeeks.some(w => w.value === lastWeekId);
             if (lastWeekExists) {
                 setSelectedGeneralReportWeek(lastWeekId);
-            } else {
-                setSelectedGeneralReportWeek(availableWeeks[0]?.value || '');
+            } else if (availableWeeks[0]?.value) {
+                setSelectedGeneralReportWeek(availableWeeks[0].value);
             }
         }
     }, [availableWeeks, selectedGeneralReportWeek, getWeekId]);
@@ -510,5 +510,6 @@ export default function DashboardPage() {
     
 
     
+
 
 
