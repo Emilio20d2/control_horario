@@ -32,9 +32,11 @@ interface WeekRowProps {
     weekDays: Date[];
     initialWeekData: DailyEmployeeData | null;
     onWeekCompleted: (weekId: string) => void;
+    onDataChange: (employeeId: string, dayKey: string, field: string, value: any) => void;
+    onWeekLevelChange?: (employeeId: string, field: string, value: any) => void;
 }
 
-export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, initialWeekData, onWeekCompleted }) => {
+export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, initialWeekData, onWeekCompleted, onDataChange }) => {
     const { toast } = useToast();
     const { 
         holidays, 
@@ -49,41 +51,11 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         refreshData,
     } = useDataProvider();
     
-    // State only for edits, not for the whole data object
-    const [editedDays, setEditedDays] = useState<Record<string, Partial<DailyData>>>({});
-    const [editedWeekLevel, setEditedWeekLevel] = useState<Partial<DailyEmployeeData>>({});
-    
     const [preview, setPreview] = useState<any | null>(null);
     const [initialBalances, setInitialBalances] = useState<ReturnType<typeof getEmployeeBalancesForWeek> | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [weekTurn, setWeekTurn] = useState<string | null>(null);
-
-    // This effect resets local edits when the underlying data from the provider changes
-    useEffect(() => {
-        setEditedDays({});
-        setEditedWeekLevel({});
-    }, [initialWeekData]);
     
-    // Combine base data with local edits to get the current view
-    const localWeekData = useMemo(() => {
-        if (!initialWeekData) return null;
-        
-        const combinedDays: Record<string, DailyData> = {};
-        for (const dayKey in initialWeekData.days) {
-            combinedDays[dayKey] = {
-                ...initialWeekData.days[dayKey],
-                ...editedDays[dayKey]
-            };
-        }
-
-        return {
-            ...initialWeekData,
-            ...editedWeekLevel,
-            days: combinedDays,
-        };
-    }, [initialWeekData, editedDays, editedWeekLevel]);
-
-
     // This effect ensures balances are always fresh if the employee data changes.
     useEffect(() => {
         if (employee && weekId) {
@@ -98,100 +70,40 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
 
     useEffect(() => {
         const updatePreview = async () => {
-            if (localWeekData && employee && initialBalances) {
+            if (initialWeekData && employee && initialBalances) {
                 const previewResult = await calculateBalancePreview(
                     employee.id,
-                    localWeekData.days || {},
+                    initialWeekData.days || {},
                     initialBalances,
-                    localWeekData.weeklyHoursOverride,
-                    localWeekData.totalComplementaryHours
+                    initialWeekData.weeklyHoursOverride,
+                    initialWeekData.totalComplementaryHours
                 );
                 setPreview(previewResult);
             }
         };
         updatePreview();
-    }, [localWeekData, employee, calculateBalancePreview, initialBalances]);
-    
-    const handleDailyDataChange = useCallback((day: Date, field: string, value: any) => {
-        const dayId = format(day, 'yyyy-MM-dd');
-        
-        // Get the base day data from the initial prop
-        const baseDayData = initialWeekData?.days?.[dayId];
-        if (!baseDayData) return;
-
-        // Get the current local state for the day
-        const currentDayState = localWeekData?.days?.[dayId];
-        if (!currentDayState) return;
-
-        let updatedFields: Partial<DailyData> = { [field]: value };
-    
-        if (field === 'absence') {
-            const selectedAbsenceType = absenceTypes.find(at => at.abbreviation === value);
-            
-            if (selectedAbsenceType) {
-                if (selectedAbsenceType.computesFullDay) {
-                    updatedFields.absenceHours = currentDayState.theoreticalHours;
-                    updatedFields.workedHours = 0;
-                } else if (selectedAbsenceType.isAbsenceSplittable) {
-                    // Let user set hours manually
-                }
-            } else if (value === 'ninguna') {
-                updatedFields.absenceHours = 0;
-                const oldAbsenceType = absenceTypes.find(at => at.abbreviation === currentDayState.absence);
-                if (oldAbsenceType && oldAbsenceType.computesFullDay) {
-                    updatedFields.workedHours = currentDayState.theoreticalHours;
-                }
-            }
-        }
-    
-        if (field === 'absenceHours') {
-            const selectedAbsenceType = absenceTypes.find(at => at.abbreviation === currentDayState.absence);
-            if (selectedAbsenceType && selectedAbsenceType.isAbsenceSplittable) {
-                const newAbsenceHours = value;
-                const theoretical = currentDayState.theoreticalHours;
-                updatedFields.workedHours = Math.max(0, theoretical - newAbsenceHours);
-            }
-        }
-    
-        setEditedDays(prev => ({
-            ...prev,
-            [dayId]: {
-                ...prev[dayId],
-                ...updatedFields,
-            }
-        }));
-    }, [absenceTypes, initialWeekData, localWeekData]);
-
-
-    const handleWeekLevelDataChange = useCallback((field: string, value: any) => {
-        setEditedWeekLevel(prev => {
-            if (typeof value === 'number' && (isNaN(value) || value === null)) {
-                 return { ...prev, [field]: null };
-            }
-            return { ...prev, [field]: value };
-        });
-    }, []);
+    }, [initialWeekData, employee, calculateBalancePreview, initialBalances]);
 
     const handleConfirm = async () => {
-        if (!localWeekData || !employee || !preview || !initialBalances) return;
+        if (!initialWeekData || !employee || !preview || !initialBalances) return;
         setIsSaving(true);
     
         try {
             // This logic MUST run before saving if we are confirming the week.
             for (const day of weekDays) {
                 const dayKey = format(day, 'yyyy-MM-dd');
-                const initialDayData = initialWeekData?.days?.[dayKey];
-                const finalDayData = localWeekData.days?.[dayKey];
+                const originalDayData = processEmployeeWeekData(employee, [day], weekId)?.days[dayKey];
+                const finalDayData = initialWeekData.days?.[dayKey];
 
-                if (!initialDayData || !finalDayData) continue;
+                if (!originalDayData || !finalDayData) continue;
 
                 const wasIndefiniteAbsenceDay = 
-                    initialDayData.absence !== 'ninguna' && 
-                    absenceTypes.find(at => at.abbreviation === initialDayData.absence)?.suspendsContract;
+                    originalDayData.absence !== 'ninguna' && 
+                    absenceTypes.find(at => at.abbreviation === originalDayData.absence)?.suspendsContract;
                 
-                const isInterrupted = finalDayData.absence !== initialDayData.absence || finalDayData.workedHours > 0;
+                const isNowInterrupted = finalDayData.absence !== originalDayData.absence || finalDayData.workedHours > 0;
 
-                if (wasIndefiniteAbsenceDay && isInterrupted) {
+                if (wasIndefiniteAbsenceDay && isNowInterrupted) {
                     await endIndefiniteAbsence(employee.id, day);
                     await refreshData();
                 }
@@ -201,16 +113,15 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             if (!activePeriod) throw new Error("No active period found");
     
             const currentDbHours = getEffectiveWeeklyHours(activePeriod, weekDays[0]);
-            const formHours = localWeekData.weeklyHoursOverride ?? currentDbHours;
+            const formHours = initialWeekData.weeklyHoursOverride ?? currentDbHours;
     
-            if (formHours !== currentDbHours && localWeekData.weeklyHoursOverride !== null) {
+            if (formHours !== currentDbHours && initialWeekData.weeklyHoursOverride !== null) {
                 await updateEmployeeWorkHours(employee.id, employee, formHours, format(weekDays[0], 'yyyy-MM-dd'));
                 toast({ title: `Jornada Actualizada para ${employee.name}`, description: `Nueva jornada: ${formHours}h/semana.` });
             }
     
             const dataToSave: DailyEmployeeData = {
                 ...initialWeekData,
-                ...localWeekData,
                 confirmed: true,
                 previousBalances: initialBalances,
                 impact: {
@@ -218,13 +129,13 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     holiday: preview.holiday,
                     leave: preview.leave,
                 },
-                weeklyHoursOverride: localWeekData.weeklyHoursOverride ?? null,
-                totalComplementaryHours: localWeekData.totalComplementaryHours ?? null,
-                generalComment: localWeekData.generalComment || null,
-                isDifference: localWeekData.isDifference ?? false,
-                expectedOrdinaryImpact: localWeekData.expectedOrdinaryImpact || null,
-                expectedHolidayImpact: localWeekData.expectedHolidayImpact || null,
-                expectedLeaveImpact: localWeekData.expectedLeaveImpact || null,
+                weeklyHoursOverride: initialWeekData.weeklyHoursOverride ?? null,
+                totalComplementaryHours: initialWeekData.totalComplementaryHours ?? null,
+                generalComment: initialWeekData.generalComment || null,
+                isDifference: initialWeekData.isDifference ?? false,
+                expectedOrdinaryImpact: initialWeekData.expectedOrdinaryImpact || null,
+                expectedHolidayImpact: initialWeekData.expectedHolidayImpact || null,
+                expectedLeaveImpact: initialWeekData.expectedLeaveImpact || null,
             };
             
             const finalData = {
@@ -237,9 +148,6 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             
             toast({ title: `Semana Confirmada para ${employee.name}` });
             
-            setEditedDays({});
-            setEditedWeekLevel({});
-
             refreshData(); 
             onWeekCompleted(weekId);
 
@@ -256,8 +164,10 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         }
     }
     
+    const { processEmployeeWeekData } = useDataProvider();
+
     const handleEnableCorrection = async () => {
-        if (!localWeekData || !employee) return;
+        if (!initialWeekData || !employee) return;
         setIsSaving(true);
         try {
             await updateDoc(doc(db, 'weeklyRecords', weekId), { [`weekData.${employee.id}.confirmed`]: false });
@@ -273,17 +183,17 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         }
     };
     
-    if (!localWeekData) {
+    if (!initialWeekData) {
         return <TableRow><TableCell colSpan={8} className="p-0"><Skeleton className="h-48 w-full rounded-none" /></TableCell></TableRow>;
     }
     
-    const isConfirmed = !!localWeekData.confirmed;
+    const isConfirmed = !!initialWeekData.confirmed;
     const activePeriod = getActivePeriod(employee.id, weekDays[0]);
     let contractType;
     if (activePeriod) {
         contractType = contractTypes.find(c => c.name === activePeriod.contractType);
     }
-    const weeklyHours = localWeekData.weeklyHoursOverride ?? getEffectiveWeeklyHours(activePeriod, weekDays[0]);
+    const weeklyHours = initialWeekData.weeklyHoursOverride ?? getEffectiveWeeklyHours(activePeriod, weekDays[0]);
     
     const auditEndDate = new Date('2025-09-08');
     const showDifferenceCheckbox = isBefore(weekDays[0], auditEndDate);
@@ -301,19 +211,19 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     <p className="text-muted-foreground">{contractType?.name ?? 'N/A'}</p>
                     
                     <div className="space-y-2 mt-2">
-                         <InputStepper label="Jornada Semanal" value={localWeekData.weeklyHoursOverride ?? weeklyHours} onChange={(v) => handleWeekLevelDataChange('weeklyHoursOverride', v)} className="text-xs" disabled={isConfirmed} />
-                         <InputStepper label="H. Complementarias" value={localWeekData.totalComplementaryHours ?? undefined} onChange={(v) => handleWeekLevelDataChange('totalComplementaryHours', v)} disabled={isConfirmed} />
+                         <InputStepper label="Jornada Semanal" value={initialWeekData.weeklyHoursOverride ?? weeklyHours} onChange={(v) => onDataChange(employee.id, 'week', 'weeklyHoursOverride', v)} className="text-xs" disabled={isConfirmed} />
+                         <InputStepper label="H. Complementarias" value={initialWeekData.totalComplementaryHours ?? undefined} onChange={(v) => onDataChange(employee.id, 'week', 'totalComplementaryHours', v)} disabled={isConfirmed} />
                          {showDifferenceCheckbox && (
                             <div className="flex items-center space-x-2 pt-1">
                                 <Checkbox 
                                     id={`diff-${employee.id}-${weekId}`} 
-                                    checked={localWeekData.isDifference}
-                                    onCheckedChange={(checked) => handleWeekLevelDataChange('isDifference', !!checked)}
-                                    disabled={isConfirmed || !localWeekData.hasPreregistration}
+                                    checked={initialWeekData.isDifference}
+                                    onCheckedChange={(checked) => onDataChange(employee.id, 'week', 'isDifference', !!checked)}
+                                    disabled={isConfirmed || !initialWeekData.hasPreregistration}
                                 />
                                 <label
                                     htmlFor={`diff-${employee.id}-${weekId}`}
-                                    className={cn("text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70", localWeekData.hasPreregistration && localWeekData.isDifference && "text-destructive")}
+                                    className={cn("text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70", initialWeekData.hasPreregistration && initialWeekData.isDifference && "text-destructive")}
                                 >
                                     Diferencia con Excel
                                 </label>
@@ -322,8 +232,8 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                          <Textarea
                             placeholder="Añadir comentario..."
                             className="h-8 text-xs mt-2 resize-none"
-                            value={localWeekData.generalComment || ''}
-                            onChange={(e) => handleWeekLevelDataChange('generalComment', e.target.value)}
+                            value={initialWeekData.generalComment || ''}
+                            onChange={(e) => onDataChange(employee.id, 'week', 'generalComment', e.target.value)}
                             disabled={isConfirmed}
                         />
                     </div>
@@ -355,7 +265,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             </TableCell>
             {weekDays.map(day => {
                 const dayId = format(day, 'yyyy-MM-dd');
-                const dayData = localWeekData.days?.[dayId];
+                const dayData = initialWeekData.days?.[dayId];
 
                 if (!dayData) return <TableCell key={day.toISOString()} className="p-1" />;
                 
@@ -392,14 +302,14 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                                 </div>
                                 <InputStepper
                                     value={dayData.workedHours}
-                                    onChange={(v) => handleDailyDataChange(day, 'workedHours', v)}
+                                    onChange={(v) => onDataChange(employee.id, dayId, 'workedHours', v)}
                                     disabled={isConfirmed}
                                 />
                                 {absenceType && (absenceType.isAbsenceSplittable || absenceType.computesFullDay) && (
                                      <InputStepper
                                         label={absenceType.name}
                                         value={dayData.absenceHours}
-                                        onChange={(v) => handleDailyDataChange(day, 'absenceHours', v)}
+                                        onChange={(v) => onDataChange(employee.id, dayId, 'absenceHours', v)}
                                         disabled={isConfirmed}
                                     />
                                 )}
@@ -407,15 +317,15 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                                     <InputStepper
                                         label="H. Libranza"
                                         value={dayData.leaveHours}
-                                        onChange={(v) => handleDailyDataChange(day, 'leaveHours', v)}
+                                        onChange={(v) => onDataChange(employee.id, dayId, 'leaveHours', v)}
                                         disabled={isConfirmed}
                                     />
                                 )}
                             </div>
 
                             <div className="flex flex-row gap-1 h-auto sm:h-8 items-center mt-auto">
-                                <AbsenceEditor dayData={dayData} absenceTypes={absenceTypes} onAbsenceChange={(f, v) => handleDailyDataChange(day, f, v)} disabled={isConfirmed} />
-                                {isHoliday && holidayType && <HolidayEditor dayData={dayData} holidayType={holidayType} onHolidayChange={(f, v) => handleDailyDataChange(day, f, v)} disabled={isConfirmed} />}
+                                <AbsenceEditor dayData={dayData} absenceTypes={absenceTypes} onAbsenceChange={(f, v) => onDataChange(employee.id, dayId, f, v)} disabled={isConfirmed} />
+                                {isHoliday && holidayType && <HolidayEditor dayData={dayData} holidayType={holidayType} onHolidayChange={(f, v) => onDataChange(employee.id, dayId, f, v)} disabled={isConfirmed} />}
                             </div>
                             
                              <div className="h-4 mt-1 sm:mt-2">
@@ -428,3 +338,5 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         </TableRow>
     );
 };
+
+    

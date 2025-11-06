@@ -73,19 +73,18 @@ function ChatView({ conversation }: { conversation: Conversation }) {
     const formattedMessages = useMemo(() => {
         if (!messagesSnapshot) return [];
 
-        const realMessages = messagesSnapshot.map(docData => {
+        const realMessages = messagesSnapshot.map((docData, index) => {
             const data = docData as Omit<Message, 'id'> & { timestamp: any };
             return {
-                id: docData.id,
+                id: data.id || `${conversation.id}_${index}`,
                 ...data,
                 timestamp: data.timestamp?.toDate()
             } as Message;
         });
-
-        // Correction requests are now merged in the data provider, so we don't need the virtual message logic here.
+        
         return realMessages;
 
-    }, [messagesSnapshot]);
+    }, [messagesSnapshot, conversation.id]);
 
     const handleSendMessage = async (e: React.FormEvent, customMessage?: string) => {
         e.preventDefault();
@@ -416,3 +415,5 @@ export default function AdminMessagesPage() {
         </div>
     );
 }
+
+    

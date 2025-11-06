@@ -115,6 +115,52 @@ export default function SchedulePage() {
         }
     };
 
+    const handleEmployeeWeekDataChange = useCallback((employeeId: string, dayKey: string, field: string, value: any) => {
+        setProcessedWeeklyViewData(prevData => {
+            const currentEmployeeData = prevData[employeeId];
+            if (!currentEmployeeData || !currentEmployeeData.days) return prevData;
+
+            const newEmployeeData = JSON.parse(JSON.stringify(currentEmployeeData));
+            const dayToUpdate = newEmployeeData.days[dayKey];
+            
+            if (!dayToUpdate) return prevData;
+
+            const oldAbsence = dayToUpdate.absence;
+            dayToUpdate[field] = value;
+
+            const wasIndefinite = oldAbsence !== 'ninguna' && absenceTypes.find(at => at.abbreviation === oldAbsence)?.suspendsContract;
+            const isNowInterrupted = value === 'ninguna' || (field === 'workedHours' && value > 0);
+
+            if (wasIndefinite && isNowInterrupted) {
+                const dayDate = parseISO(dayKey);
+                for (const day of weekDays) {
+                    if (isAfter(day, dayDate)) {
+                        const subsequentDayKey = format(day, 'yyyy-MM-dd');
+                        if (newEmployeeData.days[subsequentDayKey]) {
+                            const initialDataForDay = processEmployeeWeekData(employees.find(e => e.id === employeeId)!, [day], getWeekId(day));
+                            if (initialDataForDay?.days[subsequentDayKey]) {
+                                newEmployeeData.days[subsequentDayKey] = initialDataForDay.days[subsequentDayKey];
+                            }
+                        }
+                    }
+                }
+            } else if (field === 'absence') {
+                const selectedAbsenceType = absenceTypes.find(at => at.abbreviation === value);
+                if (selectedAbsenceType?.computesFullDay) {
+                    dayToUpdate.workedHours = 0;
+                    dayToUpdate.absenceHours = dayToUpdate.theoreticalHours;
+                }
+            } else if (field === 'absenceHours') {
+                const selectedAbsenceType = absenceTypes.find(at => at.abbreviation === dayToUpdate.absence);
+                if (selectedAbsenceType?.isAbsenceSplittable) {
+                    dayToUpdate.workedHours = Math.max(0, dayToUpdate.theoreticalHours - value);
+                }
+            }
+            
+            return { ...prevData, [employeeId]: newEmployeeData };
+        });
+    }, [weekDays, absenceTypes, processEmployeeWeekData, employees, getWeekId]);
+
     // Data processor for WEEKLY view (all employees)
     useEffect(() => {
         if (loading || selectedEmployeeId !== 'all') return;
@@ -224,7 +270,7 @@ export default function SchedulePage() {
                                             </TableHead>
                                             {currentWeekDays.map(d => <TableHead key={d.toISOString()} className={cn("text-left p-2 text-xs", holidays.some(h => isSameDay(h.date, d)) && "bg-blue-100")}><span className="sm:hidden">{format(d, 'E', {locale:es})}</span><span className="hidden sm:inline">{format(d, 'E dd/MM', {locale:es})}</span></TableHead>)}
                                         </TableRow>
-                                        <WeekRow employee={employee} weekId={currentWeekId} weekDays={currentWeekDays} initialWeekData={initialWeekData} onWeekCompleted={onWeekCompleted} />
+                                        <WeekRow employee={employee} weekId={currentWeekId} weekDays={currentWeekDays} initialWeekData={initialWeekData} onWeekCompleted={onWeekCompleted} onDataChange={() => {}} />
                                     </React.Fragment>
                                 );
                             })}
@@ -300,7 +346,15 @@ export default function SchedulePage() {
                                     return <TableRow key={`${employee.id}-${weekId}`}><TableCell colSpan={8} className="p-0"><Skeleton className="h-48 w-full rounded-none" /></TableCell></TableRow>;
                                 }
                                 return (
-                                    <WeekRow key={`${employee.id}-${weekId}`} employee={employee} weekId={weekId} weekDays={weekDays} initialWeekData={employeeWeekData} onWeekCompleted={onWeekCompleted} />
+                                    <WeekRow 
+                                        key={`${employee.id}-${weekId}`} 
+                                        employee={employee} 
+                                        weekId={weekId} 
+                                        weekDays={weekDays} 
+                                        initialWeekData={employeeWeekData} 
+                                        onWeekCompleted={onWeekCompleted}
+                                        onDataChange={handleEmployeeWeekDataChange}
+                                    />
                                 )
                             }) : <TableRow><TableCell colSpan={8} className="text-center h-48">No hay empleados activos esta semana.</TableCell></TableRow>}
                         </TableBody>
@@ -347,3 +401,5 @@ export default function SchedulePage() {
     </>
   );
 }
+
+    

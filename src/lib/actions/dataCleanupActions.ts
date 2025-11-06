@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { getDbAdmin } from '../firebase-admin';
@@ -131,3 +130,5 @@ export async function resolveCorrectionRequest(requestId: string): Promise<{ suc
         return { success: false, error: error instanceof Error ? error.message : 'No se pudo actualizar la solicitud.' };
     }
 }
+
+    
