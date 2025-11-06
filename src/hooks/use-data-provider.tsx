@@ -1,5 +1,4 @@
 
-
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -1441,4 +1440,4 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 
 export const useDataProvider = () => useContext(DataContext);
 
-
+    
