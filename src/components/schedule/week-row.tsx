@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -90,22 +88,17 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         setIsSaving(true);
     
         try {
-            // First, process any indefinite absence interruptions for the week.
-            // This needs to happen before the final data save.
             let dataWasRefreshed = false;
             for (const day of weekDays) {
-                const dayKey = format(day, 'yyyy-MM-dd');
-                const wasInterrupted = await endIndefiniteAbsence(employee.id, day, initialWeekData.days?.[dayKey]);
+                const wasInterrupted = await endIndefiniteAbsence(employee.id, day);
                 if (wasInterrupted) {
                     dataWasRefreshed = true;
                 }
             }
             
-            // If any absence was ended, we need to refresh all data to get the latest state before saving.
             if (dataWasRefreshed) {
                 await refreshData();
-                // A small delay to ensure state propagation, though ideally this would be handled more elegantly
-                await new Promise(resolve => setTimeout(resolve, 250));
+                await new Promise(resolve => setTimeout(resolve, 300));
             }
     
             const activePeriod = getActivePeriod(employee.id, weekDays[0]);
