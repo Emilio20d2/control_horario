@@ -153,14 +153,16 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 const initialDayData = initialWeekData?.days[dayKey];
                 const finalDayData = localWeekData.days[dayKey];
 
-                const wasIndefiniteAbsence = initialDayData?.absence !== 'ninguna' && 
+                if (!initialDayData || !finalDayData) continue;
+
+                const wasIndefiniteAbsence = initialDayData.absence !== 'ninguna' && 
                     employee.employmentPeriods.some(p => p.scheduledAbsences?.some(a => 
                         !a.endDate && 
-                        absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation === initialDayData?.absence &&
-                        isWithinInterval(day, { start: startOfDay(a.startDate as Date), end: new Date('9999-12-31') })
+                        absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation === initialDayData.absence &&
+                        !isBefore(startOfDay(day), startOfDay(a.startDate as Date))
                     ));
                 
-                const isInterrupted = finalDayData?.absence !== initialDayData?.absence || finalDayData?.workedHours > 0;
+                const isInterrupted = finalDayData.absence !== initialDayData.absence || (finalDayData.workedHours > 0 && initialDayData.workedHours === 0);
 
                 if (wasIndefiniteAbsence && isInterrupted) {
                     await endIndefiniteAbsence(employee.id, day);
@@ -410,5 +412,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         </TableRow>
     );
 };
+
+    
 
     

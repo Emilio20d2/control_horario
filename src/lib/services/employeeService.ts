@@ -303,11 +303,12 @@ export const endIndefiniteAbsence = async (employeeId: string, dateToEnd: Date):
     const employeeData = employeeDoc.data() as Employee;
     let employeeModified = false;
 
-    employeeData.employmentPeriods.forEach(period => {
+    employeeData.employmentPeriods?.forEach(period => {
         if (period.scheduledAbsences) {
             period.scheduledAbsences.forEach(absence => {
                 const startDate = absence.startDate instanceof Date ? absence.startDate : parseISO(absence.startDate as string);
-                if (!absence.endDate && isAfter(dateToEnd, startDate)) {
+                // Check if absence is indefinite AND the end date is on or after the start date
+                if (!absence.endDate && !isBefore(startOfDay(dateToEnd), startOfDay(startDate))) {
                     absence.endDate = subDays(dateToEnd, 1);
                     employeeModified = true;
                 }
@@ -502,4 +503,6 @@ export const hardDeleteScheduledAbsence = async (
 
     await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
 };
+    
+
     
