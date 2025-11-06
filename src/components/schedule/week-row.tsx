@@ -164,7 +164,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         try {
             await updateDoc(doc(db, 'weeklyRecords', weekId), { [`weekData.${employee.id}.confirmed`]: false });
             
-            refreshData();
+            onWeekLevelChange(employee.id, 'confirmed', false);
 
             toast({ title: `Semana Habilitada para Edición`, variant: "destructive" });
         } catch (error) {
