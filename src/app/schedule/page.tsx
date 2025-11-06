@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -57,7 +56,7 @@ export default function SchedulePage() {
         }
         
         return startOfWeek(new Date(), { weekStartsOn: 1 });
-    }, [searchParams, unconfirmedWeeksDetails, getWeekId]);
+    }, [searchParams, unconfirmedWeeksDetails]);
     
     const [currentDate, setCurrentDate] = useState(initialDate);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
@@ -72,15 +71,13 @@ export default function SchedulePage() {
     const [completionInfo, setCompletionInfo] = useState<{ weekId: string; nextWeekId: string | null } | null>(null);
 
     useEffect(() => {
-        if (!loading) {
-            setCurrentDate(initialDate);
-            if (selectedEmployeeId === 'all') {
-                 setSelectedYear(getYear(new Date()));
-            } else {
-                setSelectedYear(getISOWeekYear(currentDate));
-            }
+        if (selectedEmployeeId === 'all') {
+            setSelectedYear(getYear(new Date()));
+        } else {
+            setSelectedYear(getISOWeekYear(currentDate));
         }
-    }, [loading, initialDate, selectedEmployeeId, setSelectedYear, currentDate]);
+    }, [selectedEmployeeId, currentDate]);
+
 
     const isEmployeeActiveForWeek = useCallback((employee: Employee, weekStartDate: Date): boolean => {
         const weekStart = startOfDay(weekStartDate);
