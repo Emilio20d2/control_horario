@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -49,7 +50,7 @@ export default function SchedulePage() {
             if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
         }
         
-        if (unconfirmedWeeksDetails?.length > 0) {
+        if (unconfirmedWeeksDetails && unconfirmedWeeksDetails.length > 0) {
             const oldestWeekId = unconfirmedWeeksDetails[unconfirmedWeeksDetails.length - 1].weekId;
             const date = parseISO(oldestWeekId);
             if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
@@ -425,7 +426,10 @@ export default function SchedulePage() {
     }
     
     const renderWeeklyView = () => {
-        const activeEmployeesForSchedule = Object.keys(processedWeeklyViewData).map(id => employees.find(e => e.id === id)).filter(Boolean) as Employee[];
+        const activeEmployeesForSchedule = (Object.keys(processedWeeklyViewData)
+            .map(id => employees.find(e => e.id === id))
+            .filter(Boolean) as Employee[])
+            .sort((a, b) => a.name.localeCompare(b.name));
 
         return (
             <Card className="rounded-none border-0 border-t bg-card">
