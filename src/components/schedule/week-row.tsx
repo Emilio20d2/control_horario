@@ -24,7 +24,7 @@ import { es } from 'date-fns/locale';
 import { AbsenceEditor } from './absence-editor';
 import { HolidayEditor } from './holiday-editor';
 import { BalancePreviewDisplay } from './balance-preview';
-import { setDocument, updateDocument } from '@/lib/services/firestoreAdminService';
+import { setDocument } from '@/lib/services/firestoreAdminService';
 import { endIndefiniteAbsence } from '@/lib/services/employeeService';
 import { Label } from '../ui/label';
 
@@ -214,13 +214,24 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 ...localWeekData, // Apply local changes
                 confirmed: true,
                 previousBalances: initialBalances,
+                impact: {
+                    ordinary: preview.ordinary,
+                    holiday: preview.holiday,
+                    leave: preview.leave,
+                },
                 weeklyHoursOverride: localWeekData.weeklyHoursOverride ?? null,
                 totalComplementaryHours: localWeekData.totalComplementaryHours ?? null,
                 generalComment: localWeekData.generalComment || null,
                 isDifference: localWeekData.isDifference ?? false,
             };
             
-            await setDocument('weeklyRecords', weekId, { weekData: { [employee.id]: dataToSave } }, { merge: true });
+            const finalData = {
+                weekData: {
+                    [employee.id]: dataToSave
+                }
+            };
+            
+            await setDocument('weeklyRecords', weekId, finalData, { merge: true });
             
             toast({ title: `Semana Confirmada para ${employee.name}` });
             

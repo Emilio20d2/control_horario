@@ -15,4 +15,3 @@ export const setDocument = async (collectionName: string, docId: string, data: a
     const docRef = dbAdmin.collection(collectionName).doc(docId);
     await docRef.set(data, { merge: true, ...options });
 };
-
