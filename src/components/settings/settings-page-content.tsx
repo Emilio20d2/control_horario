@@ -37,14 +37,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { HolidayForm } from '@/components/settings/holiday-form';
 import { DataCleanupManager } from '@/components/settings/data-cleanup-manager';
-import { RetroactiveAuditManager } from '@/components/settings/retroactive-audit-manager';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import type { EmployeeGroup } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { VacationCampaignManager } from '@/components/settings/vacation-campaign-manager';
-import { MessageSyncManager } from './message-sync-manager';
 import { EmployeeViewManager } from './employee-view-manager';
 
 
@@ -461,7 +459,6 @@ export default function SettingsPageContent() {
                 <div className='grid gap-6'>
                     <EmployeeViewManager />
                     <DataCleanupManager />
-                    <MessageSyncManager />
                 </div>
             </TabsContent>
 
