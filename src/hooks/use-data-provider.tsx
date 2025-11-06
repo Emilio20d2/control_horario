@@ -1026,6 +1026,122 @@ const getProcessedAnnualDataForAllYears = async (employeeId: string, ): Promise<
     return allYearsData;
 };
 
+const calculateEmployeeVacations = useCallback((emp: Employee, year: number = getYear(new Date()), mode: 'confirmed' | 'programmed' = 'programmed'): {
+    vacationDaysTaken: number;
+    suspensionDays: number;
+    vacationDaysAvailable: number;
+    baseDays: number;
+    carryOverDays: number;
+    suspensionDeduction: number;
+    proratedDays: number;
+  } => {
+    const defaultReturn = { vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31, baseDays: 31, carryOverDays: 0, suspensionDeduction: 0, proratedDays: 31 };
+    
+    if (!emp) {
+        return defaultReturn;
+    }
+
+    const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
+    const suspensionTypes = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.id));
+    const suspensionAbbrs = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.abbreviation));
+    const currentYear = year;
+
+    if (!vacationType) {
+        return defaultReturn;
+    }
+
+    const getYearData = (targetYear: number) => {
+        let vacationDaysTaken = 0;
+        let suspensionDays = 0;
+        
+        const vacationDaysSet = new Set<string>();
+        const suspensionDaysSet = new Set<string>();
+
+        emp.employmentPeriods?.forEach(period => {
+            period.scheduledAbsences?.forEach(absence => {
+                if (!absence.startDate) return;
+                const startDate = safeParseDate(absence.startDate)!;
+                const endDate = absence.endDate ? safeParseDate(absence.endDate)! : startDate;
+                
+                const daysInAbsence = eachDayOfInterval({start: startOfDay(startDate), end: startOfDay(endDate)});
+                
+                daysInAbsence.forEach(day => {
+                    if (getYear(day) === targetYear) {
+                        const dayStr = format(day, 'yyyy-MM-dd');
+                        if (suspensionTypes.has(absence.absenceTypeId)) suspensionDaysSet.add(dayStr);
+                        if (absence.absenceTypeId === vacationType.id) vacationDaysSet.add(dayStr);
+                    }
+                });
+            });
+        });
+
+        Object.values(weeklyRecords).forEach(record => {
+            const empWeekData = record.weekData[emp.id];
+            if (empWeekData?.confirmed && empWeekData.days) {
+                 Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
+                    const dayDate = parseISO(dayStr);
+                    if (getYear(dayDate) === targetYear) {
+                        if (dayData.absence === vacationType.abbreviation) vacationDaysSet.add(dayStr);
+                        if (suspensionAbbrs.has(dayData.absence)) suspensionDaysSet.add(dayStr);
+                    }
+                 });
+            }
+        });
+
+        vacationDaysTaken = vacationDaysSet.size;
+        suspensionDays = suspensionDaysSet.size;
+
+        const activePeriod = emp.employmentPeriods.find(p => {
+            const pStart = startOfDay(p.startDate as Date);
+            const pEnd = p.endDate ? startOfDay(p.endDate as Date) : new Date(targetYear, 11, 31);
+            return isWithinInterval(new Date(targetYear, 6, 1), { start: pStart, end: pEnd });
+        });
+        
+        if(activePeriod?.isTransfer && activePeriod?.vacationDaysUsedInAnotherCenter) {
+            vacationDaysTaken += activePeriod.vacationDaysUsedInAnotherCenter;
+        }
+
+        return { vacationDaysTaken, suspensionDays };
+    };
+
+    const activePeriodForYear = emp.employmentPeriods.find(p => {
+        const pStart = startOfDay(p.startDate as Date);
+        const pEnd = p.endDate ? startOfDay(p.endDate as Date) : new Date(currentYear, 11, 31);
+        return isWithinInterval(new Date(currentYear, 6, 1), { start: pStart, end: pEnd });
+    });
+
+    if (!activePeriodForYear) {
+        return defaultReturn;
+    }
+
+    const contractStartDate = startOfDay(activePeriodForYear.startDate as Date);
+    const yearStart = startOfYear(new Date(currentYear, 0, 1));
+    const yearEnd = endOfYear(new Date(currentYear, 11, 31));
+
+    let proratedDays = 31;
+    if (isAfter(contractStartDate, yearStart) && !activePeriodForYear.isTransfer) {
+        const daysInYear = 365; // Simple approximation
+        const daysWorkedInYear = differenceInDays(yearEnd, contractStartDate);
+        proratedDays = Math.round((daysWorkedInYear / daysInYear) * 31);
+    }
+
+    const carryOverDays = activePeriodForYear.vacationDays2024 ?? 0;
+    
+    const currentYearData = getYearData(currentYear);
+    const suspensionDeduction = (currentYearData.suspensionDays / 30) * 2.5;
+    const vacationDaysAvailable = Math.round(proratedDays + carryOverDays - suspensionDeduction);
+
+    return {
+      vacationDaysTaken: currentYearData.vacationDaysTaken,
+      suspensionDays: currentYearData.suspensionDays,
+      vacationDaysAvailable: vacationDaysAvailable,
+      baseDays: 31,
+      carryOverDays: carryOverDays,
+      suspensionDeduction: suspensionDeduction,
+      proratedDays: proratedDays,
+    };
+}, [absenceTypes, weeklyRecords, employees, safeParseDate]);
+
 const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     const employee = getEmployeeById(employeeId);
     if (!employee) {
@@ -1202,118 +1318,6 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
         safeParseDate
     ]);
 
-    const calculateEmployeeVacations = useCallback((emp: Employee, year: number = getYear(new Date()), mode: 'confirmed' | 'programmed' = 'programmed'): {
-        vacationDaysTaken: number;
-        suspensionDays: number;
-        vacationDaysAvailable: number;
-        baseDays: number;
-        carryOverDays: number;
-        suspensionDeduction: number;
-        proratedDays: number;
-      } => {
-        const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
-        const suspensionTypes = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.id));
-        const suspensionAbbrs = new Set(absenceTypes.filter(at => at.suspendsContract).map(at => at.abbreviation));
-        const currentYear = year;
-        
-        const defaultReturn = { vacationDaysTaken: 0, suspensionDays: 0, vacationDaysAvailable: 31, baseDays: 31, carryOverDays: 0, suspensionDeduction: 0, proratedDays: 31 };
-
-        if (!vacationType || !emp) {
-            return defaultReturn;
-        }
-
-        const getYearData = (targetYear: number) => {
-            let vacationDaysTaken = 0;
-            let suspensionDays = 0;
-            
-            const vacationDaysSet = new Set<string>();
-            const suspensionDaysSet = new Set<string>();
-    
-            emp.employmentPeriods?.forEach(period => {
-                period.scheduledAbsences?.forEach(absence => {
-                    if (!absence.startDate) return;
-                    const startDate = safeParseDate(absence.startDate)!;
-                    const endDate = absence.endDate ? safeParseDate(absence.endDate)! : startDate;
-                    
-                    const daysInAbsence = eachDayOfInterval({start: startOfDay(startDate), end: startOfDay(endDate)});
-                    
-                    daysInAbsence.forEach(day => {
-                        if (getYear(day) === targetYear) {
-                            const dayStr = format(day, 'yyyy-MM-dd');
-                            if (suspensionTypes.has(absence.absenceTypeId)) suspensionDaysSet.add(dayStr);
-                            if (absence.absenceTypeId === vacationType.id) vacationDaysSet.add(dayStr);
-                        }
-                    });
-                });
-            });
-    
-            Object.values(weeklyRecords).forEach(record => {
-                const empWeekData = record.weekData[emp.id];
-                if (empWeekData?.confirmed && empWeekData.days) {
-                     Object.entries(empWeekData.days).forEach(([dayStr, dayData]) => {
-                        const dayDate = parseISO(dayStr);
-                        if (getYear(dayDate) === targetYear) {
-                            if (dayData.absence === vacationType.abbreviation) vacationDaysSet.add(dayStr);
-                            if (suspensionAbbrs.has(dayData.absence)) suspensionDaysSet.add(dayStr);
-                        }
-                     });
-                }
-            });
-    
-            vacationDaysTaken = vacationDaysSet.size;
-            suspensionDays = suspensionDaysSet.size;
-
-            const activePeriod = emp.employmentPeriods.find(p => {
-                const pStart = startOfDay(p.startDate as Date);
-                const pEnd = p.endDate ? startOfDay(p.endDate as Date) : new Date(targetYear, 11, 31);
-                return isWithinInterval(new Date(targetYear, 6, 1), { start: pStart, end: pEnd });
-            });
-            
-            if(activePeriod?.isTransfer && activePeriod?.vacationDaysUsedInAnotherCenter) {
-                vacationDaysTaken += activePeriod.vacationDaysUsedInAnotherCenter;
-            }
-
-            return { vacationDaysTaken, suspensionDays };
-        };
-
-        const activePeriodForYear = emp.employmentPeriods.find(p => {
-            const pStart = startOfDay(p.startDate as Date);
-            const pEnd = p.endDate ? startOfDay(p.endDate as Date) : new Date(currentYear, 11, 31);
-            return isWithinInterval(new Date(currentYear, 6, 1), { start: pStart, end: pEnd });
-        });
-
-        if (!activePeriodForYear) {
-            return defaultReturn;
-        }
-
-        const contractStartDate = startOfDay(activePeriodForYear.startDate as Date);
-        const yearStart = startOfYear(new Date(currentYear, 0, 1));
-        const yearEnd = endOfYear(new Date(currentYear, 11, 31));
-
-        let proratedDays = 31;
-        if (isAfter(contractStartDate, yearStart) && !activePeriodForYear.isTransfer) {
-            const daysInYear = 365; // Simple approximation
-            const daysWorkedInYear = differenceInDays(yearEnd, contractStartDate);
-            proratedDays = Math.round((daysWorkedInYear / daysInYear) * 31);
-        }
-    
-        const carryOverDays = activePeriodForYear.vacationDays2024 ?? 0;
-        
-        const currentYearData = getYearData(currentYear);
-        const suspensionDeduction = (currentYearData.suspensionDays / 30) * 2.5;
-        const vacationDaysAvailable = Math.round(proratedDays + carryOverDays - suspensionDeduction);
-    
-        return {
-          vacationDaysTaken: currentYearData.vacationDaysTaken,
-          suspensionDays: currentYearData.suspensionDays,
-          vacationDaysAvailable: vacationDaysAvailable,
-          baseDays: 31,
-          carryOverDays: carryOverDays,
-          suspensionDeduction: suspensionDeduction,
-          proratedDays: proratedDays,
-        };
-    }, [absenceTypes, weeklyRecords, employees]);
-
   const availableYears = useMemo(() => {
         const years = new Set<number>();
         Object.keys(weeklyRecords).forEach(id => {
@@ -1436,3 +1440,4 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
 };
 
 export const useDataProvider = () => useContext(DataContext);
+
