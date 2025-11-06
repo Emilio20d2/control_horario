@@ -1222,10 +1222,9 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
     
         const activePeriod = getActivePeriod(emp.id, weekDays[0]);
         if (!activePeriod) {
-            return null; // Don't create data for inactive employees
+            return null;
         }
     
-        // If there's a record in the DB, confirmed or not, use it as the base.
         if (dbRecord) {
             return dbRecord;
         }
@@ -1241,15 +1240,13 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             const theoreticalDay = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
             const theoreticalHours = theoreticalDay?.theoreticalHours ?? 0;
     
-            const scheduledAbsence = (emp.employmentPeriods || [])
-                .flatMap(p => p.scheduledAbsences || [])
-                .find(a => {
-                    const startDate = safeParseDate(a.startDate);
-                    if (!startDate) return false;
-                    const endDate = a.endDate ? safeParseDate(a.endDate) : null;
-                    if (!endDate) return !isBefore(day, startOfDay(startDate));
-                    return isWithinInterval(day, { start: startOfDay(startDate), end: endOfDay(endDate) });
-                });
+            // Find any scheduled absence for the current day
+            const scheduledAbsence = (emp.employmentPeriods || []).flatMap(p => p.scheduledAbsences || []).find(a => {
+                const startDate = safeParseDate(a.startDate);
+                if (!startDate) return false;
+                const endDate = a.endDate ? safeParseDate(a.endDate) : startDate; // Treat null endDate as same day
+                return isWithinInterval(day, { start: startOfDay(startDate), end: endOfDay(endDate) });
+            });
     
             const absenceType = scheduledAbsence ? absenceTypes.find(at => at.id === scheduledAbsence.absenceTypeId) : undefined;
             
@@ -1265,12 +1262,15 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
             let absenceAbbreviation = 'ninguna';
             let absenceHours = 0;
 
+            // If an absence is found, it takes precedence
             if (absenceType) {
                 absenceAbbreviation = absenceType.abbreviation;
                 if (absenceType.computesFullDay) {
                     workedHours = 0;
                     absenceHours = theoreticalHours;
                 }
+                // If not computesFullDay, we assume workedHours remain theoreticalHours until edited by user.
+                // The user will have to manually adjust worked and absence hours for splittable absences.
             }
     
             newDays[dayKey] = {
