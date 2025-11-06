@@ -15,7 +15,7 @@ import { db } from '@/lib/firebase';
 import { InputStepper } from '@/components/ui/input-stepper';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import type { DailyEmployeeData, Employee, DailyData, ScheduledAbsence, EmploymentPeriod } from '@/lib/types';
-import { CheckCircle, Undo2, Save } from 'lucide-react';
+import { CheckCircle, Undo2, Save, Loader2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from "@/components/ui/checkbox"
 import { es } from 'date-fns/locale';
@@ -182,6 +182,9 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             const currentComment = String(localWeekData.generalComment || '');
             const auditEndDate = new Date('2025-09-08');
             let finalComment = currentComment;
+            
+            const cleanedComment = currentComment.split('\n').filter(line => !line.trim().startsWith('DIFERENCIA CON EXCEL:') && !line.trim().startsWith('AUDITORÍA:')).join('\n').trim();
+
     
             if (isBefore(weekDays[0], auditEndDate) && preview.isDifference) {
                 const diffs: string[] = [];
