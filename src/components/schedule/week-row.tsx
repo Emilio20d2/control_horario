@@ -223,6 +223,9 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 totalComplementaryHours: localWeekData.totalComplementaryHours ?? null,
                 generalComment: localWeekData.generalComment || null,
                 isDifference: localWeekData.isDifference ?? false,
+                expectedOrdinaryImpact: localWeekData.expectedOrdinaryImpact || null,
+                expectedHolidayImpact: localWeekData.expectedHolidayImpact || null,
+                expectedLeaveImpact: localWeekData.expectedLeaveImpact || null,
             };
             
             const finalData = {
