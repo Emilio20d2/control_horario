@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { format, eachDayOfInterval, getYear, isBefore, addWeeks, startOfWeek, endOfWeek, isSameDay, addDays, isAfter, parseISO, startOfDay, getISODay, differenceInWeeks, isWithinInterval, getISOWeek, subWeeks, endOfDay, getISOWeekYear, isValid } from 'date-fns';
+import { format, eachDayOfInterval, getYear, addWeeks, startOfWeek, endOfWeek, isSameDay, addDays, isAfter, parseISO, startOfDay, getISODay, differenceInWeeks, isWithinInterval, getISOWeek, subWeeks, endOfDay, getISOWeekYear, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { endIndefiniteAbsence } from '@/lib/services/employeeService';
+import { isBefore } from 'date-fns';
 
 export default function SchedulePage() {
     const dataProvider = useDataProvider();
@@ -167,25 +168,27 @@ export default function SchedulePage() {
             const currentEmployeeData = prevData[employeeId];
             if (!currentEmployeeData) return prevData;
     
-            const newEmployeeData = JSON.parse(JSON.stringify(currentEmployeeData));
+            const newEmployeeData: DailyEmployeeData = JSON.parse(JSON.stringify(currentEmployeeData));
     
             if (dayOrWeekKey === 'week') {
-                newEmployeeData[field] = value;
+                (newEmployeeData as any)[field] = value;
             } else { // It's a dayKey
                 if (!newEmployeeData.days) return prevData;
                 const dayKey = dayOrWeekKey;
                 const dayToUpdate = newEmployeeData.days[dayKey];
                 const originalAbsence = dayToUpdate.absence;
     
-                dayToUpdate[field] = value;
+                (dayToUpdate as any)[field] = value;
     
                 const absenceType = absenceTypes.find(at => at.abbreviation === originalAbsence);
-                if (absenceType && !absenceType.endDate) {
+                const isIndefinite = absenceType ? !absenceType.isAbsenceSplittable && !absenceType.affectedBag : false;
+                
+                if (field === 'absence' && value !== originalAbsence && isIndefinite) {
                     const interruptionDate = parseISO(dayKey);
                     weekDays.forEach(day => {
                         if (isAfter(day, interruptionDate)) {
                             const subsequentDayKey = format(day, 'yyyy-MM-dd');
-                            const dayToClear = newEmployeeData.days[subsequentDayKey];
+                            const dayToClear = newEmployeeData.days?.[subsequentDayKey];
                             if (dayToClear && dayToClear.absence === originalAbsence) {
                                 dayToClear.absence = 'ninguna';
                                 dayToClear.absenceHours = 0;
@@ -194,7 +197,7 @@ export default function SchedulePage() {
                         }
                     });
                 }
-    
+
                 // Recalculate related fields based on the change
                 const newAbsenceType = absenceTypes.find(at => at.abbreviation === dayToUpdate.absence);
                 if (field === 'absence' && newAbsenceType?.computesFullDay) {
@@ -269,10 +272,8 @@ export default function SchedulePage() {
             
             toast({ title: `Semana Confirmada para ${employee.name}` });
             
-            // This is crucial: after saving, update the local state to reflect the confirmed status
             handleWeekRowChange(employeeId, 'week', 'confirmed', true);
             
-            // Check if the whole week is now completed
             const allConfirmed = activeEmployeesForSchedule.every(emp =>
                  (emp.id === employeeId) || (processedData[emp.id]?.confirmed)
             );
@@ -308,7 +309,6 @@ export default function SchedulePage() {
                  <Skeleton className="h-9 w-48" />
                  <div className="flex gap-4">
                      <Skeleton className="h-9 w-64" />
-                     <Skeleton className="h-9 w-32" />
                  </div>
             </div>
             <Card className="rounded-none border-0 border-t">
@@ -519,12 +519,7 @@ export default function SchedulePage() {
                         {activeEmployeesForDropdown.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
-                {selectedEmployeeId === 'all' ? (
-                     <Button onClick={() => setIsAddDialogOpen(true)}>
-                        <CalendarPlus className="mr-2 h-4 w-4" />
-                        Agendar Ausencia
-                    </Button>
-                ) : (
+                {selectedEmployeeId !== 'all' && (
                   <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
                       <SelectTrigger className="w-full sm:w-[120px] h-9"><SelectValue /></SelectTrigger>
                       <SelectContent>
