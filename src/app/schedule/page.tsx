@@ -119,27 +119,28 @@ export default function SchedulePage() {
         setProcessedWeeklyViewData(prevData => {
             const currentEmployeeData = prevData[employeeId];
             if (!currentEmployeeData || !currentEmployeeData.days) return prevData;
-
+    
             const newEmployeeData = JSON.parse(JSON.stringify(currentEmployeeData));
             const dayToUpdate = newEmployeeData.days[dayKey];
-            
             if (!dayToUpdate) return prevData;
-
-            const oldAbsence = dayToUpdate.absence;
+    
+            const originalAbsence = dayToUpdate.absence;
+            const originalAbsenceType = absenceTypes.find(at => at.abbreviation === originalAbsence);
+            const wasIndefiniteAbsence = originalAbsence !== 'ninguna' && originalAbsenceType && !originalAbsenceType.endDate;
+    
             dayToUpdate[field] = value;
-
-            const wasIndefinite = oldAbsence !== 'ninguna' && absenceTypes.find(at => at.abbreviation === oldAbsence)?.suspendsContract;
+    
             const isNowInterrupted = value === 'ninguna' || (field === 'workedHours' && value > 0);
-
-            if (wasIndefinite && isNowInterrupted) {
-                const dayDate = parseISO(dayKey);
+    
+            if (wasIndefiniteAbsence && isNowInterrupted) {
+                const interruptionDate = parseISO(dayKey);
                 for (const day of weekDays) {
-                    if (isAfter(day, dayDate)) {
+                    if (isAfter(day, interruptionDate)) {
                         const subsequentDayKey = format(day, 'yyyy-MM-dd');
                         if (newEmployeeData.days[subsequentDayKey]) {
-                            const initialDataForDay = processEmployeeWeekData(employees.find(e => e.id === employeeId)!, [day], getWeekId(day));
-                            if (initialDataForDay?.days[subsequentDayKey]) {
-                                newEmployeeData.days[subsequentDayKey] = initialDataForDay.days[subsequentDayKey];
+                            const regeneratedDayData = processEmployeeWeekData(employees.find(e => e.id === employeeId)!, [day], weekId);
+                            if (regeneratedDayData?.days[subsequentDayKey]) {
+                                newEmployeeData.days[subsequentDayKey] = regeneratedDayData.days[subsequentDayKey];
                             }
                         }
                     }
@@ -159,7 +160,22 @@ export default function SchedulePage() {
             
             return { ...prevData, [employeeId]: newEmployeeData };
         });
-    }, [weekDays, absenceTypes, processEmployeeWeekData, employees, getWeekId]);
+    }, [weekDays, absenceTypes, processEmployeeWeekData, employees, weekId]);
+    
+    const handleWeekLevelChange = (employeeId: string, field: string, value: any) => {
+        setProcessedWeeklyViewData(prevData => {
+            const currentEmployeeData = prevData[employeeId];
+            if (!currentEmployeeData) return prevData;
+
+            return {
+                ...prevData,
+                [employeeId]: {
+                    ...currentEmployeeData,
+                    [field]: value
+                }
+            };
+        });
+    };
 
     // Data processor for WEEKLY view (all employees)
     useEffect(() => {
@@ -270,7 +286,15 @@ export default function SchedulePage() {
                                             </TableHead>
                                             {currentWeekDays.map(d => <TableHead key={d.toISOString()} className={cn("text-left p-2 text-xs", holidays.some(h => isSameDay(h.date, d)) && "bg-blue-100")}><span className="sm:hidden">{format(d, 'E', {locale:es})}</span><span className="hidden sm:inline">{format(d, 'E dd/MM', {locale:es})}</span></TableHead>)}
                                         </TableRow>
-                                        <WeekRow employee={employee} weekId={currentWeekId} weekDays={currentWeekDays} initialWeekData={initialWeekData} onWeekCompleted={onWeekCompleted} onDataChange={() => {}} />
+                                        <WeekRow 
+                                            employee={employee} 
+                                            weekId={currentWeekId} 
+                                            weekDays={currentWeekDays} 
+                                            initialWeekData={initialWeekData} 
+                                            onWeekCompleted={onWeekCompleted} 
+                                            onDataChange={handleEmployeeWeekDataChange} 
+                                            onWeekLevelChange={handleWeekLevelChange}
+                                        />
                                     </React.Fragment>
                                 );
                             })}
@@ -354,6 +378,7 @@ export default function SchedulePage() {
                                         initialWeekData={employeeWeekData} 
                                         onWeekCompleted={onWeekCompleted}
                                         onDataChange={handleEmployeeWeekDataChange}
+                                        onWeekLevelChange={handleWeekLevelChange}
                                     />
                                 )
                             }) : <TableRow><TableCell colSpan={8} className="text-center h-48">No hay empleados activos esta semana.</TableCell></TableRow>}
@@ -375,6 +400,15 @@ export default function SchedulePage() {
             setCompletionInfo(null);
         }}
     />
+     <AddAbsenceDialog 
+        isOpen={isAddDialogOpen} 
+        onOpenChange={setIsAddDialogOpen} 
+        activeEmployees={activeEmployeesForDropdown} 
+        absenceTypes={absenceTypes} 
+        holidays={holidays}
+        employees={employees}
+        refreshData={dataProvider.refreshData}
+    />
     <div className="flex flex-col gap-0">
         <div className="flex flex-col sm:flex-row justify-between items-center px-4 md:px-6 py-4 gap-4">
             <h1 className="text-2xl font-bold tracking-tight font-headline">Registro Horario</h1>
@@ -386,7 +420,12 @@ export default function SchedulePage() {
                         {activeEmployeesForDropdown.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
-                {selectedEmployeeId !== 'all' && (
+                {selectedEmployeeId === 'all' ? (
+                     <Button onClick={() => setIsAddDialogOpen(true)}>
+                        <CalendarPlus className="mr-2 h-4 w-4" />
+                        Agendar Ausencia
+                    </Button>
+                ) : (
                   <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
                       <SelectTrigger className="w-full sm:w-[120px] h-9"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -401,5 +440,3 @@ export default function SchedulePage() {
     </>
   );
 }
-
-    
