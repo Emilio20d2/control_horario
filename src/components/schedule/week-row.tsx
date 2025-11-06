@@ -7,14 +7,14 @@ import { TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { format, isSameDay, getISODay, isBefore, parseISO, isAfter, eachDayOfInterval, subDays, addDays, startOfDay, isValid, isWithinInterval, endOfDay } from 'date-fns';
+import { format, isSameDay, getISODay, isBefore, parseISO, isAfter, eachDayOfInterval, subDays, startOfDay, isValid, isWithinInterval, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { InputStepper } from '@/components/ui/input-stepper';
 import { useDataProvider } from '@/hooks/use-data-provider';
-import type { DailyEmployeeData, Employee, DailyData, ScheduledAbsence, EmploymentPeriod } from '@/lib/types';
+import type { DailyEmployeeData, Employee, DailyData } from '@/lib/types';
 import { CheckCircle, Undo2, Save, Loader2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from "@/components/ui/checkbox"
@@ -48,21 +48,44 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         getEmployeeBalancesForWeek,
         getTheoreticalHoursAndTurn,
         getEffectiveWeeklyHours,
-        getActiveEmployeesForDate,
         refreshData,
     } = useDataProvider();
     
-    const [localWeekData, setLocalWeekData] = useState<DailyEmployeeData | null>(initialWeekData);
+    // State only for edits, not for the whole data object
+    const [editedDays, setEditedDays] = useState<Record<string, Partial<DailyData>>>({});
+    const [editedWeekLevel, setEditedWeekLevel] = useState<Partial<DailyEmployeeData>>({});
+    
     const [preview, setPreview] = useState<any | null>(null);
     const [initialBalances, setInitialBalances] = useState<ReturnType<typeof getEmployeeBalancesForWeek> | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [weekTurn, setWeekTurn] = useState<string | null>(null);
 
-
+    // This effect resets local edits when the underlying data from the provider changes
     useEffect(() => {
-        setLocalWeekData(initialWeekData);
+        setEditedDays({});
+        setEditedWeekLevel({});
     }, [initialWeekData]);
     
+    // Combine base data with local edits to get the current view
+    const localWeekData = useMemo(() => {
+        if (!initialWeekData) return null;
+        
+        const combinedDays: Record<string, DailyData> = {};
+        for (const dayKey in initialWeekData.days) {
+            combinedDays[dayKey] = {
+                ...initialWeekData.days[dayKey],
+                ...editedDays[dayKey]
+            };
+        }
+
+        return {
+            ...initialWeekData,
+            ...editedWeekLevel,
+            days: combinedDays,
+        };
+    }, [initialWeekData, editedDays, editedWeekLevel]);
+
+
     // This effect ensures balances are always fresh if the employee data changes.
     useEffect(() => {
         if (employee && weekId) {
@@ -92,55 +115,62 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
     }, [localWeekData, employee, calculateBalancePreview, initialBalances]);
     
     const handleDailyDataChange = useCallback((day: Date, field: string, value: any) => {
-        setLocalWeekData(prevData => {
-            if (!prevData?.days) return prevData;
-            const dayId = format(day, 'yyyy-MM-dd');
-            const currentDayData = prevData.days[dayId];
-            if (!currentDayData) return prevData;
+        const dayId = format(day, 'yyyy-MM-dd');
+        
+        // Get the base day data from the initial prop
+        const baseDayData = initialWeekData?.days?.[dayId];
+        if (!baseDayData) return;
+
+        // Get the current local state for the day
+        const currentDayState = localWeekData?.days?.[dayId];
+        if (!currentDayState) return;
+
+        let updatedFields: Partial<DailyData> = { [field]: value };
     
-            let updatedDayData = { ...currentDayData, [field]: value };
-    
-            if (field === 'absence') {
-                const selectedAbsenceType = absenceTypes.find(at => at.abbreviation === value);
-                
-                if (selectedAbsenceType) {
-                    if (selectedAbsenceType.computesFullDay) {
-                        updatedDayData.absenceHours = currentDayData.theoreticalHours;
-                        updatedDayData.workedHours = 0;
-                    } else if (selectedAbsenceType.isAbsenceSplittable) {
-                         // When isAbsenceSplittable is true, we should NOT reset absenceHours
-                         // It should be manually set by the user
-                    }
-                } else if (value === 'ninguna') {
-                    updatedDayData.absenceHours = 0;
-                    const oldAbsenceType = absenceTypes.find(at => at.abbreviation === currentDayData.absence);
-                    if (oldAbsenceType && oldAbsenceType.computesFullDay) {
-                        updatedDayData.workedHours = currentDayData.theoreticalHours;
-                    }
+        if (field === 'absence') {
+            const selectedAbsenceType = absenceTypes.find(at => at.abbreviation === value);
+            
+            if (selectedAbsenceType) {
+                if (selectedAbsenceType.computesFullDay) {
+                    updatedFields.absenceHours = currentDayState.theoreticalHours;
+                    updatedFields.workedHours = 0;
+                } else if (selectedAbsenceType.isAbsenceSplittable) {
+                    // Let user set hours manually
+                }
+            } else if (value === 'ninguna') {
+                updatedFields.absenceHours = 0;
+                const oldAbsenceType = absenceTypes.find(at => at.abbreviation === currentDayState.absence);
+                if (oldAbsenceType && oldAbsenceType.computesFullDay) {
+                    updatedFields.workedHours = currentDayState.theoreticalHours;
                 }
             }
+        }
     
-            if (field === 'absenceHours') {
-                const selectedAbsenceType = absenceTypes.find(at => at.abbreviation === currentDayData.absence);
-                if (selectedAbsenceType && selectedAbsenceType.isAbsenceSplittable) {
-                    const newAbsenceHours = value;
-                    const theoretical = currentDayData.theoreticalHours;
-                    updatedDayData.workedHours = Math.max(0, theoretical - newAbsenceHours);
-                }
+        if (field === 'absenceHours') {
+            const selectedAbsenceType = absenceTypes.find(at => at.abbreviation === currentDayState.absence);
+            if (selectedAbsenceType && selectedAbsenceType.isAbsenceSplittable) {
+                const newAbsenceHours = value;
+                const theoretical = currentDayState.theoreticalHours;
+                updatedFields.workedHours = Math.max(0, theoretical - newAbsenceHours);
             }
+        }
     
-            return { ...prevData, days: { ...prevData.days, [dayId]: updatedDayData } };
-        });
-    }, [absenceTypes]);
+        setEditedDays(prev => ({
+            ...prev,
+            [dayId]: {
+                ...prev[dayId],
+                ...updatedFields,
+            }
+        }));
+    }, [absenceTypes, initialWeekData, localWeekData]);
 
 
     const handleWeekLevelDataChange = useCallback((field: string, value: any) => {
-        setLocalWeekData(prevData => {
-            if (!prevData) return null;
+        setEditedWeekLevel(prev => {
             if (typeof value === 'number' && (isNaN(value) || value === null)) {
-                return { ...prevData, [field]: null };
+                 return { ...prev, [field]: null };
             }
-            return { ...prevData, [field]: value };
+            return { ...prev, [field]: value };
         });
     }, []);
 
@@ -179,65 +209,34 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 toast({ title: `Jornada Actualizada para ${employee.name}`, description: `Nueva jornada: ${formHours}h/semana.` });
             }
     
-            const currentComment = String(localWeekData.generalComment || '');
-            const auditEndDate = new Date('2025-09-08');
-            let finalComment = currentComment;
-            
-            const cleanedComment = currentComment.split('\n').filter(line => !line.trim().startsWith('DIFERENCIA CON EXCEL:') && !line.trim().startsWith('AUDITORÍA:')).join('\n').trim();
-
-    
-            if (isBefore(weekDays[0], auditEndDate) && preview.isDifference) {
-                const diffs: string[] = [];
-                const expected = {
-                    ordinary: localWeekData.expectedOrdinaryImpact ?? 0,
-                    holiday: localWeekData.expectedHolidayImpact ?? 0,
-                    leave: localWeekData.expectedLeaveImpact ?? 0,
-                };
-                if (Math.abs(preview.ordinary - expected.ordinary) > 0.01) diffs.push(`Ordinaria (Dif: ${(preview.ordinary - expected.ordinary).toFixed(2)}h)`);
-                if (Math.abs(preview.holiday - expected.holiday) > 0.01) diffs.push(`Festivos (Dif: ${(preview.holiday - expected.holiday).toFixed(2)}h)`);
-                if (Math.abs(preview.leave - expected.leave) > 0.01) diffs.push(`Libranza (Dif: ${(preview.leave - expected.leave).toFixed(2)}h)`);
-    
-                if (diffs.length > 0) {
-                    const diffMessage = `AUDITORÍA: Diferencia detectada en bolsas: ${diffs.join(', ')}.`;
-                    finalComment = cleanedComment ? `${cleanedComment}\n${diffMessage}` : diffMessage;
-                }
-            }
-    
             const dataToSave = {
-                weekId: weekId,
-                employeeId: employee.id,
-                ...localWeekData,
+                ...initialWeekData, // Start with the original data
+                ...localWeekData, // Apply local changes
                 confirmed: true,
                 previousBalances: initialBalances,
                 weeklyHoursOverride: localWeekData.weeklyHoursOverride ?? null,
                 totalComplementaryHours: localWeekData.totalComplementaryHours ?? null,
-                generalComment: finalComment,
+                generalComment: localWeekData.generalComment || null,
                 isDifference: localWeekData.isDifference ?? false,
             };
     
-            const sanitizedDataToSave = {
-                ...dataToSave,
-                expectedOrdinaryImpact: dataToSave.expectedOrdinaryImpact ?? null,
-                expectedHolidayImpact: dataToSave.expectedHolidayImpact ?? null,
-                expectedLeaveImpact: dataToSave.expectedLeaveImpact ?? null,
-                days: Object.fromEntries(
-                    Object.entries(dataToSave.days).map(([key, dayData]) => [
-                        key,
-                        {
-                            ...dayData,
-                            holidayType: dayData.holidayType === undefined ? null : dayData.holidayType,
-                            doublePay: dayData.doublePay === undefined ? false : dayData.doublePay,
-                        }
-                    ])
-                )
-            };
+            // Remove any undefined values to keep Firestore happy
+            Object.keys(dataToSave).forEach(key => {
+                if (dataToSave[key as keyof typeof dataToSave] === undefined) {
+                    delete dataToSave[key as keyof typeof dataToSave];
+                }
+            });
             
             const docId = `${weekId}-${employee.id}`;
-            await setDoc(doc(db, 'weeklyRecords', docId), sanitizedDataToSave, { merge: true });
+            await setDoc(doc(db, 'weeklyRecords', docId), dataToSave, { merge: true });
             
             toast({ title: `Semana Confirmada para ${employee.name}` });
             
-            refreshData(); 
+            // Clear local edits after successful save
+            setEditedDays({});
+            setEditedWeekLevel({});
+
+            refreshData(); // Manually trigger a refresh just in case
             onWeekCompleted(weekId);
 
         } catch (error) {
@@ -253,9 +252,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         setIsSaving(true);
         try {
             const docId = `${weekId}-${employee.id}`;
-            const docRef = doc(db, 'weeklyRecords', docId);
-            
-            await updateDoc(docRef, { confirmed: false });
+            await updateDocument('weeklyRecords', docId, { confirmed: false });
             
             refreshData();
 
@@ -369,9 +366,10 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 const cellStyle: React.CSSProperties = {};
                 if (isHoliday) {
                     cellStyle.background = 'linear-gradient(to bottom right, #e0f2f1, transparent)';
-                } else {
-                    cellStyle.background = 'linear-gradient(to bottom right, rgba(240, 240, 240, 0.5), transparent)';
+                } else if (isConfirmed) {
+                     cellStyle.background = 'linear-gradient(to bottom right, rgba(240, 240, 240, 0.5), transparent)';
                 }
+
 
                 if (absenceType?.color) {
                     cellStyle.background = `linear-gradient(to bottom right, ${absenceType.color}40, transparent)`;
