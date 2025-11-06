@@ -147,27 +147,32 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         setIsSaving(true);
     
         try {
-             // Check for interrupted indefinite absences by comparing initial vs. final state
             for (const day of weekDays) {
                 const dayKey = format(day, 'yyyy-MM-dd');
-                const initialDayData = initialWeekData?.days[dayKey];
-                const finalDayData = localWeekData.days[dayKey];
-
+                const initialDayData = initialWeekData?.days?.[dayKey];
+                const finalDayData = localWeekData.days?.[dayKey];
+    
                 if (!initialDayData || !finalDayData) continue;
-
-                // An indefinite absence is one that originally had no end date.
-                const wasIndefiniteAbsence = initialDayData.absence !== 'ninguna' && 
-                    employee.employmentPeriods.some(p => p.scheduledAbsences?.some(a => 
-                        !a.endDate && 
-                        absenceTypes.find(at => at.id === a.absenceTypeId)?.abbreviation === initialDayData.absence &&
-                        !isBefore(startOfDay(day), startOfDay(a.startDate as Date))
-                    ));
-                
-                // An interruption occurs if the absence type changes OR if hours are worked where there were none.
-                const isInterrupted = finalDayData.absence !== initialDayData.absence || (finalDayData.workedHours > 0 && initialDayData.workedHours === 0);
-                
-                if (wasIndefiniteAbsence && isInterrupted) {
-                    await endIndefiniteAbsence(employee.id, day);
+    
+                const wasIndefiniteAbsenceDay = 
+                    initialDayData.absence !== 'ninguna' && 
+                    absenceTypes.find(at => at.abbreviation === initialDayData.absence)?.suspendsContract;
+    
+                const isInterrupted = finalDayData.absence !== initialDayData.absence || finalDayData.workedHours > 0;
+    
+                if (wasIndefiniteAbsenceDay && isInterrupted) {
+                    const activePeriod = getActivePeriod(employee.id, day);
+                    if (activePeriod?.scheduledAbsences) {
+                        const relevantAbsence = activePeriod.scheduledAbsences.find(a => 
+                            !a.endDate && 
+                            a.absenceTypeId === absenceTypes.find(at => at.abbreviation === initialDayData.absence)?.id &&
+                            !isBefore(startOfDay(day), startOfDay(a.startDate))
+                        );
+                        
+                        if (relevantAbsence) {
+                             await endIndefiniteAbsence(employee.id, day);
+                        }
+                    }
                 }
             }
 

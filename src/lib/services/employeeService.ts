@@ -306,13 +306,15 @@ export const endIndefiniteAbsence = async (employeeId: string, dateToEnd: Date):
     for (const period of employeeData.employmentPeriods || []) {
         if (!period.scheduledAbsences) continue;
         
-        for (const absence of period.scheduledAbsences) {
-            // Find an indefinite absence that is active on the dateToEnd
+        const absenceToEnd = period.scheduledAbsences.find(absence => {
+            if (absence.endDate) return false; // Already has an end date
             const startDate = absence.startDate instanceof Date ? absence.startDate : parseISO(absence.startDate as string);
-            if (!absence.endDate && !isBefore(startOfDay(dateToEnd), startOfDay(startDate))) {
-                absence.endDate = format(subDays(dateToEnd, 1), 'yyyy-MM-dd');
-                employeeModified = true;
-            }
+            return !isBefore(startOfDay(dateToEnd), startOfDay(startDate));
+        });
+
+        if (absenceToEnd) {
+            absenceToEnd.endDate = format(subDays(dateToEnd, 1), 'yyyy-MM-dd');
+            employeeModified = true;
         }
     }
 
