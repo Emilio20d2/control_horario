@@ -25,7 +25,7 @@ import { AbsenceEditor } from './absence-editor';
 import { HolidayEditor } from './holiday-editor';
 import { BalancePreviewDisplay } from './balance-preview';
 import { updateDocument } from '@/lib/services/firestoreService';
-import { addScheduledAbsence, endIndefiniteAbsence } from '@/lib/services/employeeService';
+import { endIndefiniteAbsence } from '@/lib/services/employeeService';
 import { Label } from '../ui/label';
 
 interface WeekRowProps {
@@ -144,29 +144,27 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         });
     }, []);
 
-    const saveData = async (confirmWeek: boolean) => {
+    const handleConfirm = async () => {
         if (!localWeekData || !employee || !preview || !initialBalances) return;
         setIsSaving(true);
     
         try {
             // This logic MUST run before saving if we are confirming the week.
-            if (confirmWeek) {
-                for (const day of weekDays) {
-                    const dayKey = format(day, 'yyyy-MM-dd');
-                    const initialDayData = initialWeekData?.days?.[dayKey];
-                    const finalDayData = localWeekData.days?.[dayKey];
+            for (const day of weekDays) {
+                const dayKey = format(day, 'yyyy-MM-dd');
+                const initialDayData = initialWeekData?.days?.[dayKey];
+                const finalDayData = localWeekData.days?.[dayKey];
 
-                    if (!initialDayData || !finalDayData) continue;
+                if (!initialDayData || !finalDayData) continue;
 
-                    const wasIndefiniteAbsenceDay = 
-                        initialDayData.absence !== 'ninguna' && 
-                        absenceTypes.find(at => at.abbreviation === initialDayData.absence)?.suspendsContract;
-                    
-                    const isInterrupted = finalDayData.absence !== initialDayData.absence || finalDayData.workedHours > 0;
+                const wasIndefiniteAbsenceDay = 
+                    initialDayData.absence !== 'ninguna' && 
+                    absenceTypes.find(at => at.abbreviation === initialDayData.absence)?.suspendsContract;
+                
+                const isInterrupted = finalDayData.absence !== initialDayData.absence || finalDayData.workedHours > 0;
 
-                    if (wasIndefiniteAbsenceDay && isInterrupted) {
-                        await endIndefiniteAbsence(employee.id, day);
-                    }
+                if (wasIndefiniteAbsenceDay && isInterrupted) {
+                    await endIndefiniteAbsence(employee.id, day);
                 }
             }
     
@@ -178,7 +176,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
     
             if (formHours !== currentDbHours && localWeekData.weeklyHoursOverride !== null) {
                 await updateEmployeeWorkHours(employee.id, employee, formHours, format(weekDays[0], 'yyyy-MM-dd'));
-                if (confirmWeek) toast({ title: `Jornada Actualizada para ${employee.name}`, description: `Nueva jornada: ${formHours}h/semana.` });
+                toast({ title: `Jornada Actualizada para ${employee.name}`, description: `Nueva jornada: ${formHours}h/semana.` });
             }
     
             const currentComment = String(localWeekData.generalComment || '');
@@ -198,7 +196,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
     
                 if (diffs.length > 0) {
                     const diffMessage = `AUDITORÍA: Diferencia detectada en bolsas: ${diffs.join(', ')}.`;
-                    finalComment = finalComment ? `${finalComment}\n${diffMessage}` : diffMessage;
+                    finalComment = cleanedComment ? `${cleanedComment}\n${diffMessage}` : diffMessage;
                 }
             }
     
@@ -206,7 +204,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 weekId: weekId,
                 employeeId: employee.id,
                 ...localWeekData,
-                confirmed: confirmWeek || localWeekData.confirmed,
+                confirmed: true,
                 previousBalances: initialBalances,
                 weeklyHoursOverride: localWeekData.weeklyHoursOverride ?? null,
                 totalComplementaryHours: localWeekData.totalComplementaryHours ?? null,
@@ -214,7 +212,6 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 isDifference: localWeekData.isDifference ?? false,
             };
     
-            // Sanitize data before saving
             const sanitizedDataToSave = {
                 ...dataToSave,
                 expectedOrdinaryImpact: dataToSave.expectedOrdinaryImpact ?? null,
@@ -234,16 +231,15 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             
             const docId = `${weekId}-${employee.id}`;
             await setDoc(doc(db, 'weeklyRecords', docId), sanitizedDataToSave, { merge: true });
-            toast({ title: confirmWeek ? `Semana Confirmada para ${employee.name}`: `Datos guardados para ${employee.name}` });
+            
+            toast({ title: `Semana Confirmada para ${employee.name}` });
             
             refreshData(); 
-            if (confirmWeek) {
-                onWeekCompleted(weekId);
-            }
+            onWeekCompleted(weekId);
 
         } catch (error) {
             console.error(error);
-            toast({ title: 'Error al guardar', description: error instanceof Error ? error.message : "Error desconocido.", variant: 'destructive' });
+            toast({ title: 'Error al confirmar', description: error instanceof Error ? error.message : "Error desconocido.", variant: 'destructive' });
         } finally {
             setIsSaving(false);
         }
@@ -330,29 +326,22 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     
                     <div className="mt-2 space-y-2">
                         {isConfirmed ? (
-                            <div className="flex items-center gap-2 p-2 justify-center rounded-md bg-green-100 dark:bg-green-900/50">
-                                <CheckCircle className="h-5 w-5 text-green-600" />
-                                <p className="font-semibold text-green-700 dark:text-green-300">Semana Confirmada</p>
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="flex items-center gap-2 p-2 justify-center rounded-md bg-green-100 dark:bg-green-900/50 w-full">
+                                    <CheckCircle className="h-5 w-5 text-green-600" />
+                                    <p className="font-semibold text-green-700 dark:text-green-300">Confirmado</p>
+                                </div>
+                                 <Button onClick={handleEnableCorrection} size="sm" variant="secondary" className="w-full">
+                                    <Undo2 className="mr-2 h-4 w-4" />
+                                    Habilitar Corrección
+                                </Button>
                             </div>
                         ) : (
-                            <Button onClick={() => saveData(false)} size="sm" className="w-full" disabled={isSaving || !preview}>
+                            <Button onClick={handleConfirm} size="sm" className="w-full" disabled={isSaving || !preview}>
                                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
-                                Guardar
+                                Confirmar Semana
                             </Button>
                         )}
-
-                        <div className="flex flex-row items-center justify-between rounded-lg border p-2 shadow-sm">
-                            <Label htmlFor={`confirm-${employee.id}-${weekId}`} className="text-sm font-medium">Confirmar Semana</Label>
-                            <Checkbox 
-                                id={`confirm-${employee.id}-${weekId}`}
-                                checked={isConfirmed}
-                                onCheckedChange={(checked) => {
-                                    if(checked) saveData(true);
-                                    else handleEnableCorrection();
-                                }}
-                                disabled={isSaving}
-                            />
-                        </div>
                     </div>
                 </div>
             </TableCell>
