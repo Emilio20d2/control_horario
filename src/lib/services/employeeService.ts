@@ -302,12 +302,14 @@ export const endIndefiniteAbsence = async (employeeId: string, dateToEnd: Date):
 
     const employeeData = employeeDoc.data() as Employee;
     let employeeModified = false;
+    
+    const safeParseDate = (d: any) => d instanceof Date ? d : parseISO(d);
 
     // Find the active period for the given date
     const activePeriod = employeeData.employmentPeriods?.find(p => 
         isWithinInterval(dateToEnd, { 
-            start: startOfDay(p.startDate instanceof Date ? p.startDate : parseISO(p.startDate as string)), 
-            end: p.endDate ? endOfDay(p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string)) : new Date('9999-12-31')
+            start: startOfDay(safeParseDate(p.startDate)), 
+            end: p.endDate ? endOfDay(safeParseDate(p.endDate)) : new Date('9999-12-31')
         })
     );
 
@@ -316,7 +318,7 @@ export const endIndefiniteAbsence = async (employeeId: string, dateToEnd: Date):
     // Find the indefinite absence active on the date to end
     const absenceToEnd = activePeriod.scheduledAbsences.find(absence => {
         if (absence.endDate) return false; // Already has an end date, not indefinite
-        const startDate = absence.startDate instanceof Date ? absence.startDate : parseISO(absence.startDate as string);
+        const startDate = safeParseDate(absence.startDate);
         return isValid(startDate) && !isAfter(startOfDay(startDate), startOfDay(dateToEnd));
     });
 
