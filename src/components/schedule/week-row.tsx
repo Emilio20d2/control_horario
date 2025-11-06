@@ -64,8 +64,8 @@ export const WeekRow: React.FC<WeekRowProps> = ({
     }, [employee.id, weekId, onDataChange]);
     
     const handleEnableCorrection = useCallback(() => {
-        handleWeekLevelChange('confirmed', false);
-    }, [handleWeekLevelChange]);
+        onDataChange(employee.id, weekId, 'week', 'confirmed', false);
+    }, [onDataChange, employee.id, weekId]);
     
     const activePeriod = getActivePeriod(employee.id, weekDays[0]);
     let contractType;
@@ -79,7 +79,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({
 
     return (
         <TableRow className="align-top">
-            <TableCell className="font-medium sticky left-0 z-10 p-2 text-xs w-[150px] sm:w-[200px] min-w-[150px] sm:min-w-[200px] bg-gradient-to-br from-primary/5 to-transparent">
+            <TableCell className="font-medium sticky left-0 z-10 p-2 text-xs w-[150px] sm:w-[200px] min-w-[150px] sm:min-w-[200px] bg-gradient-to-r from-green-100/50 to-transparent">
                 <div className="flex flex-col gap-2 h-full">
                     <div className="flex justify-between items-baseline">
                         <p className="font-bold text-sm flex items-center gap-1.5">
@@ -160,12 +160,10 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                     (contractType?.computesOffDayBag ?? false) &&
                     dayData.absence === 'ninguna';
                 
-                const cellStyle: React.CSSProperties = {};
+                let cellStyle: React.CSSProperties = { background: 'linear-gradient(to left, #e3f2fd, transparent)' }; // Blue gradient
                 if (isHoliday) {
                     if (holidayType === 'Apertura') {
                         cellStyle.background = 'linear-gradient(to left, #e8f5e9, transparent)';
-                    } else {
-                        cellStyle.background = 'linear-gradient(to left, #e3f2fd, transparent)';
                     }
                 } else if (absenceType?.color) {
                     cellStyle.background = `linear-gradient(to left, ${absenceType.color}40, transparent)`;
