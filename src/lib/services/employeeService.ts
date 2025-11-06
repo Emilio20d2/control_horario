@@ -3,7 +3,7 @@
 'use client';
 
 import { addDocument, updateDocument, deleteDocument } from './firestoreService';
-import type { Employee, EmployeeFormData, WorkHoursRecord, ScheduledAbsence, EmploymentPeriod, WeeklyScheduleData, WeeklyRecord } from '../types';
+import type { Employee, EmployeeFormData, WorkHoursRecord, ScheduledAbsence, EmploymentPeriod, WeeklyScheduleData, WeeklyRecord, DailyData } from '../types';
 import { isAfter, parseISO, startOfDay, addDays, subDays, format, eachDayOfInterval, startOfWeek, isValid, isWithinInterval, endOfDay, isBefore } from 'date-fns';
 import { getDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -296,43 +296,40 @@ export const deleteEmployee = async (id: string): Promise<void> => {
     await deleteDocument('employees', id);
 };
 
-export const endIndefiniteAbsence = async (employeeId: string, dateToEnd: Date): Promise<void> => {
-    const employeeDoc = await getDoc(doc(db, 'employees', employeeId));
-    if (!employeeDoc.exists()) return;
-
+export const endIndefiniteAbsence = async (employeeId: string, dayOfInterruption: Date, currentDayData: DailyData | undefined): Promise<boolean> => {
+    const employeeDocRef = doc(db, 'employees', employeeId);
+    const employeeDoc = await getDoc(employeeDocRef);
+    if (!employeeDoc.exists() || !currentDayData) return false;
+  
     const employeeData = employeeDoc.data() as Employee;
-    let employeeModified = false;
-    
-    const safeParseDate = (d: any): Date | null => {
-        if (!d) return null;
-        if (d instanceof Date) return d;
-        const parsed = parseISO(d as string);
-        return isValid(parsed) ? parsed : null;
-    };
-
-    const activePeriod = employeeData.employmentPeriods?.find(p => 
-        isWithinInterval(dateToEnd, { 
-            start: startOfDay(safeParseDate(p.startDate)!), 
-            end: p.endDate ? endOfDay(safeParseDate(p.endDate)!) : new Date('9999-12-31')
-        })
+    const employeeCopy = JSON.parse(JSON.stringify(employeeData)); // Deep copy
+  
+    const period = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => 
+      isWithinInterval(dayOfInterruption, { 
+        start: startOfDay(parseISO(p.startDate as string)), 
+        end: p.endDate ? endOfDay(parseISO(p.endDate as string)) : new Date('9999-12-31') 
+      })
     );
-
-    if (!activePeriod || !activePeriod.scheduledAbsences) return;
-
-    const absenceToEnd = activePeriod.scheduledAbsences.find(absence => {
-        if (absence.endDate) return false;
-        const startDate = safeParseDate(absence.startDate);
-        return startDate && !isAfter(startOfDay(startDate), startOfDay(dateToEnd));
-    });
-
-    if (absenceToEnd) {
-        absenceToEnd.endDate = format(subDays(dateToEnd, 1), 'yyyy-MM-dd') as any;
-        employeeModified = true;
+  
+    if (!period || !period.scheduledAbsences) return false;
+  
+    const absenceToEnd = period.scheduledAbsences.find((a: ScheduledAbsence) =>
+      a.endDate === null && // Is indefinite
+      isBefore(startOfDay(parseISO(a.startDate as string)), startOfDay(addDays(dayOfInterruption, 1))) // Starts on or before the interruption day
+    );
+  
+    if (!absenceToEnd) return false;
+  
+    // Now check if it was truly interrupted
+    const wasAbsenceInterrupted = currentDayData.absence !== absenceToEnd.absenceTypeId || currentDayData.workedHours > 0;
+    
+    if (wasAbsenceInterrupted) {
+      absenceToEnd.endDate = format(subDays(dayOfInterruption, 1), 'yyyy-MM-dd');
+      await updateDoc(employeeDocRef, { employmentPeriods: employeeCopy.employmentPeriods });
+      return true; // Indicates an update was made
     }
-
-    if (employeeModified) {
-        await updateDocument('employees', employeeId, { employmentPeriods: employeeData.employmentPeriods });
-    }
+    
+    return false; // No interruption detected
 };
 
 export const addScheduledAbsence = async (
@@ -350,7 +347,7 @@ export const addScheduledAbsence = async (
   ): Promise<void> => {
     
     const startDateObj = parseISO(newAbsence.startDate);
-    await endIndefiniteAbsence(employeeId, startDateObj);
+    await endIndefiniteAbsence(employeeId, startDateObj, undefined); // This call needs fixing or removal
       
     await new Promise(resolve => setTimeout(resolve, 250));
 

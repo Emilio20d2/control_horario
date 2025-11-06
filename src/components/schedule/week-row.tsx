@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -89,24 +90,22 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         setIsSaving(true);
     
         try {
-            // This logic MUST run before saving if we are confirming the week.
+            // First, process any indefinite absence interruptions for the week.
+            // This needs to happen before the final data save.
+            let dataWasRefreshed = false;
             for (const day of weekDays) {
                 const dayKey = format(day, 'yyyy-MM-dd');
-                const originalDayData = processEmployeeWeekData(employee, [day], weekId)?.days[dayKey];
-                const finalDayData = initialWeekData.days?.[dayKey];
-
-                if (!originalDayData || !finalDayData) continue;
-
-                const wasIndefiniteAbsenceDay = 
-                    originalDayData.absence !== 'ninguna' && 
-                    absenceTypes.find(at => at.abbreviation === originalDayData.absence)?.suspendsContract;
-                
-                const isNowInterrupted = finalDayData.absence !== originalDayData.absence || finalDayData.workedHours > 0;
-
-                if (wasIndefiniteAbsenceDay && isNowInterrupted) {
-                    await endIndefiniteAbsence(employee.id, day);
-                    await refreshData();
+                const wasInterrupted = await endIndefiniteAbsence(employee.id, day, initialWeekData.days?.[dayKey]);
+                if (wasInterrupted) {
+                    dataWasRefreshed = true;
                 }
+            }
+            
+            // If any absence was ended, we need to refresh all data to get the latest state before saving.
+            if (dataWasRefreshed) {
+                await refreshData();
+                // A small delay to ensure state propagation, though ideally this would be handled more elegantly
+                await new Promise(resolve => setTimeout(resolve, 250));
             }
     
             const activePeriod = getActivePeriod(employee.id, weekDays[0]);
@@ -338,5 +337,3 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         </TableRow>
     );
 };
-
-    
