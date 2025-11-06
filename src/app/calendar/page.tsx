@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
@@ -11,14 +10,6 @@ import {
   CardDescription
 } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -28,7 +19,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowRight, User, Loader2, CalendarPlus, Trash2, CalendarRange, Info, Calendar as CalendarIcon, MessageCircle, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, User, Loader2, Trash2, CalendarRange, Info, Calendar as CalendarIcon, MessageCircle, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import {
   format,
@@ -57,28 +48,29 @@ import type { Employee, ScheduledAbsence, HolidayReport, AbsenceType } from '@/l
 import { WeekNavigator } from '@/components/schedule/week-navigator';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { addScheduledAbsence, hardDeleteScheduledAbsence } from '@/lib/services/employeeService';
+import { hardDeleteScheduledAbsence } from '@/lib/services/employeeService';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
-import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Input } from '@/components/ui/input';
 import { AddAbsenceDialog } from '@/components/schedule/add-absence-dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import React from 'react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 
 interface CellAbsenceInfo {
     employee: Employee;
     absence: ScheduledAbsence;
     absenceType: AbsenceType;
-    substituteName?: string;
     periodId: string;
 }
 
 export default function CalendarPage() {
-  const { employees, holidayReports, absenceTypes, loading, getActiveEmployeesForDate, holidays, refreshData, getEmployeeBalancesForWeek, getTheoreticalHoursAndTurn } = useDataProvider();
+  const { employees, absenceTypes, loading, getActiveEmployeesForDate, holidays, refreshData, getTheoreticalHoursAndTurn } = useDataProvider();
   const { reauthenticateWithPassword } = useAuth();
   const { toast } = useToast();
   
@@ -88,7 +80,6 @@ export default function CalendarPage() {
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   
-  // State for absence details dialog
   const [selectedCell, setSelectedCell] = useState<CellAbsenceInfo | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -112,17 +103,9 @@ export default function CalendarPage() {
     return null;
   }, []);
 
-  const getAbsencesForDay = useCallback((day: Date) => {
+  const getAbsencesForDay = useCallback((day: Date): CellAbsenceInfo[] => {
     const dayStart = startOfDay(day);
     const absences: CellAbsenceInfo[] = [];
-
-    const substitutesMap: Record<string, string> = {};
-    const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-    holidayReports.forEach((report: HolidayReport) => {
-      if (report.weekId === weekId) {
-        substitutesMap[report.employeeId] = report.substituteName;
-      }
-    });
 
     const activeEmployeesForDay = getActiveEmployeesForDate(day);
 
@@ -130,16 +113,15 @@ export default function CalendarPage() {
       (emp.employmentPeriods || []).forEach(period => {
         (period.scheduledAbsences || []).forEach(absence => {
           const absenceStart = safeParseDate(absence.startDate);
-          const absenceEnd = absence.endDate ? safeParseDate(absence.endDate) : new Date('9999-12-31');
+          const absenceEnd = absence.endDate ? safeParseDate(absence.endDate) : absenceStart;
 
-          if (absenceStart && isWithinInterval(dayStart, { start: startOfDay(absenceStart), end: endOfDay(absenceEnd) })) {
+          if (absenceStart && absenceEnd && isWithinInterval(dayStart, { start: startOfDay(absenceStart), end: endOfDay(absenceEnd) })) {
             const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
             if (absenceType) {
               absences.push({
                 employee: emp,
                 absence: absence,
                 absenceType: absenceType,
-                substituteName: substitutesMap[emp.id],
                 periodId: period.id,
               });
             }
@@ -148,118 +130,27 @@ export default function CalendarPage() {
       });
     });
 
-    return absences;
-  }, [getActiveEmployeesForDate, holidayReports, absenceTypes, safeParseDate]);
+    return absences.sort((a, b) => a.employee.name.localeCompare(b.employee.name));
+  }, [getActiveEmployeesForDate, absenceTypes, safeParseDate]);
 
 
   const weeklyAbsenceData = useMemo(() => {
     if (loading || view !== 'week') return [];
-
-    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-    const weekId = format(weekStart, 'yyyy-MM-dd');
-    const activeEmployeesForWeek = getActiveEmployeesForDate(currentDate);
-    const vacationType = absenceTypes.find(at => at.name === 'Vacaciones');
-    const recoveryType = absenceTypes.find(at => at.name === 'Recuperación de Horas');
-
-    const substitutesMap: Record<string, string> = {};
-    holidayReports.forEach((report: HolidayReport) => {
-        if (report.weekId === weekId) {
-            substitutesMap[report.employeeId] = report.substituteName;
-        }
+    
+    const eventsByDay: Record<string, CellAbsenceInfo[]> = {};
+    weekDays.forEach(day => {
+        const dayKey = format(day, 'yyyy-MM-dd');
+        eventsByDay[dayKey] = getAbsencesForDay(day);
     });
-
-    const employeesWithAbsences = activeEmployeesForWeek.map((employee: Employee) => {
-        const info: { employee: Employee; dayAbsences: Record<string, CellAbsenceInfo | null> } = {
-            employee: employee,
-            dayAbsences: {},
-        };
-        
-        let hasAbsenceInWeek = false;
-        let isPartialVacationWeek = false;
-        let workDaysInVacationWeek = 0;
-
-        weekDays.forEach(day => {
-            const dayKey = format(day, 'yyyy-MM-dd');
-            const dayAbsences = getAbsencesForDay(day);
-            const empAbsence = dayAbsences.find(a => a.employee.id === employee.id);
-
-            if (empAbsence) {
-                hasAbsenceInWeek = true;
-                if (vacationType && empAbsence.absence.absenceTypeId === vacationType.id) {
-                    isPartialVacationWeek = true;
-                }
-                info.dayAbsences[dayKey] = empAbsence;
-            } else {
-                 info.dayAbsences[dayKey] = null;
-                 const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(employee.id, day);
-                 const dayTheoretical = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
-                 if (dayTheoretical && dayTheoretical.theoreticalHours > 0) {
-                    workDaysInVacationWeek++;
-                 }
-            }
-        });
-        
-        if (isPartialVacationWeek && workDaysInVacationWeek > 0 && recoveryType) {
-            const balances = getEmployeeBalancesForWeek(employee.id, weekId);
-            const totalBalance = balances.total;
-            
-            if (totalBalance > 0) {
-                let availableHolidayHours = balances.holiday;
-                let availableLeaveHours = balances.leave;
-
-                weekDays.forEach(day => {
-                    const dayKey = format(day, 'yyyy-MM-dd');
-                    const dayIsHoliday = holidays.some(h => isSameDay(h.date, day));
-
-                    if (!info.dayAbsences[dayKey] && !dayIsHoliday) {
-                        const { weekDaysWithTheoreticalHours } = getTheoreticalHoursAndTurn(employee.id, day);
-                        const dayTheoretical = weekDaysWithTheoreticalHours.find(d => d.dateKey === dayKey);
-                        
-                        if (dayTheoretical && dayTheoretical.theoreticalHours > 0) {
-                            const neededHours = dayTheoretical.theoreticalHours;
-                            let usedHours = 0;
-
-                             if (availableHolidayHours > 0) {
-                                const hoursToUse = Math.min(neededHours - usedHours, availableHolidayHours);
-                                if (hoursToUse > 0) {
-                                    usedHours += hoursToUse;
-                                    availableHolidayHours -= hoursToUse;
-                                }
-                            }
-
-                            if (usedHours < neededHours && availableLeaveHours > 0) {
-                                const hoursToUse = Math.min(neededHours - usedHours, availableLeaveHours);
-                                if (hoursToUse > 0) {
-                                    usedHours += hoursToUse;
-                                    availableLeaveHours -= hoursToUse;
-                                }
-                            }
-                            
-                            if (usedHours > 0) {
-                                const mockAbsence: ScheduledAbsence = { id: `auto_${dayKey}`, absenceTypeId: recoveryType.id, startDate: day, endDate: day, isDefinitive: true };
-                                info.dayAbsences[dayKey] = {
-                                    employee,
-                                    absence: mockAbsence,
-                                    absenceType: recoveryType,
-                                    periodId: employee.employmentPeriods[0]?.id || ''
-                                };
-                                hasAbsenceInWeek = true;
-                            }
-                        }
-                    }
-                });
-            }
-        }
-
-
-        return hasAbsenceInWeek ? info : null;
-    }).filter((item): item is { employee: Employee; dayAbsences: Record<string, CellAbsenceInfo | null> } => item !== null)
-      .sort((a,b) => a.employee.name.localeCompare(b.employee.name));
-
-    return employeesWithAbsences;
-
-  }, [loading, currentDate, getActiveEmployeesForDate, holidayReports, absenceTypes, weekDays, getAbsencesForDay, getEmployeeBalancesForWeek, getTheoreticalHoursAndTurn, holidays, view]);
+    return eventsByDay;
+  }, [loading, view, weekDays, getAbsencesForDay]);
   
+  const allWeekEvents = useMemo(() => {
+      if(view !== 'week') return [];
+      return Object.values(weeklyAbsenceData).flat().sort((a,b) => (a.absence.startDate as Date).getTime() - (b.absence.startDate as Date).getTime());
+  }, [weeklyAbsenceData, view]);
+
+
   const { turnId: weekTurnId } = useMemo(() => {
     if (activeEmployees.length > 0) {
         return getTheoreticalHoursAndTurn(activeEmployees[0].id, currentDate);
@@ -285,7 +176,6 @@ export default function CalendarPage() {
 
         const convDocRef = doc(db, 'conversations', conversationId);
         
-        // Use setDoc with merge:true to create or update the document safely
         await setDoc(convDocRef, {
             employeeId: employee.id,
             employeeName: employee.name,
@@ -318,7 +208,6 @@ export default function CalendarPage() {
 
       await hardDeleteScheduledAbsence(employee.id, periodId, absence.id, absence.originalRequest);
 
-      // Only notify if it was an original request from the employee
       if (absence.originalRequest) {
         const rejectionMessage = `Tu solicitud de ${selectedCell.absenceType.name} del ${format(safeParseDate(absence.startDate)!, 'dd/MM/yyyy')} al ${format(safeParseDate(absence.endDate)!, 'dd/MM/yyyy')} ha sido rechazada y eliminada del planificador.`;
         await sendMessage(employee, rejectionMessage);
@@ -351,99 +240,81 @@ export default function CalendarPage() {
   }
 
   const renderWeeklyView = () => (
-    <div className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background border rounded-lg">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-2 p-4 border-b">
-            <div className="flex items-center gap-2">
-                <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
-                 {weekTurnId && (
-                    <Badge variant="secondary" className="text-xs">
-                        {`T.${weekTurnId.replace('turn', '')}`}
-                    </Badge>
-                )}
-            </div>
-            <div className="flex items-center gap-4">
-                <Tabs value={view} onValueChange={(v) => setView(v as 'week' | 'month')} className="w-auto">
-                    <TabsList>
-                        <TabsTrigger value="week">Semana</TabsTrigger>
-                        <TabsTrigger value="month">Mes</TabsTrigger>
-                    </TabsList>
-                </Tabs>
-                <AddAbsenceDialog 
-                    isOpen={isAddDialogOpen} 
-                    onOpenChange={setIsAddDialogOpen} 
-                    activeEmployees={activeEmployees} 
-                    absenceTypes={absenceTypes} 
-                    holidays={holidays}
-                    employees={employees}
-                    refreshData={refreshData}
-                />
-            </div>
-        </div>
-        <div className="p-4">
-            <div className="border rounded-lg overflow-auto">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="sticky left-0 bg-card z-10 w-[250px] min-w-[250px] p-2">Empleado</TableHead>
-                            {weekDays.map(day => {
-                                const holiday = holidays.find(h => isSameDay(h.date, day));
-                                return (
-                                    <TableHead key={day.toISOString()} className={cn("text-center min-w-[70px] p-1", holiday && 'bg-primary/10')}>
-                                        <div className="flex flex-col items-center">
-                                            <span>{format(day, 'E', { locale: es })}</span>
-                                            <span className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</span>
-                                        </div>
-                                    </TableHead>
-                                );
-                            })}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {weeklyAbsenceData.map(empData => (
-                            <TableRow key={empData.employee.id}>
-                                <TableCell className="sticky left-0 bg-card z-10 font-medium p-2">{empData.employee.name}</TableCell>
-                                {weekDays.map(day => {
-                                    const dayKey = format(day, 'yyyy-MM-dd');
-                                    const cellInfo = empData.dayAbsences[dayKey];
-                                    const holiday = holidays.find(h => isSameDay(h.date, day));
-                                    
-                                    return (
-                                        <TableCell 
-                                            key={dayKey} 
-                                            onClick={() => cellInfo && handleOpenDetails(cellInfo)}
-                                            className={cn(
-                                                "text-center p-1 align-middle bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background", 
-                                                cellInfo && "cursor-pointer hover:bg-muted/50",
-                                                holiday && !cellInfo && 'bg-primary/10'
-                                            )}
-                                            style={cellInfo ? { background: `linear-gradient(to top, transparent, ${cellInfo.absenceType.color}40)`} : {}}
-                                        >
-                                            {cellInfo ? (
-                                                <div className="flex flex-col items-center justify-center gap-1">
-                                                    <div className="flex items-center gap-1">
-                                                        <User className="h-4 w-4" />
-                                                        <span className="font-bold text-sm">{cellInfo.absenceType.abbreviation}</span>
-                                                    </div>
-                                                    {cellInfo.substituteName && (
-                                                        <span className="text-xs text-muted-foreground font-semibold truncate">{cellInfo.substituteName}</span>
-                                                    )}
-                                                </div>
-                                            ) : null}
-                                        </TableCell>
-                                    );
-                                })}
-                            </TableRow>
-                        ))}
-                         {!loading && weeklyAbsenceData.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={8} className="text-center h-24 text-muted-foreground">
-                                    No hay empleados con ausencias programadas para esta semana.
-                                </TableCell>
-                            </TableRow>
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="lg:col-span-3">
+            <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
+                <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-2 p-4 border-b">
+                    <div className="flex items-center gap-2">
+                        <WeekNavigator currentDate={currentDate} onWeekChange={setCurrentDate} onDateSelect={setCurrentDate} />
+                        {weekTurnId && (
+                            <Badge variant="secondary" className="text-xs">
+                                {`T.${weekTurnId.replace('turn', '')}`}
+                            </Badge>
                         )}
-                    </TableBody>
-                </Table>
-            </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                     <div className="grid grid-cols-7 border-t">
+                        {weekDays.map(day => {
+                            const dayKey = format(day, 'yyyy-MM-dd');
+                            const events = weeklyAbsenceData[dayKey] || [];
+                            return (
+                                <div key={dayKey} className="flex flex-col border-r last:border-r-0 min-h-[400px]">
+                                    <div className="text-center p-2 border-b">
+                                        <p className="font-semibold capitalize text-sm">{format(day, 'E', { locale: es })}</p>
+                                        <p className="text-2xl font-bold">{format(day, 'd')}</p>
+                                    </div>
+                                    <ScrollArea className="flex-1">
+                                        <div className="p-2 space-y-2">
+                                            {events.map(event => (
+                                                <div 
+                                                    key={`${event.employee.id}-${event.absence.id}`}
+                                                    onClick={() => handleOpenDetails(event)}
+                                                    className="p-2 rounded-md cursor-pointer text-xs"
+                                                    style={{ backgroundColor: `${event.absenceType.color}40` }}
+                                                >
+                                                    <p className="font-bold truncate">{event.employee.name}</p>
+                                                    <p className="text-muted-foreground">{event.absenceType.name}</p>
+                                                </div>
+                                            ))}
+                                            {events.length === 0 && <div className="h-24"></div>}
+                                        </div>
+                                    </ScrollArea>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+        <div className="lg:col-span-1">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Eventos de la Semana</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ScrollArea className="h-[450px]">
+                         {allWeekEvents.length === 0 ? (
+                            <p className="text-muted-foreground text-center py-10">No hay eventos esta semana.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {allWeekEvents.map((event, index) => (
+                                    <div key={`${event.absence.id}-${index}`} onClick={() => handleOpenDetails(event)} className="flex items-center gap-3 cursor-pointer p-2 rounded-md hover:bg-muted">
+                                        <div className="flex-shrink-0 w-12 text-center">
+                                            <p className="font-bold">{format(event.absence.startDate, 'dd')}</p>
+                                            <p className="text-xs capitalize">{format(event.absence.startDate, 'MMM', {locale: es})}</p>
+                                        </div>
+                                        <div className="flex-grow">
+                                            <p className="font-semibold text-sm truncate">{event.employee.name}</p>
+                                            <p className="text-xs text-muted-foreground">{event.absenceType.name}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </ScrollArea>
+                </CardContent>
+            </Card>
         </div>
     </div>
   );
@@ -455,35 +326,7 @@ export default function CalendarPage() {
 
     return (
         <div className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background border rounded-lg">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-2 p-4 border-b">
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <h2 className="text-xl font-bold capitalize">{format(currentMonth, 'MMMM yyyy', { locale: es })}</h2>
-                    <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
-                 <div className="flex items-center gap-4">
-                    <Tabs value={view} onValueChange={(v) => setView(v as 'week' | 'month')} className="w-auto">
-                        <TabsList>
-                            <TabsTrigger value="week">Semana</TabsTrigger>
-                            <TabsTrigger value="month">Mes</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
-                    <AddAbsenceDialog 
-                        isOpen={isAddDialogOpen} 
-                        onOpenChange={setIsAddDialogOpen} 
-                        activeEmployees={activeEmployees} 
-                        absenceTypes={absenceTypes} 
-                        holidays={holidays}
-                        employees={employees}
-                        refreshData={refreshData}
-                    />
-                </div>
-            </div>
-            <div className="px-2 pb-2">
+             <div className="px-2 pb-2">
                  <div className="grid grid-cols-[repeat(7,minmax(0,1fr))] border-t border-l">
                     {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => (
                         <div key={day} className="text-center font-bold p-2 border-r border-b bg-muted/50 text-xs sm:text-sm">
@@ -502,39 +345,55 @@ export default function CalendarPage() {
                                     const holiday = holidays.find(h => isSameDay(h.date, day));
 
                                     return (
-                                        <div
-                                            key={day.toString()}
-                                            className={cn(
-                                                "relative p-1 sm:p-2 border-r border-b min-h-[120px]",
-                                                !isCurrentMonth && 'bg-muted/30 text-muted-foreground'
-                                            )}
-                                        >
-                                            {dayIndex === 0 && monthWeekTurnId && (
-                                                <Badge variant="secondary" className="absolute top-1 right-1 text-[10px] h-4 px-1">
-                                                    {`T.${monthWeekTurnId.replace('turn', '')}`}
-                                                </Badge>
-                                            )}
-                                            <div className={cn("font-semibold text-xs sm:text-sm", isSameDay(day, new Date()) && "text-primary font-bold")}>
-                                                {format(day, 'd')}
-                                            </div>
-                                            <div className="space-y-1 mt-1">
-                                                {holiday && isCurrentMonth && (
-                                                    <div className="text-[10px] sm:text-xs p-1 rounded-md text-center" style={{backgroundColor: `${holiday.type === 'Apertura' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.1)'}`}}>
-                                                        {holiday.name}
+                                        <Popover key={day.toString()}>
+                                            <PopoverTrigger asChild>
+                                                <div
+                                                    className={cn(
+                                                        "relative p-1 sm:p-2 border-r border-b min-h-[120px] cursor-pointer hover:bg-muted/50",
+                                                        !isCurrentMonth && 'bg-muted/30 text-muted-foreground'
+                                                    )}
+                                                >
+                                                    {dayIndex === 0 && monthWeekTurnId && (
+                                                        <Badge variant="secondary" className="absolute top-1 right-1 text-[10px] h-4 px-1">
+                                                            {`T.${monthWeekTurnId.replace('turn', '')}`}
+                                                        </Badge>
+                                                    )}
+                                                    <div className={cn("font-semibold text-xs sm:text-sm", isSameDay(day, new Date()) && "text-primary font-bold")}>
+                                                        {format(day, 'd')}
                                                     </div>
-                                                )}
-                                                {absences.map(absenceInfo => (
-                                                    <div 
-                                                        key={absenceInfo.employee.id} 
-                                                        className="text-[10px] sm:text-xs p-1 rounded-md cursor-pointer truncate" 
-                                                        style={{ background: `linear-gradient(to top, transparent, ${absenceInfo.absenceType.color}40)`}}
-                                                        onClick={() => handleOpenDetails(absenceInfo)}
-                                                    >
-                                                       <span className="font-bold">{absenceInfo.absenceType.abbreviation}:</span> {absenceInfo.employee.name}
+                                                    <div className="space-y-1 mt-1">
+                                                        {holiday && isCurrentMonth && (
+                                                            <div className="text-[10px] sm:text-xs p-1 rounded-md text-center truncate" style={{backgroundColor: `${holiday.type === 'Apertura' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.1)'}`}}>
+                                                                {holiday.name}
+                                                            </div>
+                                                        )}
+                                                        {absences.map(absenceInfo => (
+                                                            <div 
+                                                                key={absenceInfo.employee.id} 
+                                                                className="h-2 w-2 rounded-full inline-block mr-1" 
+                                                                style={{ backgroundColor: absenceInfo.absenceType.color || '#ccc' }}
+                                                            />
+                                                        ))}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </div>
+                                                </div>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-80">
+                                                <div className="space-y-2">
+                                                    <h4 className="font-medium leading-none capitalize">{format(day, 'EEEE, d \'de\' MMMM', {locale: es})}</h4>
+                                                    <Separator />
+                                                    <div className="space-y-2">
+                                                        {absences.length > 0 ? absences.map(absenceInfo => (
+                                                             <div key={absenceInfo.employee.id} onClick={() => handleOpenDetails(absenceInfo)} className="p-2 rounded-md" style={{ backgroundColor: `${absenceInfo.absenceType.color}40`}}>
+                                                               <p className="font-bold text-sm truncate">{absenceInfo.employee.name}</p>
+                                                               <p className="text-xs text-muted-foreground">{absenceInfo.absenceType.name}</p>
+                                                            </div>
+                                                        )) : (
+                                                            <p className="text-sm text-muted-foreground">No hay eventos programados.</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
                                     );
                                 })}
                             </React.Fragment>
@@ -549,6 +408,40 @@ export default function CalendarPage() {
   return (
     <>
     <div className="p-2 md:p-4 space-y-4">
+        <Card className="shadow-none border-0">
+             <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-2 p-4">
+                 {view === 'week' ? (
+                     <div /> // Placeholder to keep spacing
+                 ) : (
+                     <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <h2 className="text-xl font-bold capitalize w-48 text-center">{format(currentMonth, 'MMMM yyyy', { locale: es })}</h2>
+                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                 )}
+                 <div className="flex items-center gap-4">
+                    <Tabs value={view} onValueChange={(v) => setView(v as 'week' | 'month')} className="w-auto">
+                        <TabsList>
+                            <TabsTrigger value="week">Semana</TabsTrigger>
+                            <TabsTrigger value="month">Mes</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                    <AddAbsenceDialog 
+                        isOpen={isAddDialogOpen} 
+                        onOpenChange={setIsAddDialogOpen} 
+                        activeEmployees={activeEmployees} 
+                        absenceTypes={absenceTypes} 
+                        holidays={holidays}
+                        employees={employees}
+                        refreshData={refreshData}
+                    />
+                </div>
+            </CardHeader>
+        </Card>
         {view === 'week' ? renderWeeklyView() : <MonthView />}
     </div>
     
@@ -630,5 +523,3 @@ export default function CalendarPage() {
     </>
   );
 }
-
-    
