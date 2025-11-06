@@ -656,7 +656,7 @@ export const generateRequestStatusReportPDF = (
         const emp = allEmployees.find(e => e.id === quadrantEmp.id);
         if (!emp || emp.isEventual) return null;
 
-        const allAbsencesInCampaign = (emp.employmentPeriods || [])
+        const absencesInCampaign = (emp.employmentPeriods || [])
             .flatMap(p => p.scheduledAbsences || [])
             .filter(a => {
                 if (!a.startDate || !campaignAbsenceTypeIds.has(a.absenceTypeId)) return false;
@@ -666,33 +666,34 @@ export const generateRequestStatusReportPDF = (
             
         let originalRequestText = 'PENDIENTE DE SOLICITUD';
         let modifiedRequestText = '';
-        let hasData = false;
 
-        if (allAbsencesInCampaign.length > 0) {
-            const originalRequestStrings: string[] = [];
-            const modifiedRequestStrings: string[] = [];
+        if (absencesInCampaign.length > 0) {
+            const periods = new Map<string, { start: Date, end: Date, type: string, original: { start: Date, end: Date } }>();
             
-            allAbsencesInCampaign.forEach(absence => {
-                hasData = true;
-                const absenceType = absenceTypes.find(at => at.id === absence.absenceTypeId);
-                const typeAbbr = absenceType?.abbreviation || '??';
-                
-                const originalRequest = absence.originalRequest;
-                const originalStartDate = originalRequest ? toDate(originalRequest.startDate) : toDate(absence.startDate);
-                const originalEndDate = originalRequest ? (originalRequest.endDate ? toDate(originalRequest.endDate) : null) : (absence.endDate ? toDate(absence.endDate) : null);
+            absencesInCampaign.forEach(absence => {
+                const originalStart = toDate(absence.originalRequest?.startDate || absence.startDate);
+                const originalEnd = toDate(absence.originalRequest?.endDate || absence.endDate || absence.startDate);
+                const periodKey = `${format(originalStart, 'yyyy-MM-dd')}-${format(originalEnd, 'yyyy-MM-dd')}-${absence.absenceTypeId}`;
 
-                originalRequestStrings.push(`${typeAbbr}: ${format(originalStartDate, 'dd/MM/yy')} - ${originalEndDate ? format(originalEndDate, 'dd/MM/yy') : ''}`);
-                
-                const isModified = originalRequest && 
-                                   (!isEqual(toDate(absence.startDate), originalStartDate) || 
-                                    (originalEndDate && absence.endDate && !isEqual(toDate(absence.endDate), originalEndDate)));
-
-                if (isModified) {
-                    modifiedRequestStrings.push(`${typeAbbr}: ${format(toDate(absence.startDate), 'dd/MM/yy')} - ${absence.endDate ? format(toDate(absence.endDate), 'dd/MM/yy') : ''}`);
+                if (!periods.has(periodKey)) {
+                    periods.set(periodKey, {
+                        start: toDate(absence.startDate),
+                        end: toDate(absence.endDate || absence.startDate),
+                        type: absenceTypes.find(at => at.id === absence.absenceTypeId)?.abbreviation || '??',
+                        original: { start: originalStart, end: originalEnd }
+                    });
                 }
             });
-            
-            if (hasData) {
+
+            const originalRequestStrings = Array.from(periods.values()).map(p => 
+                `${p.type}: ${format(p.original.start, 'dd/MM/yy')} - ${format(p.original.end, 'dd/MM/yy')}`
+            );
+
+            const modifiedRequestStrings = Array.from(periods.values())
+                .filter(p => !isEqual(p.start, p.original.start) || !isEqual(p.end, p.original.end))
+                .map(p => `${p.type}: ${format(p.start, 'dd/MM/yy')} - ${format(p.end, 'dd/MM/yy')}`);
+
+            if (originalRequestStrings.length > 0) {
                 originalRequestText = originalRequestStrings.join('\n');
                 modifiedRequestText = modifiedRequestStrings.join('\n');
             }
@@ -735,6 +736,7 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
 
