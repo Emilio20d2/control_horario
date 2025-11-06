@@ -138,9 +138,9 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
                 setIsLoading(false);
                 return;
             }
-
-            await hardDeleteScheduledAbsence(employee.id, (absence as any).periodId, absence.id, absence.originalRequest);
-            toast({ title: 'Ausencia eliminada permanentemente', variant: 'destructive' });
+    
+            await hardDeleteScheduledAbsence(employee.id, (absence as any).periodId, absence.id);
+            toast({ title: 'Ausencia Eliminada', description: `La ausencia ha sido eliminada permanentemente.`, variant: 'destructive' });
             
             resetForm();
             refreshData();

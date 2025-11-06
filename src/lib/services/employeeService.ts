@@ -190,7 +190,7 @@ export const updateEmployee = async (
         }
 
         // Add new schedule if provided
-        if (newWeeklySchedule && newWeeklySchedule.effectiveDate && newWeeklySchedule.effectiveDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        if (newWeeklySchedule && newWeeklySchedule.effectiveDate && newWeeklySchedule.effectiveDate.match(/^\d{4-}-\d{2}-\d{2}$/)) {
             const formattedNewSchedule = {
                 ...newWeeklySchedule,
                 effectiveDate: format(parseISO(newWeeklySchedule.effectiveDate), 'yyyy-MM-dd')
@@ -303,13 +303,18 @@ export const endIndefiniteAbsence = async (employeeId: string, dateToEnd: Date):
     const employeeData = employeeDoc.data() as Employee;
     let employeeModified = false;
     
-    const safeParseDate = (d: any) => d instanceof Date ? d : parseISO(d);
+    const safeParseDate = (d: any): Date | null => {
+        if (!d) return null;
+        if (d instanceof Date) return d;
+        const parsed = parseISO(d as string);
+        return isValid(parsed) ? parsed : null;
+    };
 
     // Find the active period for the given date
     const activePeriod = employeeData.employmentPeriods?.find(p => 
         isWithinInterval(dateToEnd, { 
-            start: startOfDay(safeParseDate(p.startDate)), 
-            end: p.endDate ? endOfDay(safeParseDate(p.endDate)) : new Date('9999-12-31')
+            start: startOfDay(safeParseDate(p.startDate)!), 
+            end: p.endDate ? endOfDay(safeParseDate(p.endDate)!) : new Date('9999-12-31')
         })
     );
 
@@ -319,7 +324,7 @@ export const endIndefiniteAbsence = async (employeeId: string, dateToEnd: Date):
     const absenceToEnd = activePeriod.scheduledAbsences.find(absence => {
         if (absence.endDate) return false; // Already has an end date, not indefinite
         const startDate = safeParseDate(absence.startDate);
-        return isValid(startDate) && !isAfter(startOfDay(startDate), startOfDay(dateToEnd));
+        return startDate && !isAfter(startOfDay(startDate), startOfDay(dateToEnd));
     });
 
     if (absenceToEnd) {
@@ -345,7 +350,7 @@ export const addScheduledAbsence = async (
     currentEmployee: Employee,
     isEmployeeRequest: boolean = false
   ): Promise<void> => {
-
+    
     const startDateObj = parseISO(newAbsence.startDate);
     await endIndefiniteAbsence(employeeId, startDateObj);
       
@@ -482,38 +487,16 @@ export const hardDeleteScheduledAbsence = async (
 
     const employeeCopy = JSON.parse(JSON.stringify(employeeDoc.data()));
     const period = employeeCopy.employmentPeriods.find((p: EmploymentPeriod) => p.id === periodId);
-    if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas");
+    if (!period || !period.scheduledAbsences) throw new Error("Periodo laboral o ausencias no encontradas.");
 
-    const absenceToDelete = period.scheduledAbsences.find((a: ScheduledAbsence) => a.id === absenceId);
-    if (!absenceToDelete) {
-        console.warn(`Absence with id ${absenceId} not found for hard delete.`);
-        return;
+    // Filter out the absence to be deleted by its unique ID. This is the most reliable way.
+    const originalLength = period.scheduledAbsences.length;
+    period.scheduledAbsences = period.scheduledAbsences.filter((a: ScheduledAbsence) => a.id !== absenceId);
+
+    if (period.scheduledAbsences.length === originalLength) {
+        console.warn(`Absence with id ${absenceId} not found for hard delete. No changes made.`);
+        return; // No need to update if nothing changed
     }
-
-    // Check for confirmed weeks if provided
-    if (weeklyRecords) {
-        const startDate = parseISO(absenceToDelete.startDate as string);
-        const endDate = absenceToDelete.endDate ? parseISO(absenceToDelete.endDate as string) : startDate;
-        const daysInAbsence = eachDayOfInterval({ start: startOfDay(startDate), end: startOfDay(endDate) });
-
-        for (const day of daysInAbsence) {
-            const weekId = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-            if (weeklyRecords[weekId]?.weekData?.[employeeId]?.confirmed) {
-                throw new Error(`No se puede eliminar. La semana del ${weekId} ya está confirmada.`);
-            }
-        }
-    }
-    
-    // Find both the definitive record and the original request record to delete them.
-    const originalRequestStartDate = absenceToDelete.originalRequest?.startDate;
-
-    period.scheduledAbsences = period.scheduledAbsences.filter((a: ScheduledAbsence) => {
-        // If the current absence has an original request that matches, it should be deleted.
-        const matchesOriginal = a.originalRequest?.startDate === originalRequestStartDate;
-        
-        // Don't delete if it's not the target absence and doesn't match the original request.
-        return !(a.id === absenceId || (!a.isDefinitive && matchesOriginal));
-    });
 
     await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
 };
