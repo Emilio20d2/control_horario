@@ -299,23 +299,30 @@ export const deleteEmployee = async (id: string): Promise<void> => {
 export const endIndefiniteAbsence = async (employeeId: string, dateToEnd: Date): Promise<void> => {
     const employeeDoc = await getDoc(doc(db, 'employees', employeeId));
     if (!employeeDoc.exists()) return;
-    
+
     const employeeData = employeeDoc.data() as Employee;
     let employeeModified = false;
 
-    for (const period of employeeData.employmentPeriods || []) {
-        if (!period.scheduledAbsences) continue;
-        
-        const absenceToEnd = period.scheduledAbsences.find(absence => {
-            if (absence.endDate) return false; // Already has an end date
-            const startDate = absence.startDate instanceof Date ? absence.startDate : parseISO(absence.startDate as string);
-            return !isBefore(startOfDay(dateToEnd), startOfDay(startDate));
-        });
+    // Find the active period for the given date
+    const activePeriod = employeeData.employmentPeriods?.find(p => 
+        isWithinInterval(dateToEnd, { 
+            start: startOfDay(p.startDate instanceof Date ? p.startDate : parseISO(p.startDate as string)), 
+            end: p.endDate ? endOfDay(p.endDate instanceof Date ? p.endDate : parseISO(p.endDate as string)) : new Date('9999-12-31')
+        })
+    );
 
-        if (absenceToEnd) {
-            absenceToEnd.endDate = format(subDays(dateToEnd, 1), 'yyyy-MM-dd');
-            employeeModified = true;
-        }
+    if (!activePeriod || !activePeriod.scheduledAbsences) return;
+
+    // Find the indefinite absence active on the date to end
+    const absenceToEnd = activePeriod.scheduledAbsences.find(absence => {
+        if (absence.endDate) return false; // Already has an end date, not indefinite
+        const startDate = absence.startDate instanceof Date ? absence.startDate : parseISO(absence.startDate as string);
+        return isValid(startDate) && !isAfter(startOfDay(startDate), startOfDay(dateToEnd));
+    });
+
+    if (absenceToEnd) {
+        absenceToEnd.endDate = format(subDays(dateToEnd, 1), 'yyyy-MM-dd');
+        employeeModified = true;
     }
 
     if (employeeModified) {
@@ -340,6 +347,9 @@ export const addScheduledAbsence = async (
     const startDateObj = parseISO(newAbsence.startDate);
     await endIndefiniteAbsence(employeeId, startDateObj);
       
+    // A little delay to ensure the endIndefiniteAbsence write is processed before we read again
+    await new Promise(resolve => setTimeout(resolve, 250));
+
     // Refetch the employee data after potentially ending an absence
     const employeeDoc = await getDoc(doc(db, 'employees', employeeId));
     if (!employeeDoc.exists()) throw new Error("Employee not found after refetch");
@@ -505,6 +515,4 @@ export const hardDeleteScheduledAbsence = async (
 
     await updateDocument('employees', employeeId, { employmentPeriods: employeeCopy.employmentPeriods });
 };
-    
-
     

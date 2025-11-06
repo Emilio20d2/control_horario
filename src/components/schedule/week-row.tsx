@@ -48,6 +48,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         getTheoreticalHoursAndTurn,
         getEffectiveWeeklyHours,
         getActiveEmployeesForDate,
+        refreshData,
     } = useDataProvider();
     
     const [localWeekData, setLocalWeekData] = useState<DailyEmployeeData | null>(initialWeekData);
@@ -163,6 +164,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 if (wasIndefiniteAbsenceDay && isInterrupted) {
                     const activePeriod = getActivePeriod(employee.id, day);
                     if (activePeriod?.scheduledAbsences) {
+                        // Find the indefinite absence active on this day.
                         const relevantAbsence = activePeriod.scheduledAbsences.find(a => 
                             !a.endDate && 
                             a.absenceTypeId === absenceTypes.find(at => at.abbreviation === initialDayData.absence)?.id &&
@@ -241,7 +243,8 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
             const docId = `${weekId}-${employee.id}`;
             await setDoc(doc(db, 'weeklyRecords', docId), sanitizedDataToSave, { merge: true });
             toast({ title: `Semana Confirmada para ${employee.name}` });
-    
+            
+            refreshData(); // Force a refresh of the data provider
             onWeekCompleted(weekId);
 
         } catch (error) {
