@@ -163,7 +163,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         setIsSaving(true);
         try {
             await updateDoc(doc(db, 'weeklyRecords', weekId), { [`weekData.${employee.id}.confirmed`]: false });
-            onWeekLevelChange(employee.id, 'confirmed', false); // Immediately update parent state
+            onWeekLevelChange(employee.id, 'confirmed', false);
             toast({ title: `Semana Habilitada para Edición`, variant: "destructive" });
         } catch (error) {
             console.error("Error al habilitar corrección:", error);
@@ -177,7 +177,6 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
         return <TableRow><TableCell colSpan={8} className="p-0"><Skeleton className="h-48 w-full rounded-none" /></TableCell></TableRow>;
     }
     
-    const isConfirmed = !!initialWeekData.confirmed;
     const activePeriod = getActivePeriod(employee.id, weekDays[0]);
     let contractType;
     if (activePeriod) {
@@ -201,15 +200,15 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     <p className="text-muted-foreground">{contractType?.name ?? 'N/A'}</p>
                     
                     <div className="space-y-2 mt-2">
-                         <InputStepper label="Jornada Semanal" value={initialWeekData.weeklyHoursOverride ?? weeklyHours} onChange={(v) => onWeekLevelChange(employee.id, 'weeklyHoursOverride', v)} className="text-xs" disabled={isConfirmed} />
-                         <InputStepper label="H. Complementarias" value={initialWeekData.totalComplementaryHours ?? undefined} onChange={(v) => onWeekLevelChange(employee.id, 'totalComplementaryHours', v)} disabled={isConfirmed} />
+                         <InputStepper label="Jornada Semanal" value={initialWeekData.weeklyHoursOverride ?? weeklyHours} onChange={(v) => onWeekLevelChange(employee.id, 'weeklyHoursOverride', v)} className="text-xs" disabled={initialWeekData.confirmed} />
+                         <InputStepper label="H. Complementarias" value={initialWeekData.totalComplementaryHours ?? undefined} onChange={(v) => onWeekLevelChange(employee.id, 'totalComplementaryHours', v)} disabled={initialWeekData.confirmed} />
                          {showDifferenceCheckbox && (
                             <div className="flex items-center space-x-2 pt-1">
                                 <Checkbox 
                                     id={`diff-${employee.id}-${weekId}`} 
                                     checked={initialWeekData.isDifference}
                                     onCheckedChange={(checked) => onWeekLevelChange(employee.id, 'isDifference', !!checked)}
-                                    disabled={isConfirmed || !initialWeekData.hasPreregistration}
+                                    disabled={initialWeekData.confirmed || !initialWeekData.hasPreregistration}
                                 />
                                 <label
                                     htmlFor={`diff-${employee.id}-${weekId}`}
@@ -224,7 +223,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                             className="h-8 text-xs mt-2 resize-none"
                             value={initialWeekData.generalComment || ''}
                             onChange={(e) => onWeekLevelChange(employee.id, 'generalComment', e.target.value)}
-                            disabled={isConfirmed}
+                            disabled={initialWeekData.confirmed}
                         />
                     </div>
                     
@@ -233,7 +232,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                     <BalancePreviewDisplay initialBalances={initialBalances} preview={preview} />
                     
                     <div className="mt-2 space-y-2">
-                        {isConfirmed ? (
+                        {initialWeekData.confirmed ? (
                             <div className="flex flex-col items-center gap-2">
                                 <div className="flex items-center gap-2 p-2 justify-center rounded-md bg-green-100 dark:bg-green-900/50 w-full">
                                     <CheckCircle className="h-5 w-5 text-green-600" />
@@ -274,7 +273,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                 const cellStyle: React.CSSProperties = {};
                 if (isHoliday) {
                     cellStyle.background = 'linear-gradient(to bottom right, #e0f2f1, transparent)';
-                } else if (isConfirmed) {
+                } else if (initialWeekData.confirmed) {
                      cellStyle.background = 'linear-gradient(to bottom right, rgba(240, 240, 240, 0.5), transparent)';
                 }
 
@@ -293,14 +292,14 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                                 <InputStepper
                                     value={dayData.workedHours}
                                     onChange={(v) => onDataChange(employee.id, dayId, 'workedHours', v)}
-                                    disabled={isConfirmed}
+                                    disabled={initialWeekData.confirmed}
                                 />
                                 {absenceType && (absenceType.isAbsenceSplittable || absenceType.computesFullDay) && (
                                      <InputStepper
                                         label={absenceType.name}
                                         value={dayData.absenceHours}
                                         onChange={(v) => onDataChange(employee.id, dayId, 'absenceHours', v)}
-                                        disabled={isConfirmed}
+                                        disabled={initialWeekData.confirmed}
                                     />
                                 )}
                                 {showLeaveHours && (
@@ -308,14 +307,14 @@ export const WeekRow: React.FC<WeekRowProps> = ({ employee, weekId, weekDays, in
                                         label="H. Libranza"
                                         value={dayData.leaveHours}
                                         onChange={(v) => onDataChange(employee.id, dayId, 'leaveHours', v)}
-                                        disabled={isConfirmed}
+                                        disabled={initialWeekData.confirmed}
                                     />
                                 )}
                             </div>
 
                             <div className="flex flex-row gap-1 h-auto sm:h-8 items-center mt-auto">
-                                <AbsenceEditor dayData={dayData} absenceTypes={absenceTypes} onAbsenceChange={(f, v) => onDataChange(employee.id, dayId, f, v)} disabled={isConfirmed} />
-                                {isHoliday && holidayType && <HolidayEditor dayData={dayData} holidayType={holidayType} onHolidayChange={(f, v) => onDataChange(employee.id, dayId, f, v)} disabled={isConfirmed} />}
+                                <AbsenceEditor dayData={dayData} absenceTypes={absenceTypes} onAbsenceChange={(f, v) => onDataChange(employee.id, dayId, f, v)} disabled={initialWeekData.confirmed} />
+                                {isHoliday && holidayType && <HolidayEditor dayData={dayData} holidayType={holidayType} onHolidayChange={(f, v) => onDataChange(employee.id, dayId, f, v)} disabled={initialWeekData.confirmed} />}
                             </div>
                             
                              <div className="h-4 mt-1 sm:mt-2">
