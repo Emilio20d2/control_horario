@@ -562,13 +562,18 @@ export const generateSignatureReportPDF = (
         const vacationAbsences = (employeesWithAbsences[employee.id] || [])
             .filter(a => a.absenceTypeId === vacationType.id && getYear(a.startDate) === year)
             .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+        
+        // Group absences into periods
+        const periods = new Set<string>();
+        vacationAbsences.forEach(v => {
+             const startDate = v.startDate;
+             const endDate = v.endDate ? v.endDate : startDate;
+             const periodString = `del ${format(startDate, 'dd/MM/yyyy', { locale: es })} al ${format(endDate, 'dd/MM/yyyy', { locale: es })}`;
+             periods.add(periodString);
+        });
 
-        const vacationPeriodsText = vacationAbsences.length > 0
-            ? vacationAbsences.map(v => {
-                const startDate = v.startDate;
-                const endDate = v.endDate ? v.endDate : startDate;
-                return `del ${format(startDate, 'dd/MM/yyyy', { locale: es })} al ${format(endDate, 'dd/MM/yyyy', { locale: es })}`
-            }).join('\n')
+        const vacationPeriodsText = periods.size > 0
+            ? Array.from(periods).join('\n')
             : 'No tiene vacaciones programadas.';
         
         const textLines = doc.splitTextToSize(vacationPeriodsText, 180);
@@ -712,6 +717,7 @@ export const generateRequestStatusReportPDF = (
     
 
     
+
 
 
 
