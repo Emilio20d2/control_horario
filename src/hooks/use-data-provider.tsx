@@ -1,4 +1,5 @@
 
+
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type {
@@ -1208,7 +1209,7 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                 for (const period of emp.employmentPeriods) {
                     scheduledAbsence = period.scheduledAbsences?.find(absence => {
                         const startDate = startOfDay(absence.startDate);
-                        const endDate = absence.endDate ? endOfDay(absence.endDate) : endOfDay(startDate);
+                        const endDate = absence.endDate ? endOfDay(absence.endDate) : endOfDay(new Date('9999-12-31'));
                         return isWithinInterval(day, { start: startDate, end: endDate });
                     });
                     if (scheduledAbsence) break;
@@ -1250,8 +1251,12 @@ const calculateSeasonalVacationStatus = (employeeId: string, year: number) => {
                     scheduledAbsence = period.scheduledAbsences.find(absence => {
                         if (!absence.startDate) return false;
                         const startDate = startOfDay(absence.startDate);
-                        const endDate = absence.endDate ? endOfDay(absence.endDate) : endOfDay(new Date('9999-12-31'));
-                        return isWithinInterval(day, { start: startDate, end: endDate });
+                        if (absence.endDate) {
+                            const endDate = endOfDay(absence.endDate);
+                            return isWithinInterval(day, { start: startDate, end: endDate });
+                        }
+                        // Handle indefinite absences
+                        return !isBefore(day, startDate);
                     });
                     if (scheduledAbsence) break;
                 }
