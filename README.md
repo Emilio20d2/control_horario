@@ -52,11 +52,15 @@ Centro de operaciones para la generación de informes en PDF.
 
 La herramienta principal para la gestión diaria.
 
+- **Navegación Libre**: Puedes navegar a cualquier semana del año usando las flechas o el selector de calendario, lo que te permite planificar y consultar con total libertad.
+
 - **Vista Semanal (por defecto)**:
   - Muestra a todos los empleados activos para la semana seleccionada.
-  - **Registro de Horas**: Puedes introducir horas trabajadas, tipos de ausencia, horas de libranza y complementarias para cada empleado y día.
+  - **Registro de Horas**: En el modo de edición (semanas no confirmadas), puedes introducir horas trabajadas, tipos de ausencia, horas de libranza y complementarias para cada empleado.
+  - **Gestión de Ausencias Programadas**: Al editar la semana de un empleado, el botón **"Ausencias"** abre una ventana para gestionar sus ausencias largas (bajas, excedencias, etc.) sin necesidad de ir a la ficha del empleado.
   - **Impacto en Tiempo Real**: La aplicación calcula al instante cómo cada cambio afectará a las bolsas de horas del empleado.
-  - **Confirmación**: Al pulsar "Confirmar", los datos de la semana se guardan de forma permanente y los balances se actualizan.
+  - **Confirmación**: Al pulsar "Confirmar", los datos de la semana se guardan de forma permanente y los balances se actualizan. La fila del empleado pasa a modo de solo lectura.
+  - **Habilitar Corrección**: En las semanas ya confirmadas, puedes pulsar este botón para volver a poner la fila en modo de edición y hacer ajustes.
 
 - **Vista Anual (seleccionando un empleado)**:
   - Muestra el calendario completo de un solo empleado para todo un año, permitiendo una visión y planificación a largo plazo.
