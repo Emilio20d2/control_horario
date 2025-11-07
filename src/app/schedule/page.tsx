@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { endIndefiniteAbsence } from '@/lib/services/employeeService';
-import { AddAbsenceDialog } from '@/components/schedule/add-absence-dialog';
+
 
 // Function to get initial date without hooks in the main body
 const getInitialDate = (searchParams: URLSearchParams): Date => {
@@ -66,7 +66,6 @@ export default function SchedulePage() {
     const [balancePreviews, setBalancePreviews] = useState<Record<string, any | null>>({});
     const [initialBalancesMap, setInitialBalancesMap] = useState<Record<string, any | null>>({});
     const [isSaving, setIsSaving] = useState<Record<string, boolean>>({});
-    const [isAddAbsenceOpen, setIsAddAbsenceOpen] = useState(false);
 
     const [completionInfo, setCompletionInfo] = useState<{ weekId: string; nextWeekId: string | null } | null>(null);
 
@@ -120,7 +119,7 @@ export default function SchedulePage() {
         }
         setProcessedWeeklyViewData(newProcessedData);
         setInitialBalancesMap(newInitialBalances);
-    }, [loading, weekId, selectedEmployeeId, processEmployeeWeekData, weekDays, employees, isEmployeeActiveForWeek, currentDate, dataProvider.getEmployeeBalancesForWeek]);
+    }, [loading, weekId, selectedEmployeeId, processEmployeeWeekData, weekDays, employees, isEmployeeActiveForWeek, currentDate, dataProvider]);
 
     // Data processing for annual view
     useEffect(() => {
@@ -156,7 +155,7 @@ export default function SchedulePage() {
         setProcessedAnnualViewData(newProcessedData);
         setInitialBalancesMap(newInitialBalances);
 
-    }, [loading, selectedEmployeeId, selectedYear, employees, processEmployeeWeekData, getWeekId, isEmployeeActiveForWeek, dataProvider.getEmployeeBalancesForWeek]);
+    }, [loading, selectedEmployeeId, selectedYear, employees, processEmployeeWeekData, getWeekId, isEmployeeActiveForWeek, dataProvider]);
 
     // Balance preview calculation effect
     useEffect(() => {
@@ -190,7 +189,7 @@ export default function SchedulePage() {
             setBalancePreviews(newPreviews);
         };
         calculateAllPreviews();
-    }, [processedWeeklyViewData, processedAnnualViewData, initialBalancesMap, dataProvider.calculateBalancePreview, selectedEmployeeId]);
+    }, [processedWeeklyViewData, processedAnnualViewData, initialBalancesMap, dataProvider, selectedEmployeeId]);
     
     
     const handleWeekRowChange = (employeeId: string, weekIdToUpdate: string, dayOrWeekKey: string, field: string, value: any) => {
@@ -523,15 +522,6 @@ export default function SchedulePage() {
             setCurrentDate(parseISO(weekId));
             setCompletionInfo(null);
         }}
-    />
-     <AddAbsenceDialog
-        isOpen={isAddAbsenceOpen}
-        onOpenChange={setIsAddAbsenceOpen}
-        activeEmployees={activeEmployeesForDropdown}
-        absenceTypes={absenceTypes}
-        holidays={holidays}
-        employees={employees}
-        refreshData={refreshData}
     />
     <div className="flex flex-col gap-0">
         <div className="flex flex-col sm:flex-row justify-between items-center px-4 md:px-6 py-4 gap-4">
