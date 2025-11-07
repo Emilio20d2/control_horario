@@ -26,8 +26,8 @@ export default function RootLayout({
         <meta name="theme-color" content="#020817" media="(prefers-color-scheme: dark)" />
         
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="apple-touch-icon" href="/logo.png" />
+        <link rel="icon" href="/logo_gradient.svg" type="image/svg+xml" sizes="any" />
+        <link rel="apple-touch-icon" href="/logo_gradient.svg" />
       </head>
       <body className={cn('antialiased font-body')}>
         <AppProviders>
