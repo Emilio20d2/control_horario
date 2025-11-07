@@ -185,15 +185,15 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                     
                     let cellStyle: React.CSSProperties = {};
                     if(initialWeekData.confirmed) {
-                         cellStyle.background = 'linear-gradient(to right, rgba(232, 245, 233, 0.7), transparent)';
+                         cellStyle.background = 'linear-gradient(to right, #e8f5e9, transparent)'; // Green gradient for confirmed
                     } else {
                          cellStyle.background = 'linear-gradient(to right, hsl(var(--primary) / 0.1), transparent)';
                     }
 
                     if (isHoliday) {
                         cellStyle.background = holidayType === 'Apertura' ? 'linear-gradient(to right, #e8f5e9, transparent)' : 'linear-gradient(to right, #fde2e2, transparent)';
-                    } else if (absenceType?.color) {
-                        cellStyle.background = `linear-gradient(to right, ${absenceType.color}40, transparent)`;
+                    } else if (dayData.absence !== 'ninguna') {
+                        cellStyle.background = 'linear-gradient(to right, #FEFCE8, transparent)'; // Yellow gradient for absences
                     }
 
                     return (
@@ -242,4 +242,3 @@ export const WeekRow: React.FC<WeekRowProps> = ({
         </>
     );
 };
-
