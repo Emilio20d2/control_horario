@@ -37,7 +37,6 @@ export default function SchedulePage() {
         correctionRequests,
         availableYears,
         refreshData,
-        unconfirmedWeeksDetails
     } = dataProvider;
     const searchParams = useSearchParams();
     const { toast } = useToast();
@@ -48,15 +47,8 @@ export default function SchedulePage() {
             const date = parseISO(weekParam);
             if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
         }
-        
-        if (unconfirmedWeeksDetails && unconfirmedWeeksDetails.length > 0) {
-            const oldestWeekId = unconfirmedWeeksDetails[unconfirmedWeeksDetails.length - 1].weekId;
-            const date = parseISO(oldestWeekId);
-            if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
-        }
-        
         return startOfWeek(new Date(), { weekStartsOn: 1 });
-    }, [searchParams, unconfirmedWeeksDetails]);
+    }, [searchParams]);
     
     const [currentDate, setCurrentDate] = useState(initialDate);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
