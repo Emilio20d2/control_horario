@@ -191,7 +191,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                     }
 
                     if (isHoliday) {
-                        cellStyle.background = holidayType === 'Apertura' ? 'linear-gradient(to right, #e8f5e9, transparent)' : 'linear-gradient(to right, #fde2e2, transparent)';
+                        cellStyle.background = 'linear-gradient(to right, #fde2e2, transparent)';
                     } else if (dayData.absence !== 'ninguna') {
                         cellStyle.background = 'linear-gradient(to right, #FEFCE8, transparent)'; // Yellow gradient for absences
                     }
