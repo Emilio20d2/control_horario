@@ -597,17 +597,20 @@ const calculateBalancePreview = useCallback((employeeId: string, weekData: Recor
     const employee = getEmployeeById(employeeId);
     if (!employee) return null;
 
+    const weekStartDate = parseISO(Object.keys(weekData).sort()[0]);
+    const activePeriod = getActivePeriod(employeeId, weekStartDate);
+
     return balanceCalculator(
         employee.id,
         weekData,
         initialBalances,
         absenceTypes,
         contractTypes,
-        employee.employmentPeriods,
+        activePeriod ? [activePeriod] : [], // Pass only the relevant period
         weeklyHoursOverride,
         totalComplementaryHours
     );
-  }, [getEmployeeById, absenceTypes, contractTypes]);
+  }, [getEmployeeById, getActivePeriod, absenceTypes, contractTypes]);
   
 const getEmployeeBalancesForWeek = useCallback((employeeId: string, weekId: string): { ordinary: number, holiday: number, leave: number, total: number } => {
     const employee = employees.find(e => e.id === employeeId);
@@ -621,13 +624,11 @@ const getEmployeeBalancesForWeek = useCallback((employeeId: string, weekId: stri
         (a.startDate as Date).getTime() - (b.startDate as Date).getTime()
     );
 
-    // Find the period active DURING or JUST BEFORE the target week.
     const relevantPeriod = allPeriodsSorted
         .filter(p => !isAfter(startOfDay(p.startDate as Date), targetWeekStartDate))
         .pop();
 
     if (!relevantPeriod) {
-        // This case occurs if the weekId is before any contract started. Return the first period's initial balances.
         const firstPeriod = allPeriodsSorted[0];
         const balances = {
             ordinary: firstPeriod?.initialOrdinaryHours ?? 0,
@@ -649,20 +650,30 @@ const getEmployeeBalancesForWeek = useCallback((employeeId: string, weekId: stri
         .filter(record => {
             const recordDate = parseISO(record.id);
             return record.weekData?.[employeeId]?.confirmed &&
-                   !isBefore(recordDate, relevantPeriodStartDate) && // Only from the start of the relevant period
-                   isBefore(recordDate, targetWeekStartDate);        // Up to the week before the target
+                   !isBefore(recordDate, relevantPeriodStartDate) && 
+                   isBefore(recordDate, targetWeekStartDate);
         })
         .sort((a, b) => a.id.localeCompare(b.id));
 
     for (const record of recordsToProcess) {
         const weekData = record.weekData[employeeId];
-        const preview = calculateBalancePreview(
+        const recordDate = parseISO(record.id);
+        const activePeriodForRecord = getActivePeriod(employeeId, recordDate);
+
+        if (!activePeriodForRecord) continue;
+
+        // Use the balances from the previous iteration to calculate the next
+        const preview = balanceCalculator(
             employeeId,
             weekData.days,
             currentBalances,
+            absenceTypes,
+            contractTypes,
+            [activePeriodForRecord], // Pass the correct period for this specific week
             weekData.weeklyHoursOverride,
             weekData.totalComplementaryHours
         );
+
         if (preview) {
             currentBalances = {
                 ordinary: preview.resultingOrdinary,
@@ -673,7 +684,7 @@ const getEmployeeBalancesForWeek = useCallback((employeeId: string, weekId: stri
     }
 
     return { ...currentBalances, total: currentBalances.ordinary + currentBalances.holiday + currentBalances.leave };
-}, [employees, weeklyRecords, calculateBalancePreview]);
+}, [employees, weeklyRecords, contractTypes, absenceTypes, getActivePeriod]);
 
   
 const getEmployeeFinalBalances = useCallback((employeeId: string): { ordinary: number, holiday: number, leave: number, total: number } => {
