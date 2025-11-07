@@ -23,6 +23,18 @@ import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { endIndefiniteAbsence } from '@/lib/services/employeeService';
 
+// Function to get initial date without hooks in the main body
+const getInitialDate = (searchParams: URLSearchParams): Date => {
+  const weekParam = searchParams.get('week');
+  if (weekParam) {
+    const date = parseISO(weekParam);
+    if (isValid(date)) {
+      return startOfWeek(date, { weekStartsOn: 1 });
+    }
+  }
+  return startOfWeek(new Date(), { weekStartsOn: 1 });
+};
+
 export default function SchedulePage() {
     const dataProvider = useDataProvider();
     const { 
@@ -41,17 +53,9 @@ export default function SchedulePage() {
     const searchParams = useSearchParams();
     const { toast } = useToast();
 
-    const initialDate = useMemo(() => {
-        const weekParam = searchParams.get('week');
-        if (weekParam) {
-            const date = parseISO(weekParam);
-            if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
-        }
-        // This is the change: no longer defaults to the oldest unconfirmed week.
-        return startOfWeek(new Date(), { weekStartsOn: 1 });
-    }, [searchParams]);
+    // Use a function to initialize state, avoiding direct hook dependency in render
+    const [currentDate, setCurrentDate] = useState(() => getInitialDate(searchParams));
     
-    const [currentDate, setCurrentDate] = useState(initialDate);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('all');
     const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
     
