@@ -15,17 +15,13 @@ import { CheckCircle, Undo2, Save, Loader2, CalendarClock, X } from 'lucide-reac
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from "@/components/ui/checkbox"
 import { es } from 'date-fns/locale';
-import { Calendar } from '@/components/ui/calendar';
-
 
 import { AbsenceEditor } from './absence-editor';
 import { HolidayEditor } from './holiday-editor';
 import { BalancePreviewDisplay } from './balance-preview';
-import { DayPicker } from 'react-day-picker';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { ScheduledAbsenceManager } from '../employees/scheduled-absence-manager';
-import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { endIndefiniteAbsence } from '@/lib/services/employeeService';
+
 
 interface WeekRowProps {
     employee: Employee;
@@ -57,7 +53,6 @@ export const WeekRow: React.FC<WeekRowProps> = ({
         getTheoreticalHoursAndTurn,
         getEffectiveWeeklyHours,
         getActivePeriod,
-        refreshData,
     } = useDataProvider();
 
     const [absenceManagerOpen, setAbsenceManagerOpen] = useState(false);
@@ -107,51 +102,39 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                         </div>
                         <p className="text-muted-foreground">{contractType?.name ?? 'N/A'}</p>
                         
-                        {!initialWeekData.confirmed ? (
-                            <>
-                                <div className="space-y-2 mt-2">
-                                    <InputStepper label="Jornada Semanal" value={initialWeekData.weeklyHoursOverride ?? weeklyHours} onChange={(v) => handleWeekLevelChange('weeklyHoursOverride', v)} className="text-xs" disabled={initialWeekData.confirmed} />
-                                    <InputStepper label="H. Complementarias" value={initialWeekData.totalComplementaryHours ?? undefined} onChange={(v) => handleWeekLevelChange('totalComplementaryHours', v)} disabled={initialWeekData.confirmed} />
-                                    {showDifferenceCheckbox && (
-                                        <div className="flex items-center space-x-2 pt-1">
-                                            <Checkbox 
-                                                id={`diff-${employee.id}-${weekId}`} 
-                                                checked={initialWeekData.isDifference}
-                                                onCheckedChange={(checked) => handleWeekLevelChange('isDifference', !!checked)}
-                                                disabled={initialWeekData.confirmed || !initialWeekData.hasPreregistration}
-                                            />
-                                            <label
-                                                htmlFor={`diff-${employee.id}-${weekId}`}
-                                                className={cn("text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70", initialWeekData.hasPreregistration && initialWeekData.isDifference && "text-destructive")}
-                                            >
-                                                Diferencia con Excel
-                                            </label>
-                                        </div>
-                                    )}
-                                    <Textarea
-                                        placeholder="Añadir comentario..."
-                                        className="h-8 text-xs mt-2 resize-none"
-                                        value={initialWeekData.generalComment || ''}
-                                        onChange={(e) => handleWeekLevelChange('generalComment', e.target.value)}
-                                        disabled={initialWeekData.confirmed}
+                        <div className="space-y-2 mt-2">
+                            <InputStepper label="Jornada Semanal" value={initialWeekData.weeklyHoursOverride ?? weeklyHours} onChange={(v) => handleWeekLevelChange('weeklyHoursOverride', v)} className="text-xs" disabled={initialWeekData.confirmed} />
+                            <InputStepper label="H. Complementarias" value={initialWeekData.totalComplementaryHours ?? undefined} onChange={(v) => handleWeekLevelChange('totalComplementaryHours', v)} disabled={initialWeekData.confirmed} />
+                            {showDifferenceCheckbox && (
+                                <div className="flex items-center space-x-2 pt-1">
+                                    <Checkbox 
+                                        id={`diff-${employee.id}-${weekId}`} 
+                                        checked={initialWeekData.isDifference}
+                                        onCheckedChange={(checked) => handleWeekLevelChange('isDifference', !!checked)}
+                                        disabled={initialWeekData.confirmed || !initialWeekData.hasPreregistration}
                                     />
+                                    <label
+                                        htmlFor={`diff-${employee.id}-${weekId}`}
+                                        className={cn("text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70", initialWeekData.hasPreregistration && initialWeekData.isDifference && "text-destructive")}
+                                    >
+                                        Diferencia con Excel
+                                    </label>
                                 </div>
-                                
-                                <div className="flex-grow"></div>
+                            )}
+                            <Textarea
+                                placeholder="Añadir comentario..."
+                                className="h-8 text-xs mt-2 resize-none"
+                                value={initialWeekData.generalComment || ''}
+                                onChange={(e) => handleWeekLevelChange('generalComment', e.target.value)}
+                                disabled={initialWeekData.confirmed}
+                            />
+                        </div>
+                        
+                        <div className="flex-grow"></div>
 
-                                <BalancePreviewDisplay initialBalances={initialBalances} preview={balancePreview} />
-                                
-                                <div className="mt-2 space-y-2">
-                                     <div className="grid grid-cols-1 gap-2">
-                                        <Button variant="outline" size="sm" onClick={() => setAbsenceManagerOpen(true)}>Ausencias</Button>
-                                    </div>
-                                    <Button onClick={() => onConfirm(employee.id, weekId)} size="sm" className="w-full" disabled={isSaving || !balancePreview}>
-                                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
-                                        Confirmar
-                                    </Button>
-                                </div>
-                            </>
-                        ) : (
+                        <BalancePreviewDisplay initialBalances={initialBalances} preview={balancePreview} />
+                        
+                        {initialWeekData.confirmed ? (
                              <div className="mt-2 space-y-2">
                                 <div className="flex flex-col items-center gap-2">
                                     <div className="flex items-center gap-2 p-2 justify-center rounded-md bg-green-100 dark:bg-green-900/50 w-full">
@@ -163,6 +146,16 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                                         Habilitar Corrección
                                     </Button>
                                 </div>
+                            </div>
+                        ) : (
+                            <div className="mt-2 space-y-2">
+                                <div className="grid grid-cols-1 gap-2">
+                                    <Button variant="outline" size="sm" onClick={() => setAbsenceManagerOpen(true)}>Ausencias</Button>
+                                </div>
+                                <Button onClick={() => onConfirm(employee.id, weekId)} size="sm" className="w-full" disabled={isSaving || !balancePreview}>
+                                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
+                                    Confirmar
+                                </Button>
                             </div>
                         )}
                     </div>
