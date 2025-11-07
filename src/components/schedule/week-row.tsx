@@ -61,7 +61,6 @@ export const WeekRow: React.FC<WeekRowProps> = ({
     } = useDataProvider();
 
     const [absenceManagerOpen, setAbsenceManagerOpen] = useState(false);
-    const [popoverOpen, setPopoverOpen] = useState(false);
     
     const { turnId: weekTurn } = getTheoreticalHoursAndTurn(employee.id, weekDays[0]);
 
@@ -76,12 +75,6 @@ export const WeekRow: React.FC<WeekRowProps> = ({
     const handleEnableCorrection = useCallback(() => {
         onDataChange(employee.id, weekId, 'week', 'confirmed', false);
     }, [onDataChange, employee.id, weekId]);
-
-    const handleEndAbsence = async (day: Date) => {
-        await endIndefiniteAbsence(employee.id, day, initialWeekData.days[format(day, 'yyyy-MM-dd')]);
-        refreshData();
-        setPopoverOpen(false);
-    };
     
     const activePeriod = getActivePeriod(employee.id, weekDays[0]);
     let contractType;
@@ -149,19 +142,8 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                                 <BalancePreviewDisplay initialBalances={initialBalances} preview={balancePreview} />
                                 
                                 <div className="mt-2 space-y-2">
-                                     <div className="grid grid-cols-2 gap-2">
+                                     <div className="grid grid-cols-1 gap-2">
                                         <Button variant="outline" size="sm" onClick={() => setAbsenceManagerOpen(true)}>Ausencias</Button>
-                                         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                                            <PopoverTrigger asChild>
-                                                <Button variant="outline" size="sm">Terminar Ausencia</Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0">
-                                                <Calendar
-                                                    mode="single"
-                                                    onSelect={(day) => { if(day) handleEndAbsence(day) }}
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
                                     </div>
                                     <Button onClick={() => onConfirm(employee.id, weekId)} size="sm" className="w-full" disabled={isSaving || !balancePreview}>
                                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}

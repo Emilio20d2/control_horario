@@ -47,6 +47,7 @@ export default function SchedulePage() {
             const date = parseISO(weekParam);
             if (isValid(date)) return startOfWeek(date, { weekStartsOn: 1 });
         }
+        // This is the change: no longer defaults to the oldest unconfirmed week.
         return startOfWeek(new Date(), { weekStartsOn: 1 });
     }, [searchParams]);
     
