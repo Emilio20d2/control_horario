@@ -15,6 +15,7 @@ import { CheckCircle, Undo2, Save, Loader2, CalendarClock, X } from 'lucide-reac
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from "@/components/ui/checkbox"
 import { es } from 'date-fns/locale';
+import { Calendar } from '@/components/ui/calendar';
 
 
 import { AbsenceEditor } from './absence-editor';
