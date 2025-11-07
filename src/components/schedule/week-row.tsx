@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { InputStepper } from '@/components/ui/input-stepper';
 import { useDataProvider } from '@/hooks/use-data-provider';
 import type { DailyEmployeeData, Employee, DailyData } from '@/lib/types';
-import { CheckCircle, Undo2, Save, Loader2, CalendarClock, X } from 'lucide-react';
+import { CheckCircle, Undo2, Save, Loader2, CalendarClock, X, CalendarPlus } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from "@/components/ui/checkbox"
 import { es } from 'date-fns/locale';
@@ -20,7 +20,7 @@ import { es } from 'date-fns/locale';
 import { AbsenceEditor } from './absence-editor';
 import { HolidayEditor } from './holiday-editor';
 import { BalancePreviewDisplay } from './balance-preview';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { ScheduledAbsenceManager } from '../employees/scheduled-absence-manager';
 
 
@@ -85,9 +85,12 @@ export const WeekRow: React.FC<WeekRowProps> = ({
     return (
         <>
             <Dialog open={absenceManagerOpen} onOpenChange={setAbsenceManagerOpen}>
-                <DialogContent className="max-w-4xl">
+                 <DialogContent className="sm:max-w-[825px]">
                     <DialogHeader>
                         <DialogTitle>Gestionar Ausencias Programadas de {employee.name}</DialogTitle>
+                        <DialogDescription>
+                            Planifica ausencias de larga duración como bajas o excedencias.
+                        </DialogDescription>
                     </DialogHeader>
                     {activePeriod && <ScheduledAbsenceManager employee={employee} period={activePeriod} />}
                 </DialogContent>
@@ -104,9 +107,9 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                         <p className="text-muted-foreground">{contractType?.name ?? 'N/A'}</p>
                         
                         <div className="space-y-2 mt-2">
-                            <InputStepper label="Jornada Semanal" value={initialWeekData.weeklyHoursOverride ?? weeklyHours} onChange={(v) => handleWeekLevelChange('weeklyHoursOverride', v)} className="text-xs" disabled={initialWeekData.confirmed} />
-                            <InputStepper label="H. Complementarias" value={initialWeekData.totalComplementaryHours ?? undefined} onChange={(v) => handleWeekLevelChange('totalComplementaryHours', v)} disabled={initialWeekData.confirmed} />
-                            {showDifferenceCheckbox && (
+                             <InputStepper label="Jornada Semanal" value={initialWeekData.weeklyHoursOverride ?? weeklyHours} onChange={(v) => handleWeekLevelChange('weeklyHoursOverride', v)} className="text-xs" disabled={initialWeekData.confirmed} />
+                             <InputStepper label="H. Complementarias" value={initialWeekData.totalComplementaryHours ?? undefined} onChange={(v) => handleWeekLevelChange('totalComplementaryHours', v)} disabled={initialWeekData.confirmed} />
+                             {showDifferenceCheckbox && (
                                 <div className="flex items-center space-x-2 pt-1">
                                     <Checkbox 
                                         id={`diff-${employee.id}-${weekId}`} 
@@ -150,9 +153,10 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                             </div>
                         ) : (
                             <div className="mt-2 space-y-2">
-                                <div className="grid grid-cols-1 gap-2">
-                                    <Button variant="outline" size="sm" onClick={() => setAbsenceManagerOpen(true)}>Ausencias</Button>
-                                </div>
+                                <Button onClick={() => setAbsenceManagerOpen(true)} size="sm" className="w-full" variant="outline">
+                                    <CalendarPlus className="mr-2 h-4 w-4"/>
+                                    Ausencias
+                                </Button>
                                 <Button onClick={() => onConfirm(employee.id, weekId)} size="sm" className="w-full" disabled={isSaving || !balancePreview}>
                                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
                                     Confirmar
@@ -187,7 +191,7 @@ export const WeekRow: React.FC<WeekRowProps> = ({
                     }
 
                     if (isHoliday) {
-                        cellStyle.background = holidayType === 'Apertura' ? 'linear-gradient(to right, #e8f5e9, transparent)' : 'linear-gradient(to right, #e3f2fd, transparent)';
+                        cellStyle.background = holidayType === 'Apertura' ? 'linear-gradient(to right, #e8f5e9, transparent)' : 'linear-gradient(to right, #fde2e2, transparent)';
                     } else if (absenceType?.color) {
                         cellStyle.background = `linear-gradient(to right, ${absenceType.color}40, transparent)`;
                     }
