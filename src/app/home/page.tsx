@@ -92,11 +92,8 @@ export default function HomePage() {
     }, [employees, absenceTypes]);
 
     const welcomeName = useMemo(() => {
-        if (appUser?.email === 'mariaavg@inditex.com') {
-            return 'Arantxa';
-        }
         return employeeRecord?.name ? employeeRecord.name.split(' ')[0] : 'Admin';
-    }, [appUser, employeeRecord]);
+    }, [employeeRecord]);
 
     const handleOpenDetails = (event: { employee: Employee; absence: ScheduledAbsence; absenceType: AbsenceType }) => {
         setSelectedEvent(event);

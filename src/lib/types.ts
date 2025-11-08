@@ -71,6 +71,7 @@ export interface Employee {
     phone?: string | null;
     email?: string | null;
     authId?: string | null;
+    role?: 'admin' | 'employee';
     employmentPeriods: EmploymentPeriod[];
 }
   
@@ -225,7 +226,7 @@ export interface AbsenceTypeFormData {
 export interface AppUser {
     id: string; // Identificador único proporcionado por tu proveedor de autenticación
     email: string;
-    employeeId: string;
+    employeeId: string | null;
     role: 'admin' | 'employee';
     trueRole?: 'admin' | 'employee';
 }
