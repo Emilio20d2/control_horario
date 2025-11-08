@@ -6,8 +6,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format, parseISO, getYear, isSameDay, getISODay, addDays, endOfWeek, getISOWeekYear, isWithinInterval, getISOWeek, isAfter, isBefore, isEqual, isValid, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { Employee, WeeklyRecord, AbsenceType, Holiday, EmployeeGroup, Ausencia, Conversation, VacationCampaign, ScheduledAbsence, EmploymentPeriod } from './types';
-import { Timestamp } from 'firebase/firestore';
+import type { Employee, WeeklyRecord, AbsenceType, Holiday, EmployeeGroup, Ausencia, Conversation, VacationCampaign, ScheduledAbsence, EmploymentPeriod, DataTimestamp } from './types';
 
 // Helper function to add headers and footers to PDF
 const addHeaderFooter = (doc: jsPDF, title: string, pageNumber: number, totalPages: number) => {
@@ -525,10 +524,12 @@ export const generateQuadrantReportPDF = (
     doc.save(`cuadrante_anual_${year}.pdf`);
 };
 
-const safeParseDate = (date: any): Date | null => {
+const safeParseDate = (date: DataTimestamp | Date | null | undefined): Date | null => {
     if (!date) return null;
     if (date instanceof Date) return date;
-    if (date.toDate && typeof date.toDate === 'function') return date.toDate();
+    if (typeof (date as { toDate?: () => Date })?.toDate === 'function') {
+        return (date as { toDate: () => Date }).toDate();
+    }
     if (typeof date === 'string') {
         const parsed = parseISO(date);
         return isValid(parsed) ? parsed : null;
@@ -645,7 +646,9 @@ export const generateRequestStatusReportPDF = (
     const campaignAbsenceTypeIds = new Set(campaign.allowedAbsenceTypeIds);
     
     const toDate = (date: any): Date => {
-        if (date instanceof Timestamp) return date.toDate();
+        if (typeof (date as { toDate?: () => Date })?.toDate === 'function') {
+            return (date as { toDate: () => Date }).toDate();
+        }
         if (date instanceof Date) return date;
         if (typeof date === 'string') return parseISO(date);
         return new Date(date);

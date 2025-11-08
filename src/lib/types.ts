@@ -1,5 +1,5 @@
 
-import type { Timestamp } from 'firebase/firestore';
+export type DataTimestamp = Date | string;
 
 export interface WorkHoursRecord {
     effectiveDate: string | Date; // Allow both for flexibility
@@ -77,7 +77,7 @@ export interface Employee {
 export interface Holiday {
     id: string;
     name: string;
-    date: Date | Timestamp;
+    date: DataTimestamp;
     type: 'Nacional' | 'Regional' | 'Local' | 'Apertura';
 }
 
@@ -223,7 +223,7 @@ export interface AbsenceTypeFormData {
 }
 
 export interface AppUser {
-    id: string; // Corresponds to Firebase Auth UID
+    id: string; // Identificador único proporcionado por tu proveedor de autenticación
     email: string;
     employeeId: string;
     role: 'admin' | 'employee';
@@ -255,7 +255,7 @@ export type HolidayReportAssignment = 'doublePay' | 'dayOff' | 'ninguna';
 export interface HolidayReport {
     id: string; // weekId_employeeId
     weekId: string;
-    weekDate: Timestamp;
+    weekDate: DataTimestamp;
     employeeId: string;
     substituteId: string;
     substituteName: string;
@@ -288,7 +288,7 @@ export interface Conversation {
     employeeId: string;
     employeeName: string;
     lastMessageText: string;
-    lastMessageTimestamp: Timestamp | Date;
+    lastMessageTimestamp: DataTimestamp;
     readBy: string[]; // List of admin UIDs who have read the conversation
     unreadByEmployee: boolean;
 }
@@ -304,10 +304,10 @@ export interface VacationCampaign {
     id: string;
     title: string;
     description: string;
-    submissionStartDate: Date | Timestamp;
-    submissionEndDate: Date | Timestamp;
-    absenceStartDate: Date | Timestamp;
-    absenceEndDate: Date | Timestamp;
+    submissionStartDate: DataTimestamp;
+    submissionEndDate: DataTimestamp;
+    absenceStartDate: DataTimestamp;
+    absenceEndDate: DataTimestamp;
     allowedAbsenceTypeIds: string[];
     isActive: boolean;
 }
@@ -319,6 +319,6 @@ export interface CorrectionRequest {
     employeeName: string;
     reason: string;
     status: 'pending' | 'resolved';
-    requestedAt: Timestamp;
+    requestedAt: DataTimestamp;
 }
     

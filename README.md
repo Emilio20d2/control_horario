@@ -6,6 +6,8 @@
 
 El sistema está diseñado para manejar calendarios rotativos complejos, calcular automáticamente los balances de horas (ordinarias, de festivos, de libranza) y generar informes detallados para auditorías y gestión de personal.
 
+> **Importante:** esta distribución no incluye una base de datos ni un proveedor de autenticación preconfigurados. La aplicación expone una capa de adaptadores (`src/lib/database`) y proveedores (`src/hooks/useAuth.tsx`) para que puedas conectar tus propios servicios de manera controlada.
+
 ## 2. Pila Tecnológica
 
 - **Framework**: [Next.js](https://nextjs.org/) (con App Router)
@@ -13,8 +15,8 @@ El sistema está diseñado para manejar calendarios rotativos complejos, calcula
 - **UI**: [React](https://react.dev/)
 - **Componentes de UI**: [ShadCN/UI](https://ui.shadcn.com/)
 - **Estilos**: [Tailwind CSS](https://tailwindcss.com/)
-- **Base de Datos**: [Firebase Firestore](https://firebase.google.com/docs/firestore)
-- **Autenticación**: [Firebase Authentication](https://firebase.google.com/docs/auth)
+- **Base de Datos**: Adaptador personalizable (consulta `src/lib/database/README.md`)
+- **Autenticación**: Proveedor configurable por el integrador
 - **Generación de PDF**: [jsPDF](https://github.com/parallax/jsPDF) y [jspdf-autotable](https://github.com/simonbengtsson/jspdf-autotable)
 
 ---

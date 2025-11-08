@@ -7,8 +7,8 @@ import { ReactNode } from "react";
 import { AppLayout } from "./app-layout";
 
 function AppStateController({ children }: { children: ReactNode }) {
-    const { user, loading: authLoading } = useAuth();
-    const { loading: dataLoading } = useDataProvider();
+    const { user, loading: authLoading, authConfigured } = useAuth();
+    const { loading: dataLoading, databaseConfigured } = useDataProvider();
 
     // While auth is resolving (user and appUser), show a spinner. This is the very first check.
     if (authLoading) {
@@ -24,14 +24,31 @@ function AppStateController({ children }: { children: ReactNode }) {
         );
     }
     
-    // If there's no user after auth check, it's a public page like /login.
-    // Render the content directly without the main layout.
+    if (!authConfigured) {
+        return (
+            <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6 text-center">
+                <div className="max-w-xl space-y-4">
+                    <h1 className="text-3xl font-semibold">Configura la autenticación y la base de datos</h1>
+                    <p className="text-muted-foreground">
+                        Este repositorio se entrega sin proveedores externos configurados. Implementa tu adaptador siguiendo la guía en
+                        <code className="mx-1 rounded bg-muted px-2 py-1 text-sm">src/lib/database/README.md</code> y activa tu solución de autenticación
+                        antes de continuar.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        Una vez que hayas configurado ambos servicios podrás eliminar este mensaje y cargar tus propios datos.
+                    </p>
+                </div>
+                <div className="w-full max-w-xl">{children}</div>
+            </div>
+        );
+    }
+
     if (!user) {
         return <>{children}</>;
     }
-    
+
     // If we have an authenticated user but the main app data is still loading
-    if (user && dataLoading) {
+    if (user && (dataLoading || !databaseConfigured)) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex flex-col items-center gap-4">

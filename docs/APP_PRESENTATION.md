@@ -93,14 +93,14 @@ Un canal de comunicación directo y seguro con la dirección:
 
 ## **Seguridad: Su Tranquilidad es Nuestra Prioridad**
 
-En un mundo digital, la seguridad de los datos no es una opción, es una obligación. "Control Horario" ha sido construido sobre los cimientos de **Firebase**, la plataforma de Google reconocida por su robustez y fiabilidad.
+En un mundo digital, la seguridad de los datos no es una opción, es una obligación. "Control Horario" se entrega ahora con una capa de datos desacoplada que permite a cada organización seleccionar la infraestructura que mejor se adapte a sus requisitos de cumplimiento y protección.
 
-Pero vamos un paso más allá. Implementamos un **doble factor de seguridad**:
+Para obtener el máximo nivel de seguridad recomendamos:
 
-1.  **Autenticación Robusta de Usuarios:** Cada usuario, sea administrador o empleado, accede mediante un sistema de inicio de sesión seguro con credenciales encriptadas, gestionado por Firebase Authentication.
-2.  **Reglas de Seguridad a Nivel de Base de Datos:** No confiamos únicamente en la interfaz. Hemos implementado un conjunto de reglas directamente en la base de datos (Firestore Security Rules) que actúan como un guardián infalible. Estas reglas garantizan que un usuario solo pueda ver y modificar la información a la que tiene permiso explícito. Un empleado nunca podrá ver los datos de otro, y solo un administrador puede acceder a la configuración global.
+1.  **Autenticación Robusta de Usuarios:** Integre su proveedor favorito (como Auth0, AWS Cognito, Azure AD, etc.) y defina políticas de contraseñas, MFA y control de sesiones acordes a las políticas internas de su compañía.
+2.  **Reglas de Seguridad a Nivel de Base de Datos:** Configure las políticas de acceso en su motor de datos (roles, permisos o reglas de seguridad) para garantizar que cada usuario solo vea la información que le corresponde.
 
-**El resultado es una fortaleza digital.** Sus datos no solo están protegidos por una contraseña, sino por una segunda capa de seguridad a nivel de servidor que es prácticamente impenetrable.
+**El resultado es una fortaleza digital a su medida.** Usted decide dónde residen los datos y cómo se protegen, manteniendo la flexibilidad del producto y cumpliendo con la normativa vigente en su sector.
 
 ---
 
