@@ -53,47 +53,125 @@ export default function GuidePage() {
             </CardHeader>
             <CardContent>
               <Accordion type="single" collapsible className="w-full">
-                <AdminGuideItem title="Inicio">
-                  <p>
-                    Es la primera página que ves al iniciar sesión y actúa como un centro de notificaciones y tareas pendientes.
-                  </p>
-                  <ul className="list-disc pl-5 mt-2 space-y-1">
-                    <li><strong>Semanas Pendientes</strong>: Muestra la semana más antigua que tiene empleados sin confirmar.</li>
-                    <li><strong>Mensajes Sin Leer</strong>: Presenta una lista de las últimas conversaciones con mensajes de empleados que aún no has leído.</li>
-                    <li><strong>Próximos Eventos</strong>: Ofrece una vista rápida de las próximas ausencias programadas.</li>
-                  </ul>
+                <AdminGuideItem title="a. Inicio">
+                    <p>Es la primera página que ves al iniciar sesión y actúa como un centro de notificaciones y tareas pendientes.</p>
+                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                        <li><strong>Semanas Pendientes</strong>: Muestra la semana más antigua que tiene empleados sin confirmar. Indica el número de empleados pendientes y un botón para ir directamente a esa semana en el "Registro Horario".</li>
+                        <li><strong>Mensajes Sin Leer</strong>: Presenta una lista de las últimas conversaciones con mensajes de empleados que aún no has leído.</li>
+                        <li><strong>Próximos Eventos</strong>: Ofrece una vista rápida de las próximas ausencias programadas (bajas, excedencias, etc.) en las siguientes semanas.</li>
+                    </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="Panel de Control">
-                   <p>Centro de operaciones para la generación de informes en PDF.</p>
-                   <ul className="list-disc pl-5 mt-2 space-y-1">
-                    <li><strong>Informes por Empleado</strong>: Resumen Anual, Jornada Anual y Ausencias.</li>
-                    <li><strong>Informe de Festivos</strong>: Planificación de quién trabajará en festivos.</li>
-                    <li><strong>Informes Generales (Semanales)</strong>: Horas complementarias y estado de balances.</li>
+                <AdminGuideItem title="b. Panel de Control">
+                    <p>Centro de operaciones para la generación de informes en PDF.</p>
+                    <ul className="list-disc pl-5 mt-2 space-y-2">
+                        <li>
+                            <strong>Informes por Empleado</strong>:
+                            <ul className="list-disc pl-5 mt-1">
+                                <li><strong>Resumen Anual</strong>: Genera un PDF con el registro semanal de un empleado para un año específico, mostrando el desglose de horas y el impacto en las bolsas semana a semana.</li>
+                                <li><strong>Jornada Anual</strong>: Crea un informe que compara las horas teóricas vs. las realmente computadas para un empleado en un año.</li>
+                                <li><strong>Ausencias</strong>: Exporta un resumen de todas las ausencias de un empleado para un año, agrupadas por tipo.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Informe de Festivos</strong>: Permite generar un listado de empleados para planificar quién trabajará en los festivos de apertura seleccionados.</li>
+                        <li>
+                            <strong>Informes Generales (Semanales)</strong>:
+                             <ul className="list-disc pl-5 mt-1">
+                                <li><strong>H. Complem.</strong>: Genera un PDF con los empleados que han realizado horas complementarias en una semana específica.</li>
+                                <li><strong>Balances</strong>: Crea un informe con el estado de las bolsas de horas de toda la plantilla al final de una semana seleccionada.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Top 10 Empleados por Balance</strong>: Un gráfico de barras que muestra los empleados con el mayor balance total de horas, permitiendo una gestión proactiva.</li>
+                    </ul>
+                </AdminGuideItem>
+                <AdminGuideItem title="c. Registro Horario">
+                    <p>La herramienta principal para la gestión diaria.</p>
+                     <ul className="list-disc pl-5 mt-2 space-y-2">
+                        <li><strong>Navegación Libre</strong>: Puedes navegar a cualquier semana del año usando las flechas o el selector de calendario, lo que te permite planificar y consultar con total libertad.</li>
+                        <li>
+                            <strong>Vista Semanal (por defecto)</strong>:
+                             <ul className="list-disc pl-5 mt-1">
+                                <li>Muestra a todos los empleados activos para la semana seleccionada.</li>
+                                <li><strong>Registro de Horas</strong>: En el modo de edición (semanas no confirmadas), puedes introducir horas trabajadas, tipos de ausencia, horas de libranza y complementarias para cada empleado.</li>
+                                <li><strong>Gestión de Ausencias Programadas</strong>: Al editar la semana de un empleado, el botón <strong>"Ausencias"</strong> abre una ventana para gestionar sus ausencias largas (bajas, excedencias, etc.) sin necesidad de ir a la ficha del empleado.</li>
+                                <li><strong>Impacto en Tiempo Real</strong>: La aplicación calcula al instante cómo cada cambio afectará a las bolsas de horas del empleado.</li>
+                                <li><strong>Confirmación</strong>: Al pulsar "Confirmar", los datos de la semana se guardan de forma permanente y los balances se actualizan. La fila del empleado pasa a modo de solo lectura.</li>
+                                <li><strong>Habilitar Corrección</strong>: En las semanas ya confirmadas, puedes pulsar este botón para volver a poner la fila en modo de edición y hacer ajustes.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Vista Anual (seleccionando un empleado)</strong>: Muestra el calendario completo de un solo empleado para todo un año, permitiendo una visión y planificación a largo plazo.</li>
+                    </ul>
+                </AdminGuideItem>
+                <AdminGuideItem title="d. Empleados">
+                  <p>Centro de gestión de la plantilla.</p>
+                   <ul className="list-disc pl-5 mt-2 space-y-2">
+                       <li>
+                           <strong>Listado de Empleados</strong>:
+                           <ul className="list-disc pl-5 mt-1">
+                               <li><strong>Activos</strong>: Muestra empleados con contrato en vigor, con un resumen en tiempo real de sus balances y días de vacaciones consumidos.</li>
+                               <li><strong>Inactivos</strong>: Empleados cuyo contrato ha finalizado.</li>
+                           </ul>
+                       </li>
+                       <li>
+                           <strong>Crear/Editar Ficha de Empleado</strong>:
+                           <ul className="list-disc pl-5 mt-1">
+                               <li><strong>Datos Personales y de Contrato</strong>: Define el nombre, DNI, email, tipo de contrato, jornada semanal, etc.</li>
+                               <li><strong>Calendario Laboral</strong>: Configura el sistema de 4 turnos rotativos para las horas teóricas.</li>
+                               <li><strong>Modificaciones de Contrato</strong>: Puedes programar cambios de jornada o de tipo de contrato a futuro sin necesidad de crear una nueva ficha.</li>
+                           </ul>
+                       </li>
                    </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="Registro Horario">
-                  <p>La herramienta principal para la gestión diaria. Permite introducir horas, ausencias y ver el impacto en tiempo real en las bolsas de horas antes de confirmar.</p>
+                 <AdminGuideItem title="e. Ficha de Empleado">
+                  <p>Visión de 360 grados de un trabajador.</p>
+                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                        <li><strong>Balances y Vacaciones</strong>: Muestra las bolsas de horas, el total acumulado y los días de vacaciones disfrutados vs. disponibles.</li>
+                        <li><strong>Datos del Contrato</strong>: Detalla el contrato vigente y el historial de cambios de jornada o de contrato.</li>
+                        <li><strong>Cómputo Anual</strong>: Un resumen año por año que compara horas teóricas vs. computadas.</li>
+                        <li><strong>Gestión de Ausencias Programadas</strong>: Permite registrar ausencias de larga duración (bajas, excedencias) que se aplicarán automáticamente en el calendario.</li>
+                    </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="Empleados">
-                  <p>Centro de gestión de la plantilla. Permite ver empleados activos e inactivos, y crear o editar sus fichas, incluyendo datos personales, de contrato y calendario laboral.</p>
+                <AdminGuideItem title="f. Formularios Personalizados">
+                  <p>Herramienta para crear PDFs a medida.</p>
+                   <ul className="list-disc pl-5 mt-2 space-y-1">
+                        <li><strong>Formularios Personalizados</strong>: Crea formularios con las columnas que necesites (texto, checkboxes) para generar un PDF con la lista de empleados activos, listo para imprimir y rellenar.</li>
+                        <li><strong>Datos Personales</strong>: Genera un informe en PDF con los datos personales de la plantilla (DNI, teléfono, email, etc.) que elijas.</li>
+                        <li><strong>Empleados para Informes</strong>: Gestiona una lista de empleados "eventuales" que no están en la plantilla principal pero que deben aparecer en ciertos informes, como el de planificación de festivos.</li>
+                    </ul>
                 </AdminGuideItem>
-                 <AdminGuideItem title="Ficha de Empleado">
-                  <p>Visión de 360 grados de un trabajador, mostrando balances, vacaciones, datos del contrato, cómputo anual y gestión de ausencias programadas.</p>
+                <AdminGuideItem title="g. Programador de Vacaciones">
+                    <p>Vista de cuadrante anual para la planificación de ausencias largas.</p>
+                     <ul className="list-disc pl-5 mt-2 space-y-1">
+                        <li><strong>Cuadrante Anual</strong>: Muestra una vista de todo el año con los empleados (agrupados por categorías) que tienen ausencias largas, permitiendo identificar solapamientos.</li>
+                        <li><strong>Informes</strong>: Desde aquí puedes imprimir el cuadrante o generar un listado para la firma de vacaciones.</li>
+                    </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="Formularios Personalizados">
-                  <p>Herramienta para crear PDFs a medida, como listados para entrega de material o informes con datos personales específicos de la plantilla.</p>
+                <AdminGuideItem title="h. Calendario">
+                  <p>Visión global de todas las ausencias programadas en el sistema.</p>
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li><strong>Vista Semanal o Mensual</strong>: Muestra en un calendario quién está ausente cada día y por qué motivo.</li>
+                    <li><strong>Gestión de Ausencias</strong>: Permite añadir, modificar o eliminar ausencias de larga duración directamente desde el calendario.</li>
+                  </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="Programador de Vacaciones">
-                    <p>Vista de cuadrante anual para la planificación de ausencias largas, permitiendo identificar solapamientos.</p>
+                <AdminGuideItem title="i. Mensajes">
+                  <p>Canal de comunicación centralizado con los empleados.</p>
+                   <ul className="list-disc pl-5 mt-2 space-y-1">
+                        <li><strong>Chat Individual</strong>: Cada empleado tiene su propio chat para comunicar incidencias o recibir notificaciones.</li>
+                        <li><strong>Solicitudes de Corrección</strong>: Aquí recibirás las peticiones de los empleados para corregir errores en semanas ya confirmadas.</li>
+                    </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="Calendario">
-                  <p>Visión global de todas las ausencias programadas en el sistema, con vistas semanales o mensuales.</p>
+                <AdminGuideItem title="j. Ajustes">
+                  <p>El cerebro de la aplicación, donde se definen las reglas de negocio.</p>
+                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                        <li><strong>Días Festivos</strong>: Gestiona los festivos y aperturas comerciales.</li>
+                        <li><strong>Conf. Anual</strong>: Define las horas de convenio para cada año.</li>
+                        <li><strong>Tipos de Ausencia</strong>: Crea y configura los tipos de ausencia y sus reglas de cómputo.</li>
+                        <li><strong>Tipos de Contrato</strong>: Gestiona los tipos de contrato.</li>
+                        <li><strong>Campañas de Solicitud</strong>: Abre periodos específicos para que los empleados puedan solicitar sus vacaciones.</li>
+                        <li><strong>Utilidades</strong>: Herramientas de administrador para limpieza o auditoría de datos.</li>
+                    </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="Mensajes">
-                  <p>Canal de comunicación centralizado con los empleados para gestionar incidencias y solicitudes de corrección.</p>
-                </AdminGuideItem>
-                <AdminGuideItem title="Ajustes">
-                  <p>El cerebro de la aplicación, donde se definen las reglas de negocio como días festivos, horas de convenio, tipos de ausencia y contrato, y campañas de solicitud de vacaciones.</p>
+                 <AdminGuideItem title="k. Guía">
+                    <p>Acceso a este mismo manual de usuario directamente desde la aplicación.</p>
                 </AdminGuideItem>
               </Accordion>
             </CardContent>
