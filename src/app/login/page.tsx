@@ -1,101 +1,51 @@
-
-'use client';
-
-import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { FirebaseError } from 'firebase/app';
-import Image from 'next/image';
-import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
-  const router = useRouter();
-  const { toast } = useToast();
+  const { signIn, authConfigured } = useAuth();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await login(email, password);
-      // The redirect is handled by the root page.tsx now
-      router.push('/');
-    } catch (error) {
-        console.error(error);
-        let description = 'Las credenciales no son correctas. Por favor, inténtalo de nuevo.';
-        if (error instanceof FirebaseError) {
-          if (error.code === 'auth/api-key-not-valid') {
-            description = 'Error de configuración: La API Key de Firebase no es válida. Revisa tu archivo .env.local.';
-          } else if (error.code === 'auth/invalid-credential') {
-            description = 'Email o contraseña incorrectos. Verifica tus credenciales.';
-          }
-        }
-        toast({
-            title: 'Error de autenticación',
-            description: description,
-            variant: 'destructive',
-          });
-      setLoading(false);
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (authConfigured) {
+      const formData = new FormData(event.currentTarget);
+      await signIn(String(formData.get('email')), String(formData.get('password')));
+    } else {
+      console.warn('Integra tu propio proveedor de autenticación para habilitar el inicio de sesión.');
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-sm bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-950/30 dark:to-transparent">
-        <CardHeader className="text-center">
-            <div className="mb-4 flex justify-center">
-                <Image src="/logo.png" alt="Logo de la aplicación" width={112} height={112} />
-            </div>
-          <CardTitle className="text-2xl font-bold font-headline">Iniciar Sesión</CardTitle>
-          <CardDescription>Accede a tu panel de Control Horario</CardDescription>
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-6">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Accede a tu cuenta</CardTitle>
+          <CardDescription>
+            Este proyecto no incluye autenticación por defecto. Configura tu proveedor preferido e integra el adaptador en
+            <code className="mx-1 rounded bg-muted px-2 py-1 text-sm">useAuth.tsx</code>.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="usuario@ejemplo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <Label htmlFor="email">Correo electrónico</Label>
+              <Input id="email" name="email" type="email" disabled={!authConfigured} required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <Input id="password" name="password" type="password" disabled={!authConfigured} required />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Acceder'}
+            <Button type="submit" className="w-full" disabled={!authConfigured}>
+              Iniciar sesión
             </Button>
           </form>
-            <div className="mt-4 text-center text-sm">
-                ¿No tienes una cuenta?{' '}
-                <Link href="/register" className="underline">
-                    Regístrate
-                </Link>
-            </div>
-            <div className="mt-2 text-center text-sm">
-                 <Link href="/forgot-password" className="underline text-sm text-muted-foreground hover:text-primary">
-                    ¿Olvidaste tu contraseña?
-                </Link>
-            </div>
+          <p className="mt-6 text-sm text-muted-foreground">
+            Consulta la <Link href="/docs" className="text-primary hover:underline">documentación</Link> para añadir tu propio
+            sistema de autenticación y restaurar los flujos originales.
+          </p>
         </CardContent>
       </Card>
     </div>

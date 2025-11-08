@@ -3,9 +3,9 @@
 'use server';
 
 // This file is deprecated and no longer in use.
-// All database write operations have been moved to the client-side
-// using the standard Firebase SDK to ensure proper user authentication
-// and fix persistence issues.
+// All database write operations have been migratred to the new adapter-based layer.
+// Mantén este archivo únicamente como recordatorio de que las acciones deben
+// implementarse a través del adaptador configurado.
 
 export const updateDocument = async (collectionName: string, docId: string, data: any): Promise<void> => {
     console.error("DEPRECATED: updateDocument from firestoreAdminService was called.");
