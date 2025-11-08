@@ -37,7 +37,7 @@ export default function HelpPage() {
             </AccordionTrigger>
             <AccordionContent className="space-y-4 pt-2">
                 <p className="text-muted-foreground">
-                La sección "Mi Ficha" es tu panel de control personal. Aquí te explicamos qué significa cada dato:
+                La sección «Mi Ficha» es tu panel de control personal. Aquí te explicamos qué significa cada dato:
                 </p>
                 <div className="space-y-2 pl-4">
                 <div className="flex items-start gap-3">
@@ -58,7 +58,7 @@ export default function HelpPage() {
                     <Gift className="h-5 w-5 mt-1 text-muted-foreground" />
                     <div>
                     <h4 className="font-semibold">Bolsa de Festivos</h4>
-                    <p className="text-sm text-muted-foreground">Suma horas cuando trabajas en un festivo de apertura y no se te paga como "pago doble".</p>
+                    <p className="text-sm text-muted-foreground">Suma horas cuando trabajas en un festivo de apertura y no se te paga como «pago doble».</p>
                     </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -98,7 +98,7 @@ export default function HelpPage() {
                     <ol className="list-decimal list-inside space-y-2 text-sm">
                         <li>Ve a la sección <Badge variant="outline">Mis Presencias</Badge>.</li>
                         <li>Busca la semana que contiene el error y pulsa el botón <Badge variant="secondary">Solicitar Corrección</Badge>.</li>
-                        <li>En la ventana que aparece, explica detalladamente la incidencia y pulsa "Enviar Solicitud".</li>
+                        <li>En la ventana que aparece, explica detalladamente la incidencia y pulsa «Enviar Solicitud».</li>
                         <li>Tu petición será enviada al administrador y quedará registrada en el chat para su seguimiento.</li>
                     </ol>
                     </div>
@@ -108,7 +108,7 @@ export default function HelpPage() {
                     <div>
                     <h4 className="font-semibold">¿Cómo solicito mis vacaciones o ausencias largas?</h4>
                     <p className="text-sm text-muted-foreground mb-2">
-                        Las vacaciones y otros permisos largos se solicitan durante "campañas" o periodos específicos que abre la empresa.
+                        Las vacaciones y otros permisos largos se solicitan durante «campañas» o periodos específicos que abre la empresa.
                     </p>
                     <ol className="list-decimal list-inside space-y-2 text-sm">
                         <li>Cuando se abra un periodo, verás un aviso especial en la página <Badge variant="outline">Mis Mensajes</Badge>.</li>
@@ -123,7 +123,7 @@ export default function HelpPage() {
                     <div>
                     <h4 className="font-semibold">¿Cómo registro permisos cortos (Asuntos Propios, Horas Médicas, etc.)?</h4>
                     <p className="text-sm text-muted-foreground mb-2">
-                        Para registrar un permiso de corta duración que ya has comunicado verbalmente a la dirección, utiliza la función de "Solicitudes".
+                        Para registrar un permiso de corta duración que ya has comunicado verbalmente a la dirección, utiliza la función de «Solicitudes».
                     </p>
                     <ol className="list-decimal list-inside space-y-2 text-sm">
                         <li>Ve a la página <Badge variant="outline">Mis Mensajes</Badge>.</li>
@@ -149,7 +149,7 @@ export default function HelpPage() {
             </AccordionTrigger>
             <AccordionContent className="space-y-4 pt-2">
                 <p className="text-muted-foreground">
-                Según el "Acuerdo Gestión de la Madurez" del Grupo Inditex, los empleados a partir de los 55 años tienen derecho a un banco de horas anuales para reducir su jornada. Las horas disponibles varían según la edad y el tipo de jornada contratada.
+                Según el «Acuerdo Gestión de la Madurez» del Grupo Inditex, los empleados a partir de los 55 años tienen derecho a un banco de horas anuales para reducir su jornada. Las horas disponibles varían según la edad y el tipo de jornada contratada.
                 </p>
                 <div className="border rounded-lg overflow-hidden">
                 <Table>
@@ -178,7 +178,7 @@ export default function HelpPage() {
                 </Table>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                Puedes solicitar estas horas a través del formulario de "Solicitudes" en la página de "Mis Mensajes", seleccionando el tipo de ausencia "Reducción Jornada Senior".
+                Puedes solicitar estas horas a través del formulario de «Solicitudes» en la página de «Mis Mensajes», seleccionando el tipo de ausencia «Reducción Jornada Senior».
                 </p>
             </AccordionContent>
             </AccordionItem>
@@ -210,7 +210,7 @@ export default function HelpPage() {
                     <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
                         <li>Abre la app en <strong>Safari</strong>.</li>
                         <li>Pulsa el botón de <strong>Compartir</strong> (un cuadrado con una flecha).</li>
-                        <li>Selecciona <strong>"Añadir a pantalla de inicio"</strong>.</li>
+                        <li>Selecciona <strong>«Añadir a pantalla de inicio»</strong>.</li>
                     </ol>
                     </CardContent>
                 </Card>
@@ -225,7 +225,7 @@ export default function HelpPage() {
                     <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
                         <li>Abre la app en <strong>Chrome</strong>.</li>
                         <li>Pulsa el <strong>menú de los tres puntos</strong> (⋮).</li>
-                        <li>Selecciona <strong>"Instalar aplicación"</strong>.</li>
+                        <li>Selecciona <strong>«Instalar aplicación»</strong>.</li>
                     </ol>
                     </CardContent>
                 </Card>

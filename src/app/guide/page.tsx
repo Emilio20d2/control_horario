@@ -56,7 +56,7 @@ export default function GuidePage() {
                 <AdminGuideItem title="1. Inicio">
                     <p>Es la primera página que ves al iniciar sesión y actúa como un centro de notificaciones y tareas pendientes.</p>
                     <ul className="list-disc pl-5 mt-2 space-y-1">
-                        <li><strong>Semanas Pendientes</strong>: Muestra la semana más antigua que tiene empleados sin confirmar. Indica el número de empleados pendientes y un botón para ir directamente a esa semana en el "Registro Horario".</li>
+                        <li><strong>Semanas Pendientes</strong>: Muestra la semana más antigua que tiene empleados sin confirmar. Indica el número de empleados pendientes y un botón para ir directamente a esa semana en el «Registro Horario».</li>
                         <li><strong>Mensajes Sin Leer</strong>: Presenta una lista de las últimas conversaciones con mensajes de empleados que aún no has leído.</li>
                         <li><strong>Próximos Eventos</strong>: Ofrece una vista rápida de las próximas ausencias programadas (bajas, excedencias, etc.) en las siguientes semanas.</li>
                     </ul>
@@ -92,9 +92,9 @@ export default function GuidePage() {
                              <ul className="list-disc pl-5 mt-1">
                                 <li>Muestra a todos los empleados activos para la semana seleccionada.</li>
                                 <li><strong>Registro de Horas</strong>: En el modo de edición (semanas no confirmadas), puedes introducir horas trabajadas, tipos de ausencia, horas de libranza y complementarias para cada empleado.</li>
-                                <li><strong>Gestión de Ausencias Programadas</strong>: Al editar la semana de un empleado, el botón <strong>"Ausencias"</strong> abre una ventana para gestionar sus ausencias largas (bajas, excedencias, etc.) sin necesidad de ir a la ficha del empleado.</li>
+                                <li><strong>Gestión de Ausencias Programadas</strong>: Al editar la semana de un empleado, el botón <strong>«Ausencias»</strong> abre una ventana para gestionar sus ausencias largas (bajas, excedencias, etc.) sin necesidad de ir a la ficha del empleado.</li>
                                 <li><strong>Impacto en Tiempo Real</strong>: La aplicación calcula al instante cómo cada cambio afectará a las bolsas de horas del empleado.</li>
-                                <li><strong>Confirmación</strong>: Al pulsar "Confirmar", los datos de la semana se guardan de forma permanente y los balances se actualizan. La fila del empleado pasa a modo de solo lectura.</li>
+                                <li><strong>Confirmación</strong>: Al pulsar «Confirmar», los datos de la semana se guardan de forma permanente y los balances se actualizan. La fila del empleado pasa a modo de solo lectura.</li>
                                 <li><strong>Habilitar Corrección</strong>: En las semanas ya confirmadas, puedes pulsar este botón para volver a poner la fila en modo de edición y hacer ajustes.</li>
                             </ul>
                         </li>
@@ -135,7 +135,7 @@ export default function GuidePage() {
                    <ul className="list-disc pl-5 mt-2 space-y-1">
                         <li><strong>Formularios Personalizados</strong>: Crea formularios con las columnas que necesites (texto, checkboxes) para generar un PDF con la lista de empleados activos, listo para imprimir y rellenar.</li>
                         <li><strong>Datos Personales</strong>: Genera un informe en PDF con los datos personales de la plantilla (DNI, teléfono, email, etc.) que elijas.</li>
-                        <li><strong>Empleados para Informes</strong>: Gestiona una lista de empleados "eventuales" que no están en la plantilla principal pero que deben aparecer en ciertos informes, como el de planificación de festivos.</li>
+                        <li><strong>Empleados para Informes</strong>: Gestiona una lista de empleados «eventuales» que no están en la plantilla principal pero que deben aparecer en ciertos informes, como el de planificación de festivos.</li>
                     </ul>
                 </AdminGuideItem>
                 <AdminGuideItem title="7. Programador de Vacaciones">
