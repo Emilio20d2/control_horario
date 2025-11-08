@@ -24,7 +24,9 @@ export default function LoginPage() {
         <CardHeader>
           <CardTitle>Accede a tu cuenta</CardTitle>
           <CardDescription>
-            Este proyecto no incluye autenticación por defecto. Configura tu proveedor preferido e integra el adaptador en
+            Inicia sesión con el correo y la contraseña definidos en tu archivo
+            <code className="mx-1 rounded bg-muted px-2 py-1 text-sm">.env.local</code>.
+            Puedes sustituir el proveedor local por otro diferente editando
             <code className="mx-1 rounded bg-muted px-2 py-1 text-sm">useAuth.tsx</code>.
           </CardDescription>
         </CardHeader>
