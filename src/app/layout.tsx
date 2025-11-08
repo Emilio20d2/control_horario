@@ -1,11 +1,10 @@
 
-'use client';
-
 import './globals.css';
 import 'react-day-picker/dist/style.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AppProviders } from '@/components/layout/app-providers';
 import { cn } from '@/lib/utils';
+import '@/lib/database/register-postgres-adapter.server';
 
 export default function RootLayout({
   children,

@@ -58,7 +58,35 @@ NEXT_PUBLIC_DEFAULT_ADMIN_PASSWORD=admin1234
 - Los datos semilla residen en `src/lib/local-data.ts`. Modifica este archivo para adaptar empleados, festivos, tipos de contrato, etc., a tus necesidades.
 - Para limpiar o regenerar la base de datos abre las herramientas de desarrollo del navegador y elimina la clave indicada o invoca `resetLocalDatabase()` desde la consola.
 
-### 5. Arrancar el servidor de desarrollo
+### 5. Base de datos Postgres (integración opcional)
+
+Si prefieres trabajar con una base de datos real, el repositorio incluye ahora un adaptador de Postgres listo para usarse.
+
+1. **Prepara tu instancia de Postgres.** Crea una base de datos vacía (por ejemplo `control_horario`). No necesitas crear tablas manualmente; se provisionan automáticamente en el primer arranque.
+2. **Configura las variables de entorno:**
+
+   ```env
+   POSTGRES_URL=postgres://usuario:password@localhost:5432/control_horario
+   POSTGRES_SCHEMA=public            # Opcional, por defecto "public"
+   POSTGRES_SSLMODE=disable          # Usa "require" en proveedores gestionados
+   POSTGRES_ALLOW_SELF_SIGNED=false  # Ponlo a "true" si usas certificados autofirmados
+   ```
+
+   > Las variables anteriores ya están documentadas en `.env.example`. Copia ese archivo a `.env.local` y ajusta los valores según tu entorno.
+
+3. **Arranca la aplicación (`npm run dev`).** Durante el arranque el módulo `src/lib/database/register-postgres-adapter.server.ts` invoca a `configureDatabaseAdapter` con el nuevo adaptador. Si la conexión es válida se crearán automáticamente las tablas:
+
+   - `app_documents`: almacena cada colección del producto en formato documento (`JSONB`).
+   - `app_subcollection_documents`: lista genérica para subcolecciones (por ejemplo, historiales o elementos anidados).
+   - `app_conversation_messages`: historial de mensajes asociados a conversaciones.
+
+4. **Verifica la estructura:** puedes inspeccionar las tablas ejecutando `\dt` dentro de `psql` o consultando directamente una colección, por ejemplo `SELECT data FROM app_documents WHERE collection = 'employees';`.
+
+5. **Carga de datos:** los servicios que utilizan `src/lib/services/databaseService.ts` operarán contra Postgres. Si necesitas poblar datos iniciales puedes crear scripts propios (por ejemplo, usando `psql` o Server Actions) o adaptar `src/lib/services/seedService.ts` para que consuma el nuevo adaptador.
+
+> ⚠️ Las vistas basadas en `localStorage` continúan funcionando para facilitar el arranque rápido. Si tu despliegue requiere leer datos en vivo desde Postgres, sustituye gradualmente el uso de `src/hooks/use-data-provider.tsx` por consultas remotas apoyándote en el adaptador recién creado.
+
+### 6. Arrancar el servidor de desarrollo
 
 ```bash
 npm run dev
@@ -66,13 +94,13 @@ npm run dev
 
 La aplicación quedará disponible en `http://localhost:3000`. Inicia sesión con las credenciales configuradas en el `.env.local` y comienza a probar el sistema.
 
-### 6. Cómo se gestiona la autenticación local
+### 7. Cómo se gestiona la autenticación local
 
 - `src/hooks/useAuth.tsx` implementa un proveedor de autenticación basado en el correo y contraseña definidos en las variables de entorno.
 - La sesión se almacena en `localStorage` (`control-horario:auth`) para evitar que tengas que iniciar sesión tras cada recarga.
 - Si necesitas restablecer la sesión, utiliza el botón «Cerrar sesión» o elimina manualmente la clave anterior desde el navegador.
 
-### 7. Migrar a un backend real (opcional)
+### 8. Migrar a un backend real (opcional)
 
 Si deseas conectar la aplicación a un servicio externo (API REST, base de datos corporativa, etc.):
 
@@ -81,7 +109,7 @@ Si deseas conectar la aplicación a un servicio externo (API REST, base de datos
 3. Reutiliza el `DataProvider` como referencia para entender qué colecciones y campos espera la interfaz.
 4. Documenta los pasos específicos de tu infraestructura para otros miembros del equipo.
 
-### 8. Construir para producción
+### 9. Construir para producción
 
 Cuando quieras generar una versión optimizada ejecuta:
 
