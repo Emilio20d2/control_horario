@@ -253,7 +253,7 @@ export function AbsenceTypeForm({ absenceType }: AbsenceTypeFormProps) {
                             <SelectItem value="libranza">Bolsa de Libranza</SelectItem>
                         </SelectContent>
                     </Select>
-                    <FormDescription>Para casos especiales como "Devolución de Horas".</FormDescription>
+                    <FormDescription>Para casos especiales como «Devolución de Horas».</FormDescription>
                     <FormMessage />
                     </FormItem>
                 )}

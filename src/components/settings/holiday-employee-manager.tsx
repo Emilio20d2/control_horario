@@ -176,7 +176,7 @@ export function HolidayEmployeeManager() {
                     <div>
                         <CardTitle>Gestionar Empleados para Informes</CardTitle>
                         <CardDescription>
-                            Esta lista combina empleados fijos y eventuales. Usa el interruptor 'Activo' para controlar qué empleados aparecerán en los informes de festivos y planificación.
+                            Esta lista combina empleados fijos y eventuales. Usa el interruptor «Activo» para controlar qué empleados aparecerán en los informes de festivos y planificación.
                         </CardDescription>
                     </div>
                     <div className="flex gap-2">
@@ -188,7 +188,7 @@ export function HolidayEmployeeManager() {
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>¿Activar todos los empleados?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        Esta acción marcará a todos los empleados de la lista como "activos" y aparecerán en los informes.
+                                        Esta acción marcará a todos los empleados de la lista como «activos» y aparecerán en los informes.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -205,7 +205,7 @@ export function HolidayEmployeeManager() {
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>¿Desactivar todos los empleados?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        Esta acción marcará a todos los empleados de la lista como "inactivos" y no aparecerán en los informes hasta que los reactives.
+                                        Esta acción marcará a todos los empleados de la lista como «inactivos» y no aparecerán en los informes hasta que los reactives.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>

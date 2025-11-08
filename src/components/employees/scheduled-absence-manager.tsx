@@ -159,7 +159,7 @@ export function ScheduledAbsenceManager({ employee, period }: ScheduledAbsenceMa
             <CardHeader>
                 <CardTitle>Gestión de Ausencias Programadas (Bajas, etc.)</CardTitle>
                 <CardDescription>
-                    Planifica ausencias de larga duración. Las vacaciones se gestionan desde la página "Programador de Vacaciones".
+                    Planifica ausencias de larga duración. Las vacaciones se gestionan desde la página «Programador de Vacaciones».
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
