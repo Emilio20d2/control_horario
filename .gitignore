@@ -1,5 +1,8 @@
 # Secret files
 *.json
+!package.json
+!package-lock.json
+!tsconfig.json
 serviceAccountKey.json
 shiftmaster-9iefy-firebase-adminsdk-fbsvc-c67926a133.json
 client_secret_*.json
