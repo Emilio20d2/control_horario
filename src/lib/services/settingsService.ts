@@ -16,7 +16,7 @@ import {
   deleteDocument,
   setDocument,
   getDocumentById,
-} from './firestoreService';
+} from './databaseService';
 
 const generateId = () => {
   if (typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function') {
