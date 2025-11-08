@@ -156,13 +156,13 @@ export const DEFAULT_LOCAL_DATABASE: LocalDatabaseState = {
   ],
   annualConfigurations: [
     {
-      id: '2024',
-      year: 2024,
-      maxAnnualHours: 1780,
+      id: '2025',
+      year: 2025,
+      maxAnnualHours: 1794,
       referenceWeeklyHours: 40,
     },
   ],
-  weeklyRecords: [createWeekRecord('2024-01-01', 'EMP-001')],
+  weeklyRecords: [createWeekRecord('2025-01-01', 'EMP-001')],
   users: [
     {
       id: 'local-admin',
