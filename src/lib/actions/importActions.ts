@@ -110,7 +110,7 @@ const employeesNotFoundInList = [
 export async function processAndSeedData() {
   'use server';
   
-  const jsonFilePath = path.join(process.cwd(), 'public', 'firestore_import_data.json');
+  const jsonFilePath = path.join(process.cwd(), 'public', 'seed_import_data.json');
 
   try {
     const fileContent = await fs.readFile(jsonFilePath, 'utf-8');
@@ -184,7 +184,7 @@ export async function processAndSeedData() {
   } catch (error) {
     console.error("Error in processAndSeedData Server Action:", error);
      if (error instanceof Error && 'code' in error && (error as any).code === 'ENOENT') {
-        return { success: false, error: 'No se encontró el archivo `firestore_import_data.json` en la carpeta `public`. Ejecuta primero el script de importación.' };
+        return { success: false, error: 'No se encontró el archivo `seed_import_data.json` en la carpeta `public`. Ejecuta primero el script de importación.' };
     }
     const errorMessage = error instanceof Error ? error.message : 'Error desconocido durante la importación.';
     return { success: false, error: errorMessage };
