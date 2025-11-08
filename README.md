@@ -21,6 +21,215 @@ El sistema está diseñado para manejar calendarios rotativos complejos, calcula
 
 ---
 
+## Instalación y Configuración Técnica
+
+> ⚠️ **Este repositorio se entrega sin dependencias instaladas ni proveedores externos configurados.**
+> Necesitarás preparar el proyecto manualmente para que la aplicación quede operativa en tu entorno.
+
+### 1. Requisitos previos
+
+- Node.js **18.x** o superior y un gestor de paquetes (`npm`, `pnpm` o `yarn`).
+- Cuenta en [Firebase](https://firebase.google.com/) (o el servicio equivalente que prefieras) con permisos para crear proyectos, activar Authentication y Firestore.
+- Acceso a Git para clonar el repositorio.
+
+### 2. Clonar el proyecto e instalar dependencias
+
+```bash
+git clone https://github.com/<tu-organizacion>/control_horario.git
+cd control_horario
+```
+
+El `.gitignore` ignora cualquier `package.json` por políticas internas, así que tendrás que crearlo a mano (o copiar el que utilices en producción). Un ejemplo de configuración mínima es el siguiente:
+
+```json
+{
+  "name": "control-horario",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.3.4",
+    "@radix-ui/react-accordion": "^1.1.2",
+    "@radix-ui/react-alert-dialog": "^1.0.5",
+    "@radix-ui/react-avatar": "^1.0.4",
+    "@radix-ui/react-checkbox": "^1.0.5",
+    "@radix-ui/react-collapsible": "^1.0.5",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-label": "^2.0.2",
+    "@radix-ui/react-menubar": "^1.0.4",
+    "@radix-ui/react-popover": "^1.0.7",
+    "@radix-ui/react-progress": "^1.0.3",
+    "@radix-ui/react-radio-group": "^1.1.3",
+    "@radix-ui/react-scroll-area": "^1.0.5",
+    "@radix-ui/react-select": "^2.0.0",
+    "@radix-ui/react-separator": "^1.0.3",
+    "@radix-ui/react-slider": "^1.1.2",
+    "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "@radix-ui/react-toast": "^1.1.5",
+    "@radix-ui/react-tooltip": "^1.0.7",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.0",
+    "cmdk": "^0.10.0",
+    "date-fns": "^3.6.0",
+    "embla-carousel-react": "^8.1.0",
+    "firebase": "^10.11.0",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
+    "lucide-react": "^0.368.0",
+    "next": "^14.2.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hook-form": "^7.51.4",
+    "recharts": "^2.7.2",
+    "tailwind-merge": "^2.2.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/react": "^18.2.61",
+    "@types/react-dom": "^18.2.19",
+    "autoprefixer": "^10.4.18",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.3",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.3",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.4.3"
+  }
+}
+```
+
+Después instala las dependencias con tu gestor preferido:
+
+```bash
+npm install
+```
+
+### 3. Variables de entorno y configuración local
+
+1. Copia el archivo `.env.example` a `.env.local`.
+2. Añade las claves necesarias para tu implementación (por ejemplo, credenciales de Firebase o URLs de APIs internas).
+3. Si vas a externalizar la configuración de Firebase, declara variables como `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, etc., y léelas dentro de `src/lib/firebase.ts`.
+
+### 4. Crear el proyecto de Firebase y la base de datos
+
+1. En la consola de Firebase crea un nuevo proyecto.
+2. Registra una **app web** para obtener el bloque de configuración (`apiKey`, `authDomain`, etc.).
+3. Activa **Authentication → Email/Password** (la aplicación asume este proveedor por defecto en `useAuth`).
+4. Abre **Firestore Database** en modo _Native_ y crea una base de datos en la región que prefieras. Si usas un nombre distinto al que aparece en `getFirestore(app, 'basedatos1224')`, actualiza ese parámetro o elimínalo para usar la instancia por defecto.
+5. Crea al menos un usuario administrador desde Firebase Authentication y guarda su `uid`. Necesitarás enlazarlo con un documento en la colección `users`.
+
+Actualiza `src/lib/firebase.ts` con el bloque de configuración que te proporciona Firebase, o refactorízalo para leer las variables desde el `.env.local` antes de compilar.
+
+### 5. Estructura mínima de Firestore
+
+La aplicación espera ciertas colecciones y documentos. Puedes crear las colecciones vacías desde la consola o mediante scripts.
+
+| Colección | Propósito | Documento inicial recomendado |
+| --- | --- | --- |
+| `users` | Metadatos del usuario autenticado. | Documento con `id = <uid firebase>` y campos `email`, `employeeId`, `role`. |
+| `employees` | Fichas de empleado con periodos laborales y balances. | Crea al menos un empleado y enlázalo con el `uid` anterior (`authId`). |
+| `weeklyRecords` | Registro semanal de horas por empleado. | Puedes comenzar vacío; la app crea/actualiza documentos con id `YYYY-MM-DD`. |
+| `absenceTypes`, `contractTypes`, `annualConfigurations` | Catálogos de configuraciones. | Inserta registros básicos para poder usar los formularios. |
+| `holidays`, `holidayEmployees`, `holidayReports`, `employeeGroups` | Módulos de festivos y cuadrantes. | Opcionalmente crea documentos de ejemplo para probar la UI. |
+| `vacationCampaigns`, `conversations`, `correctionRequests` | Funcionalidades avanzadas (campañas, chat interno, revisiones). | Inicialmente vacías; se rellenan desde la interfaz. |
+| `app_config` (documento `features`) | Flags de funcionalidades. | Añade un doc `features` con `{ isEmployeeViewEnabled: true }` para habilitar la vista de empleado. |
+
+> 💡 Si necesitas importar datos masivos, prepara scripts que usen el SDK de Admin o las APIs REST de tu proveedor.
+
+### 6. Conectar la aplicación con Firestore mediante un adaptador
+
+1. Crea un archivo como `src/lib/database/adapters/firebase.ts` que implemente la interfaz `DatabaseAdapterDefinition` usando el SDK de Firestore:
+
+```ts
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  setDoc,
+  Firestore,
+} from 'firebase/firestore';
+import type { DatabaseAdapterDefinition } from '@/lib/database';
+
+export const createFirestoreAdapter = (db: Firestore): DatabaseAdapterDefinition => ({
+  async getCollection(collectionName) {
+    const snapshot = await getDocs(collection(db, collectionName));
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  },
+  async getDocumentById(collectionName, id) {
+    const snapshot = await getDoc(doc(db, collectionName, id));
+    return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+  },
+  onCollectionUpdate(collectionName, callback) {
+    const unsubscribe = onSnapshot(collection(db, collectionName), (snap) => {
+      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as any);
+    });
+    return { ready: Promise.resolve(), unsubscribe };
+  },
+  onDocumentUpdate(collectionName, id, callback) {
+    const unsubscribe = onSnapshot(doc(db, collectionName, id), (snap) => {
+      callback(snap.exists() ? ({ id: snap.id, ...snap.data() } as any) : null);
+    });
+    return { unsubscribe };
+  },
+  addDocument(collectionName, data) {
+    return addDoc(collection(db, collectionName), data);
+  },
+  updateDocument(collectionName, docId, data) {
+    return updateDoc(doc(db, collectionName, docId), data);
+  },
+  deleteDocument(collectionName, docId) {
+    return deleteDoc(doc(db, collectionName, docId));
+  },
+  setDocument(collectionName, docId, data, options) {
+    return setDoc(doc(db, collectionName, docId), data, options);
+  },
+});
+```
+
+2. En `src/components/layout/app-providers.tsx` importa tu adaptador y ejecútalo antes de renderizar la app:
+
+```ts
+import { useEffect } from 'react';
+import { configureDatabaseAdapter } from '@/lib/database';
+import { createFirestoreAdapter } from '@/lib/database/adapters/firebase';
+import { db } from '@/lib/firebase';
+
+useEffect(() => {
+  configureDatabaseAdapter(createFirestoreAdapter(db));
+}, []);
+```
+
+3. Si utilizas otro backend, crea un adaptador equivalente que satisfaga la interfaz.
+
+### 7. Enlazar usuarios y roles
+
+- Crea documentos en `users` con el mismo `uid` que devuelve Firebase Authentication y un campo `role: "admin"` para los administradores iniciales.
+- Vincula cada usuario con un empleado mediante `employeeId` para que la aplicación pueda resolver permisos y mostrar la información personal.
+
+### 8. Ejecutar la aplicación
+
+Una vez configurado todo, levanta el entorno de desarrollo:
+
+```bash
+npm run dev
+```
+
+Visita `http://localhost:3000`, inicia sesión con el usuario administrador y verifica que los datos se cargan correctamente. Usa `npm run build` y `npm run start` para probar la compilación de producción.
+
+---
+
 ## 3. Guía para Administradores
 
 A continuación, se detalla el propósito y uso de cada una de las secciones principales para los administradores.
