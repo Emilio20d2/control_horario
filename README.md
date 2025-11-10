@@ -48,9 +48,10 @@ El modo de autenticación local utiliza credenciales configurables. Copia el arc
 ```env
 NEXT_PUBLIC_DEFAULT_ADMIN_EMAIL=admin@example.com
 NEXT_PUBLIC_DEFAULT_ADMIN_PASSWORD=admin1234
+NEXT_PUBLIC_DEFAULT_USER_PASSWORD=welcome1234
 ```
 
-> Puedes cambiarlas en cualquier momento; la pantalla de inicio de sesión validará los datos contra estos valores.
+> Las dos primeras variables definen el **usuario universal de arranque**. Cualquier cuenta registrada podrá iniciar sesión con `NEXT_PUBLIC_DEFAULT_USER_PASSWORD` mientras no integres tu proveedor de identidad.
 
 ### 4. Base de datos local
 
@@ -97,6 +98,8 @@ La aplicación quedará disponible en `http://localhost:3000`. Inicia sesión co
 ### 7. Cómo se gestiona la autenticación local
 
 - `src/hooks/useAuth.tsx` implementa un proveedor de autenticación basado en el correo y contraseña definidos en las variables de entorno.
+- El usuario universal (`NEXT_PUBLIC_DEFAULT_ADMIN_EMAIL`) sirve para la primera configuración. Una vez dentro puedes crear usuarios y asignarles permisos desde la aplicación o reemplazar el proveedor por uno corporativo.
+- Cualquier usuario incluido en la base de datos (`src/lib/local-data.ts` o tu propio backend) puede autenticarse con la contraseña definida en `NEXT_PUBLIC_DEFAULT_USER_PASSWORD` hasta que habilites un mecanismo personalizado.
 - La sesión se almacena en `localStorage` (`control-horario:auth`) para evitar que tengas que iniciar sesión tras cada recarga.
 - Si necesitas restablecer la sesión, utiliza el botón «Cerrar sesión» o elimina manualmente la clave anterior desde el navegador.
 

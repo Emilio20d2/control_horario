@@ -83,8 +83,8 @@ export const DEFAULT_LOCAL_DATABASE: LocalDatabaseState = {
   employees: [
     {
       id: 'EMP-001',
-      name: 'Peter Bi',
-      email: 'peterbi@inditex.com',
+      name: 'Administrador General',
+      email: 'admin@example.com',
       role: 'admin',
       employmentPeriods: [
         {
@@ -170,7 +170,7 @@ export const DEFAULT_LOCAL_DATABASE: LocalDatabaseState = {
   users: [
     {
       id: 'local-admin',
-      email: 'peterbi@inditex.com',
+      email: 'admin@example.com',
       employeeId: 'EMP-001',
       role: 'admin',
       trueRole: 'admin',

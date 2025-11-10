@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { Employee, ScheduledAbsence, AbsenceType } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
+import { getUniversalAdminCredentials } from '@/lib/auth/config';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
 export default function HomePage() {
@@ -96,11 +97,11 @@ export default function HomePage() {
             return employeeRecord.name.split(' ')[0];
         }
 
-        if (appUser?.email?.toLowerCase() === 'peterbi@inditex.com') {
-            return 'Peter';
-        }
-
         if (appUser?.email) {
+            const universalEmail = getUniversalAdminCredentials().normalizedEmail;
+            if (appUser.email.toLowerCase() === universalEmail) {
+                return 'Admin';
+            }
             return appUser.email.split('@')[0] ?? 'Admin';
         }
 

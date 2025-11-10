@@ -12,6 +12,7 @@ import {
 import { usePathname, useRouter } from 'next/navigation';
 import type { AppUser } from '@/lib/types';
 import { loadLocalDatabase } from '@/lib/local-data';
+import { getUniversalAdminCredentials, getUniversalUserPassword } from '@/lib/auth/config';
 
 interface AuthContextType {
   user: AppUser | null;
@@ -57,11 +58,6 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 const STORAGE_KEY = 'control-horario:auth';
-
-const getDefaultCredentials = () => ({
-  email: process.env.NEXT_PUBLIC_DEFAULT_ADMIN_EMAIL ?? 'peterbi@inditex.com',
-  password: process.env.NEXT_PUBLIC_DEFAULT_ADMIN_PASSWORD ?? 'admin1234',
-});
 
 const persistAuthUser = (user: AppUser | null) => {
   if (typeof window === 'undefined') return;
@@ -166,19 +162,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const credentials = getDefaultCredentials();
+    const universalAdmin = getUniversalAdminCredentials();
+    const universalUserPassword = getUniversalUserPassword();
     const normalizedEmail = email.trim().toLowerCase();
-    if (normalizedEmail !== credentials.email.toLowerCase() || password !== credentials.password) {
-      return { success: false, error: 'Credenciales no válidas. Comprueba el correo y la contraseña configurados.' };
-    }
 
     const db = loadLocalDatabase();
     const matchedUser = db.users.find((item) => item.email?.toLowerCase() === normalizedEmail);
 
+    const isUniversalAdmin = normalizedEmail === universalAdmin.normalizedEmail;
+    const expectedPassword = isUniversalAdmin ? universalAdmin.password : universalUserPassword;
+
+    if (!matchedUser && !isUniversalAdmin) {
+      return { success: false, error: 'No existe ningún usuario registrado con ese correo. Solicita acceso al administrador.' };
+    }
+
+    if (password !== expectedPassword) {
+      return { success: false, error: 'Contraseña no válida. Actualiza la configuración predeterminada o integra tu proveedor de autenticación.' };
+    }
+
     const finalUser: AppUser =
       matchedUser ?? {
         id: 'local-admin',
-        email: credentials.email,
+        email: universalAdmin.email,
         employeeId: null,
         role: 'admin',
         trueRole: 'admin',
@@ -200,9 +205,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const reauthenticateWithPassword = useCallback(async (password: string) => {
-    const credentials = getDefaultCredentials();
-    return password === credentials.password;
-  }, []);
+    const universalAdmin = getUniversalAdminCredentials();
+    const universalUserPassword = getUniversalUserPassword();
+    const expectedPassword = appUser?.email?.toLowerCase() === universalAdmin.normalizedEmail ? universalAdmin.password : universalUserPassword;
+    return password === expectedPassword;
+  }, [appUser?.email]);
 
   const signInWithEmailLink = useCallback(async () => {
     console.warn('[auth] Inicio de sesión por enlace mágico no está disponible en el modo local.');
