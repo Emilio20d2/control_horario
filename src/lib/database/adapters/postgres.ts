@@ -1,6 +1,8 @@
-import 'server-only';
+import { Pool, type PoolClient, type PoolConfig } from 'pg';
 
-import { Pool, type PoolClient } from 'pg';
+if (typeof window !== 'undefined') {
+  throw new Error('El adaptador de Postgres solo puede ejecutarse en el servidor.');
+}
 
 import type { DatabaseAdapterDefinition, DatabaseDocumentReference } from '../index';
 
@@ -8,6 +10,7 @@ interface PostgresAdapterConfig {
   connectionString: string;
   schema?: string;
   ssl?: boolean | { rejectUnauthorized: boolean };
+  poolFactory?: (config: PoolConfig) => Pool;
 }
 
 interface PostgresAdapterInternals {
@@ -72,8 +75,9 @@ const ensureSchema = async (client: PoolClient, schema: string) => {
 };
 
 const createInternals = async (config: PostgresAdapterConfig): Promise<PostgresAdapterInternals> => {
-  const { connectionString, schema = DEFAULT_SCHEMA, ssl } = config;
-  const pool = new Pool({ connectionString, ssl });
+  const { connectionString, schema = DEFAULT_SCHEMA, ssl, poolFactory } = config;
+  const poolConfig: PoolConfig = { connectionString, ssl };
+  const pool = poolFactory ? poolFactory(poolConfig) : new Pool(poolConfig);
 
   const schemaReady = pool
     .connect()
