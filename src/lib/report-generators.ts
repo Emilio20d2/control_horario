@@ -237,10 +237,15 @@ export async function generateAnnualDetailedReportPDF(employee: Employee, year: 
     const { theoreticalHours, workHoursChangeDetails } = calculateTheoreticalAnnualWorkHours(employee.id, year);
     const totalComputedHours = calculateCurrentAnnualComputedHours(employee.id, year);
 
-    let currentY = 25;
+    const headerEmployeeLineY = 15;
+    const headerTitleLineY = headerEmployeeLineY + 6;
+
     doc.setFontSize(14).setFont('helvetica', 'bold');
-    doc.text(`Informe de Jornada Anual - ${employee.name} (${year})`, pageMargin, 15);
+    doc.text(employee.name, pageMargin, headerEmployeeLineY);
+    doc.text(`Informe de Jornada Anual - ${year}`, pageMargin, headerTitleLineY);
     doc.setFontSize(11);
+
+    let currentY = headerTitleLineY + 10;
 
     if (workHoursChangeDetails && workHoursChangeDetails.length > 0) {
         doc.setFont('helvetica', 'bold');

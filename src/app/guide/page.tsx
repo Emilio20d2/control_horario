@@ -17,11 +17,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 type AdminGuideItemProps = {
   title: string;
   children: React.ReactNode;
+  index: number;
 };
 
-const AdminGuideItem = ({ title, children }: AdminGuideItemProps) => (
-  <AccordionItem value={title}>
-    <AccordionTrigger>{title}</AccordionTrigger>
+const AdminGuideItem = ({ title, children, index }: AdminGuideItemProps) => (
+  <AccordionItem value={`${index + 1}-${title}`}>
+    <AccordionTrigger>
+      <span className="flex items-center gap-2 text-left">
+        <span className="font-semibold">{index + 1}.</span>
+        {title}
+      </span>
+    </AccordionTrigger>
     <AccordionContent className="prose prose-sm max-w-none text-muted-foreground">
       {children}
     </AccordionContent>
@@ -53,7 +59,7 @@ export default function GuidePage() {
             </CardHeader>
             <CardContent>
               <Accordion type="single" collapsible className="w-full">
-                <AdminGuideItem title="1. Inicio">
+                <AdminGuideItem index={0} title="Inicio">
                     <p>Es la primera página que ves al iniciar sesión y actúa como un centro de notificaciones y tareas pendientes.</p>
                     <ul className="list-disc pl-5 mt-2 space-y-1">
                         <li><strong>Semanas Pendientes</strong>: Muestra la semana más antigua que tiene empleados sin confirmar. Indica el número de empleados pendientes y un botón para ir directamente a esa semana en el «Registro Horario».</li>
@@ -61,7 +67,7 @@ export default function GuidePage() {
                         <li><strong>Próximos Eventos</strong>: Ofrece una vista rápida de las próximas ausencias programadas (bajas, excedencias, etc.) en las siguientes semanas.</li>
                     </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="2. Panel de Control">
+                <AdminGuideItem index={1} title="Panel de Control">
                     <p>Centro de operaciones para la generación de informes en PDF.</p>
                     <ul className="list-disc pl-5 mt-2 space-y-2">
                         <li>
@@ -83,7 +89,7 @@ export default function GuidePage() {
                         <li><strong>Top 10 Empleados por Balance</strong>: Un gráfico de barras que muestra los empleados con el mayor balance total de horas, permitiendo una gestión proactiva.</li>
                     </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="3. Registro Horario">
+                <AdminGuideItem index={2} title="Registro Horario">
                     <p>La herramienta principal para la gestión diaria.</p>
                      <ul className="list-disc pl-5 mt-2 space-y-2">
                         <li><strong>Navegación Libre</strong>: Puedes navegar a cualquier semana del año usando las flechas o el selector de calendario, lo que te permite planificar y consultar con total libertad.</li>
@@ -101,7 +107,7 @@ export default function GuidePage() {
                         <li><strong>Vista Anual (seleccionando un empleado)</strong>: Muestra el calendario completo de un solo empleado para todo un año, permitiendo una visión y planificación a largo plazo.</li>
                     </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="4. Empleados">
+                <AdminGuideItem index={3} title="Empleados">
                   <p>Centro de gestión de la plantilla.</p>
                    <ul className="list-disc pl-5 mt-2 space-y-2">
                        <li>
@@ -121,7 +127,7 @@ export default function GuidePage() {
                        </li>
                    </ul>
                 </AdminGuideItem>
-                 <AdminGuideItem title="5. Ficha de Empleado">
+                 <AdminGuideItem index={4} title="Ficha de Empleado">
                   <p>Visión de 360 grados de un trabajador.</p>
                     <ul className="list-disc pl-5 mt-2 space-y-1">
                         <li><strong>Balances y Vacaciones</strong>: Muestra las bolsas de horas, el total acumulado y los días de vacaciones disfrutados vs. disponibles.</li>
@@ -130,7 +136,7 @@ export default function GuidePage() {
                         <li><strong>Gestión de Ausencias Programadas</strong>: Permite registrar ausencias de larga duración (bajas, excedencias) que se aplicarán automáticamente en el calendario.</li>
                     </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="6. Formularios Personalizados">
+                <AdminGuideItem index={5} title="Formularios Personalizados">
                   <p>Herramienta para crear PDFs a medida.</p>
                    <ul className="list-disc pl-5 mt-2 space-y-1">
                         <li><strong>Formularios Personalizados</strong>: Crea formularios con las columnas que necesites (texto, checkboxes) para generar un PDF con la lista de empleados activos, listo para imprimir y rellenar.</li>
@@ -138,28 +144,28 @@ export default function GuidePage() {
                         <li><strong>Empleados para Informes</strong>: Gestiona una lista de empleados «eventuales» que no están en la plantilla principal pero que deben aparecer en ciertos informes, como el de planificación de festivos.</li>
                     </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="7. Programador de Vacaciones">
+                <AdminGuideItem index={6} title="Programador de Vacaciones">
                     <p>Vista de cuadrante anual para la planificación de ausencias largas.</p>
                      <ul className="list-disc pl-5 mt-2 space-y-1">
                         <li><strong>Cuadrante Anual</strong>: Muestra una vista de todo el año con los empleados (agrupados por categorías) que tienen ausencias largas, permitiendo identificar solapamientos.</li>
                         <li><strong>Informes</strong>: Desde aquí puedes imprimir el cuadrante o generar un listado para la firma de vacaciones.</li>
                     </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="8. Calendario">
+                <AdminGuideItem index={7} title="Calendario">
                   <p>Visión global de todas las ausencias programadas en el sistema.</p>
                   <ul className="list-disc pl-5 mt-2 space-y-1">
                     <li><strong>Vista Semanal o Mensual</strong>: Muestra en un calendario quién está ausente cada día y por qué motivo.</li>
                     <li><strong>Gestión de Ausencias</strong>: Permite añadir, modificar o eliminar ausencias de larga duración directamente desde el calendario.</li>
                   </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="9. Mensajes">
+                <AdminGuideItem index={8} title="Mensajes">
                   <p>Canal de comunicación centralizado con los empleados.</p>
                    <ul className="list-disc pl-5 mt-2 space-y-1">
                         <li><strong>Chat Individual</strong>: Cada empleado tiene su propio chat para comunicar incidencias o recibir notificaciones.</li>
                         <li><strong>Solicitudes de Corrección</strong>: Aquí recibirás las peticiones de los empleados para corregir errores en semanas ya confirmadas.</li>
                     </ul>
                 </AdminGuideItem>
-                <AdminGuideItem title="10. Ajustes">
+                <AdminGuideItem index={9} title="Ajustes">
                   <p>El cerebro de la aplicación, donde se definen las reglas de negocio.</p>
                     <ul className="list-disc pl-5 mt-2 space-y-1">
                         <li><strong>Días Festivos</strong>: Gestiona los festivos y aperturas comerciales.</li>
@@ -170,7 +176,7 @@ export default function GuidePage() {
                         <li><strong>Utilidades</strong>: Herramientas de administrador para limpieza o auditoría de datos.</li>
                     </ul>
                 </AdminGuideItem>
-                 <AdminGuideItem title="11. Guía">
+                 <AdminGuideItem index={10} title="Guía">
                     <p>Acceso a este mismo manual de usuario directamente desde la aplicación.</p>
                 </AdminGuideItem>
               </Accordion>

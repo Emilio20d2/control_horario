@@ -46,41 +46,45 @@ const sampleDailyData = (): DailyData => ({
   holidayType: null,
 });
 
-const createWeekRecord = (id: string, employeeId: string): WeeklyRecord => ({
+const createWeekRecord = (id: string, employeeIds: string[]): WeeklyRecord => ({
   id,
-  weekData: {
-    [employeeId]: {
-      days: {
-        [id]: sampleDailyData(),
-      },
-      confirmed: true,
-      totalComplementaryHours: 0,
-      weeklyHoursOverride: null,
-      previousBalances: {
-        ordinary: 0,
-        holiday: 0,
-        leave: 0,
-      },
-      impact: {
-        ordinary: 0,
-        holiday: 0,
-        leave: 0,
-      },
-      finalBalances: {
-        ordinary: 0,
-        holiday: 0,
-        leave: 0,
-      },
-    } as DailyEmployeeData & { finalBalances: { ordinary: number; holiday: number; leave: number } },
-  },
+  weekData: employeeIds.reduce(
+    (acc, employeeId) => {
+      acc[employeeId] = {
+        days: {
+          [id]: sampleDailyData(),
+        },
+        confirmed: true,
+        totalComplementaryHours: 0,
+        weeklyHoursOverride: null,
+        previousBalances: {
+          ordinary: 0,
+          holiday: 0,
+          leave: 0,
+        },
+        impact: {
+          ordinary: 0,
+          holiday: 0,
+          leave: 0,
+        },
+        finalBalances: {
+          ordinary: 0,
+          holiday: 0,
+          leave: 0,
+        },
+      } as DailyEmployeeData & { finalBalances: { ordinary: number; holiday: number; leave: number } };
+      return acc;
+    },
+    {} as Record<string, DailyEmployeeData & { finalBalances: { ordinary: number; holiday: number; leave: number } }>,
+  ),
 });
 
 export const DEFAULT_LOCAL_DATABASE: LocalDatabaseState = {
   employees: [
     {
       id: 'EMP-001',
-      name: 'Administrador Local',
-      email: 'admin@example.com',
+      name: 'Peter Bi',
+      email: 'peterbi@inditex.com',
       role: 'admin',
       employmentPeriods: [
         {
@@ -162,11 +166,11 @@ export const DEFAULT_LOCAL_DATABASE: LocalDatabaseState = {
       referenceWeeklyHours: 40,
     },
   ],
-  weeklyRecords: [createWeekRecord('2025-01-01', 'EMP-001')],
+  weeklyRecords: [createWeekRecord('2025-01-01', ['EMP-001'])],
   users: [
     {
       id: 'local-admin',
-      email: 'admin@example.com',
+      email: 'peterbi@inditex.com',
       employeeId: 'EMP-001',
       role: 'admin',
       trueRole: 'admin',

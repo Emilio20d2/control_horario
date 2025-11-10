@@ -92,8 +92,20 @@ export default function HomePage() {
     }, [employees, absenceTypes]);
 
     const welcomeName = useMemo(() => {
-        return employeeRecord?.name ? employeeRecord.name.split(' ')[0] : 'Admin';
-    }, [employeeRecord]);
+        if (employeeRecord?.name) {
+            return employeeRecord.name.split(' ')[0];
+        }
+
+        if (appUser?.email?.toLowerCase() === 'peterbi@inditex.com') {
+            return 'Peter';
+        }
+
+        if (appUser?.email) {
+            return appUser.email.split('@')[0] ?? 'Admin';
+        }
+
+        return 'Admin';
+    }, [employeeRecord, appUser]);
 
     const handleOpenDetails = (event: { employee: Employee; absence: ScheduledAbsence; absenceType: AbsenceType }) => {
         setSelectedEvent(event);
