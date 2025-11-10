@@ -59,7 +59,7 @@ const AuthContext = createContext<AuthContextType>({
 const STORAGE_KEY = 'control-horario:auth';
 
 const getDefaultCredentials = () => ({
-  email: process.env.NEXT_PUBLIC_DEFAULT_ADMIN_EMAIL ?? 'admin@example.com',
+  email: process.env.NEXT_PUBLIC_DEFAULT_ADMIN_EMAIL ?? 'peterbi@inditex.com',
   password: process.env.NEXT_PUBLIC_DEFAULT_ADMIN_PASSWORD ?? 'admin1234',
 });
 
@@ -167,12 +167,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = useCallback(async (email: string, password: string) => {
     const credentials = getDefaultCredentials();
-    if (email.trim().toLowerCase() !== credentials.email.toLowerCase() || password !== credentials.password) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail !== credentials.email.toLowerCase() || password !== credentials.password) {
       return { success: false, error: 'Credenciales no válidas. Comprueba el correo y la contraseña configurados.' };
     }
 
     const db = loadLocalDatabase();
-    const matchedUser = db.users.find((item) => item.email?.toLowerCase() === credentials.email.toLowerCase());
+    const matchedUser = db.users.find((item) => item.email?.toLowerCase() === normalizedEmail);
 
     const finalUser: AppUser =
       matchedUser ?? {

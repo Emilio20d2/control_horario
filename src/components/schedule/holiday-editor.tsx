@@ -28,7 +28,7 @@ export const HolidayEditor: React.FC<HolidayEditorProps> = ({ dayData, holidayTy
        <Popover>
             <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" disabled={disabled}>
-                    <CalendarIcon className={cn("h-5 w-5", dayData.doublePay ? 'text-accent' : 'text-muted-foreground')} />
+                    <CalendarIcon className="h-5 w-5 text-muted-foreground" />
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-64 space-y-4 p-4">
