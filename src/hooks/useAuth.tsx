@@ -13,6 +13,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import type { AppUser } from '@/lib/types';
 import { loadLocalDatabase } from '@/lib/local-data';
 import { getUniversalAdminCredentials, getUniversalUserPassword } from '@/lib/auth/config';
+import { authenticateWithLocalProvider } from '@/lib/auth/local-auth-service';
 
 interface AuthContextType {
   user: AppUser | null;
@@ -162,32 +163,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const universalAdmin = getUniversalAdminCredentials();
-    const universalUserPassword = getUniversalUserPassword();
-    const normalizedEmail = email.trim().toLowerCase();
-
-    const db = loadLocalDatabase();
-    const matchedUser = db.users.find((item) => item.email?.toLowerCase() === normalizedEmail);
-
-    const isUniversalAdmin = normalizedEmail === universalAdmin.normalizedEmail;
-    const expectedPassword = isUniversalAdmin ? universalAdmin.password : universalUserPassword;
-
-    if (!matchedUser && !isUniversalAdmin) {
-      return { success: false, error: 'No existe ningún usuario registrado con ese correo. Solicita acceso al administrador.' };
-    }
-
-    if (password !== expectedPassword) {
-      return { success: false, error: 'Contraseña no válida. Actualiza la configuración predeterminada o integra tu proveedor de autenticación.' };
-    }
-
-    const finalUser: AppUser =
-      matchedUser ?? {
-        id: 'local-admin',
-        email: universalAdmin.email,
-        employeeId: null,
-        role: 'admin',
-        trueRole: 'admin',
+    const result = authenticateWithLocalProvider(email, password);
+    if (!result.success || !result.user) {
+      return {
+        success: false,
+        error: result.error ?? 'Proveedor de autenticación no configurado correctamente.',
       };
+    }
+
+    const finalUser: AppUser = result.user;
 
     setUser(finalUser);
     setAppUser(finalUser);

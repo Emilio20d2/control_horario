@@ -9,3 +9,10 @@ Este proyecto ya no incluye una integración directa con ningún proveedor de ba
 3. Todos los servicios (`src/lib/services/*.ts`) utilizan la capa de abstracción, por lo que no es necesario modificar la lógica de negocio al cambiar de proveedor.
 
 Consulta los comentarios en `index.ts` para conocer el comportamiento por defecto cuando no hay adaptador configurado.
+
+### Pruebas y entornos simulados
+
+El adaptador de Postgres (`createPostgresAdapter`) acepta una propiedad opcional `poolFactory` que permite proporcionar una
+implementación personalizada de `Pool`. Esto resulta útil para escenarios de pruebas o auditorías automatizadas en los que
+desees utilizar proveedores en memoria como [`pg-mem`](https://github.com/oguimbal/pg-mem) sin depender de una base de datos
+real.
