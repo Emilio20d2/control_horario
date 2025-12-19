@@ -145,7 +145,7 @@ const safeFormatDate = (date: any): string => {
 export function EmployeeForm({ employee }: EmployeeFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { contractTypes, users, appUser, getEmployeeFinalBalances, employeeGroups, holidayEmployees } = useDataProvider();
+  const { contractTypes, users, appUser, getEmployeeFinalBalances, employeeGroups, holidayEmployees, refreshData } = useDataProvider();
   const { reauthenticateWithPassword } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const [password, setPassword] = useState('');
@@ -264,6 +264,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
                 values.weeklySchedules = [];
             }
             await updateEmployee(employee.id, employee, values, finalBalances);
+            refreshData(); // Sincronizar datos con el DataProvider
             toast({
                 title: "Empleado Actualizado",
                 description: `Los datos de ${values.name} han sido guardados.`,
@@ -272,6 +273,7 @@ export function EmployeeForm({ employee }: EmployeeFormProps) {
         } else {
             // Create new employee
             const newEmployeeId = await createEmployee(values as EmployeeFormData);
+            refreshData(); // Sincronizar datos con el DataProvider
             toast({
                 title: "Empleado Creado",
                 description: `Se ha creado el empleado ${values.name}.`,

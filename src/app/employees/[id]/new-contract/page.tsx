@@ -79,7 +79,7 @@ export default function NewContractPage() {
     const router = useRouter();
     const params = useParams();
     const id = params.id as string;
-    const { getEmployeeById, contractTypes, loading } = useDataProvider();
+    const { getEmployeeById, contractTypes, loading, refreshData } = useDataProvider();
     const employee = getEmployeeById(id);
 
     const defaultValues = {
@@ -110,6 +110,7 @@ export default function NewContractPage() {
         if (!employee) return;
         try {
             await addEmploymentPeriod(employee.id, employee, values as any);
+            refreshData(); // Sincronizar datos con el DataProvider
             toast({
                 title: "Nuevo Contrato Creado",
                 description: `Se ha añadido un nuevo periodo laboral para ${employee.name}.`,

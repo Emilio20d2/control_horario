@@ -36,8 +36,10 @@ El sistema está diseñado para manejar calendarios rotativos complejos, calcula
 ```bash
 git clone https://github.com/Emilio20d2/control_horario.git
 cd control_horario
-npm install
+npm install --legacy-peer-deps
 ```
+
+> **Importante:** El flag `--legacy-peer-deps` es necesario para evitar conflictos de dependencias con ESLint. Sin este flag, la instalación puede fallar.
 
 El repositorio ya incluye el `package.json` con todas las dependencias necesarias para el entorno local, por lo que no es necesario crear nada adicional.
 
