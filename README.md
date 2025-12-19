@@ -26,6 +26,26 @@ El sistema está diseñado para manejar calendarios rotativos complejos, calcula
 > ⚠️ **La distribución incluye un modo local sin dependencias externas.**
 > Todo se almacena en el navegador mediante `localStorage`, por lo que no necesitas cuentas de terceros para comenzar.
 
+### ⚠️ Limitaciones del modo local (localStorage)
+
+El modo local permite **visualizar y navegar datos**, pero **no soporta operaciones de escritura completas** (crear, editar o confirmar entidades) que utilizan la capa de servicios desacoplada.
+
+Acciones como:
+- Crear o editar empleados
+- Confirmar semanas
+- Guardar ausencias programadas
+- Crear nuevos contratos
+
+**Requieren obligatoriamente un adaptador de base de datos configurado** (como Postgres).
+
+Si no existe un adaptador activo, la aplicación mostrará errores como:
+
+```
+"Configura un adaptador de base de datos para usar <servicio>"
+```
+
+> **Conclusión:** Para un uso completo de la aplicación, configura Postgres siguiendo las instrucciones del punto 5.
+
 ### 1. Requisitos previos
 
 - Node.js **18.x** o superior y un gestor de paquetes (`npm`, `pnpm` o `yarn`).
@@ -55,11 +75,28 @@ NEXT_PUBLIC_DEFAULT_USER_PASSWORD=welcome1234
 
 > Las dos primeras variables definen el **usuario universal de arranque**. Cualquier cuenta registrada podrá iniciar sesión con `NEXT_PUBLIC_DEFAULT_USER_PASSWORD` mientras no integres tu proveedor de identidad.
 
+> ⚠️ **Importante:** Tras modificar `.env.local` es **obligatorio reiniciar el servidor** (`npm run dev`). Next.js no recarga variables de entorno en caliente.
+
 ### 4. Base de datos local
 
 - La base de datos se persiste en el navegador mediante `localStorage` bajo la clave `control-horario:local-db`.
 - Los datos semilla residen en `src/lib/local-data.ts`. Modifica este archivo para adaptar empleados, festivos, tipos de contrato, etc., a tus necesidades.
 - Para limpiar o regenerar la base de datos abre las herramientas de desarrollo del navegador y elimina la clave indicada o invoca `resetLocalDatabase()` desde la consola.
+
+#### Campos obligatorios en Employee
+
+El modelo `Employee` requiere obligatoriamente los siguientes campos:
+
+| Campo | Descripción |
+|-------|-------------|
+| `id` | Identificador técnico único |
+| `employeeNumber` | Número de empleado (**obligatorio y único**) |
+| `name` | Nombre completo del empleado |
+| `email` | Correo electrónico |
+| `role` | Rol del usuario (`admin`, `user`, `viewer`) |
+| `employmentPeriods` | Array de periodos laborales (mínimo uno) |
+
+> ⚠️ **Importante:** Si `employeeNumber` no está presente, la aplicación fallará al guardar datos y puede mostrar errores genéricos relacionados con la base de datos.
 
 ### 5. Base de datos Postgres (integración opcional)
 
@@ -77,15 +114,25 @@ Si prefieres trabajar con una base de datos real, el repositorio incluye ahora u
 
    > Las variables anteriores ya están documentadas en `.env.example`. Copia ese archivo a `.env.local` y ajusta los valores según tu entorno.
 
-3. **Arranca la aplicación (`npm run dev`).** Durante el arranque el módulo `src/lib/database/register-postgres-adapter.server.ts` invoca a `configureDatabaseAdapter` con el nuevo adaptador. Si la conexión es válida se crearán automáticamente las tablas:
+3. **Verifica el import del adaptador (PASO CRÍTICO):**
+
+   El adaptador de Postgres **debe ser importado explícitamente** en el arranque de la aplicación. Asegúrate de que el archivo `src/app/layout.tsx` incluye esta línea:
+
+   ```typescript
+   import '@/lib/database/register-postgres-adapter.server';
+   ```
+
+   > ⚠️ **Si este import no existe, el adaptador no se registra y cualquier operación de escritura fallará.**
+
+4. **Arranca la aplicación (`npm run dev`).** Durante el arranque el módulo `src/lib/database/register-postgres-adapter.server.ts` invoca a `configureDatabaseAdapter` con el nuevo adaptador. Si la conexión es válida se crearán automáticamente las tablas:
 
    - `app_documents`: almacena cada colección del producto en formato documento (`JSONB`).
    - `app_subcollection_documents`: lista genérica para subcolecciones (por ejemplo, historiales o elementos anidados).
    - `app_conversation_messages`: historial de mensajes asociados a conversaciones.
 
-4. **Verifica la estructura:** puedes inspeccionar las tablas ejecutando `\dt` dentro de `psql` o consultando directamente una colección, por ejemplo `SELECT data FROM app_documents WHERE collection = 'employees';`.
+5. **Verifica la estructura:** puedes inspeccionar las tablas ejecutando `\dt` dentro de `psql` o consultando directamente una colección, por ejemplo `SELECT data FROM app_documents WHERE collection = 'employees';`.
 
-5. **Carga de datos:** los servicios que utilizan `src/lib/services/databaseService.ts` operarán contra Postgres. Si necesitas poblar datos iniciales puedes crear scripts propios (por ejemplo, usando `psql` o Server Actions) o adaptar `src/lib/services/seedService.ts` para que consuma el nuevo adaptador.
+6. **Carga de datos:** los servicios que utilizan `src/lib/services/databaseService.ts` operarán contra Postgres. Si necesitas poblar datos iniciales puedes crear scripts propios (por ejemplo, usando `psql` o Server Actions) o adaptar `src/lib/services/seedService.ts` para que consuma el nuevo adaptador.
 
 > ⚠️ Las vistas basadas en `localStorage` continúan funcionando para facilitar el arranque rápido. Si tu despliegue requiere leer datos en vivo desde Postgres, sustituye gradualmente el uso de `src/hooks/use-data-provider.tsx` por consultas remotas apoyándote en el adaptador recién creado.
 
@@ -124,6 +171,52 @@ npm run start
 ```
 
 Esto compilará la aplicación y la servirá en modo producción usando la base de datos local del navegador.
+
+### 10. Errores comunes y cómo resolverlos
+
+#### "Base de datos no configurada" o "No se ha configurado ningún adaptador"
+
+| Causa | Solución |
+|-------|----------|
+| No existe adaptador registrado | Verificar que `POSTGRES_URL` está en `.env.local` |
+| Falta `POSTGRES_URL` | Configurar la variable de entorno correctamente |
+| El adaptador no está importado | Añadir `import '@/lib/database/register-postgres-adapter.server';` en `src/app/layout.tsx` |
+| Variables no recargadas | Reiniciar el servidor con `npm run dev` |
+
+#### "Configura un adaptador de base de datos para usar <servicio>"
+
+| Causa | Solución |
+|-------|----------|
+| Se intenta guardar datos usando solo localStorage | Configurar Postgres siguiendo el punto 5 |
+| El modo local no soporta escritura | Implementar un adaptador propio o usar Postgres |
+
+#### Cambios en `local-data.ts` no se reflejan
+
+| Causa | Solución |
+|-------|----------|
+| localStorage conserva datos previos | Ejecutar en la consola del navegador: |
+
+```javascript
+localStorage.removeItem('control-horario:local-db');
+location.reload();
+```
+
+#### Error al guardar empleado (campos faltantes)
+
+| Causa | Solución |
+|-------|----------|
+| Falta `employeeNumber` u otros campos obligatorios | Revisar que todos los campos de la tabla "Campos obligatorios en Employee" estén presentes |
+
+#### La aplicación no conecta con Postgres
+
+| Causa | Solución |
+|-------|----------|
+| URL de conexión incorrecta | Verificar formato: `postgres://usuario:password@host:puerto/basedatos` |
+| Postgres no está corriendo | Iniciar el servicio: `sudo systemctl start postgresql` |
+| Base de datos no existe | Crear la base de datos: `createdb control_horario` |
+| SSL requerido | Cambiar `POSTGRES_SSLMODE=require` en `.env.local` |
+
+---
 
 ## 3. Guía para Administradores
 
