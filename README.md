@@ -34,7 +34,7 @@ El sistema está diseñado para manejar calendarios rotativos complejos, calcula
 ### 2. Clonar el proyecto e instalar dependencias
 
 ```bash
-git clone https://github.com/<tu-organizacion>/control_horario.git
+git clone https://github.com/Emilio20d2/control_horario.git
 cd control_horario
 npm install
 ```

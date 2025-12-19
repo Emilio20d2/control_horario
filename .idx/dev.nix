@@ -25,6 +25,12 @@
     ];
     workspace = {
       onCreate = {
+        copy-env = {
+          command = ["sh" "-c" "if [ ! -f .env.local ]; then cp .env.example .env.local; fi"];
+        };
+        npm-install = {
+          command = ["npm" "install"];
+        };
         default.openFiles = [
           "src/app/page.tsx"
         ];
