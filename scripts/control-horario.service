@@ -1,0 +1,26 @@
+[Unit]
+Description=Control Horario - Aplicación de gestión de turnos y horarios
+Documentation=https://github.com/Emilio20d2/control_horario
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=emilio
+Group=emilio
+WorkingDirectory=/home/emilio/control_horario
+Environment=NODE_ENV=production
+Environment=PORT=3000
+ExecStart=/usr/bin/npm run start -- -p 3000
+Restart=on-failure
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=control-horario
+
+# Seguridad
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
