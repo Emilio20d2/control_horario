@@ -32,9 +32,21 @@ const mapRowToDocument = <T>(row: { id: string; data: any }): T => ({
 }) as T;
 
 const ensureSchema = async (client: PoolClient, schema: string) => {
-  await client.query(`
-    CREATE SCHEMA IF NOT EXISTS ${schema};
+  // Para el esquema 'public', no intentamos crearlo ya que siempre existe
+  // y puede requerir permisos de superusuario en PostgreSQL 15+
+  if (schema !== 'public') {
+    try {
+      await client.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
+    } catch (error: any) {
+      // Si el esquema ya existe o no tenemos permisos, continuamos
+      if (error.code !== '42P06' && error.code !== '42501') {
+        console.warn(`[database] No se pudo crear el esquema ${schema}:`, error.message);
+      }
+    }
+  }
 
+  // Crear las tablas (esto debería funcionar si el usuario tiene permisos en el esquema)
+  await client.query(`
     CREATE TABLE IF NOT EXISTS ${schema}.app_documents (
       collection TEXT NOT NULL,
       id TEXT NOT NULL,
@@ -42,8 +54,10 @@ const ensureSchema = async (client: PoolClient, schema: string) => {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (collection, id)
-    );
+    )
+  `);
 
+  await client.query(`
     CREATE TABLE IF NOT EXISTS ${schema}.app_subcollection_documents (
       collection TEXT NOT NULL,
       document_id TEXT NOT NULL,
@@ -53,25 +67,46 @@ const ensureSchema = async (client: PoolClient, schema: string) => {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (collection, document_id, subcollection, id)
-    );
+    )
+  `);
 
+  await client.query(`
     CREATE TABLE IF NOT EXISTS ${schema}.app_conversation_messages (
       conversation_id TEXT NOT NULL,
       id TEXT NOT NULL,
       data JSONB NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (conversation_id, id)
-    );
-
-    CREATE INDEX IF NOT EXISTS app_documents_collection_idx
-      ON ${schema}.app_documents (collection);
-
-    CREATE INDEX IF NOT EXISTS app_subcollection_documents_collection_idx
-      ON ${schema}.app_subcollection_documents (collection, document_id, subcollection);
-
-    CREATE INDEX IF NOT EXISTS app_conversation_messages_conversation_idx
-      ON ${schema}.app_conversation_messages (conversation_id);
+    )
   `);
+
+  // Crear índices (ignorar errores si ya existen)
+  try {
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS app_documents_collection_idx
+        ON ${schema}.app_documents (collection)
+    `);
+  } catch (error) {
+    // Ignorar si el índice ya existe
+  }
+
+  try {
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS app_subcollection_documents_collection_idx
+        ON ${schema}.app_subcollection_documents (collection, document_id, subcollection)
+    `);
+  } catch (error) {
+    // Ignorar si el índice ya existe
+  }
+
+  try {
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS app_conversation_messages_conversation_idx
+        ON ${schema}.app_conversation_messages (conversation_id)
+    `);
+  } catch (error) {
+    // Ignorar si el índice ya existe
+  }
 };
 
 const createInternals = async (config: PostgresAdapterConfig): Promise<PostgresAdapterInternals> => {
@@ -84,6 +119,7 @@ const createInternals = async (config: PostgresAdapterConfig): Promise<PostgresA
     .then(async (client) => {
       try {
         await ensureSchema(client, schema);
+        console.log(`[database] Adaptador de Postgres configurado correctamente (esquema: ${schema})`);
       } finally {
         client.release();
       }

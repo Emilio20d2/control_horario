@@ -32,7 +32,12 @@ export interface DatabaseAdapter {
 export class DatabaseNotConfiguredError extends Error {
   constructor(method: string) {
     super(
-      `No se ha configurado ningún adaptador de base de datos. Implementa un adaptador personalizado y llama a configureDatabaseAdapter antes de usar ${method}.`
+      `No hay adaptador de base de datos registrado. ` +
+      `Para usar ${method}, debes:\n` +
+      `1. Configurar POSTGRES_URL en .env.local\n` +
+      `2. Verificar que src/app/layout.tsx incluye: import '@/lib/database/register-postgres-adapter.server';\n` +
+      `3. Reiniciar el servidor con npm run dev\n` +
+      `Consulta el README.md para más detalles.`
     );
     this.name = 'DatabaseNotConfiguredError';
   }

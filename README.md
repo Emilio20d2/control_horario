@@ -1,5 +1,14 @@
 # Control Horario - Manual de Usuario
 
+## ⚠️ Aviso importante antes de instalar
+
+> **Esta aplicación requiere una base de datos operativa para todas las operaciones de escritura** (crear empleados, confirmar semanas, guardar ausencias, etc.).
+>
+> El modo local basado en `localStorage` **solo sirve para demostración visual y pruebas rápidas**.
+> Si no se configura una base de datos real, la aplicación arranca, pero **no funciona plenamente**.
+
+---
+
 ## 1. Introducción
 
 `Control Horario` es una aplicación web integral para la gestión avanzada de turnos, horarios y cómputo de horas de empleados. Permite a los administradores llevar un registro detallado de las jornadas laborales, ausencias, festivos y balances de horas de cada trabajador.
@@ -98,43 +107,103 @@ El modelo `Employee` requiere obligatoriamente los siguientes campos:
 
 > ⚠️ **Importante:** Si `employeeNumber` no está presente, la aplicación fallará al guardar datos y puede mostrar errores genéricos relacionados con la base de datos.
 
-### 5. Base de datos Postgres (integración opcional)
+### 5. Base de datos Postgres (obligatoria para uso real)
 
-Si prefieres trabajar con una base de datos real, el repositorio incluye ahora un adaptador de Postgres listo para usarse.
+Para un uso completo de la aplicación, es **obligatorio** configurar PostgreSQL.
 
-1. **Prepara tu instancia de Postgres.** Crea una base de datos vacía (por ejemplo `control_horario`). No necesitas crear tablas manualmente; se provisionan automáticamente en el primer arranque.
-2. **Configura las variables de entorno:**
+#### 5.1 Crear base de datos y usuario
 
-   ```env
-   POSTGRES_URL=postgres://usuario:password@localhost:5432/control_horario
-   POSTGRES_SCHEMA=public            # Opcional, por defecto "public"
-   POSTGRES_SSLMODE=disable          # Usa "require" en proveedores gestionados
-   POSTGRES_ALLOW_SELF_SIGNED=false  # Ponlo a "true" si usas certificados autofirmados
-   ```
+Ejecuta estos comandos como superusuario de PostgreSQL:
 
-   > Las variables anteriores ya están documentadas en `.env.example`. Copia ese archivo a `.env.local` y ajusta los valores según tu entorno.
+```bash
+sudo -i -u postgres
+psql
+```
 
-3. **Verifica el import del adaptador (PASO CRÍTICO):**
+```sql
+-- Crear usuario y base de datos
+CREATE USER control_user WITH PASSWORD 'tu_password_seguro';
+CREATE DATABASE control_horario OWNER control_user;
 
-   El adaptador de Postgres **debe ser importado explícitamente** en el arranque de la aplicación. Asegúrate de que el archivo `src/app/layout.tsx` incluye esta línea:
+-- Conectar a la base de datos
+\c control_horario
 
-   ```typescript
-   import '@/lib/database/register-postgres-adapter.server';
-   ```
+-- Dar ownership del esquema public al usuario
+ALTER SCHEMA public OWNER TO control_user;
 
-   > ⚠️ **Si este import no existe, el adaptador no se registra y cualquier operación de escritura fallará.**
+-- Salir
+\q
+```
 
-4. **Arranca la aplicación (`npm run dev`).** Durante el arranque el módulo `src/lib/database/register-postgres-adapter.server.ts` invoca a `configureDatabaseAdapter` con el nuevo adaptador. Si la conexión es válida se crearán automáticamente las tablas:
+```bash
+exit
+```
 
-   - `app_documents`: almacena cada colección del producto en formato documento (`JSONB`).
-   - `app_subcollection_documents`: lista genérica para subcolecciones (por ejemplo, historiales o elementos anidados).
-   - `app_conversation_messages`: historial de mensajes asociados a conversaciones.
+#### 5.2 Configurar variables de entorno
+Edita tu archivo `.env.local` con las credenciales de PostgreSQL:
 
-5. **Verifica la estructura:** puedes inspeccionar las tablas ejecutando `\dt` dentro de `psql` o consultando directamente una colección, por ejemplo `SELECT data FROM app_documents WHERE collection = 'employees';`.
+```env
+POSTGRES_URL=postgres://control_user:tu_password_seguro@localhost:5432/control_horario
+POSTGRES_SCHEMA=public
+POSTGRES_SSLMODE=disable
+POSTGRES_ALLOW_SELF_SIGNED=false
+```
 
-6. **Carga de datos:** los servicios que utilizan `src/lib/services/databaseService.ts` operarán contra Postgres. Si necesitas poblar datos iniciales puedes crear scripts propios (por ejemplo, usando `psql` o Server Actions) o adaptar `src/lib/services/seedService.ts` para que consuma el nuevo adaptador.
+#### 5.3 ⚠️ PASO CRÍTICO: Registrar el adaptador
 
-> ⚠️ Las vistas basadas en `localStorage` continúan funcionando para facilitar el arranque rápido. Si tu despliegue requiere leer datos en vivo desde Postgres, sustituye gradualmente el uso de `src/hooks/use-data-provider.tsx` por consultas remotas apoyándote en el adaptador recién creado.
+El adaptador de Postgres **NO se ejecuta automáticamente**.
+
+Debes verificar que el archivo `src/app/layout.tsx` incluye este import en las primeras líneas:
+
+```typescript
+import '@/lib/database/register-postgres-adapter.server';
+```
+
+> ⚠️ **Si este import no existe:**
+> - La app arranca normalmente
+> - Pero **no se crean las tablas**
+> - Y **ninguna operación de escritura funciona**
+
+#### 5.4 Arranque y creación automática de tablas
+
+```bash
+npm run dev
+```
+
+En el primer arranque se crean automáticamente las tablas:
+- `app_documents`
+- `app_subcollection_documents`
+- `app_conversation_messages`
+
+Verifica que las tablas existen:
+
+```bash
+psql -h localhost -U control_user -d control_horario -c "\dt"
+```
+
+#### 5.5 Permisos y ownership (muy importante)
+
+El usuario de conexión **debe ser dueño** de las tablas. Si aparecen errores como:
+- `permission denied for schema public`
+- `must be owner of table app_documents`
+
+Ejecuta como superusuario postgres:
+
+```bash
+sudo -u postgres psql -d control_horario
+```
+
+```sql
+-- Dar ownership de todo al usuario
+ALTER SCHEMA public OWNER TO control_user;
+ALTER TABLE IF EXISTS app_documents OWNER TO control_user;
+ALTER TABLE IF EXISTS app_subcollection_documents OWNER TO control_user;
+ALTER TABLE IF EXISTS app_conversation_messages OWNER TO control_user;
+
+-- Verificar
+\dt
+\q
+```
 
 ### 6. Arrancar el servidor de desarrollo
 
@@ -174,6 +243,33 @@ Esto compilará la aplicación y la servirá en modo producción usando la base 
 
 ### 10. Errores comunes y cómo resolverlos
 
+#### "Did not find any relations" (al ejecutar `\dt` en psql)
+
+| Causa | Solución |
+|-------|----------|
+| La base de datos existe pero no se han creado las tablas | El adaptador no está registrado. Verificar el import en `layout.tsx` |
+| La app no ha arrancado aún | Ejecutar `npm run dev` y acceder a la app en el navegador |
+
+#### "permission denied for schema public"
+
+| Causa | Solución |
+|-------|----------|
+| El usuario no tiene permisos sobre el esquema | Ejecutar: `ALTER SCHEMA public OWNER TO control_user;` |
+| PostgreSQL 15+ cambió permisos por defecto | Dar ownership del esquema al usuario de la app |
+
+#### "must be owner of table app_documents"
+
+| Causa | Solución |
+|-------|----------|
+| Las tablas fueron creadas por otro usuario (ej: postgres) | Cambiar el dueño de las tablas o recrear la base de datos |
+
+Solución rápida:
+```sql
+ALTER TABLE app_documents OWNER TO control_user;
+ALTER TABLE app_subcollection_documents OWNER TO control_user;
+ALTER TABLE app_conversation_messages OWNER TO control_user;
+```
+
 #### "Base de datos no configurada" o "No se ha configurado ningún adaptador"
 
 | Causa | Solución |
@@ -188,7 +284,7 @@ Esto compilará la aplicación y la servirá en modo producción usando la base 
 | Causa | Solución |
 |-------|----------|
 | Se intenta guardar datos usando solo localStorage | Configurar Postgres siguiendo el punto 5 |
-| El modo local no soporta escritura | Implementar un adaptador propio o usar Postgres |
+| El modo local no soporta escritura | El modo demo es solo lectura |
 
 #### Cambios en `local-data.ts` no se reflejan
 
@@ -201,19 +297,13 @@ localStorage.removeItem('control-horario:local-db');
 location.reload();
 ```
 
-#### Error al guardar empleado (campos faltantes)
-
-| Causa | Solución |
-|-------|----------|
-| Falta `employeeNumber` u otros campos obligatorios | Revisar que todos los campos de la tabla "Campos obligatorios en Employee" estén presentes |
-
 #### La aplicación no conecta con Postgres
 
 | Causa | Solución |
 |-------|----------|
 | URL de conexión incorrecta | Verificar formato: `postgres://usuario:password@host:puerto/basedatos` |
 | Postgres no está corriendo | Iniciar el servicio: `sudo systemctl start postgresql` |
-| Base de datos no existe | Crear la base de datos: `createdb control_horario` |
+| Base de datos no existe | Crear la base de datos con el usuario como owner |
 | SSL requerido | Cambiar `POSTGRES_SSLMODE=require` en `.env.local` |
 
 ---
